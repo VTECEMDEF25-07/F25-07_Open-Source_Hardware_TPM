@@ -7,40 +7,19 @@ module management_module(
 		 tpm_cc,
 		 cmd_param,
 		 orderlyInput,
+		 initialized,
+		 executionEng_rc,
 		 testsRun,
 		 testsPassed,
 		 untested,
 		 op_state,
+		 startup_type,
+		 tpm_rc,
 		 phEnable,
 		 phEnableNV,
 		 shEnable,
 		 ehEnable,
-		 s_initialized,
-		 shutdownSave,
-		 platformAuthSelect, 
-		 platformPolicySelect,
-		 platformAlgSelect,
-		 nv_writeLockedSelect,
-		 nv_writtenSelect,
-		 nullProofGenEnable,
-		 nullSeedGenEnable,
-		 contextArraySelect,
-		 contextCount,
-		 commandAuditDigestSelect,
-		 objectContextID,
-		 newContextEncryptionKeyEnable,
-		 restartCount,
-		 clearCount,
-		 resetCount,
-		 pcrUpdateCount,
-		 commitCount,
-		 commitNonceGenEnable,
-		 commitArraySelect,
-		 pcrSaveSelect,
-		 act_timeoutSelect,
-		 act_signaledSelect,
-		 act_authPolicySelect,
-		 act_hashAlgSelect
+		 shutdownSave
 		 );
 		 
 	input 		  clock;						// Input clock signal
@@ -49,43 +28,22 @@ module management_module(
 	input  [31:0] tpm_cc;					// 32-bit input command
 	input  [15:0] cmd_param;				// 16-bit input command parameters
 	input			  orderlyInput;
+	input 		  initialized;			// 1-bit input intialized bit (from execution engine)
+	input  [31:0] executionEng_rc;	// 32-bit execution engine response code
 	input	 [15:0] testsRun;
 	input	 [15:0] testsPassed;
 	input	 [15:0] untested;
 	output [2:0]  op_state;
+	output [1:0]  startup_type;
+	output [31:0] tpm_rc;					// 32-bit response code
 	output 		  phEnable;					// 1-bit output platform hierarchy enable
 	output 		  phEnableNV;				// 1-bit output platform hiearchy NV memory enable
 	output 		  shEnable;					// 1-bit output owner hierarchy enable
 	output 		  ehEnable;					// 1-bit output privacy administrator hierarchy enable
-	output 		  s_initialized;			// 1-bit output intialized bit
 	output        shutdownSave;			// 1-bit output shutdownType
-	output		  platformAuthSelect;
-	output		  platformPolicySelect;
-	output		  platformAlgSelect;
-	output	 	  nv_writeLockedSelect;
-	output	     nv_writtenSelect;
-	output		  nullProofGenEnable;
-	output		  nullSeedGenEnable;
-	output	 	  contextArraySelect;
-	output [31:0] contextCount;
-	output		  commandAuditDigestSelect;
-	output [31:0] objectContextID;
-	output	     newContextEncryptionKeyEnable;
-	output [31:0] restartCount;
-	output [31:0] clearCount;
-	output [31:0] resetCount;
-	output [31:0] pcrUpdateCount;
-	output [31:0] commitCount;
-	output		  commitNonceGenEnable;
-	output		  commitArraySelect;
-	output [1:0]  pcrSaveSelect;
-	output		  act_timeoutSelect;
-	output	 	  act_signaledSelect;
-	output	     act_authPolicySelect;
-	output	     act_hashAlgSelect;
 	
 	
-	// Command Codes
+	// Relevant Command Codes to Management module
 	localparam TPM_CC_CHANGEEPS 		     = 32'h00000124,
 				  TPM_CC_CHANGEPPS 			  = 32'h00000125,
 				  TPM_CC_CLEAR 				  = 32'h00000126,
@@ -95,44 +53,32 @@ module management_module(
 				  TPM_CC_SHUTDOWN 		     = 32'h00000145,
 				  TPM_CC_GETTESTRESULT 		  = 32'h0000017C,
 				  TPM_CC_GETCAPABILITY 		  = 32'h0000017A;
+				  
+	// Relevant Response Codes to managment module			  
+	localparam TPM_RC_FAILURE		= 32'h00000101,
+				  TPM_RC_SUCCESS 		= 32'h00000000,
+				  TPM_RC_INITIALIZE	= 32'h00000100,
+				  TPM_RC_VALUE			= 32'h00000084,
+				  TPM_RC_NULL			= 32'h0;
 	
-	localparam TPM_SU_CLEAR = 1'b0, TPM_SU_STATE = 1'b1; // startupType
+	localparam TPM_SU_CLEAR = 1'b0, TPM_SU_STATE = 1'b1; // command parameters
 	
-	localparam CLEAR = 1'b0, SET = 1'b1;
-	localparam PRESERVED = 1'b1, DEFAULT = 1'b0;
-	localparam FULL_DEFAULT = 2'd0, PS_PRESERVED = 2'd1, FULL_PRESERVED = 2'd2;
-	localparam TPMI_YES = 1'b1;
+	localparam TPMI_YES = 1'b1, TPMI_NO = 1'b0;
 	
+	// Startup types
 	localparam TPM_DONE = 2'd0, TPM_RESET = 2'd1, TPM_RESTART = 2'd2, TPM_RESUME = 2'd3;
 	
+	// Operational states
 	localparam POWER_OFF_STATE = 3'b000, INITIALIZATION_STATE = 3'b001, STARTUP_STATE = 3'b010, OPERATIONAL_STATE = 3'b011, SELF_TEST_STATE = 3'b100, FAILURE_MODE_STATE = 3'b101, SHUTDOWN_STATE = 3'b110;	// Operational states
 	
-	reg orderly, shutdownState, pHierarchy, nvEnable, sHierarchy, eHierarchy, orderlyState, shutdownSave;
-	reg phEnable, phEnableNV, shEnable, ehEnable, s_initialized;
-	reg platformAuthSelect, 
-		 platformPolicySelect,
-		 platformAlgSelect,
-		 nv_writeLockedSelect,
-		 nv_writtenSelect,
-		 nullProofGenEnable,
-		 nullSeedGenEnable,
-		 contextArraySelect,
-		 commandAuditDigestSelect,
-		 newContextEncryptionKeyEnable,
-		 commitNonceGenEnable,
-		 commitArraySelect,
-		 act_timeoutSelect,
-		 act_signaledSelect,
-		 act_authPolicySelect,
-		 act_hashAlgSelect,
-		 initialized;
+	reg shutdown_state, shutdown_input, pHierarchy, nvEnable, sHierarchy, eHierarchy, shutdownSave;
+	reg phEnable, phEnableNV, shEnable, ehEnable;
 		 
-	reg [1:0] startup_state, startup_sequence, pcrSaveSelect;
+	reg [1:0] startup_state, startup_type;
 	reg [2:0] op_state, state;
-	reg [31:0] objectContextID, contextCount, restartCount, clearCount, resetCount, pcrUpdateCount, commitCount;
-	reg [31:0] objectContextID_state, contextCount_state, restartCount_state, clearCount_state, resetCount_state, pcrUpdateCount_state, commitCount_state;
+	reg [31:0] tpm_rc;
 	
-	wire startupEnable;
+	wire startupEnable, shutdownEnable;
 	
 	always@(posedge clock or negedge reset_n) begin
 		if(!reset_n) begin
@@ -140,50 +86,35 @@ module management_module(
 			phEnableNV   <= 1'b0;
 			shEnable   	 <= 1'b0;
 			ehEnable   	 <= 1'b0;
-			orderly		 <= orderlyInput;
 			op_state     <= POWER_OFF_STATE;
-			startup_sequence <= 2'd0;
-			contextCount  <= 32'd0;
-			objectContextID <= 32'd0;
-			restartCount   <= 32'd0;
-			clearCount    <= 32'd0;
-			resetCount     <= 32'd0;
-			pcrUpdateCount <= 32'd0;
-			commitCount    <= 32'd0;
-			s_initialized  <= 1'b0;
-			shutdownSave <= 1'b0;
+			shutdownSave <= TPM_SU_CLEAR;
 		end
 		else begin
 			phEnable     <= pHierarchy;
-			orderly		 <= orderlyState;
 			if(!keyStart_n) begin
 				op_state     <= state;
 			end
 			if(startupEnable) begin
+				startup_state <= cmd_param[0];
+				shutdown_input <= orderlyInput;
 				phEnableNV   <= nvEnable;
 				shEnable     <= sHierarchy;
 				ehEnable     <= eHierarchy;
-				startup_sequence <= startup_state;
-				contextCount  <= contextCount_state;
-				objectContextID <= objectContextID_state;
-				restartCount  <= restartCount_state;
-				clearCount    <= clearCount_state;
-				resetCount    <= resetCount_state;
-				pcrUpdateCount <= pcrUpdateCount_state;
-				commitCount    <= commitCount_state;
-				s_initialized <= initialized;
 			end
-			shutdownSave <= shutdownState;
+			if(shutdownEnable) begin
+				shutdown_input <= cmd_param[0];
+				shutdownSave <= shutdown_state;
+			end
 		end
 	end
 
+	// Enable signals to activate input information collection at startup and shutdown stages
 	assign startupEnable = (state == STARTUP_STATE);
+	assign shutdownEnable = (state == SHUTDOWN_STATE);
 	
-	always@(startup_sequence, shutdownSave, tpm_cc, op_state, phEnable, shEnable, ehEnable, cmd_param, orderly, untested, testsPassed, testsRun) begin
-		pHierarchy = phEnable;
-		orderlyState = orderly;
-		startup_state = startup_sequence;
-		shutdownState = shutdownSave;
+	// Always block for managing operatonal states FSM
+	
+	always@(tpm_cc, op_state, initialized, cmd_param, untested, testsPassed, testsRun) begin
 		case(op_state)
 			POWER_OFF_STATE: 		 begin
 											 state = INITIALIZATION_STATE;
@@ -197,30 +128,11 @@ module management_module(
 											 end
 										 end
 			STARTUP_STATE:			 begin
-											 pHierarchy = 1'b1;
-											 // Flush all transient contexts (objects, sessions, and sequences)
-											 // if(lockoutRecovery == 0): lockoutAuth = 1'b1;
-											 
-											 if(orderly == TPM_SU_STATE) begin
-												 // Restore saved state
-												 if(cmd_param[0] == TPM_SU_CLEAR) begin
-													 startup_state = TPM_RESTART;	// TPM Restart
-													 state = OPERATIONAL_STATE;
-												 end
-												 else begin
-													 startup_state = TPM_RESUME;	// TPM Resume
-													 state = OPERATIONAL_STATE;
-												 end
+											 if(initialized == 1'b1) begin
+												state = OPERATIONAL_STATE;
 											 end
 											 else begin
-												 if(cmd_param[0] == TPM_SU_STATE) begin
-													 startup_state = TPM_RESET;
-													 state = INITIALIZATION_STATE;
-												 end
-												 else begin
-													 startup_state = TPM_RESET;	// TPM Reset
-													 state = OPERATIONAL_STATE;
-												 end
+												state = INITIALIZATION_STATE;
 											 end
 										 end
 			OPERATIONAL_STATE: 	 begin
@@ -259,40 +171,10 @@ module management_module(
 											 end
 										 end
 			FAILURE_MODE_STATE:	 begin
-											 if(tpm_cc == TPM_CC_GETTESTRESULT) begin
-												 // return test results
-												 state = FAILURE_MODE_STATE;
-											 end
-											 else if(tpm_cc == TPM_CC_GETCAPABILITY) begin
-												 // return capability
-												 state = FAILURE_MODE_STATE;
-											 end
-											 else begin
-												 state = FAILURE_MODE_STATE;
-											 end
+											 state = FAILURE_MODE_STATE;
 										 end
 			SHUTDOWN_STATE:		 begin
-											 // save volatile portion of clock to NV memory
-											 orderlyState = 1'b1;	// set shutdown as orderly
-											 // NV indexes with the TPMA_NV_ORDERLY attribute will be updated
-											 if(cmd_param[0] == TPM_SU_STATE) begin
-												 // save tracking info for saved session contexts to NV memory
-												 // save contextCounter to NV
-												 // save savePCR to NV
-												 // save pcrUpdateCounter to NV
-												 // save TPMA_NV_WRITESTCLEAR
-												 // save TPMA_NV_READSTCLEAR
-												 // For each ACT:
-													// save counter value to NV
-													// save authPolicy to NV
-												 // save commandAuditDigest and count
-												 shutdownState = TPM_SU_STATE;		// set shutdown as orderly
-												 state = OPERATIONAL_STATE;
-											 end
-											 else begin
-												shutdownState = TPM_SU_CLEAR;
-												state = OPERATIONAL_STATE;
-											 end
+											 state = SHUTDOWN_STATE;
 										 end
 			default:					 begin
 											 state = 3'bxxx;
@@ -300,184 +182,107 @@ module management_module(
 		endcase
 	end
 	
-	always@(startup_sequence, resetCount, restartCount, clearCount, contextCount, objectContextID, pcrUpdateCount, commitCount, phEnableNV, shEnable, ehEnable, s_initialized) begin
-		if(startup_sequence == TPM_RESET) begin
-			restartCount_state = 32'd0;
-			clearCount_state = 32'd0;
-			resetCount_state = resetCount + 1'b1;
-			
-			nvEnable = 1'b1;
-			sHierarchy = 1'b1;
-			eHierarchy = 1'b1;
-			
-			platformAuthSelect = DEFAULT; // platformAuth set to empty buffer
-			platformPolicySelect = DEFAULT;// platformPolicy set to empty buffer
-			platformAlgSelect = DEFAULT;
-													 
-			// For each NV index: 
-			nv_writeLockedSelect = DEFAULT;	// if((TPMA_NV_WRITEDEFINE == CLEAR)||(TPMA_NV_WRITTEN == CLEAR)): TPMA_NV_WRITELOCKED = CLEAR;
-			// if(TPMA_NV_ORDERLY == SET): TPMA_NV_WRITTEN = CLEAR (unless the type is TPM_NT_COUNTER)
-			nv_writtenSelect = DEFAULT;
-			// else: advance the orderly counters;
-			// if(TPMA_NV_CLEAR_STCLEAR == SET): TPMA_NV_WRITTEN = CLEAR;
-			
-			nullProofGenEnable = SET;
-			nullSeedGenEnable = SET;
-													 
-			contextArraySelect = DEFAULT;	//(set saved session contexts to initial value)
-			contextCount_state = DEFAULT;
-			
-			commandAuditDigestSelect = DEFAULT;
-			
-			objectContextID_state = DEFAULT;	// objectContextID = 0;
-			newContextEncryptionKeyEnable = SET;	// Generate new context encryption key;
-			
-			pcrUpdateCount_state = DEFAULT;
-			commitCount_state = DEFAULT;
-			commitNonceGenEnable = SET;
-			commitArraySelect = DEFAULT;
-																			 
-			pcrSaveSelect = FULL_DEFAULT;	// pcrSave set to zero digest (default, which can change based on platform specifications);
-													 
-			// For each ACT: 
-			act_timeoutSelect = DEFAULT;		// timeout = 0, 
-			act_signaledSelect = DEFAULT;	// if(preserveSignaled == CLEAR): signaled = CLEAR,
-			act_authPolicySelect = DEFAULT;	// authPolicy set to empty buffer,
-			act_hashAlgSelect = DEFAULT;		// hashAlg = TPM_ALG_NULL;
-													 
-			initialized = 1'b1;
+	
+	//Always block for managing response codes
+	always@(tpm_cc, op_state, shutdown_input, startup_state, initialized, executionEng_rc, cmd_param, untested, testsPassed, testsRun) begin
+		case(op_state)
+			POWER_OFF_STATE: 		 begin
+											 tpm_rc = TPM_RC_NULL;
+										 end
+			INITIALIZATION_STATE: begin
+										    if(tpm_cc != TPM_CC_STARTUP) begin
+												 tpm_rc = TPM_RC_INITIALIZE;
+											 end
+										 end
+			STARTUP_STATE:			 begin
+											 if(shutdown_input == TPM_SU_CLEAR && startup_state == TPM_SU_STATE) begin
+												tpm_rc = TPM_RC_VALUE;
+											 end
+											 if(initialized == 1'b1) begin
+												tpm_rc = TPM_RC_SUCCESS;
+											 end
+										 end
+			OPERATIONAL_STATE: 	 begin
+											tpm_rc = executionEng_rc;
+										 end
+			SELF_TEST_STATE:		 begin
+											 if(testsPassed != testsRun) begin
+												tpm_rc = TPM_RC_FAILURE;
+											 end
+											 else begin
+												tpm_rc = executionEng_rc;
+											 end
+										 end
+			FAILURE_MODE_STATE:	 begin
+											 if(tpm_cc == TPM_CC_GETTESTRESULT) begin
+												 tpm_rc = executionEng_rc;
+											 end
+											 else if(tpm_cc == TPM_CC_GETCAPABILITY) begin
+												 tpm_rc = executionEng_rc;
+											 end
+											 else begin
+												 tpm_rc = TPM_RC_FAILURE;
+											 end
+										 end
+			SHUTDOWN_STATE:		 begin
+											 tpm_rc = TPM_RC_NULL;
+										 end
+			default:					 begin
+											 tpm_rc = 32'bx;
+										 end
+		endcase
+	end
+	
+	// Always block for managing shutdown state
+	
+	always@(op_state, shutdown_input) begin
+		if(op_state == SHUTDOWN_STATE) begin
+			if(shutdown_input == TPM_SU_STATE) begin
+				shutdown_state = TPM_SU_STATE;		// set shutdown as orderly
+			end
+			else begin
+				shutdown_state = TPM_SU_CLEAR;
+			end
 		end
-		else if(startup_sequence == TPM_RESTART) begin
-			restartCount_state = restartCount + 1'b1;
-			clearCount_state = clearCount + 1'b1;
-			resetCount_state = resetCount;
+	end
+	
+	// Always block for managing startup state
+	
+	always@(op_state, startup_state, shutdown_state, phEnableNV, shEnable, ehEnable) begin
+		if(op_state == STARTUP_STATE) begin
+			// For all startups:
+			pHierarchy = 1'b1;
 			
-			nvEnable = 1'b1;
-			sHierarchy = 1'b1;
-			eHierarchy = 1'b1;
-			
-			platformAuthSelect = DEFAULT; // platformAuth set to empty buffer
-			platformPolicySelect = DEFAULT;// platformPolicy set to empty buffer
-			platformAlgSelect = DEFAULT;
-													 
-			// For each NV index: 
-			nv_writeLockedSelect = DEFAULT;	// if((TPMA_NV_WRITEDEFINE == CLEAR)||(TPMA_NV_WRITTEN == CLEAR)): TPMA_NV_WRITELOCKED = CLEAR;
-			nv_writtenSelect = DEFAULT;	// if(TPMA_NV_CLEAR_STCLEAR == SET): TPMA_NV_WRITTEN = CLEAR;
-													 
-			// Reset PCR in all banks to default initial conditions
-			pcrSaveSelect = FULL_DEFAULT;
-			
-			nullProofGenEnable = CLEAR;
-			nullSeedGenEnable = CLEAR;
-			
-			contextArraySelect = PRESERVED;
-			contextCount_state = contextCount;
-			
-			commandAuditDigestSelect = PRESERVED;
-			
-			objectContextID_state = objectContextID;
-			newContextEncryptionKeyEnable = CLEAR;
-			
-			pcrUpdateCount_state = pcrUpdateCount;
-			
-			commitCount_state = commitCount;
-			commitNonceGenEnable = CLEAR;
-			commitArraySelect = PRESERVED;
-													 
-			// For each ACT: 
-			act_timeoutSelect = DEFAULT;		// timeout = 0, 
-			act_signaledSelect = DEFAULT;	// if(preserveSignaled == CLEAR): signaled = CLEAR,
-			act_authPolicySelect = DEFAULT;	// authPolicy set to empty buffer,
-			act_hashAlgSelect = DEFAULT;		// hashAlg = TPM_ALG_NULL;
-													 
-			initialized = 1'b1;
-		end
-		else if(startup_sequence == TPM_RESUME) begin
-			restartCount_state = restartCount + 1'b1;
-			clearCount_state = clearCount;
-			resetCount_state = resetCount;
-			
-			nvEnable = phEnableNV;
-			sHierarchy = shEnable;
-			eHierarchy = ehEnable;
-			
-			platformAuthSelect = PRESERVED;
-			platformPolicySelect = PRESERVED;
-			platformAlgSelect = PRESERVED;
-			
-			nv_writeLockedSelect = PRESERVED;
-			nv_writtenSelect = PRESERVED;
-			
-			pcrSaveSelect = PS_PRESERVED;
-			
-			nullProofGenEnable = CLEAR;
-			nullSeedGenEnable = CLEAR;
-			
-			contextArraySelect = PRESERVED;
-			contextCount_state = contextCount;
-			
-			commandAuditDigestSelect = PRESERVED;
-			
-			objectContextID_state = objectContextID;
-			newContextEncryptionKeyEnable = CLEAR;
-			
-			pcrUpdateCount_state = pcrUpdateCount;
-			
-			commitCount_state = commitCount;
-			commitNonceGenEnable = CLEAR;
-			commitArraySelect = PRESERVED;
-														 
-			// For each ACT: timeout, singaled, and authPolicy values preserved;
-			act_timeoutSelect = PRESERVED;
-			act_signaledSelect = PRESERVED;
-			act_authPolicySelect = PRESERVED;
-			act_hashAlgSelect		= PRESERVED;
-														 
-			initialized = 1'b1;
-		end
-		else begin
-			restartCount_state = restartCount;
-			clearCount_state = clearCount;
-			resetCount_state = resetCount;
-			
-			nvEnable = phEnableNV;
-			sHierarchy = shEnable;
-			eHierarchy = ehEnable;
-			
-			platformAuthSelect = PRESERVED;
-			platformPolicySelect = PRESERVED;
-			platformAlgSelect = PRESERVED;
-			
-			nv_writeLockedSelect = PRESERVED;
-			nv_writtenSelect = PRESERVED;
-			
-			pcrSaveSelect = FULL_PRESERVED;
-			
-			nullProofGenEnable = CLEAR;
-			nullSeedGenEnable = CLEAR;
-			
-			contextArraySelect = PRESERVED;
-			contextCount_state = contextCount;
-			
-			commandAuditDigestSelect = PRESERVED;
-			
-			objectContextID_state = objectContextID;
-			newContextEncryptionKeyEnable = CLEAR;
-			
-			pcrUpdateCount_state = pcrUpdateCount;
-			
-			commitCount_state = commitCount;
-			commitNonceGenEnable = CLEAR;
-			commitArraySelect = PRESERVED;
-														 
-			// For each ACT: timeout, singaled, and authPolicy values preserved;
-			act_timeoutSelect = PRESERVED;
-			act_signaledSelect = PRESERVED;
-			act_authPolicySelect = PRESERVED;
-			act_hashAlgSelect		= PRESERVED;
-														 
-			initialized = s_initialized;
+			if(shutdown_state == TPM_SU_STATE) begin
+				if(startup_state == TPM_SU_STATE) begin
+					startup_type = TPM_RESUME;
+					
+					nvEnable = phEnableNV;
+					sHierarchy = shEnable;
+					eHierarchy = ehEnable;
+				end
+				else begin
+					startup_type = TPM_RESTART;
+
+					nvEnable = 1'b1;
+					sHierarchy = 1'b1;
+					eHierarchy = 1'b1;
+				end
+			end
+			else begin
+				if(startup_state == TPM_SU_STATE) begin
+					startup_type = TPM_DONE;
+				end
+				else begin
+					startup_type = TPM_RESET;
+					
+					nvEnable = 1'b1;
+					sHierarchy = 1'b1;
+					eHierarchy = 1'b1;
+				end
+			end
 		end
 	end
 	
 endmodule
+
