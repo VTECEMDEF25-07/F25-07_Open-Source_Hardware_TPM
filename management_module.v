@@ -8,10 +8,15 @@ module management_module(
 		 cmd_param,
 		 orderlyInput,
 		 initialized,
+		 authHierarchy,
 		 executionEng_rc,
+		 locality,
 		 testsRun,
 		 testsPassed,
 		 untested,
+		 nv_phEnableNV,
+		 nv_shEnable,
+		 nv_ehEnable,
 		 op_state,
 		 startup_type,
 		 tpm_rc,
@@ -25,28 +30,32 @@ module management_module(
 	input 		  clock;						// Input clock signal
 	input 		  reset_n;						// Input reset signal
 	input			  keyStart_n;
-	input  [31:0] tpm_cc;					// 32-bit input command
-	input  [15:0] cmd_param;				// 16-bit input command parameters
+
+	input  [31:0] tpm_cc;					// 4-byte input command
+	input  [33:0] cmd_param;				// 4086-byte input command parameters
+	
 	input			  orderlyInput;
 	input 		  initialized;			// 1-bit input intialized bit (from execution engine)
-	input  [31:0] executionEng_rc;	// 32-bit execution engine response code
+	input	 [31:0] authHierarchy;		// 4-byte input verifying which hiearchy was authorized (from execution engine)
+	input  [31:0] executionEng_rc;	// 4-byte execution engine response code
+	input  [7:0]  locality;				// 8-bit input of current locality
 	input	 [15:0] testsRun;
 	input	 [15:0] testsPassed;
 	input	 [15:0] untested;
+	input nv_phEnableNV, nv_shEnable, nv_ehEnable;
+	
 	output [2:0]  op_state;
 	output [1:0]  startup_type;
-	output [31:0] tpm_rc;					// 32-bit response code
+	output [31:0] tpm_rc;					// 4-byte response code
 	output 		  phEnable;					// 1-bit output platform hierarchy enable
 	output 		  phEnableNV;				// 1-bit output platform hiearchy NV memory enable
 	output 		  shEnable;					// 1-bit output owner hierarchy enable
 	output 		  ehEnable;					// 1-bit output privacy administrator hierarchy enable
-	output        shutdownSave;			// 1-bit output shutdownType
+	output [15:0]  shutdownSave;			// 1-bit output shutdownType
 	
 	
 	// Relevant Command Codes to Management module
-	localparam TPM_CC_CHANGEEPS 		     = 32'h00000124,
-				  TPM_CC_CHANGEPPS 			  = 32'h00000125,
-				  TPM_CC_CLEAR 				  = 32'h00000126,
+	localparam TPM_CC_HIERARCHYCONTROL    = 32'h00000121,
 				  TPM_CC_INCREMENTALSELFTEST = 32'h00000142,
 				  TPM_CC_SELFTEST 			  = 32'h00000143,
 				  TPM_CC_STARTUP 				  = 32'h00000144, 
@@ -59,11 +68,20 @@ module management_module(
 				  TPM_RC_SUCCESS 		= 32'h00000000,
 				  TPM_RC_INITIALIZE	= 32'h00000100,
 				  TPM_RC_VALUE			= 32'h00000084,
-				  TPM_RC_NULL			= 32'h0;
+				  TPM_RC_AUTH_TYPE   = 32'h00000124;
 	
-	localparam TPM_SU_CLEAR = 1'b0, TPM_SU_STATE = 1'b1; // command parameters
+	// TPM_SU command parameters:
+	localparam TPM_SU_CLEAR = 4'h0000, TPM_SU_STATE = 4'h0001;
 	
+	// TPMI_YES_NO command parameters:
 	localparam TPMI_YES = 1'b1, TPMI_NO = 1'b0;
+				  
+	// Relevant TPM_RH (TPMI_RH_ENABLES, TPMI_RH_HIERARCHY):
+	localparam TPM_RH_NULL        = 32'h40000007,
+				  TPM_RH_OWNER			= 32'h40000001,
+				  TPM_RH_ENDORSEMENT = 32'h4000000B,
+				  TPM_RH_PLATFORM    = 32'h4000000C,
+				  TPM_RH_PLATFORM_NV = 32'h4000000D;
 	
 	// Startup types
 	localparam TPM_DONE = 2'd0, TPM_RESET = 2'd1, TPM_RESTART = 2'd2, TPM_RESUME = 2'd3;
@@ -71,14 +89,16 @@ module management_module(
 	// Operational states
 	localparam POWER_OFF_STATE = 3'b000, INITIALIZATION_STATE = 3'b001, STARTUP_STATE = 3'b010, OPERATIONAL_STATE = 3'b011, SELF_TEST_STATE = 3'b100, FAILURE_MODE_STATE = 3'b101, SHUTDOWN_STATE = 3'b110;	// Operational states
 	
-	reg shutdown_state, shutdown_input, pHierarchy, nvEnable, sHierarchy, eHierarchy, shutdownSave;
-	reg phEnable, phEnableNV, shEnable, ehEnable;
-		 
-	reg [1:0] startup_state, startup_type;
-	reg [2:0] op_state, state;
-	reg [31:0] tpm_rc;
+	reg pHierarchy, pHierarchyNV, sHierarchy, eHierarchy;
+	reg phEnable, phEnableNV, shEnable, ehEnable, tpmi_yes_no, authPassed;
 	
-	wire startupEnable, shutdownEnable;
+	reg [15:0] startup_state, shutdown_input, shutdownSave;
+		 
+	reg [1:0] startup_type;
+	reg [2:0] op_state, state;
+	reg [31:0] tpm_rc, tpm_rc_state, tpmi_rh_enables, tpmi_rh_hierarchy;
+	
+	wire startupEnable, operationEnable, shutdownEnable;
 	
 	always@(posedge clock or negedge reset_n) begin
 		if(!reset_n) begin
@@ -90,26 +110,32 @@ module management_module(
 			shutdownSave <= TPM_SU_CLEAR;
 		end
 		else begin
-			phEnable     <= pHierarchy;
 			if(!keyStart_n) begin
 				op_state     <= state;
-			end
-			if(startupEnable) begin
-				startup_state <= cmd_param[0];
-				shutdown_input <= orderlyInput;
-				phEnableNV   <= nvEnable;
+				phEnable     <= pHierarchy;
+				phEnableNV   <= pHierarchyNV;
 				shEnable     <= sHierarchy;
 				ehEnable     <= eHierarchy;
-			end
-			if(shutdownEnable) begin
-				shutdown_input <= cmd_param[0];
-				shutdownSave <= shutdown_state;
+				tpm_rc		 <= tpm_rc_state;
+				if(startupEnable) begin
+					startup_state <= cmd_param[15:0];
+					shutdown_input <= orderlyInput;
+				end
+				else if(operationEnable) begin
+					tpmi_rh_hierarchy <= authHierarchy;
+					tpmi_rh_enables <= cmd_param[32:1];
+					tpmi_yes_no    <= cmd_param[0];
+				end
+				else if(shutdownEnable) begin
+					shutdownSave <= cmd_param[15:0];
+				end
 			end
 		end
 	end
 
 	// Enable signals to activate input information collection at startup and shutdown stages
 	assign startupEnable = (state == STARTUP_STATE);
+	assign operationEnable = (state == OPERATIONAL_STATE);
 	assign shutdownEnable = (state == SHUTDOWN_STATE);
 	
 	// Always block for managing operatonal states FSM
@@ -184,89 +210,91 @@ module management_module(
 	
 	
 	//Always block for managing response codes
-	always@(tpm_cc, op_state, shutdown_input, startup_state, initialized, executionEng_rc, cmd_param, untested, testsPassed, testsRun) begin
-		case(op_state)
-			POWER_OFF_STATE: 		 begin
-											 tpm_rc = TPM_RC_NULL;
-										 end
-			INITIALIZATION_STATE: begin
-										    if(tpm_cc != TPM_CC_STARTUP) begin
-												 tpm_rc = TPM_RC_INITIALIZE;
-											 end
-										 end
-			STARTUP_STATE:			 begin
-											 if(shutdown_input == TPM_SU_CLEAR && startup_state == TPM_SU_STATE) begin
-												tpm_rc = TPM_RC_VALUE;
-											 end
-											 if(initialized == 1'b1) begin
-												tpm_rc = TPM_RC_SUCCESS;
-											 end
-										 end
-			OPERATIONAL_STATE: 	 begin
-											tpm_rc = executionEng_rc;
-										 end
-			SELF_TEST_STATE:		 begin
-											 if(testsPassed != testsRun) begin
-												tpm_rc = TPM_RC_FAILURE;
-											 end
-											 else begin
-												tpm_rc = executionEng_rc;
-											 end
-										 end
-			FAILURE_MODE_STATE:	 begin
-											 if(tpm_cc == TPM_CC_GETTESTRESULT) begin
-												 tpm_rc = executionEng_rc;
-											 end
-											 else if(tpm_cc == TPM_CC_GETCAPABILITY) begin
-												 tpm_rc = executionEng_rc;
-											 end
-											 else begin
-												 tpm_rc = TPM_RC_FAILURE;
-											 end
-										 end
-			SHUTDOWN_STATE:		 begin
-											 tpm_rc = TPM_RC_NULL;
-										 end
-			default:					 begin
-											 tpm_rc = 32'bx;
-										 end
-		endcase
-	end
-	
-	// Always block for managing shutdown state
-	
-	always@(op_state, shutdown_input) begin
-		if(op_state == SHUTDOWN_STATE) begin
-			if(shutdown_input == TPM_SU_STATE) begin
-				shutdown_state = TPM_SU_STATE;		// set shutdown as orderly
+	always@(tpm_rc, tpm_cc, op_state, shutdown_input, startup_state, initialized, executionEng_rc, locality, tpmi_rh_hierarchy, tpmi_rh_enables, tpmi_yes_no, untested, testsPassed, testsRun) begin
+		tpm_rc_state = tpm_rc;
+		if(op_state == INITIALIZATION_STATE) begin
+			if(tpm_cc != TPM_CC_STARTUP) begin
+				tpm_rc_state = TPM_RC_INITIALIZE;
+			end
+		end
+	   else if(op_state == STARTUP_STATE) begin
+			if((startup_state != TPM_SU_CLEAR && startup_state != TPM_SU_STATE) || (shutdown_input == TPM_SU_CLEAR && startup_state == TPM_SU_STATE)) begin
+				tpm_rc_state = TPM_RC_VALUE;
+			end
+											 
+			if(initialized == 1'b1) begin
+				tpm_rc_state = TPM_RC_SUCCESS;
+			end
+		end
+		else if(op_state == OPERATIONAL_STATE) begin
+			if(tpm_cc == TPM_CC_HIERARCHYCONTROL && locality == 8'b00000001) begin
+				if(tpmi_rh_hierarchy == TPM_RH_PLATFORM) begin
+					if(tpmi_rh_enables == TPM_RH_ENDORSEMENT ||
+						tpmi_rh_enables == TPM_RH_OWNER || 
+						tpmi_rh_enables == TPM_RH_PLATFORM_NV ||
+					   (tpmi_rh_enables == TPM_RH_PLATFORM && tpmi_yes_no == TPMI_NO)) begin
+						tpm_rc_state = TPM_RC_SUCCESS;
+					end
+					else begin
+						tpm_rc_state = TPM_RC_VALUE;
+					end
+				end
+				else if(tpmi_rh_hierarchy == TPM_RH_OWNER) begin
+					if(tpmi_yes_no == TPMI_NO && tpmi_rh_enables == TPM_RH_OWNER) begin
+						tpm_rc_state = TPM_RC_SUCCESS;
+					end
+					else begin
+						tpm_rc_state = TPM_RC_AUTH_TYPE;
+					end
+				end
+				else if(tpmi_rh_hierarchy == TPM_RH_ENDORSEMENT) begin
+					if(tpmi_yes_no == TPMI_NO && tpmi_rh_enables == TPM_RH_ENDORSEMENT) begin
+						tpm_rc_state = TPM_RC_SUCCESS;
+					end
+					else begin
+						tpm_rc_state = TPM_RC_AUTH_TYPE;
+					end
+				end
+				else begin
+					tpm_rc_state = executionEng_rc;
+				end
 			end
 			else begin
-				shutdown_state = TPM_SU_CLEAR;
+				tpm_rc_state = executionEng_rc;
+			end
+		end
+		else if(op_state == SELF_TEST_STATE) begin
+			if(testsPassed != testsRun) begin
+				tpm_rc_state = TPM_RC_FAILURE;
+			end
+			else begin
+				tpm_rc_state = executionEng_rc;
+			end
+		end
+		else if(op_state == FAILURE_MODE_STATE) begin
+			if(tpm_cc == TPM_CC_GETTESTRESULT) begin
+				tpm_rc_state = executionEng_rc;
+			end
+			else if(tpm_cc == TPM_CC_GETCAPABILITY) begin
+				tpm_rc_state = executionEng_rc;
+			end
+			else begin
+				tpm_rc_state = TPM_RC_FAILURE;
 			end
 		end
 	end
 	
 	// Always block for managing startup state
 	
-	always@(op_state, startup_state, shutdown_state, phEnableNV, shEnable, ehEnable) begin
+	always@(op_state, startup_state, shutdown_input) begin
+		startup_type = TPM_DONE;
 		if(op_state == STARTUP_STATE) begin
-			// For all startups:
-			pHierarchy = 1'b1;
-			
-			if(shutdown_state == TPM_SU_STATE) begin
+			if(shutdown_input == TPM_SU_STATE) begin
 				if(startup_state == TPM_SU_STATE) begin
 					startup_type = TPM_RESUME;
-					
-					nvEnable = phEnableNV;
-					sHierarchy = shEnable;
-					eHierarchy = ehEnable;
 				end
 				else begin
 					startup_type = TPM_RESTART;
-
-					nvEnable = 1'b1;
-					sHierarchy = 1'b1;
-					eHierarchy = 1'b1;
 				end
 			end
 			else begin
@@ -275,10 +303,61 @@ module management_module(
 				end
 				else begin
 					startup_type = TPM_RESET;
-					
-					nvEnable = 1'b1;
-					sHierarchy = 1'b1;
-					eHierarchy = 1'b1;
+				end
+			end
+		end
+	end
+	
+	// Always block for managing hierarchy enables
+	
+	always@(op_state, startup_type, locality, tpmi_rh_hierarchy, tpmi_rh_enables, tpmi_yes_no, tpm_cc, phEnableNV, phEnable, shEnable, ehEnable, nv_phEnableNV, nv_shEnable, nv_ehEnable) begin
+		// default values for safe behavior:
+		pHierarchy   = phEnable;
+		pHierarchyNV = phEnableNV;
+		sHierarchy   = shEnable;
+		eHierarchy   = ehEnable;
+		
+		// cases where hierarchy enables change:
+		if(op_state == STARTUP_STATE) begin
+			pHierarchy = 1'b1;
+			if(startup_type == TPM_RESUME) begin
+				pHierarchyNV = nv_phEnableNV;
+				sHierarchy = nv_shEnable;
+				eHierarchy = nv_ehEnable;
+			end
+			else if(startup_type == TPM_RESTART || startup_type == TPM_RESET) begin
+				pHierarchyNV = 1'b1;
+				sHierarchy = 1'b1;
+				eHierarchy = 1'b1;
+			end
+		end
+		else if(op_state == OPERATIONAL_STATE) begin
+			if(tpm_cc == TPM_CC_HIERARCHYCONTROL && locality == 8'b00000001) begin
+				if(tpmi_rh_hierarchy == TPM_RH_PLATFORM) begin
+					if(tpmi_rh_enables == TPM_RH_ENDORSEMENT) begin
+						eHierarchy = tpmi_yes_no;
+					end
+					else if(tpmi_rh_enables == TPM_RH_OWNER) begin
+						sHierarchy = tpmi_yes_no;
+					end
+					else if(tpmi_rh_enables == TPM_RH_PLATFORM_NV) begin
+						pHierarchyNV = tpmi_yes_no;
+					end
+					else if(tpmi_rh_enables == TPM_RH_PLATFORM) begin
+						if(tpmi_yes_no == TPMI_NO) begin
+							pHierarchy = tpmi_yes_no;
+						end
+					end
+				end
+				else if(tpmi_rh_hierarchy == TPM_RH_OWNER) begin
+					if(tpmi_yes_no == TPMI_NO) begin
+						sHierarchy = tpmi_yes_no;
+					end
+				end
+				else if(tpmi_rh_hierarchy == TPM_RH_ENDORSEMENT) begin
+					if(tpmi_yes_no == TPMI_NO) begin
+						eHierarchy = tpmi_yes_no;
+					end
 				end
 			end
 		end
