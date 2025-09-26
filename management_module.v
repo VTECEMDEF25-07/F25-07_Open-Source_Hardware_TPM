@@ -97,9 +97,9 @@ module management_module(
 	reg pHierarchy, pHierarchyNV, sHierarchy, eHierarchy;
 	reg phEnable, phEnableNV, shEnable, ehEnable, tpmi_yes_no, authPassed, s_initialized;
 	
-	reg [15:0] startup_state, shutdown_input, shutdownSave;
+	reg [15:0] startup_input, shutdown_input, shutdownSave;
 		 
-	reg [2:0] startup_type;
+	reg [2:0] startup_type, startup_state;
 	reg [2:0] op_state, state;
 	reg [31:0] tpm_rc_state, tpmi_rh_enables, tpmi_rh_hierarchy, tpm_rc;
 	
@@ -123,11 +123,11 @@ module management_module(
 				ehEnable     <= eHierarchy;
 				
 				tpm_rc		 <= tpm_rc_state;
+				startup_input <= cmd_param[15:0];
+				shutdown_input <= orderlyInput;
 				if(startupEnable) begin
-					startup_state <= cmd_param[15:0];
-					shutdown_input <= orderlyInput;
+					startup_type <= startup_state;
 					s_initialized <= initialized;
-					
 				end
 				else if(operationEnable) begin
 					tpmi_rh_hierarchy <= authHierarchy;
@@ -221,7 +221,7 @@ module management_module(
 	
 	
 	//Always block for managing response codes
-	always@(tpm_rc, tpm_cc, op_state, shutdown_input, startup_state, s_initialized, executionEng_rc, locality, tpmi_rh_hierarchy, tpmi_rh_enables, tpmi_yes_no, untested, testsPassed, testsRun) begin
+	always@(tpm_rc, tpm_cc, op_state, shutdown_input, startup_type, s_initialized, executionEng_rc, locality, tpmi_rh_hierarchy, tpmi_rh_enables, tpmi_yes_no, untested, testsPassed, testsRun) begin
 		tpm_rc_state = tpm_rc;
 		if(op_state == INITIALIZATION_STATE) begin
 			if(tpm_cc != TPM_CC_STARTUP) begin
@@ -229,7 +229,7 @@ module management_module(
 			end
 		end
 	   else if(op_state == STARTUP_STATE) begin
-			if((startup_state != TPM_SU_CLEAR && startup_state != TPM_SU_STATE) || (shutdown_input == TPM_SU_CLEAR && startup_state == TPM_SU_STATE)) begin
+			if(startup_type == TPM_TYPE) begin
 				tpm_rc_state = TPM_RC_VALUE;
 			end
 											 
@@ -297,25 +297,27 @@ module management_module(
 	
 	// Always block for managing startup state
 	
-	always@(op_state, startup_state, shutdown_input) begin
-		startup_type = TPM_DONE;
+	always@(op_state, startup_input, shutdown_input) begin
 		if(op_state == STARTUP_STATE) begin
 			if(shutdown_input == TPM_SU_STATE) begin
-				if(startup_state == TPM_SU_STATE) begin
-					startup_type = TPM_RESUME;
+				if(startup_input == TPM_SU_STATE) begin
+					startup_state = TPM_RESUME;
 				end
 				else begin
-					startup_type = TPM_RESTART;
+					startup_state = TPM_RESTART;
 				end
 			end
 			else begin
-				if(startup_state == TPM_SU_STATE) begin
-					startup_type = TPM_TYPE;
+				if(startup_input == TPM_SU_STATE) begin
+					startup_state = TPM_TYPE;
 				end
 				else begin
-					startup_type = TPM_RESET;
+					startup_state = TPM_RESET;
 				end
 			end
+		end
+		else begin
+			startup_state = TPM_DONE;
 		end
 	end
 	
@@ -375,5 +377,6 @@ module management_module(
 	end
 	
 endmodule
+
 
 
