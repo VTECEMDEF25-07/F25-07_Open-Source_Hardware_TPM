@@ -132,7 +132,8 @@ module tb_managementmodule_opstates();
 	 tpm_enable_n = 1'b0; // Send enable low
     #60;
     tpm_enable_n = 1'b1; // Send enable high
-	 //Expected Result: op_state_out = 3'b001 (no change in op_state_out)
+	 //Expected Result: op_state_out == 3'b001 (no change in op_state_out),
+	 //					  tpm_rc_out   == 32'h00000100 (initializes to TPM_RC_INITIALIZE)
 	
 	 // Issue TPM_CC_STARTUP
     #40;
@@ -142,7 +143,8 @@ module tb_managementmodule_opstates();
 	 tpm_enable_n = 1'b0; // Send enable low
     #60;
     tpm_enable_n = 1'b1; // Send enable high
-	 // Expected Result: op_state_out = 3'b010 (changes to STARTUP_STATE)
+	 // Expected Result: op_state_out == 3'b010 (changes to STARTUP_STATE),
+	 //					   tpm_rc_out   == 32'h00000000 (changes to TPM_RC_SUCCESS)
 	 
 
     // Test 3: STARTUP_STATE
@@ -157,7 +159,8 @@ module tb_managementmodule_opstates();
 	 tpm_enable_n = 1'b0; // Send enable low
     #60;
     tpm_enable_n = 1'b1; // Send enable high
-	 // Expected Result: op_state_out = 3'b011 (changes to OPERATIONAL_STATE)
+	 // Expected Result: op_state_out == 3'b011 (changes to OPERATIONAL_STATE),
+	 //					   tpm_rc_out   == 32'h00000000 (TPM_RC_SUCCESS)
 
 	 
     // Test 4.1: OPERATIONAL_STATE
@@ -169,7 +172,8 @@ module tb_managementmodule_opstates();
     tpm_enable_n = 1'b0; // Send enable low
     #60;
     tpm_enable_n = 1'b1; // Send enable high
-	 // Expected Result: op_state_out = 3'b011 (no changes to op_state_out)
+	 // Expected Result: op_state_out == 3'b011 (no changes to op_state_out),
+	 //					   tpm_rc_out   == 32'h00000000 (TPM_RC_SUCCESS)
 
 	 // Issue SELFTEST
     #100;
@@ -181,7 +185,8 @@ module tb_managementmodule_opstates();
     tpm_enable_n = 1'b0; // Send enable low
     #60;
     tpm_enable_n = 1'b1; // Send enable high
-	 // Expected Result: op_state_out = 3'b010 (changes to SELF_TEST_STATE)
+	 // Expected Result: op_state_out == 3'b010 (changes to SELF_TEST_STATE),
+	 //					   tpm_rc_out   == 32'h00000000 (TPM_RC_SUCCESS)
 
 	 
     // Test 5.1: SELF_TEST_STATE
@@ -190,7 +195,8 @@ module tb_managementmodule_opstates();
     tpm_enable_n = 1'b0; // Send enable low
     #60;
     tpm_enable_n = 1'b1; // Send enable high
-	 // Expected Result: op_state_out = 3'b011 (changes to OPERATIONAL_STATE)
+	 // Expected Result: op_state_out = 3'b011 (changes to OPERATIONAL_STATE),
+	 //					   tpm_rc_out   == 32'h00000000 (TPM_RC_SUCCESS)
 	 
 	 
 	 // Test 4.2: OPERATIONAL_STATE
@@ -201,7 +207,8 @@ module tb_managementmodule_opstates();
 	 tpm_enable_n = 1'b0; // Send enable low
     #60;
     tpm_enable_n = 1'b1; // Send enable high
-	 // Expected Result: op_state_out = 3'b110 (changes to SHUTDOWN_STATE)
+	 // Expected Result: op_state_out = 3'b110 (changes to SHUTDOWN_STATE),
+	 //					   tpm_rc_out   == 32'h00000000 (TPM_RC_SUCCESS)
     
 	 
 	 // Test 5: SHUTDOWN_STATE
@@ -210,7 +217,8 @@ module tb_managementmodule_opstates();
 	 tpm_enable_n = 1'b0; // Send enable low
     #60;
     tpm_enable_n = 1'b1; // Send enable high
-	 // Expected Result: op_state_out = 3'b011 (changes to OPERATIONAL_STATE)
+	 // Expected Result: op_state_out = 3'b011 (changes to OPERATIONAL_STATE),
+	 //					   tpm_rc_out   == 32'h00000000 (TPM_RC_SUCCESS)
 	 
 	 
 	 // Test 4.3: OPERATIONAL_STATE
@@ -224,7 +232,8 @@ module tb_managementmodule_opstates();
     tpm_enable_n = 1'b0; // Send enable low
     #60;
     tpm_enable_n = 1'b1; // Send enable high
-	 // Expected Result: op_state_out = 3'b100 (changes to SELF_TEST_STATE)
+	 // Expected Result: op_state_out == 3'b100 (changes to SELF_TEST_STATE),
+	 //					   tpm_rc_out   == 32'h00000000 (TPM_RC_SUCCESS)
 	 
 	 
 	 // Test 5.1: SELF_TEST_STATE
@@ -233,7 +242,9 @@ module tb_managementmodule_opstates();
 	 tpm_enable_n = 1'b0; // Send enable low
     #60;
     tpm_enable_n = 1'b1; // Send enable high
-	 // Expected Result: op_state_out = 3'b110 (changes to FAILURE_MODE_STATE)
+	 // Expected Result: op_state_out == 3'b110 (changes to FAILURE_MODE_STATE),
+	 //					   tpm_rc_out   == 32'h00000101 (changes to TPM_RC_FAILURE)
+	 
 	 
 	 // Test 6: FAILURE_MODE_STATE
 	 // Issue command in FAILURE_MODE_STATE
@@ -243,7 +254,9 @@ module tb_managementmodule_opstates();
     tpm_enable_n = 1'b0; // Send enable low
     #60;
     tpm_enable_n = 1'b1; // Send enable high
-	 // Expected Result: op_state_out = 3'b110 (no changes to op_state_out)
+	 // Expected Result: op_state_out == 3'b110 (no changes to op_state_out),
+	 //					   tpm_rc_out   == 32'h00000101 (changes to TPM_RC_FAILURE)
   end
 
 endmodule
+
