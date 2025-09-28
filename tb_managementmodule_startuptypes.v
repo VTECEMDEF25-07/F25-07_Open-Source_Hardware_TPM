@@ -151,7 +151,7 @@ module tb_managementmodule_startuptypes();
 	 
 	 
 	 
-	 // Test 2: TPM_TYPE (Fails to set a startup type)
+	 // Test 2: TPM_RESUME
 	 // Change operational state to INITIALIZATION_STATE to set up management module for testing.
     #40;
 	 tpm_reset_n = 1'b0;
@@ -171,11 +171,11 @@ module tb_managementmodule_startuptypes();
 	 tpm_enable_n = 1'b0;        		// Send enable low
     #40;
     tpm_enable_n = 1'b1; 		  		// Send enable high
-	 // Expected Result: startup_type_out == 3'b011 (changes to TPM_RESTART)
+	 // Expected Result: startup_type_out == 3'b011 (changes to TPM_RESUME)
 	 
 	 
 	 
-	 // Test 3: TPM_RESET
+	 // Test 3: TPM_TYPE (Fails to set a startup type)
 	 // Change operational state to INITIALIZATION_STATE to set up management module for testing.
     #40;
 	 tpm_reset_n = 1'b0;
@@ -208,3 +208,4 @@ module tb_managementmodule_startuptypes();
   end
 
 endmodule
+
