@@ -2,7 +2,7 @@
 // Filename:     tb_managementmodule_hierarchyenables.v
 // Author:       Emma Wallace
 // Date Created: 26/09/25
-// Version:      1
+// Version:      2
 // Description:  This module serves as a simple testbench for the management module.
 //               One management module is instantiated and stimulated with a simple
 //               sequence to test the hierarchy enable logic.
@@ -14,6 +14,8 @@
 // Date        By   Version  Change Description
 // ============================================
 // 26/09/2025  EKRW    1     Original
+// 30/09/2025  EKRW    2     Added additional commands to make testing more accurate
+//									  and updated comments accordingly.
 ///////////////////////////////////////////////////////////////////////////////////////
 
 `timescale 1ns/1ps
@@ -128,9 +130,9 @@ module tb_managementmodule_hierarchyenables();
     #40;
     tpm_enable_n = 1'b1; 				// Send enable high
 	 // Expected Result: phEnable_out   == 1'b1,
-	 //						phEnableNV_out == 1'b0,
+	 //						phEnableNV_out == 1'b1,
 	 //						shEnable_out   == 1'b0,
-	 //						ehEnable_out   == 1'b0,
+	 //						ehEnable_out   == 1'b1,
 	 //						tpm_rc_out     == 32'h00000000 (TPM_RC_SUCCESS)
 	 
 	 
@@ -161,7 +163,7 @@ module tb_managementmodule_hierarchyenables();
     tpm_enable_n = 1'b1; 		  // Send enable high
 	 // Expected Result: phEnable_out   == 1'b1,
 	 //						phEnableNV_out == 1'b1,
-	 //						shEnable_out   == 1'b0,
+	 //						shEnable_out   == 1'b1,
 	 //						ehEnable_out   == 1'b1,
 	 //						tpm_rc_out     == 32'h00000000 (TPM_RC_SUCCESS)
 	 
@@ -440,13 +442,29 @@ module tb_managementmodule_hierarchyenables();
 	 //						tpm_rc_out     == 32'h00000000 (TPM_RC_SUCCESS)
 	 
 	 #40;
+	 // Set phEnable_out to 1'b0 for accurate testing:
     tpm_cc_in = 32'h00000121;				// TPM_CC_HIERARCHY
     cmd_param_in[32:1] = 32'h4000000C; // tpmi_rh_enables == TPM_RH_PLATFORM
-	 cmd_param_in[0] = 1'b1;			   // tpmi_yes_no == TPMI_YES
+	 cmd_param_in[0] = 1'b0;			   // tpmi_yes_no == TPMI_NO
+	 authHierarchy_in = 32'h4000000C;	// tpmi_rh_hierarchy == TPM_RH_PLATFORM
     tpm_enable_n = 1'b0; 					// Send enable low
     #40;
     tpm_enable_n = 1'b1; // Send enable high
-	 // Expected Result: phEnable_out   == 1'b1,
+	 // Expected Result: phEnable_out   == 1'b0,
+	 //						phEnableNV_out == 1'b0,
+	 //						shEnable_out   == 1'b0,
+	 //						ehEnable_out   == 1'b0,
+	 //						tpm_rc         == 32'h00000000 (TPM_RC_SUCCESS)
+	 
+	 #40;
+	 // Begin testing tpmi_rh_hierarchy == TPM_RH_OWNER:
+    tpm_cc_in = 32'h00000121;				// TPM_CC_HIERARCHY
+	 cmd_param_in[0] = 1'b1;			   // tpmi_yes_no == TPMI_YES
+	 authHierarchy_in = 32'h40000001;	// tpmi_rh_hierarchy == TPM_RH_OWNER
+    tpm_enable_n = 1'b0; 					// Send enable low
+    #40;
+    tpm_enable_n = 1'b1; // Send enable high
+	 // Expected Result: phEnable_out   == 1'b0,
 	 //						phEnableNV_out == 1'b0,
 	 //						shEnable_out   == 1'b0,
 	 //						ehEnable_out   == 1'b0,
@@ -460,7 +478,7 @@ module tb_managementmodule_hierarchyenables();
     tpm_enable_n = 1'b0; 					// Send enable low
     #40;
     tpm_enable_n = 1'b1; // Send enable high
-	 // Expected Result: phEnable_out   == 1'b1,
+	 // Expected Result: phEnable_out   == 1'b0,
 	 //						phEnableNV_out == 1'b0,
 	 //						shEnable_out   == 1'b0,
 	 //						ehEnable_out   == 1'b0,
@@ -475,7 +493,7 @@ module tb_managementmodule_hierarchyenables();
     tpm_enable_n = 1'b0; 					// Send enable low
     #40;
     tpm_enable_n = 1'b1; // Send enable high
-	 // Expected Result: phEnable_out   == 1'b1,
+	 // Expected Result: phEnable_out   == 1'b0,
 	 //						phEnableNV_out == 1'b0,
 	 //						shEnable_out   == 1'b0,
 	 //						ehEnable_out   == 1'b0,
@@ -489,7 +507,7 @@ module tb_managementmodule_hierarchyenables();
     tpm_enable_n = 1'b0; 					// Send enable low
     #40;
     tpm_enable_n = 1'b1; // Send enable high
-	 // Expected Result: phEnable_out   == 1'b1,
+	 // Expected Result: phEnable_out   == 1'b0,
 	 //						phEnableNV_out == 1'b0,
 	 //						shEnable_out   == 1'b0,
 	 //						ehEnable_out   == 1'b0,
@@ -619,13 +637,30 @@ module tb_managementmodule_hierarchyenables();
 	 //						tpm_rc_out     == 32'h00000000 (TPM_RC_SUCCESS)
 	 
 	 #40;
+	 // Set phEnable_out to 1'b0 for accurate testing:
     tpm_cc_in = 32'h00000121;				// TPM_CC_HIERARCHY
     cmd_param_in[32:1] = 32'h4000000C; // tpmi_rh_enables == TPM_RH_PLATFORM
-	 cmd_param_in[0] = 1'b1;			   // tpmi_yes_no == TPMI_YES
+	 cmd_param_in[0] = 1'b0;			   // tpmi_yes_no == TPMI_NO
+	 authHierarchy_in = 32'h4000000C;	// tpmi_rh_hierarchy == TPM_RH_PLATFORM
     tpm_enable_n = 1'b0; 					// Send enable low
     #40;
     tpm_enable_n = 1'b1; // Send enable high
-	 // Expected Result: phEnable_out   == 1'b1,
+	 // Expected Result: phEnable_out   == 1'b0,
+	 //						phEnableNV_out == 1'b0,
+	 //						shEnable_out   == 1'b0,
+	 //						ehEnable_out   == 1'b0,
+	 //						tpm_rc         == 32'h00000000 (TPM_RC_SUCCESS)
+	 
+	 #40;
+	 // Begin testing tpmi_rh_enables == TPM_RH_ENDORSEMENT:
+    tpm_cc_in = 32'h00000121;				// TPM_CC_HIERARCHY
+    cmd_param_in[32:1] = 32'h4000000C; // tpmi_rh_enables == TPM_RH_PLATFORM
+	 cmd_param_in[0] = 1'b1;			   // tpmi_yes_no == TPMI_YES
+	 authHierarchy_in = 32'h4000000D;	// tpmi_rh_hierarchy == TPM_RH_ENDORSEMENT
+    tpm_enable_n = 1'b0; 					// Send enable low
+    #40;
+    tpm_enable_n = 1'b1; // Send enable high
+	 // Expected Result: phEnable_out   == 1'b0,
 	 //						phEnableNV_out == 1'b0,
 	 //						shEnable_out   == 1'b0,
 	 //						ehEnable_out   == 1'b0,
@@ -639,7 +674,7 @@ module tb_managementmodule_hierarchyenables();
     tpm_enable_n = 1'b0; 					// Send enable low
     #40;
     tpm_enable_n = 1'b1; // Send enable high
-	 // Expected Result: phEnable_out   == 1'b1,
+	 // Expected Result: phEnable_out   == 1'b0,
 	 //						phEnableNV_out == 1'b0,
 	 //						shEnable_out   == 1'b0,
 	 //						ehEnable_out   == 1'b0,
@@ -654,7 +689,7 @@ module tb_managementmodule_hierarchyenables();
     tpm_enable_n = 1'b0; 					// Send enable low
     #40;
     tpm_enable_n = 1'b1; // Send enable high
-	 // Expected Result: phEnable_out   == 1'b1,
+	 // Expected Result: phEnable_out   == 1'b0,
 	 //						phEnableNV_out == 1'b0,
 	 //						shEnable_out   == 1'b0,
 	 //						ehEnable_out   == 1'b0,
@@ -668,7 +703,7 @@ module tb_managementmodule_hierarchyenables();
     tpm_enable_n = 1'b0; 					// Send enable low
     #40;
     tpm_enable_n = 1'b1; // Send enable high
-	 // Expected Result: phEnable_out   == 1'b1,
+	 // Expected Result: phEnable_out   == 1'b0,
 	 //						phEnableNV_out == 1'b0,
 	 //						shEnable_out   == 1'b0,
 	 //						ehEnable_out   == 1'b0,
