@@ -30,7 +30,7 @@
 // ============================================
 // 23/04/2025  EKRW    1     Original
 // 24/09/2025  EKRW	  2     Changed instantiation of management module to match changes made to management_module.v.
-// 30/09/2025  EKRW    3     Changes made to test according to "Management Module Synthesizable Testing Procedures" document.
+// 01/10/2025  EKRW    3     Changes made to test according to "Management Module Synthesizable Testing Procedures" document.
 ///////////////////////////////////////////////////////////////////////////////////////
 
 module management_module_top(CLOCK_50, KEY, SW, HEX4, HEX3, HEX2, HEX1, HEX0, LED);
@@ -44,7 +44,7 @@ module management_module_top(CLOCK_50, KEY, SW, HEX4, HEX3, HEX2, HEX1, HEX0, LE
 	output [6:0] HEX0;
 	output [9:0] LED;
 	
-	wire [31:0] tpm_cc_in;
+	
 	
 	wire [15:0] orderly_in;
 	wire [15:0] testsRunIn;
@@ -74,26 +74,21 @@ module management_module_top(CLOCK_50, KEY, SW, HEX4, HEX3, HEX2, HEX1, HEX0, LE
 				  TPM_RC_VALUE			= 32'h00000084,
 				  TPM_RC_AUTH_TYPE   = 32'h00000124;
 	
-	
-	
-	
-	
 	assign ee_rc_in = 32'hFFFFFFFF;								// Set faux execution engine response code input to unique value for testing
-	assign s_initialized = (SW[1] == 1'b1)? 1'b1 : 1'b0;
-	
 	assign testsRunIn = 16'd40;
-	
 	assign untestedIn = 16'd0;
 	
-	
+	/* Uncomment the block corresponding to the type of tests you are running */
 	
 	// Operational state testing:
 	/*
+	wire [31:0] tpm_cc_in;
 	wire [32:0] cc_param_in;
 	wire [31:0] authHierarchy_in;
 	assign tpm_cc_in = {25'h0000002, SW[9:3]};
 	assign cc_param_in = {32'h4000000C, SW[2]};
 	assign orderly_in = 16'h0000;
+	assign s_initialized = (SW[1] == 1'b1)? 1'b1 : 1'b0;
 	assign testsPassedIn = (SW[0] == 1'b1)? 16'd40 : 16'd3;
 	assign locality_in = 8'b00000001;
 	assign authHierarchy_in = 32'h4000000C;
@@ -104,11 +99,13 @@ module management_module_top(CLOCK_50, KEY, SW, HEX4, HEX3, HEX2, HEX1, HEX0, LE
 	
 	// Startup type testing:
 	/*
+	wire [31:0] tpm_cc_in;
 	wire [32:0] cc_param_in;
 	wire [31:0] authHierarchy_in;
 	assign tpm_cc_in = {25'h0000002, SW[9:3]};
 	assign cc_param_in = {32'h00000000, SW[2]};
 	assign orderly_in = (SW[0] == 1'b1)? 16'h0001 : 16'h0000;
+	assign s_initialized = (SW[1] == 1'b1)? 1'b1 : 1'b0;
 	assign testsPassedIn = 16'd40;
 	assign locality_in = 8'b00000001;
 	assign authHierarchy_in = 32'h4000000C;
@@ -118,6 +115,8 @@ module management_module_top(CLOCK_50, KEY, SW, HEX4, HEX3, HEX2, HEX1, HEX0, LE
 	*/
 	
 	// Hierarchy enables testing:
+	/*
+	wire [31:0] tpm_cc_in;
 	wire [32:0] cc_param_in;
 	reg [31:0] cc_param_enables;
 	reg [31:0] authHierarchy_in;
@@ -139,14 +138,64 @@ module management_module_top(CLOCK_50, KEY, SW, HEX4, HEX3, HEX2, HEX1, HEX0, LE
 			2'b00:	authHierarchy_in = 32'h4000000C;
 			2'b01:	authHierarchy_in = 32'h40000001;
 			2'b10:	authHierarchy_in = 32'h4000000B;
+			2'b11:	authHierarchy_in = 32'h40000007;
 			default: authHierarchy_in = 32'h40000007;
 		endcase
 	end
 	
 	assign {orderly_in, testsPassedIn} = (SW[3] == 1'b1)? {16'h0001, 16'd40} : {16'h0000, 16'd3};
 	assign cc_param_in[0] = (SW[2] == 1'b1)? 1'b1 : 1'b0;
+	assign s_initialized = (SW[1] == 1'b1)? 1'b1 : 1'b0;
 	assign {nv_phEnableNV_in, nv_shEnable_in, nv_ehEnable_in} = (SW[0] == 1'b1)? 3'b101 : 3'b000;
 	assign cc_param_in[32:1] = cc_param_enables;
+	*/
+	
+	// Response codes testing:
+	/*
+	wire [32:0] cc_param_in;
+	reg [31:0] cc_param_enables;
+	reg [31:0] authHierarchy_in;
+	reg [31:0] tpm_cc_in;
+	assign locality_in = 8'b00000001;
+	always@(SW[9:7]) begin
+		case(SW[9:7])
+			3'b000: tpm_cc_in = 32'h00000000;
+			3'b001: tpm_cc_in = 32'h00000144;
+			3'b010: tpm_cc_in = 32'h00000121;
+			3'b011: tpm_cc_in = 32'h00000131;
+			3'b100: tpm_cc_in = 32'h00000143;
+			3'b101: tpm_cc_in = 32'h0000017C;
+			3'b110: tpm_cc_in = 32'h0000017A;
+			default: tpm_cc_in = 32'h00000000;
+		endcase
+	end
+	always@(SW[6:4]) begin
+		case(SW[6:4])
+			3'b000:  cc_param_enables  = 32'h00000000;
+			3'b001:  cc_param_enables  = 32'h00000001;
+			3'b010:  cc_param_enables  = 32'h40000001;
+			3'b011:  cc_param_enables  = 32'h4000000B;
+			3'b100:  cc_param_enables  = 32'h4000000C;
+			3'b101:  cc_param_enables  = 32'h4000000D;
+			default: cc_param_enables  = 32'h40000007;
+		endcase
+	end
+	always@(SW[3:2]) begin
+		case(SW[3:2])
+			2'b00:	authHierarchy_in = 32'h4000000C;
+			2'b01:	authHierarchy_in = 32'h40000001;
+			2'b10:	authHierarchy_in = 32'h4000000B;
+			2'b11:	authHierarchy_in = 32'h40000007;
+			default: authHierarchy_in = 32'h40000007;
+		endcase
+	end
+	
+	assign {orderly_in, testsPassedIn} = (SW[1] == 1'b1)? {16'h0001, 16'd40} : {16'h0000, 16'd3};
+	assign cc_param_in[0] = (SW[0] == 1'b1)? 1'b1 : 1'b0;
+	assign s_initialized = 1'b1;
+	assign {nv_phEnableNV_in, nv_shEnable_in, nv_ehEnable_in} = 3'b101;
+	assign cc_param_in[32:1] = cc_param_enables;
+	*/
 	
 	// Operational state testing:
 	/*
@@ -155,7 +204,7 @@ module management_module_top(CLOCK_50, KEY, SW, HEX4, HEX3, HEX2, HEX1, HEX0, LE
 	assign LED[7] = (tpm_rc_out == TPM_RC_INITIALIZE);
 	assign LED[6] = (tpm_rc_out == TPM_RC_VALUE);
 	assign LED[5] = (tpm_rc_out == TPM_RC_AUTH_TYPE);
-	assign LED[4] = (shutdownSaveOut == 1'b1);
+	assign LED[4] = (shutdownSaveOut == 16'h0001);
 	*/
 	
 	// Startup type testing:
@@ -169,12 +218,24 @@ module management_module_top(CLOCK_50, KEY, SW, HEX4, HEX3, HEX2, HEX1, HEX0, LE
 	*/
 	
 	// Hierarchy enables testing:
+	/*
 	assign LED[9] = (tpm_rc_out == TPM_RC_SUCCESS);
 	assign LED[8] = (tpm_rc_out == TPM_RC_FAILURE);
 	assign LED[7] = (tpm_rc_out == TPM_RC_INITIALIZE);
 	assign LED[6] = (tpm_rc_out == TPM_RC_VALUE);
 	assign LED[5] = (tpm_rc_out == TPM_RC_AUTH_TYPE);
-	assign LED[4] = (shutdownSaveOut == 1'b1);
+	assign LED[4] = (shutdownSaveOut == 16'h0001);
+	*/
+	
+	// Response code testing:
+	/*
+	assign LED[9] = (tpm_rc_out == TPM_RC_SUCCESS);
+	assign LED[8] = (tpm_rc_out == TPM_RC_FAILURE);
+	assign LED[7] = (tpm_rc_out == TPM_RC_INITIALIZE);
+	assign LED[6] = (tpm_rc_out == TPM_RC_VALUE);
+	assign LED[5] = (tpm_rc_out == TPM_RC_AUTH_TYPE);
+	assign LED[4] = (tpm_rc_out == 32'hFFFFFFFF);
+	*/
 	
 	//  Instantiation of push button for enable
 	keypress B1(.clock(CLOCK_50), .reset_n(KEY[0]), .key_in(KEY[1]), .enable_out(keyStart));
@@ -228,5 +289,6 @@ module management_module_top(CLOCK_50, KEY, SW, HEX4, HEX3, HEX2, HEX1, HEX0, LE
 	end
 		 
 	endmodule
+
 
 
