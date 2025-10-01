@@ -2,7 +2,7 @@
 // Filename:     management_module.v
 // Author:       Emma Wallace
 // Date Created: 23/04/25
-// Version:      5
+// Version:      6
 // Description:  This module is designed to be a management module for a discrete 
 //					  Trusted Platform Module (TPM).
 //               The management module design is based off the Trusted Computing Group's
@@ -49,6 +49,7 @@
 //									  outputs. Changes made to hierarchy enable combinational
 //									  logic block to fix logic because of board testing. Added
 //									  comments for clarity.
+// 01/10/2025  EKRW    6     Made changes to sequential block for Failure Mode State.
 ///////////////////////////////////////////////////////////////////////////////////////
 
 module management_module(		 
@@ -152,7 +153,7 @@ module management_module(
 	reg [2:0] op_state, state;
 	reg [31:0] tpm_rc_state, tpmi_rh_enables, tpmi_rh_hierarchy, tpm_rc;
 	
-	wire startupEnable, operationEnable, selftestEnable, shutdownEnable;
+	wire startupEnable, operationEnable, shutdownEnable; //, selftestEnable
 	
 	// Sequential logic block for managing timing of inputs and outputs
 	always@(posedge clock or negedge reset_n) begin
@@ -163,10 +164,10 @@ module management_module(
 			ehEnable   	 <= 1'b0;
 			op_state     <= POWER_OFF_STATE;
 			s_initialized <= 1'b0;
+			s_testsPassed <= 16'd0;
+			s_testsRun	  <= 16'd0;
+			s_untested    <= 16'd0;
 			shutdownSave <= TPM_SU_CLEAR;
-			s_testsPassed<= 16'd0;
-			s_testsRun	 <= 16'd0;
-			s_untested   <= 16'd0;
 		end
 		else begin
 			if(!keyStart_n) begin
@@ -174,6 +175,9 @@ module management_module(
 				tpm_rc		 <= tpm_rc_state;					// update response code from combinational logic
 				startup_input <= cmd_param[15:0];			// store startup input from command parameters input
 				shutdown_input <= orderlyInput;				// reload orderly shutdown state from last shutdown
+				s_testsPassed <= testsPassed;
+				s_testsRun	  <= testsRun;
+				s_untested    <= untested;
 				if(startupEnable) begin
 					startup_type <= startup_state;
 					s_initialized <= initialized;
@@ -191,11 +195,9 @@ module management_module(
 					shEnable     <= sHierarchy;
 					ehEnable     <= eHierarchy;
 				end
-				else if(selftestEnable) begin
-					s_testsPassed<= testsPassed;
-					s_testsRun	 <= testsRun;
-					s_untested   <= untested;
-				end
+				//else if(selftestEnable) begin
+					
+				//end
 				else if(shutdownEnable) begin
 					shutdownSave <= cmd_param[15:0];
 				end
@@ -206,7 +208,7 @@ module management_module(
 	// Enable signals to activate input information collection at operational states
 	assign startupEnable = (op_state == STARTUP_STATE);
 	assign operationEnable = (op_state == OPERATIONAL_STATE);
-	assign selftestEnable = (op_state == SELF_TEST_STATE);
+	//assign selftestEnable = (op_state == SELF_TEST_STATE);
 	assign shutdownEnable = (op_state == SHUTDOWN_STATE);
 	
 	
@@ -446,6 +448,7 @@ module management_module(
 	end
 	
 endmodule
+
 
 
 
