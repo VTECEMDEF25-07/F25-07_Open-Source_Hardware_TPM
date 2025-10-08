@@ -29,7 +29,7 @@ module tpm_command_processor(
 	input  [15:0] command_length;		// 16-bit input command length
 	input         physical_presence;	// 1-bit input physical presence signal results from testing functions basically a safety check somewhere else
 		
-	// Management module inputs - EXACT MATCH to management_module outputs
+	// Inputs from managemnt module - EXACT MATCH to management_module outputs
 	input  [2:0]  op_state;				// 3-bit input operational state from management module
 	input  [2:0]  startup_type;		// 3-bit input startup type from management module
 	input         phEnable;				// 1-bit input platform hierarchy enable from management module
@@ -44,6 +44,21 @@ module tpm_command_processor(
 	output [7:0]  response_buffer [0:1023];	// 1024-byte output response buffer
 	output [15:0] response_length;		// 16-bit output response length
 	output [3:0]  current_stage;		// 4-bit output current pipeline stage
+
+	// Outputs to management module - EXACT MATCH to management_module inputs
+	/*
+	output	 [15:0] orderlyInput;		// 2-byte (16 bits) input from memory of state of last shutdown state
+	output 		    initialized;			// 1-bit input intialized bit (from execution engine)
+	output	 [31:0] authHierarchy;		// 2-byte (16 bits) input verifying which hiearchy was authorized (from execution engine)
+	output   [31:0] executionEng_rc;	// 2-byte (16 bits) input of execution engine response code
+	output   [7:0]  locality;				// 4-bit input of current locality
+	output	 [15:0] testsRun;				// 2-byte (16 bits) input of amount of tests run by the self-test module, from the execution engine
+	output	 [15:0] testsPassed;			// 2-byte (16 bits) input of amount of tests that have run and passed by the self-test module, from the execution engine
+	output	 [15:0] untested;				// 2-byte (16 bits) input of amount of tests that still need to be run by the self-test module, from the execution engine
+	output 		    nv_phEnableNV;		// 1-bit input of state of phEnableNV switch, from Non-Volatile memory
+	output	        nv_shEnable;			// 1-bit input of state of shEnable switch, from Non-Volatile memory
+	output          nv_ehEnable;			// 1-bit input of state of ehEnable switch, from Non-Volatile memory
+	*/
 	
 	// ============================================================================
 	// PIPELINE STAGES - TCG TPM 2.0 Specification Part 3, Section 5: Command Processing
@@ -154,6 +169,8 @@ module tpm_command_processor(
 			current_stage <= next_stage;					// update pipeline stage from combinational logic
 		end
 	end
+	// Emma's Notes: - looks like a sequential logic block just for the state transitions but do not recommend multiple sequential logic blocks! 
+	//				 - Also highly recommend having your outputs be sequential to avoid giving an output at the wrong time.
 	
 	// ============================================================================
 	// COMBINATIONAL LOGIC BLOCK - ALL OUTPUTS AND NEXT STATE
@@ -175,7 +192,8 @@ module tpm_command_processor(
 								 command_buffer[8], command_buffer[9]};
 			session_present = (command_tag == TPM_ST_SESSIONS);
 		end
-		
+		// Emma's Notes: - not really sure what command_valid is a check for?
+		//				 - if this logic block is only determining the next state and the outputs, this "if" block should not be in this always block, recommend making these register assignments sequential.
 		case(current_stage)
 			// ====================================================================
 			// STAGE 1: IDLE - Wait for command
@@ -185,6 +203,8 @@ module tpm_command_processor(
 					next_stage = STAGE_HEADER_VALID;
 				end
 			end
+
+			// Emma's Notes: you said that it should be a command_ready signal which transitions to stage 2 not command_valid
 			
 			// ====================================================================
 			// STAGE 2: HEADER VALIDATION - TPM 2.0 Part 3, Section 5.2
@@ -212,12 +232,15 @@ module tpm_command_processor(
 				
 				// TODO: EXPAND COMMAND CODE VALIDATION FOR ALL SUPPORTED COMMANDS
 			end
+
+			// Emma's Notes: if the command code is not startup, gettest, or clear, they should still be able to run. check for command_valid signal instead.
 			
 			// ====================================================================
 			// STAGE 3: MODE CHECKS - TPM 2.0 Part 3, Section 5.3
 			// ====================================================================
 			STAGE_MODE_CHECK: begin
 				// IMPLEMENTED: Basic mode checks
+				// Emma's Notes: make sure to include a check for TPM_CC_GETCAPABILITY in the failure mode state. also might make more sense to use an AND gate between the command code and tag and an OR gate between the 2 command codes, just for clarity's sake.
 				if(op_state == FAILURE_MODE_STATE) begin
 					// In Failure mode, only TPM2_GetTestResult allowed with no sessions
 					if(command_code != TPM_CC_GET_TEST_RESULT || command_tag != TPM_ST_NO_SESSIONS) begin
@@ -245,6 +268,7 @@ module tpm_command_processor(
 				end
 				
 				// TODO: ADD FIELD UPGRADE MODE CHECK IF SUPPORTED
+				// Emma's Notes: no field upgrade mode check, we don't have a field upgrade mode.
 			end
 			
 			// ====================================================================
@@ -274,6 +298,8 @@ module tpm_command_processor(
 					next_stage = STAGE_SESSION_VALID;
 				end
 			end
+			// Emma's Notes: - I mean this really needs a for-loop with a case statement, try using a counter to keep track of which bit in the handle area you are checking and then add the amount of bits used by the handle type to the counter at the end	
+			//				 - DO NOT move to the next stage before every handle has been checked!!!!
 			
 			// ====================================================================
 			// STAGE 5: SESSION VALIDATION - TPM 2.0 Part 3, Section 5.5
@@ -425,3 +451,4 @@ module tpm_command_processor(
 	end
 	
 endmodule
+
