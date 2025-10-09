@@ -21,7 +21,8 @@ module execution_engine(
 		response_valid,
 		response_code,
 		response_length,
-		current_stage
+		current_stage,
+		command_start
 	);
 
 	// Inputs
@@ -50,7 +51,7 @@ module execution_engine(
 	output [31:0] response_code;		// 32-bit output response code
 	output [15:0] response_length;		// 16-bit output response length
 	output [3:0]  current_stage;		// 4-bit output current pipeline stage
-
+   output reg    command_start;
 	// Outputs to management module - EXACT MATCH to management_module inputs
 	/*
 	output	 [15:0] orderlyInput;		// 2-byte (16 bits) input from memory of state of last shutdown state
@@ -607,7 +608,7 @@ module execution_engine(
 				// 5. Update TPM state (objects, NV, PCRs, sessions) as required
 				// 6. Handle multi-cycle operations with proper state management
 				// 7. Return TPM_RC_FAILURE on execution errors
-				
+				command_start = 1'b1;
 				// For now, always proceed to post-processing
 			end
 			
