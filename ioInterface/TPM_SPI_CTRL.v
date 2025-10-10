@@ -23,7 +23,9 @@ module	TPM_SPI_CTRL
 	
 	output		[15:0]	FRS_baseAddr,
 	output		[5:0]	CMD_size,
-	output			FRS_req
+	output			FRS_req,
+	
+	output			updateAddr
 );
 	
 	localparam
@@ -98,6 +100,7 @@ module	TPM_SPI_CTRL
 	wire	[7:0]	r_FRS_wrByte, w_FRS_wrByte;
 	wire	[7:0]	r_SPI_TX_byte, w_SPI_TX_byte;
 	wire		r_SPI_TX_valid, w_SPI_TX_valid;
+	wire		r_updateAddr, w_updateAddr;
 	
 	assign	transactionComplete = CMD_rw ? r_transactionComplete : w_transactionComplete;
 	assign	FRS_addr = CMD_rw ? r_FRS_addr : w_FRS_addr;
@@ -105,6 +108,7 @@ module	TPM_SPI_CTRL
 	assign	FRS_rden_n = state == Idle ? 1'b1 : CMD_rw ? r_FRS_rden_n : w_FRS_rden_n;
 	assign	FRS_wrByte = CMD_rw ? r_FRS_wrByte : w_FRS_wrByte;
 	assign	SPI_TX_valid = CMD_rw ? r_SPI_TX_valid : w_SPI_TX_valid;
+	assign	updateAddr = CMD_rw ? r_updateAddr : w_updateAddr;
 	
 	assign	SPI_TX_byte = state == Transaction ? CMD_rw ? r_SPI_TX_byte : w_SPI_TX_byte : 8'h00;
 	
@@ -113,7 +117,7 @@ module	TPM_SPI_CTRL
 		clock, reset_n, state, r_transactionComplete,
 		CMD_rw, CMD_size, FRS_baseAddr,
 		r_FRS_addr, r_FRS_wren_n, r_FRS_rden_n, r_FRS_wrByte, FRS_rdByte,
-		r_SPI_TX_byte, SPI_TX_prepare, r_SPI_TX_valid, SPI_TX_ack
+		r_SPI_TX_byte, SPI_TX_prepare, r_SPI_TX_valid, SPI_TX_ack, r_updateAddr
 	);
 	
 	fsm_transWrite	fsm_TW
@@ -122,7 +126,7 @@ module	TPM_SPI_CTRL
 		CMD_rw, CMD_size, FRS_baseAddr, 
 		w_FRS_addr, w_FRS_wren_n, w_FRS_rden_n, w_FRS_wrByte, FRS_rdByte,
 		w_SPI_TX_byte, SPI_TX_prepare, w_SPI_TX_valid, SPI_TX_ack,
-		SPI_RX_byte, SPI_RX_valid
+		SPI_RX_byte, SPI_RX_valid, w_updateAddr
 	);
 	
 endmodule
@@ -152,7 +156,9 @@ module	fsm_transWrite
 	input			SPI_TX_ack,
 	
 	input		[7:0]	SPI_RX_byte,
-	input			SPI_RX_valid
+	input			SPI_RX_valid,
+	
+	output			addrUpdate
 );
 	
 	localparam
@@ -258,7 +264,8 @@ module	fsm_transWrite
 				
 		endcase
 	end
-	
+
+	assign	addrUpdate = state == UpdateAddr || state == TX_send;
 	
 endmodule
 
@@ -284,7 +291,9 @@ module	fsm_transRead
 	output	reg	[7:0]	SPI_TX_byte,
 	input			SPI_TX_prepare,
 	output	reg		SPI_TX_valid,
-	input			SPI_TX_ack
+	input			SPI_TX_ack,
+	
+	output			addrUpdate
 );
 
 	localparam
@@ -389,7 +398,12 @@ module	fsm_transRead
 		endcase
 	end
 	
+	reg	prev_destall;
+	always @(posedge clock)
+		prev_destall <= destall;
 	
+	assign	addrUpdate = state == UpdateAddr || state == Setup;// || (~destall & prev_destall);// || state == Setup;
+		
 endmodule
 	
 

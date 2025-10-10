@@ -17,11 +17,28 @@ module	TPM_REG_SPACE
 	output	reg	[7:0]	t_readByte,	// SPI transaction read byte
 	
 	input			e_execDone,
+	output			e_execStart,
 	
 	output			SPI_PIRQ_n,	// SPI PCI-IRQ output
 	
 	output		[2:0]	debug,
-	output			dbg
+	output			dbg,
+	
+	input			updateAddr,
+	
+	output	reg	[7:0]	locality_out,
+	
+	output		[31:0]	c_cmdSize,
+	input		[31:0]	c_rspSize,
+	output			c_cmdSend,
+	input			c_rspSend,
+	input			c_cmdDone,
+	input			c_rspDone,
+	input		[11:0]	c_cmdInAddr,
+	input		[11:0]	c_rspInAddr,
+	output		[7:0]	c_cmdByteOut,
+	input		[7:0]	c_rspByteIn,
+	input			c_execDone
 );
 	// TPM_ACCESS -- STATE MACHINE
 	reg		r_tpmRegValidSts [0:4];
@@ -112,6 +129,7 @@ module	TPM_REG_SPACE
 	wire		f_fifoRead;
 	wire		f_fifoComplete;
 	wire		f_fifoEmpty;
+	wire	[7:0]	f_fifoOut;
 	
 	assign	f_fifoAccess = t_req &
 	(
@@ -126,8 +144,8 @@ module	TPM_REG_SPACE
 	);
 	assign	f_fifoRead = f_fifoAccess & t_dir;
 	assign	f_fifoWrite = f_fifoAccess & ~t_dir;
-	assign	f_fifoComplete = r_IDS_FIFO_W;
-	assign	f_fifoEmpty = r_IDS_FIFO_R;
+//	assign	f_fifoComplete = r_IDS_FIFO_W;
+//	assign	f_fifoEmpty = r_IDS_FIFO_R;
 	
 	wire	[4:0]	l_requests;
 	assign	l_requests[0] = r_requestUse[0];
@@ -175,6 +193,17 @@ module	TPM_REG_SPACE
 		else if (~t_req | f_fifoAccess)
 			loc_s <= l_trySeize ? LocRel : loc_next_s;
 	end
+	
+	always @* case (loc_s)
+	
+	default:	locality_out = 8'h00;
+	Loc$0:		locality_out = 8'h01;
+	Loc$1:		locality_out = 8'h02;
+	Loc$2:		locality_out = 8'h04;
+	Loc$3:		locality_out = 8'h08;
+	Loc$4:		locality_out = 8'h10;
+	
+	endcase
 	
 	always @*
 	begin
@@ -336,7 +365,7 @@ module	TPM_REG_SPACE
 		end
 		else if (~t_req | f_fifoAccess)
 		begin
-			t_readByte <= 8'hFF;
+			t_readByte <= f_fifoAccess & l_allowAccess ? f_fifoOut : 8'hFF;
 			
 			case (sts_s) // TPM_STS
 			
@@ -394,6 +423,7 @@ module	TPM_REG_SPACE
 			
 			r_commandReady_i <= 1'b0;
 			r_tpmGo <= 1'b0;
+			r_responseRetry <= 1'b0;
 			
 			// INTERRUPTS
 			if (r_globalIntEnable)
@@ -789,5 +819,25 @@ module	TPM_REG_SPACE
 		r_stsValidIntOccured |
 		r_dataAvailIntOccured
 	);
+	
+	FIFO_BUFFER io_fifo
+	(
+		.clock(clock), .reset_n(reset_n),
+		.cmdByteIn(t_writeByte), .cmdByteOut(c_cmdByteOut),
+		.rspByteIn(c_rspByteIn), .rspByteOut(f_fifoOut),
+		.f_fifoAccess(f_fifoAccess & l_allowAccess), .t_size(t_size),
+		.f_fifoRead(f_fifoRead & l_allowAccess), .f_fifoWrite(f_fifoWrite & l_allowAccess & r_Expect),
+		.f_fifoEmpty(f_fifoEmpty), .f_fifoComplete(f_fifoComplete),
+		.r_tpmGo(r_tpmGo & ~t_req), .r_commandReady(r_commandReady_i & ~t_req), .r_responseRetry(r_responseRetry & ~t_req),
+		.e_execDone(c_execDone), .f_abort(1'b0),
+		.t_address(t_address), .t_baseAddr(t_baseAddr),
+		.t_updateAddr(updateAddr),
+		.c_cmdSize(c_cmdSize), .c_rspSize(c_rspSize),
+		.c_cmdSend(c_cmdSend), .c_rspSend(c_rspSend),
+		.c_cmdDone(c_cmdDone), .c_rspDone(c_rspDone),
+		.c_cmdInAddr(c_cmdInAddr), .c_rspInAddr(c_rspInAddr)
+	);
+	
+//	assign	c_execDone = r_IDS_EXEC;
 
 endmodule

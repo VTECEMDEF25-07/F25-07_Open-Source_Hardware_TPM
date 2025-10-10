@@ -180,8 +180,8 @@ unsigned init_verilog_gen(int argc, char **argv)
 		"\treg\t[7:0]\twriteData;\n"
 		"\treg\t[7:0]\treadData [0:63];\n"
 		"\treg\t[7:0]\treadByte;\n"
-		"\treg\tin, errors;\n"
-		"\tinteger i, j, genEntry, tries;\n"
+		"\treg\tin;\n"
+		"\tinteger i, j, genEntry, tries, errors;\n"
 		"\n"
 		"\tinitial\n"
 		"\tbegin : tb_main\n"
@@ -208,8 +208,10 @@ unsigned init_verilog_gen(int argc, char **argv)
 #define EQUAL 1
 #define UNEQUAL 0
 
-void tb_assert(unsigned char *data, unsigned byte, unsigned char filter, unsigned comp, unsigned char expected, char *str)
+unsigned tb_assert(unsigned char *data, unsigned byte, unsigned char filter, unsigned comp, unsigned char expected, char *str)
 {
+	unsigned retVal = 0;
+	
 	if (!_connected)
 		goto L_GEN;
 	
@@ -219,18 +221,20 @@ void tb_assert(unsigned char *data, unsigned byte, unsigned char filter, unsigne
 		{
 			printf("\n%s\n\n", str);
 			_errors++;
+			retVal = 1;
 		}
 	} else {
 		if ((data[byte] & filter) == expected)
 		{
 			printf("\n%s\n\n", str);
 			_errors++;
+			retVal = 1;
 		}
 	}
 	
 L_GEN:	
 	if (!_generateVerilogTB)
-		return;
+		return retVal;
 	
 	fprintf(_vFP,
 		"\t\tif ((readData[%u] & 8'd%u) %s 8'd%u)\n"
@@ -240,6 +244,8 @@ L_GEN:
 		"\t\tend\n"
 		"\n",
 		byte, filter, comp ? "!=" : "==", expected, str);
+	
+	return retVal;
 }
 
 void check_assert(void)
@@ -251,6 +257,19 @@ void check_assert(void)
 		printf("\nThere were errors in testing.\n");
 	else
 		printf("\nThere were no errors in testing.\n");
+}
+
+void tb_stop(void)
+{
+	if (_generateVerilogTB)
+		fprintf(_vFP, "\n\t\t$stop;\n");
+	
+/*	if (_connected)
+	{
+		char trash;
+		scanf("%c", &trash);
+	}
+*/
 }
 
 void close_verilog_gen(void)
@@ -302,7 +321,7 @@ void tpm_reset(void)
 	
 	if (_generateVerilogTB)
 		fprintf(_vFP, "\t\trepeat(2) SPI_rst_n = #1 ~SPI_rst_n;\n"
-				"\t\t@(posedge clock)\n\n");
+				"\t\t@(posedge clock);\n\n");
 }
 
 void tb_comment(char *str)
@@ -352,6 +371,9 @@ void verilog_tpm_transaction(unsigned size, unsigned dir, unsigned locality, uns
 	fprintf(_vFP, "%u\n", locality);
 	
 	fprintf(_vFP, "\t\tgenEntry = %u;\n\n", entry++);
+	
+//	if (reg == TPM_DATA_FIFO)
+//		fprintf(_vFP, "\t\t$stop;\n\n");
 	
 	unsigned uHeader = 0;
 	uHeader |= header[0] << 24;
@@ -522,12 +544,13 @@ unsigned tpm_waitExec(unsigned locality, unsigned tries)
 	
 	if (oldGen)
 	{
+		unsigned reg = TPM_STS;
 		unsigned char header[4] =
 		{
 			(1 << 7) | (1 << 6),
 			0xD4,
-			((locality & 0xF) << 4) | (((unsigned)r_dataAvail & 0xF00) >> 8),
-			(unsigned)r_dataAvail & 0xFF
+			((locality & 0xF) << 4) | ((reg & 0xF00) >> 8),
+			reg & 0xFF
 		};
 		
 		unsigned uHeader = 0;
@@ -574,13 +597,13 @@ unsigned tpm_waitExec(unsigned locality, unsigned tries)
 			"\n"
 			"\t\t\tfor(i=8; i!=0; i=i-1)\n"
 			"\t\t\tbegin\n"
-			"\t\t\t\tSPI_mosi = writeData[i-1];\n"
 			"\t\t\t\t`SPI_CLK_PERIOD;\n"
 			"\t\t\t\tSPI_clock = 1'b1;\n"
+			"\t\t\t\treadByte[i-1] = SPI_miso;\n"
 			"\t\t\t\t`SPI_CLK_PERIOD;\n"
 			"\t\t\t\tSPI_clock = 1'b0;\n"
 			"\t\t\tend\n"
-			"\t\t\treadData[j] = readByte;\n"
+			"\t\t\treadData[0] = readByte;\n"
 			"\n"
 			"\t\t\trepeat (5) @(posedge clock);\n"
 			"\t\t\tSPI_cs_n = 1'b1;\n"
@@ -735,6 +758,7 @@ void test_localityPermissions(void);
 void test_statusStateMachine(void);
 void test_localitySeizeCommandAbort(void);
 void test_sendReceiveCMD(void);
+void test_hierarchyControl(void);
 
 int main(int argc, char **argv)
 {
@@ -744,12 +768,13 @@ int main(int argc, char **argv)
 	if (!(_connected || _generateVerilogTB))
 		return 1;
 	
-	test_debugRW();
-	test_localityChanging();
-	test_localityPermissions();
-	test_statusStateMachine();
-	test_localitySeizeCommandAbort();
-	test_sendReceiveCMD();
+//	test_debugRW();
+//	test_localityChanging();
+//	test_localityPermissions();
+//	test_statusStateMachine();
+//	test_localitySeizeCommandAbort();
+//	test_sendReceiveCMD();
+	test_hierarchyControl();
 	
 	check_assert();
 	ftdi_close();
@@ -1233,20 +1258,26 @@ void test_sendReceiveCMD(void)
 	
 	cmdHeader[0] = (st & 0xFF00) >> 8;
 	cmdHeader[1] = (st & 0x00FF) >> 0;
-	cmdHeader[2] = (cc & 0xFF000000) >> 24;
-	cmdHeader[3] = (cc & 0x00FF0000) >> 16;
-	cmdHeader[4] = (cc & 0x0000FF00) >> 8;
-	cmdHeader[5] = (cc & 0x000000FF) >> 0;
-	cmdHeader[6] = (cmdSize & 0xFF000000) >> 24;
-	cmdHeader[7] = (cmdSize & 0x00FF0000) >> 16;
-	cmdHeader[8] = (cmdSize & 0x0000FF00) >> 8;
-	cmdHeader[9] = (cmdSize & 0x000000FF) >> 0;
+	cmdHeader[2] = (cmdSize & 0xFF000000) >> 24;
+	cmdHeader[3] = (cmdSize & 0x00FF0000) >> 16;
+	cmdHeader[4] = (cmdSize & 0x0000FF00) >> 8;
+	cmdHeader[5] = (cmdSize & 0x000000FF) >> 0;
+	cmdHeader[6] = (cc & 0xFF000000) >> 24;
+	cmdHeader[7] = (cc & 0x00FF0000) >> 16;
+	cmdHeader[8] = (cc & 0x0000FF00) >> 8;
+	cmdHeader[9] = (cc & 0x000000FF) >> 0;
 	
 	unsigned char data[64];
 	
 	tb_comment("Using locality 2 for this test.");
 	data[0] = r_requestUse;
 	tpm_transaction(WRITE, 1, 2, TPM_ACCESS, data);
+	
+	tb_comment("Enable dataAvail interrupt.");
+	data[3] = r_globalIntEnable;
+	data[1] = data[2] = 0x00;
+	data[0] = r_dataAvailIntEnable;
+	print_tpm_transaction(WRITE, 4, 2, TPM_INT_ENABLE, data);
 	
 	tb_comment("Set TPM to be ready to receive command data");
 	data[0] = r_commandReady;
@@ -1270,29 +1301,308 @@ void test_sendReceiveCMD(void)
 	tb_assert(data, 0, r_Expect, EQUAL, r_Expect,
 		"Error: TPM should be expecting command data.");
 	
+//	tb_comment("Write command data.");
+//	print_tpm_transaction(WRITE, cmdDataSize_s, 2, TPM_DATA_FIFO, cmdData);
+//	tb_comment("Read command data.");
+//	print_tpm_transaction(WRITE, cmdDataSize_s, 2, TPM_DATA_FIFO, cmdData);
+	
+//	return;
+
 	tb_comment("Write all but the last byte of the cmd data.");
-	print_tpm_transaction(WRITE, strlen(cmdData), 2, TPM_DATA_FIFO, cmdData);
+	print_tpm_transaction(WRITE, cmdDataSize_s-1, 2, TPM_DATA_FIFO, cmdData);
+//	for(unsigned i=0; i<cmdDataSize_s-1; i++)
+//		tpm_transaction(WRITE, 1, 2, TPM_DATA_FIFO, &cmdData[i]);
 	
 	print_tpm_transaction(READ, 1, 2, TPM_STS, data);
 	tb_assert(data, 0, r_Expect, EQUAL, r_Expect,
 		"Error: TPM should be expecting command data.");
 	
 	tb_comment("Write last byte of cmd data from wrong locality.");
-	print_tpm_transaction(WRITE, 1, 1, TPM_DATA_FIFO, &cmdData[cmdDataSize_s]);
+	print_tpm_transaction(WRITE, 1, 1, TPM_DATA_FIFO, &cmdData[cmdDataSize_s-1]);
 	
 	print_tpm_transaction(READ, 1, 2, TPM_STS, data);
 	tb_assert(data, 0, r_Expect, EQUAL, r_Expect,
 		"Error: TPM should be expecting command data.");
 	
 	tb_comment("Write last byte of cmd data.");
-	print_tpm_transaction(WRITE, 1, 2, TPM_DATA_FIFO, &cmdData[cmdDataSize_s]);
+	print_tpm_transaction(WRITE, 1, 2, TPM_DATA_FIFO, &cmdData[cmdDataSize_s-1]);
+	
+	print_tpm_transaction(READ, 1, 2, TPM_STS, data);
+	tb_assert(data, 0, r_Expect, EQUAL, 0,
+		"Error: TPM should no longer expect data.");
+
+	tb_comment("Try to write more to the buffer.");
+	print_tpm_transaction(WRITE, cmdDataSize_s/2, 2, TPM_DATA_FIFO, cmdData);
 	
 	print_tpm_transaction(READ, 1, 2, TPM_STS, data);
 	tb_assert(data, 0, r_Expect, EQUAL, 0,
 		"Error: TPM should no longer expect data.");
 	
+	tb_comment("Send tpmGo; start execution.");
 	data[0] = r_tpmGo;
 	print_tpm_transaction(WRITE, 1, 2, TPM_STS, data);
 	
+	print_tpm_transaction(READ, 1, 2, TPM_STS, data);
+	tb_assert(data, 0, r_dataAvail, EQUAL, 0,
+		"Error: TPM not yet have a response.");
+	
+	tb_comment("Check the localityChangeInterrupt.");
+	print_tpm_transaction(READ, 1, 2, TPM_INT_STATUS, data);
+	tb_assert(data, 0, r_dataAvailIntOccurred, EQUAL, 0,
+		"Testbench failure: r_dataAvailIntOccured incorrect (expected low).");
+	
+	data[0] = r_dbgExecEngineDone;
+	print_tpm_transaction(WRITE, 1, 2, IDS_CTRL, data);
+	
 	tpm_waitExec(2, 15);
+	
+	tb_comment("Check the localityChangeInterrupt.");
+	print_tpm_transaction(READ, 1, 2, TPM_INT_STATUS, data);
+	tb_assert(data, 0, r_dataAvailIntOccurred, EQUAL, r_dataAvailIntOccurred,
+		"Testbench failure: r_dataAvailIntOccured incorrect (expected high).");
+	
+	tb_comment("Clear interrupts.");
+	data[0] = 0xff;
+	tpm_transaction(WRITE, 1, 2, TPM_INT_STATUS, data);
+	
+	print_tpm_transaction(READ, 1, 2, TPM_STS, data);
+	tb_assert(data, 0, r_dataAvail, EQUAL, r_dataAvail,
+		"Error: TPM should have a response.");
+	
+	tb_comment("Read response data in 1-byte transactions.");
+	for(unsigned i=0; i<12; i++)
+	{
+		tpm_transaction(READ, 1, 2, TPM_DATA_FIFO, &data[i]);
+		if (_connected) printf("%02x ", data[i]);
+	}
+	for(unsigned i=12; i<cmdSize+1; i++)
+	{
+		tpm_transaction(READ, 1, 2, TPM_DATA_FIFO, &data[i]);
+		if (tb_assert(data, i, 0xFF, EQUAL, cmdData[i-12],
+			"Incorrect response data."))
+			printf("[%u] Expected %02x, got %02x\n", i, cmdData[i-12], data[i]);
+		if (_connected) printf("%02x ", data[i]);
+	}
+	
+	print_tpm_transaction(READ, 1, 2, TPM_STS, data);
+	tb_assert(data, 0, r_dataAvail, EQUAL, 0,
+		"Error: TPM response data should be fully read out.");
+/*	
+	if (_connected)
+	{
+		for(unsigned i=0; i<cmdSize; i++)
+			printf("%02x ", data[i]);
+		printf("\n");
+		for(unsigned i=0; i<cmdSize; i++)
+			printf("%c", data[i]);
+		printf("\n");
+	}
+*/	
+	
+	tb_comment("Disable interrupts.");
+	data[0] = 0x00;
+	tpm_transaction(WRITE, 1, 2, TPM_INT_ENABLE+3, data);
+	
+	tb_comment("Attempt to responseRetry from wrong locality.");
+	data[0] = r_responseRetry;
+	print_tpm_transaction(WRITE, 1, 1, TPM_STS, data);
+	
+	print_tpm_transaction(READ, 1, 2, TPM_STS, data);
+	tb_assert(data, 0, r_dataAvail, EQUAL, 0,
+		"Error: dataAvail should have not been reset from incorrect locality.");
+	
+	tb_comment("Send responseRetry from correct locality.");
+	data[0] = r_responseRetry;
+	print_tpm_transaction(WRITE, 1, 2, TPM_STS, data);
+	
+	print_tpm_transaction(READ, 1, 2, TPM_STS, data);
+	tb_assert(data, 0, r_dataAvail, EQUAL, r_dataAvail,
+		"Error: TPM response should be available again.");
+	
+	tb_comment("Check the localityChangeInterrupt.");
+	print_tpm_transaction(READ, 1, 2, TPM_INT_STATUS, data);
+	tb_assert(data, 0, r_dataAvailIntOccurred, EQUAL, 0,
+		"Testbench failure: r_dataAvailIntOccured incorrect (expected low).");
+	
+	tb_comment("Read all but last byte of fifo response. (bulk read)");
+	print_tpm_transaction(READ, cmdSize, 2, TPM_DATA_FIFO, data);
+	
+	print_tpm_transaction(READ, 1, 2, TPM_STS, data);
+	tb_assert(data, 0, r_dataAvail, EQUAL, r_dataAvail,
+		"Error: dataAvail should still be true for one more byte.");
+	
+	tb_comment("Read last byte of fifo response.");
+	print_tpm_transaction(READ, 1, 2, TPM_DATA_FIFO, &data[cmdSize]);
+	
+	print_tpm_transaction(READ, 1, 2, TPM_STS, data);
+	tb_assert(data, 0, r_dataAvail, EQUAL, 0,
+		"Error: TPM data should be fully read out.");
+	
+	tb_comment("Compare bulk read with expected data.");
+	for(unsigned i=0; i<cmdDataSize_s; i++)
+	{
+		if (tb_assert(data, i+12, 0xFF, EQUAL, cmdData[i],
+			"Incorrect response data."))
+			printf("[%u] Expected %02x, got %02x\n", i, cmdData[i], data[i+12]);
+	}
+	
+	if (_connected) for(unsigned i=0; i<cmdSize+1; i++)
+		printf("%02x ", data[i]);
+	
+	tb_comment("Send responseRetry.");
+	data[0] = r_responseRetry;
+	print_tpm_transaction(WRITE, 1, 2, TPM_STS, data);
+	
+	tb_comment("Read response buffer in four bulk reads.");
+	print_tpm_transaction(READ, 10, 2, TPM_DATA_FIFO, &data[0]);
+		
+	print_tpm_transaction(READ, 10, 2, TPM_DATA_FIFO, &data[10]);
+	
+	print_tpm_transaction(READ, 10, 2, TPM_DATA_FIFO, &data[20]);
+	for(unsigned i=0; i<10; i++)
+	{
+		if (tb_assert(&data[20], i, 0xFF, EQUAL, cmdData[cmdDataSize_s+i-16],
+			"Incorrect response data."))
+			printf("[%u] Expected %02x, got %02x\n", i, cmdData[cmdDataSize_s+i-16], data[i]);
+	}
+	
+
+	print_tpm_transaction(READ, 6, 2, TPM_DATA_FIFO, &data[30]);
+	for(unsigned i=0; i<6; i++)
+	{
+		if (tb_assert(&data[30], i, 0xFF, EQUAL, cmdData[cmdDataSize_s+i-6],
+			"Incorrect response data."))
+			printf("[%u] Expected %02x, got %02x\n", i, cmdData[cmdDataSize_s+i-6], data[i]);
+	}
+	
+	
+	if (_connected) for(unsigned i=0; i<cmdSize+1; i++)
+		printf("%02x ", data[i]);
+	
+	tb_comment("Send responseRetry.");
+	data[0] = r_responseRetry;
+	print_tpm_transaction(WRITE, 1, 2, TPM_STS, data);
+	
+	tb_comment("Read response buffer in one bulk read.");
+	print_tpm_transaction(READ, cmdSize+1, 2, TPM_DATA_FIFO, data);
+	
+	tb_comment("Compare bulk read with expected data.");
+	for(unsigned i=0; i<cmdDataSize_s; i++)
+	{
+		if (tb_assert(data, i+12, 0xFF, EQUAL, cmdData[i],
+			"Incorrect response data."))
+			printf("[%u] Expected %02x, got %02x\n", i, cmdData[i], data[i+12]);
+	}
+	
+	if (_connected) for(unsigned i=0; i<cmdSize+1; i++)
+		printf("%02x ", data[i]);
+
+}
+
+#define TPM_CC_STARTUP 0x00000144
+#define TPM_CC_HIERARCHYCONTROL 0x00000121
+#define TPM_ST_SESSIONS 0x8002
+
+void test_hierarchyControl(void)
+{
+	tpm_reset();
+	tb_comment("test_hierarchyControl");
+	
+	unsigned char cmdHeader[10];
+	unsigned char cmdDataStartup[] =
+	{
+		0x00, 0x00 // TPM_SU_CLEAR
+	};
+	unsigned short cmdDataSize_s = sizeof(cmdDataStartup);
+	unsigned char cmdDataSize[2] = { (cmdDataSize_s & 0xFF00) >> 8, cmdDataSize_s & 0xFF };
+	
+	unsigned cc = TPM_CC_STARTUP;
+	unsigned cmdSize = 9+cmdDataSize_s;
+	unsigned short st = TPM_ST_NO_SESSIONS;
+	
+	cmdHeader[0] = (st & 0xFF00) >> 8;
+	cmdHeader[1] = (st & 0x00FF) >> 0;
+	cmdHeader[2] = (cmdSize & 0xFF000000) >> 24;
+	cmdHeader[3] = (cmdSize & 0x00FF0000) >> 16;
+	cmdHeader[4] = (cmdSize & 0x0000FF00) >> 8;
+	cmdHeader[5] = (cmdSize & 0x000000FF) >> 0;
+	cmdHeader[6] = (cc & 0xFF000000) >> 24;
+	cmdHeader[7] = (cc & 0x00FF0000) >> 16;
+	cmdHeader[8] = (cc & 0x0000FF00) >> 8;
+	cmdHeader[9] = (cc & 0x000000FF) >> 0;
+	
+	unsigned char data[64];
+	
+	data[0] = r_requestUse;
+	print_tpm_transaction(WRITE, 1, 0, TPM_ACCESS, data);
+	
+	data[0] = r_commandReady;
+	print_tpm_transaction(WRITE, 1, 0, TPM_STS, data);
+	
+	print_tpm_transaction(WRITE, 10, 0, TPM_DATA_FIFO, cmdHeader);
+	print_tpm_transaction(WRITE, 2, 0, TPM_DATA_FIFO, cmdDataStartup);
+	
+	data[0] = r_tpmGo;
+	print_tpm_transaction(WRITE, 1, 0, TPM_STS, data);
+	
+	data[0] = r_dbgExecEngineDone;
+	print_tpm_transaction(WRITE, 1, 0, IDS_CTRL, data);
+	
+	tpm_waitExec(0, 15);
+	
+	data[0] = r_commandReady;
+	print_tpm_transaction(WRITE, 1, 0, TPM_STS, data);
+	
+	tb_comment("Management Module should be in operational state.");
+	
+	unsigned char cmdData[] =
+	{
+		0x00, 0x00, 0x00, 0x00, // auth handle ??
+		0x40, 0x00, 0x00, 0x0C, // TPMI_RH_ENABLES
+		0x01 // TPMI_YES_NO
+	};
+	cmdDataSize_s = sizeof(cmdData);
+	
+	cc = TPM_CC_HIERARCHYCONTROL;
+	cmdSize = 9+cmdDataSize_s;
+	st = TPM_ST_SESSIONS;
+	
+	cmdHeader[0] = (st & 0xFF00) >> 8;
+	cmdHeader[1] = (st & 0x00FF) >> 0;
+	cmdHeader[2] = (cmdSize & 0xFF000000) >> 24;
+	cmdHeader[3] = (cmdSize & 0x00FF0000) >> 16;
+	cmdHeader[4] = (cmdSize & 0x0000FF00) >> 8;
+	cmdHeader[5] = (cmdSize & 0x000000FF) >> 0;
+	cmdHeader[6] = (cc & 0xFF000000) >> 24;
+	cmdHeader[7] = (cc & 0x00FF0000) >> 16;
+	cmdHeader[8] = (cc & 0x0000FF00) >> 8;
+	cmdHeader[9] = (cc & 0x000000FF) >> 0;
+	
+	print_tpm_transaction(WRITE, 1, 0, TPM_STS, data);
+	
+	print_tpm_transaction(WRITE, 10, 0, TPM_DATA_FIFO, cmdHeader);
+	print_tpm_transaction(WRITE, 9, 0, TPM_DATA_FIFO, cmdData);
+	
+	data[0] = r_tpmGo;
+	print_tpm_transaction(WRITE, 1, 0, TPM_STS, data);
+	
+	data[0] = r_dbgExecEngineDone;
+	print_tpm_transaction(WRITE, 1, 0, IDS_CTRL, data);
+	
+	tpm_waitExec(0, 15);
+	
+	print_tpm_transaction(READ, 10, 0, TPM_DATA_FIFO, data);
+	if (_connected)
+	{
+		printf("TPM Response:\n");
+		for(unsigned i=0; i<10; i++)
+		{
+			printf("%02x ", data[i]);
+		}
+		printf("\n");
+	}
+	
+	data[0] = r_commandReady;
+	print_tpm_transaction(WRITE, 1, 0, TPM_STS, data);
+	
 }
