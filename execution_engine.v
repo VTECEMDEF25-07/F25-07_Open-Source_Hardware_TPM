@@ -1,4 +1,4 @@
-module execution_engine(
+module tpm_command_processor(
 		clock,
 		reset_n,
 		command_ready,
@@ -21,8 +21,7 @@ module execution_engine(
 		response_valid,
 		response_code,
 		response_length,
-		current_stage,
-		command_start
+		current_stage
 	);
 
 	// Inputs
@@ -51,7 +50,7 @@ module execution_engine(
 	output [31:0] response_code;		// 32-bit output response code
 	output [15:0] response_length;		// 16-bit output response length
 	output [3:0]  current_stage;		// 4-bit output current pipeline stage
-   output reg    command_start;
+
 	// Outputs to management module - EXACT MATCH to management_module inputs
 	/*
 	output	 [15:0] orderlyInput;		// 2-byte (16 bits) input from memory of state of last shutdown state
@@ -66,6 +65,7 @@ module execution_engine(
 	output	        nv_shEnable;			// 1-bit input of state of shEnable switch, from Non-Volatile memory
 	output          nv_ehEnable;			// 1-bit input of state of ehEnable switch, from Non-Volatile memory
 	*/
+	
 	// ============================================================================
 	// PIPELINE STAGES - TCG TPM 2.0 Specification Part 3, Section 5: Command Processing
 	// ============================================================================
@@ -128,7 +128,7 @@ module execution_engine(
 	reg [31:0] response_code;
 	reg [7:0] response_buffer [0:1023];
 	reg [15:0] response_length;
-	reg [3:0] current_state;
+	
 	// ============================================================================
 	// TODO: ADD MISSING INTERNAL REGISTERS AND WIRES:
 	// ============================================================================
@@ -166,20 +166,10 @@ module execution_engine(
 	// ============================================================================
 	// Emma's Notes: - looks like a sequential logic block just for the state transitions but do not recommend multiple sequential logic blocks! 
 	//				 - Also highly recommend having your outputs be sequential to avoid giving an output at the wrong time.
-		always@(posedge clock, negedge reset_n) begin
-			if(!reset_n) begin
-				current_state <= STATE_IDLE;
-			end
-			else begin
-				current_state <= state;
-			end
-		end
-		
 		always@(*) begin
 		// Emma's Notes: - not really sure what command_valid is a check for?
 		//				 - if this logic block is only determining the next state and the outputs, this "if" block should not be in this always block, recommend making these register assignments sequential.
-		
-		case(current_state)
+		case(state)
 			// ====================================================================
 			// STAGE 1: IDLE - Wait for command
 			// ====================================================================
@@ -617,7 +607,7 @@ module execution_engine(
 				// 5. Update TPM state (objects, NV, PCRs, sessions) as required
 				// 6. Handle multi-cycle operations with proper state management
 				// 7. Return TPM_RC_FAILURE on execution errors
-				command_start = 1'b1;
+				
 				// For now, always proceed to post-processing
 			end
 			
