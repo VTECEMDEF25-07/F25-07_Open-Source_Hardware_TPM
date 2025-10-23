@@ -33,6 +33,16 @@ module execution_engine(
 		ehEnable,
 		shutdownSave,
 		command_done,
+		//management outputs
+		testsPassed,
+		untested,
+		nv_phEnableNV,
+		nv_phEnableNV,
+		nv_shEnable,
+		nv_ehEnable,
+		orderlyInput,
+		initialized,
+		testsRun,
 		// Response outputs
 		response_valid,
 		response_code,
@@ -91,18 +101,19 @@ module execution_engine(
 	output [15:0] response_length;		// 16-bit output response length
 	output [3:0]  current_stage;		// 4-bit output current pipeline stage
    output reg    command_start;
-	// Outputs to management module - EXACT MATCH to management_module inputs
-	/*
+	   
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////
 	output	 [15:0] orderlyInput;		// 2-byte (16 bits) input from memory of state of last shutdown state
-	output 		    initialized;			// 1-bit input intialized bit (from execution engine)
-	output	 [31:0] authHierarchy;		// 2-byte (16 bits) input verifying which hiearchy was authorized (from execution engine)
-	output   [7:0]  locality;				// 4-bit input of current locality
+	output 		     initialized;			// 1-bit input intialized bit (from execution engine)
 	output	 [15:0] testsRun;				// 2-byte (16 bits) input of amount of tests run by the self-test module, from the execution engine
 	output	 [15:0] testsPassed;			// 2-byte (16 bits) input of amount of tests that have run and passed by the self-test module, from the execution engine
 	output	 [15:0] untested;				// 2-byte (16 bits) input of amount of tests that still need to be run by the self-test module, from the execution engine
-	output 		    nv_phEnableNV;		// 1-bit input of state of phEnableNV switch, from Non-Volatile memory
+	output 		     nv_phEnableNV;		// 1-bit input of state of phEnableNV switch, from Non-Volatile memory
 	output	        nv_shEnable;			// 1-bit input of state of shEnable switch, from Non-Volatile memory
-	output          nv_ehEnable;			// 1-bit input of state of ehEnable switch, from Non-Volatile memory
+	output           nv_ehEnable;			// 1-bit input of state of ehEnable switch, from Non-Volatile memory
+	// Outputs to management module - EXACT MATCH to management_module inputs
+	/*
+	output	 [31:0] authHierarchy;		// 2-byte (16 bits) input verifying which hiearchy was authorized (from execution engine)
 	*/
 	// ============================================================================
 	// PIPELINE STAGES - TCG TPM 2.0 Specification Part 3, Section 5: Command Processing
@@ -450,13 +461,12 @@ module execution_engine(
 				else if(command_size != command_length) begin
 					state = STATE_POST_PROCESS;
 				end
-				else if(command_valid) begin
+				else if(!command_valid) begin
 					state = STATE_POST_PROCESS;
 				end
 				else begin
 					state = STATE_MODE_CHECK;
 				end
-				// TODO: EXPAND COMMAND CODE VALIDATION FOR ALL SUPPORTED COMMANDS
 			end
 
 			// Emma's Notes: if the command code is not startup, gettest, or clear, they should still be able to run. check for command_valid signal instead.
@@ -496,133 +506,133 @@ module execution_engine(
 			// ====================================================================
          STATE_HANDLE_VALID: begin
 				case (command_code)
-		  			TPM_CC_STARTUP: handle_count = 0;
-			      TPM_CC_SHUTDOWN: handle_count = 0;
-      			TPM_CC_SELF_TEST: handle_count = 0;
-    			   TPM_CC_INCREMENTAL_SELF_TEST: handle_count = 0;
-    			   TPM_CC_GET_TEST_RESULT: handle_count = 0;
-   			   TPM_CC_STIR_RANDOM: handle_count = 0;
-   			   TPM_CC_GET_RANDOM: handle_count = 0;
-    			   TPM_CC_GET_CAPABILITY: handle_count = 0;
-   			   TPM_CC_FIRMWARE_READ: handle_count = 0;
-   			   TPM_CC_GET_TIME: handle_count = 0;
-   			   TPM_CC_READ_CLOCK: handle_count = 0;
-   			   TPM_CC_ECC_PARAMETERS: handle_count = 0;
-    			   TPM_CC_TEST_PARMS: handle_count = 0;
-   			   TPM_CC_HASH: handle_count = 0;
-				   TPM_CC_PCR_READ: handle_count = 0;
-					TPM_CC_GET_COMMAND_AUDIT_DIGEST: handle_count = 0;
-					TPM_CC_GET_SESSION_AUDIT_DIGEST: handle_count = 0;
-					TPM_CC_NV_READ_PUBLIC: handle_count = 0;
-					TPM_CC_AC_GET_CAPABILITY: handle_count = 0;
+		  			TPM_CC_STARTUP: handle_count = 3'b0;
+			      TPM_CC_SHUTDOWN: handle_count = 3'b0;
+      			TPM_CC_SELF_TEST: handle_count = 3'b0;
+    			   TPM_CC_INCREMENTAL_SELF_TEST: handle_count = 3'b0;
+    			   TPM_CC_GET_TEST_RESULT: handle_count = 3'b0;
+   			   TPM_CC_STIR_RANDOM: handle_count = 3'b0;
+   			   TPM_CC_GET_RANDOM: handle_count = 3'b0;
+    			   TPM_CC_GET_CAPABILITY: handle_count = 3'b0;
+   			   TPM_CC_FIRMWARE_READ: handle_count = 3'b0;
+   			   TPM_CC_GET_TIME: handle_count = 3'b0;
+   			   TPM_CC_READ_CLOCK: handle_count = 3'b0;
+   			   TPM_CC_ECC_PARAMETERS: handle_count = 3'b0;
+    			   TPM_CC_TEST_PARMS: handle_count = 3'b0;
+   			   TPM_CC_HASH: handle_count = 3'b0;
+				   TPM_CC_PCR_READ: handle_count = 3'b0;
+					TPM_CC_GET_COMMAND_AUDIT_DIGEST: handle_count = 3'b0;
+					TPM_CC_GET_SESSION_AUDIT_DIGEST: handle_count = 3'b0;
+					TPM_CC_NV_READ_PUBLIC: handle_count = 3'b0;
+					TPM_CC_AC_GET_CAPABILITY: handle_count = 3'b0;
         
 					// Commands with 1 handle
-					TPM_CC_CLEAR: handle_count = 1;
-					TPM_CC_HIERARCHY_CONTROL: handle_count = 1;
-					TPM_CC_CLEAR_CONTROL: handle_count = 1;
-					TPM_CC_CLOCK_SET: handle_count = 1;
-					TPM_CC_CLOCK_RATE_ADJUST: handle_count = 1;
-					TPM_CC_HIERARCHY_CHANGE_AUTH: handle_count = 1;
-					TPM_CC_NV_DEFINE_SPACE: handle_count = 1;
-					TPM_CC_PCR_ALLOCATE: handle_count = 1;
-					TPM_CC_PCR_SET_AUTH_POLICY: handle_count = 1;
-					TPM_CC_PP_COMMANDS: handle_count = 1;
-					TPM_CC_SET_PRIMARY_POLICY: handle_count = 1;
-					TPM_CC_SET_ALGORITHM_SET: handle_count = 1;
-					TPM_CC_SET_COMMAND_CODE_AUDIT_STATUS: handle_count = 1;
-					TPM_CC_CREATE_PRIMARY: handle_count = 1;
-					TPM_CC_NV_GLOBAL_WRITE_LOCK: handle_count = 1;
-					TPM_CC_NV_INCREMENT: handle_count = 1;
-					TPM_CC_NV_SET_BITS: handle_count = 1;
-					TPM_CC_NV_EXTEND: handle_count = 1;
-					TPM_CC_NV_WRITE_LOCK: handle_count = 1;
-					TPM_CC_DICTIONARY_ATTACK_LOCK_RESET: handle_count = 1;
-					TPM_CC_DICTIONARY_ATTACK_PARAMETERS: handle_count = 1;
-					TPM_CC_NV_CHANGE_AUTH: handle_count = 1;
-					TPM_CC_PCR_EVENT: handle_count = 1;
-					TPM_CC_PCR_RESET: handle_count = 1;
-					TPM_CC_PCR_EXTEND: handle_count = 1;
-					TPM_CC_PCR_SET_AUTH_VALUE: handle_count = 1;
-					TPM_CC_SEQUENCE_COMPLETE: handle_count = 1;
-					TPM_CC_EVENT_SEQUENCE_COMPLETE: handle_count = 1;
-					TPM_CC_FLUSH_CONTEXT: handle_count = 1;
-					TPM_CC_CREATE: handle_count = 1;
-					TPM_CC_LOAD: handle_count = 1;
-					TPM_CC_UNSEAL: handle_count = 1;
-					TPM_CC_SIGN: handle_count = 1;
-					TPM_CC_READ_PUBLIC: handle_count = 1;
-					TPM_CC_ECDH_KEY_GEN: handle_count = 1;
-					TPM_CC_RSA_DECRYPT: handle_count = 1;
-					TPM_CC_ECDH_ZGEN: handle_count = 1;
-					TPM_CC_CONTEXT_SAVE: handle_count = 1;
-					TPM_CC_CONTEXT_LOAD: handle_count = 1;
-					TPM_CC_NV_READ: handle_count = 1;
-					TPM_CC_NV_READ_LOCK: handle_count = 1;
-					TPM_CC_OBJECT_CHANGE_AUTH: handle_count = 1;
-					TPM_CC_POLICY_SECRET: handle_count = 1;
-					TPM_CC_REWRAP: handle_count = 1;
-					TPM_CC_RSA_ENCRYPT: handle_count = 1;
-					TPM_CC_VERIFY_SIGNATURE: handle_count = 1;
-					TPM_CC_COMMIT: handle_count = 1;
-					TPM_CC_EC_EPHEMERAL: handle_count = 1;
-					TPM_CC_CREATE_LOADED: handle_count = 1;
-					TPM_CC_AC_SEND: handle_count = 1;
+					TPM_CC_CLEAR: handle_count = 3'b001;
+					TPM_CC_HIERARCHY_CONTROL: handle_count = 3'b001;
+					TPM_CC_CLEAR_CONTROL: handle_count = 3'b001;
+					TPM_CC_CLOCK_SET: handle_count = 3'b001;
+					TPM_CC_CLOCK_RATE_ADJUST: handle_count = 3'b001;
+					TPM_CC_HIERARCHY_CHANGE_AUTH: handle_count = 3'b001;
+					TPM_CC_NV_DEFINE_SPACE: handle_count = 3'b001;
+					TPM_CC_PCR_ALLOCATE: handle_count = 3'b001;
+					TPM_CC_PCR_SET_AUTH_POLICY: handle_count = 3'b001;
+					TPM_CC_PP_COMMANDS: handle_count = 3'b001;
+					TPM_CC_SET_PRIMARY_POLICY: handle_count = 3'b001;
+					TPM_CC_SET_ALGORITHM_SET: handle_count = 3'b001;
+					TPM_CC_SET_COMMAND_CODE_AUDIT_STATUS: handle_count = 3'b001;
+					TPM_CC_CREATE_PRIMARY: handle_count = 3'b001;
+					TPM_CC_NV_GLOBAL_WRITE_LOCK: handle_count = 3'b001;
+					TPM_CC_NV_INCREMENT: handle_count = 3'b001;
+					TPM_CC_NV_SET_BITS: handle_count = 3'b001;
+					TPM_CC_NV_EXTEND: handle_count = 3'b001;
+					TPM_CC_NV_WRITE_LOCK: handle_count = 3'b001;
+					TPM_CC_DICTIONARY_ATTACK_LOCK_RESET: handle_count = 3'b001;
+					TPM_CC_DICTIONARY_ATTACK_PARAMETERS: handle_count = 3'b001;
+					TPM_CC_NV_CHANGE_AUTH: handle_count = 3'b001;
+					TPM_CC_PCR_EVENT: handle_count = 3'b001;
+					TPM_CC_PCR_RESET: handle_count = 3'b001;
+					TPM_CC_PCR_EXTEND: handle_count = 3'b001;
+					TPM_CC_PCR_SET_AUTH_VALUE: handle_count = 3'b001;
+					TPM_CC_SEQUENCE_COMPLETE: handle_count = 3'b001;
+					TPM_CC_EVENT_SEQUENCE_COMPLETE: handle_count = 3'b001;
+					TPM_CC_FLUSH_CONTEXT: handle_count = 3'b001;
+					TPM_CC_CREATE: handle_count = 3'b001;
+					TPM_CC_LOAD: handle_count = 3'b001;
+					TPM_CC_UNSEAL: handle_count = 3'b001;
+					TPM_CC_SIGN: handle_count = 3'b001;
+					TPM_CC_READ_PUBLIC: handle_count = 3'b001;
+					TPM_CC_ECDH_KEY_GEN: handle_count = 3'b001;
+					TPM_CC_RSA_DECRYPT: handle_count = 3'b001;
+					TPM_CC_ECDH_ZGEN: handle_count = 3'b001;
+					TPM_CC_CONTEXT_SAVE: handle_count = 3'b001;
+					TPM_CC_CONTEXT_LOAD: handle_count = 3'b001;
+					TPM_CC_NV_READ: handle_count = 3'b001;
+					TPM_CC_NV_READ_LOCK: handle_count = 3'b001;
+					TPM_CC_OBJECT_CHANGE_AUTH: handle_count = 3'b001;
+					TPM_CC_POLICY_SECRET: handle_count = 3'b001;
+					TPM_CC_REWRAP: handle_count = 3'b001;
+					TPM_CC_RSA_ENCRYPT: handle_count = 3'b001;
+					TPM_CC_VERIFY_SIGNATURE: handle_count = 3'b001;
+					TPM_CC_COMMIT: handle_count = 3'b001;
+					TPM_CC_EC_EPHEMERAL: handle_count = 3'b001;
+					TPM_CC_CREATE_LOADED: handle_count = 3'b001;
+					TPM_CC_AC_SEND: handle_count = 3'b001;
         
 					// Commands with 2 handles
-					TPM_CC_NV_UNDEFINE_SPACE: handle_count = 2;
-					TPM_CC_NV_UNDEFINE_SPACE_SPECIAL: handle_count = 2;
-					TPM_CC_EVICT_CONTROL: handle_count = 2;
-					TPM_CC_CHANGE_EPS: handle_count = 2;
-					TPM_CC_CHANGE_PPS: handle_count = 2;
-					TPM_CC_NV_WRITE: handle_count = 2;
-					TPM_CC_START_AUTH_SESSION: handle_count = 2;
-					TPM_CC_ACTIVATE_CREDENTIAL: handle_count = 2;
-					TPM_CC_CERTIFY: handle_count = 2;
-					TPM_CC_POLICY_NV: handle_count = 2;
-					TPM_CC_CERTIFY_CREATION: handle_count = 2;
-					TPM_CC_DUPLICATE: handle_count = 2;
-					TPM_CC_QUOTE: handle_count = 2;
-					TPM_CC_HMAC: handle_count = 2;
-					TPM_CC_IMPORT: handle_count = 2;
-					TPM_CC_POLICY_SIGNED: handle_count = 2;
-					TPM_CC_ENCRYPT_DECRYPT: handle_count = 2;
-					TPM_CC_MAKE_CREDENTIAL: handle_count = 2;
-					TPM_CC_POLICY_AUTHORIZE: handle_count = 2;
-					TPM_CC_POLICY_AUTH_VALUE: handle_count = 2;
-					TPM_CC_POLICY_COMMAND_CODE: handle_count = 2;
-					TPM_CC_POLICY_COUNTER_TIMER: handle_count = 2;
-					TPM_CC_POLICY_CP_HASH: handle_count = 2;
-					TPM_CC_POLICY_LOCALITY: handle_count = 2;
-					TPM_CC_POLICY_NAME_HASH: handle_count = 2;
-					TPM_CC_POLICY_OR: handle_count = 2;
-					TPM_CC_POLICY_TICKET: handle_count = 2;
-					TPM_CC_POLICY_PCR: handle_count = 2;
-					TPM_CC_POLICY_RESTART: handle_count = 2;
-					TPM_CC_POLICY_PHYSICAL_PRESENCE: handle_count = 2;
-					TPM_CC_POLICY_DUPLICATION_SELECT: handle_count = 2;
-					TPM_CC_POLICY_GET_DIGEST: handle_count = 2;
-					TPM_CC_POLICY_PASSWORD: handle_count = 2;
-					TPM_CC_ZGEN_2PHASE: handle_count = 2;
-					TPM_CC_POLICY_NV_WRITTEN: handle_count = 2;
-					TPM_CC_POLICY_TEMPLATE: handle_count = 2;
-					TPM_CC_POLICY_AUTHORIZE_NV: handle_count = 2;
-					TPM_CC_ENCRYPT_DECRYPT_2: handle_count = 2;
-					TPM_CC_POLICY_AC_SEND_SELECT: handle_count = 2;
-					TPM_CC_NV_CERTIFY: handle_count = 2;
+					TPM_CC_NV_UNDEFINE_SPACE: handle_count = 3'b010;
+					TPM_CC_NV_UNDEFINE_SPACE_SPECIAL: handle_count = 3'b010;
+					TPM_CC_EVICT_CONTROL: handle_count = 3'b010;
+					TPM_CC_CHANGE_EPS: handle_count = 3'b010;
+					TPM_CC_CHANGE_PPS: handle_count = 3'b010;
+					TPM_CC_NV_WRITE: handle_count = 3'b010;
+					TPM_CC_START_AUTH_SESSION: handle_count = 3'b010;
+					TPM_CC_ACTIVATE_CREDENTIAL: handle_count = 3'b010;
+					TPM_CC_CERTIFY: handle_count = 3'b010;
+					TPM_CC_POLICY_NV: handle_count = 3'b010;
+					TPM_CC_CERTIFY_CREATION: handle_count = 3'b010;
+					TPM_CC_DUPLICATE: handle_count = 3'b010;
+					TPM_CC_QUOTE: handle_count = 3'b010;
+					TPM_CC_HMAC: handle_count = 3'b010;
+					TPM_CC_IMPORT: handle_count = 3'b010;
+					TPM_CC_POLICY_SIGNED: handle_count = 3'b010;
+					TPM_CC_ENCRYPT_DECRYPT: handle_count = 3'b010;
+					TPM_CC_MAKE_CREDENTIAL: handle_count = 3'b010;
+					TPM_CC_POLICY_AUTHORIZE: handle_count = 3'b010;
+					TPM_CC_POLICY_AUTH_VALUE: handle_count = 3'b010;
+					TPM_CC_POLICY_COMMAND_CODE: handle_count = 3'b010;
+					TPM_CC_POLICY_COUNTER_TIMER: handle_count = 3'b010;
+					TPM_CC_POLICY_CP_HASH: handle_count = 3'b010;
+					TPM_CC_POLICY_LOCALITY: handle_count = 3'b010;
+					TPM_CC_POLICY_NAME_HASH: handle_count = 3'b010;
+					TPM_CC_POLICY_OR: handle_count = 3'b010;
+					TPM_CC_POLICY_TICKET: handle_count = 3'b010;
+					TPM_CC_POLICY_PCR: handle_count = 3'b010;
+					TPM_CC_POLICY_RESTART: handle_count = 3'b010;
+					TPM_CC_POLICY_PHYSICAL_PRESENCE: handle_count = 3'b010;
+					TPM_CC_POLICY_DUPLICATION_SELECT: handle_count = 3'b010;
+					TPM_CC_POLICY_GET_DIGEST: handle_count = 3'b010;
+					TPM_CC_POLICY_PASSWORD: handle_count = 3'b010;
+					TPM_CC_ZGEN_2PHASE: handle_count = 3'b010;
+					TPM_CC_POLICY_NV_WRITTEN: handle_count = 3'b010;
+					TPM_CC_POLICY_TEMPLATE: handle_count = 3'b010;
+					TPM_CC_POLICY_AUTHORIZE_NV: handle_count = 3'b010;
+					TPM_CC_ENCRYPT_DECRYPT_2: handle_count = 3'b010;
+					TPM_CC_POLICY_AC_SEND_SELECT: handle_count = 3'b010;
+					TPM_CC_NV_CERTIFY: handle_count = 3'b010;
         
 					// Commands with 0 handles (session/sequence starters)
-					TPM_CC_HASH_SEQUENCE_START: handle_count = 0;
-					TPM_CC_HMAC_START: handle_count = 0;
-					TPM_CC_SEQUENCE_UPDATE: handle_count = 0;
-					TPM_CC_LOAD_EXTERNAL: handle_count = 0;
+					TPM_CC_HASH_SEQUENCE_START: handle_count = 3'b000;
+					TPM_CC_HMAC_START: handle_count = 3'b000;
+					TPM_CC_SEQUENCE_UPDATE: handle_count = 3'b000;
+					TPM_CC_LOAD_EXTERNAL: handle_count = 3'b000;
         
-					default: handle_count = 0;
+					default: handle_count = 3'b000;
 				endcase
 				
                 if (handle_index < handle_count) begin
                     // Extract current handle
-                    current_handle = (handle_index == 0) ? handle_0 :
-                                     (handle_index == 1) ? handle_1 :
+                    current_handle = (handle_index == 3'b000) ? handle_0 :
+                                     (handle_index == 3'b001) ? handle_1 :
                                                           handle_2;
 
                     handle_type  = current_handle[31:24];
@@ -658,7 +668,7 @@ module execution_engine(
 						  
 						  
                     if (!handle_error) begin
-                        handle_index = handle_index + 1;
+                        handle_index = handle_index + 1'b1;
                     end else begin
                         state = STATE_POST_PROCESS;
                     end
@@ -732,7 +742,7 @@ module execution_engine(
 						if (encrypt_used) session_error = 1'b1;
 						encrypt_used = 1;
 					end
-
+	
 					// Step 3: Validate that empty sessions (no HMAC) are used only if
 					// they are performing other roles (audit/decrypt/encrypt).
 					if (current_session_hmac_size == 0 &&
@@ -904,6 +914,9 @@ module execution_engine(
 					// TPM not initialized - first command must be TPM2_Startup
 					if(command_code != TPM_CC_STARTUP) begin
 						response_code = TPM_RC_INITIALIZE;
+					end
+					else begin
+					
 					end
 				end
 			end
