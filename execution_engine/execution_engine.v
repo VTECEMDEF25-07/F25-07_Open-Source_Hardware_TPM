@@ -171,6 +171,13 @@ module execution_engine(
                TPM_RC_HIERARCHY     = 32'h0000010A,  // Hierarchy is disabled:contentReference[oaicite:24]{index=24}
                TPM_RC_VALUE         = 32'h0000000F;  // Value is out of range or inconsistent (e.g., bad PCR index or handle type):contentReference[oaicite:25]{index=25}
 
+	// ============================================================================
+	// PERMANENT HANDLES
+	// ============================================================================
+	localparam TPM_RH_PLATFORM 	  = 32'h4000000C,	// Handle references the Platform Primary Seed (PPS), platformAuth, and platformPolicy
+			   TPM_RH_OWNER    	  = 32'h40000001,	// Handle references the Storage Primary Seed (SPS), the ownerAuth, and the ownerPolicy
+			   TPM_RH_ENDORSEMENT = 32'h4000000B,	// Handle references the Endorsement Primary Seed (EPS), endorsementAuth, and endorsementPolicy
+			   TPM_RH_NULL		  = 32'h40000007;	// A handle associated with the null hierarchy, and Empty Auth authValue, and an Empty Policy authPolicy
 	
 	// ============================================================================
 	// COMMAND TAGS AND CODES
@@ -1057,5 +1064,6 @@ module execution_engine(
 		endcase
 	end
 endmodule
+
 
 
