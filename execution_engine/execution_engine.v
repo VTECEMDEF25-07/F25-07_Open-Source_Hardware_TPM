@@ -24,6 +24,10 @@ module execution_engine(
 		session1_valid,
 		session2_valid,
 		authorization_size,
+		authHandle,
+		// Authorization submodule inputs
+		auth_success,
+		auth_fail,
 		// Management module inputs 
 		op_state,
 		startup_type,
@@ -94,6 +98,11 @@ module execution_engine(
 	input session1_valid;
 	input session2_valid;
 	input [15:0] authorization_size;
+	input [31:0] authHandle;			// 32-bit input signal from command buffer indicating authorization control domain requested by command
+
+	// Authorization inputs for authorization checks
+	input auth_success;			// 1-bit input signal from authorization submodule indicating successful authorization
+	input auth_fail;			// 1-bit input signal from authorization submodule indicating failed authorization
 	
 	// Outputs
 	output        response_valid;		// 1-bit output response valid signal
@@ -468,18 +477,15 @@ module execution_engine(
 					state = STATE_MODE_CHECK;
 				end
 			end
-
-			// Emma's Notes: if the command code is not startup, gettest, or clear, they should still be able to run. check for command_valid signal instead.
 			
 			// ====================================================================
 			// STAGE 3: MODE CHECKS - TPM 2.0 Part 3, Section 5.3
 			// ====================================================================
 			STATE_MODE_CHECK: begin
 				// IMPLEMENTED: Basic mode checks
-				// Emma's Notes: make sure to include a check for TPM_CC_GETCAPABILITY in the failure mode state. also might make more sense to use an AND gate between the command code and tag and an OR gate between the 2 command codes, just for clarity's sake.
 				if(op_state == FAILURE_MODE_STATE) begin
-					// In Failure mode, only TPM2_GetTestResult allowed with no sessions
-					if(command_code != TPM_CC_GET_TEST_RESULT || command_tag != TPM_ST_NO_SESSIONS) begin
+					// In Failure mode, only TPM2_GetTestResult or TPM2_GetCapability allowed with no sessions
+					if(command_code != TPM_CC_GET_TEST_RESULT || command_code != TPM_CC_GET_CAPABILITY || command_tag != TPM_ST_NO_SESSIONS) begin
 						state = STATE_POST_PROCESS;
 					end
 					else begin
@@ -775,8 +781,10 @@ module execution_engine(
 			// ====================================================================
 			STATE_AUTH_CHECK: begin
 				// IMPLEMENTED: Basic physical presence check
-				if(command_code == TPM_CC_CLEAR && !physical_presence) begin
-					state = STATE_POST_PROCESS;
+				if(authHandle == TPM_RH_PLATFORM && !physical_presence) begin
+					if(command_code == TPM_CC_CLEAR || command_code == TPM_CC_CLEAR_CONTROL || command_code == TPM_CC_HIERARCHY_CONTROL) begin
+						state = STATE_POST_PROCESS;
+					end
 				end
 				
 				////////////////////////////////////
@@ -895,18 +903,15 @@ module execution_engine(
 				end
 
 			end
-
-			// Emma's Notes: if the command code is not startup, gettest, or clear, they should still be able to run. check for command_valid signal instead.
 			
 			// ====================================================================
 			// STAGE 3: MODE CHECKS - TPM 2.0 Part 3, Section 5.3
 			// ====================================================================
 			STATE_MODE_CHECK: begin
 				// IMPLEMENTED: Basic mode checks
-				// Emma's Notes: make sure to include a check for TPM_CC_GETCAPABILITY in the failure mode state. also might make more sense to use an AND gate between the command code and tag and an OR gate between the 2 command codes, just for clarity's sake.
 				if(op_state == FAILURE_MODE_STATE) begin
-					// In Failure mode, only TPM2_GetTestResult allowed with no sessions
-					if(command_code != TPM_CC_GET_TEST_RESULT || command_tag != TPM_ST_NO_SESSIONS) begin
+					// In Failure mode, only TPM2_GetTestResult or TPM2_GetCapability allowed with no sessions
+					if(command_code != TPM_CC_GET_TEST_RESULT || command_code != TPM_CC_GET_CAPABILITY || command_tag != TPM_ST_NO_SESSIONS) begin
 						response_code = TPM_RC_FAILURE;
 					end
 				end
@@ -959,10 +964,12 @@ module execution_engine(
 			// STAGE 6: AUTHORIZATION CHECKS - TPM 2.0 Part 3, Section 5.6
 			// ====================================================================
 			STATE_AUTH_CHECK: begin
-				// IMPLEMENTED: Basic physical presence check
-				if(command_code == TPM_CC_CLEAR && !physical_presence) begin
-					response_valid = 1'b1;
-					response_code = TPM_RC_PP;
+				// IMPLEMENTED: Basic physical presence check.
+				if(authHandle == TPM_RH_PLATFORM && !physical_presence) begin
+					if(command_code == TPM_CC_CLEAR || command_code == TPM_CC_CLEAR_CONTROL || command_code == TPM_CC_HIERARCHY_CONTROL) begin
+						response_valid = 1'b1;
+						response_code = TPM_RC_PP;
+					end
 				end
 				// TODO: IMPLEMENT COMPREHENSIVE AUTHORIZATION:
 				// 1. Check lockout mode and DA protection
@@ -978,7 +985,20 @@ module execution_engine(
 				//    - Session not expired
 				//    - PCR values match if specified
 				// 5. Return TPM_RC_AUTH_FAIL, TPM_RC_POLICY_FAIL, TPM_RC_LOCKOUT on failure
-				
+
+				// Implementation of authorization checks neccessary for TPM2_HierarchyControl command
+				else if(command_code == TPM_CC_HIERARCHY_CONTROL) begin
+					if(auth_success == 1'b1) begin
+						authHierarchy = authHandle;
+						response_valid = 1'b1;
+						response_code = TPM_RC_SUCCESS;
+					end
+					else if(auth_fail == 1'b1) begin
+						authHierarchy = TPM_RH_NULL;
+						response_valid = 1'b1;
+						response_code = TPM_RC_VALUE;
+					end
+				end
 				else if(1'b0) begin // PLACEHOLDER: Replace with actual authorization checks
 					response_valid = 1'b1;
 					response_code = TPM_RC_AUTH_FAIL;
@@ -1037,4 +1057,5 @@ module execution_engine(
 		endcase
 	end
 endmodule
+
 
