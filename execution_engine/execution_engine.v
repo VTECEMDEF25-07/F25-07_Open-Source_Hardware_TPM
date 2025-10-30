@@ -66,8 +66,6 @@ module execution_engine(
 		ehEnable,
 		shutdownSave,
 		command_done,
-		//dont know this input
-		commandInd,
 		//management outputs
 		testsPassed,
 		untested,
@@ -167,8 +165,6 @@ module execution_engine(
 	input [15:0] st_testsPassed;
 	input [15:0] st_untested;
 	
-	//??
-	input commandInd;
 	// Outputs
 	output        response_valid;		// 1-bit output response valid signal
 	output [31:0] response_code;		// 32-bit output response code
@@ -635,13 +631,13 @@ module execution_engine(
 		assign tpma_nv_ownerWrite = nv_index_attributes[1];
 		assign tpma_nv_ppWrite = nv_index_attributes[0];
 		
-		assign nv_write = (commandInd == TPM_CC_NV_DEFINE_SPACE ||
-								 commandInd == TPM_CC_NV_WRITE ||
-								 commandInd == TPM_CC_NV_INCREMENT ||
-								 commandInd == TPM_CC_NV_EXTEND);
+	assign nv_write = (commandIndex == TPM_CC_NV_DEFINE_SPACE ||
+								 commandIndex == TPM_CC_NV_WRITE ||
+								 commandIndex == TPM_CC_NV_INCREMENT ||
+								 commandIndex == TPM_CC_NV_EXTEND);
 								 
 		// Signal indicating that command
-		assign nv_read = (commandInd == TPM_CC_NV_DEFINE_SPACE || commandInd == TPM_CC_NV_READ);
+	assign nv_read = (commandIndex == TPM_CC_NV_DEFINE_SPACE || commandIndex == TPM_CC_NV_READ);
 					
 		// Reference: TCG TPM2.0 Specification Rev. 1.59, Part 2: Structures, Section 8.9.2 TPMA_CC (Command Code Attributes): Structure Definition
 		assign commandIndex = command_code[15:0];			// Indicates the command being selected
@@ -1483,6 +1479,7 @@ module execution_engine(
 		endcase
 	end
 endmodule
+
 
 
 
