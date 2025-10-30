@@ -52,6 +52,7 @@ module execution_engine(
 		mem_orderly,
 		ram_available,
 		loaded_object_present,
+		object_attributes,
 		// Self-test submodule inputs
 		st_testsRun,
 		st_testsPassed,
@@ -159,6 +160,7 @@ module execution_engine(
 	input [15:0] mem_orderly;
 	input ram_available;
 	input loaded_object_present;
+	input [31:0] object_attributes;
 	
 	// Self-test submodule inputs
 	input [15:0] st_testsRun;
@@ -471,6 +473,20 @@ module execution_engine(
 	wire [2:0] cHandles;
 	wire rHandle;
 	wire v;
+
+	wire x509sign;
+	wire sign;
+	wire encrypt;
+	wire decrypt;
+	wire restricted;
+	wire encryptedDuplication;
+	wire noDA;
+	wire adminWithPolicy;
+	wire userWithAuth;
+	wire sensitiveDataOrigin;
+	wire fixedParent;
+	wire stClear;
+	wire fixedTPM;
 	
 	wire [7:0] nv_tag;
 	wire [23:0] nv_index;
@@ -572,6 +588,25 @@ module execution_engine(
 		
 		assign nv_tag = tpm_nv_index[31:24];
 		assign nv_index = tpm_nv_index[23:0];
+
+		// Object Attributes
+		// object_attributes bits[31:20] reserved
+		assign x509sign = object_attributes[19];
+		assign sign = object_attributes[18];
+		assign encrypt = object_attributes[18];
+		assign decrypt = object_attributes[17];
+		assign restricted = object_attributes[16];
+		// object_attributes bits[15:12] reserved
+		assign encryptedDuplication = object_attributes[11];
+		assign noDA = object_attributes[10];
+		// object_attributes bits[9:8] reserved
+		assign adminWithPolicy = object_attributes[7];
+		assign userWithAuth = object_attributes[6];
+		assign sensitiveDataOrigin = object_attributes[5];
+		assign fixedParent = object_attributes[4];
+		assign stClear = object_attributes[2];
+		assign fixedTPM = object_attributes[1];
+		// object_attributes bit[0] reserved
 		
 		// Non-Volatile Index Attributes
 		// Reference: TCG TPM2.0 Specification Rev. 1.59, Part 2: Structures, Section 13.4 TPMA_NV (NV Index Attributes)
@@ -1448,6 +1483,7 @@ module execution_engine(
 		endcase
 	end
 endmodule
+
 
 
 
