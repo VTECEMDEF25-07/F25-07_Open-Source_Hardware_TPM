@@ -34,6 +34,11 @@ module execution_engine(
 		// Authorization submodule inputs
 		auth_success,
 		auth_fail,
+		//inputs from param decrypt submodule
+		param_decrypt_success,
+		param_decrypt_fail,
+		param_unmarshall_success,
+		param_unmarshall_fail,
 		// NV memory submodule inputs
 		nv_phEnableNV_in,
 		nv_shEnable_in,
@@ -60,6 +65,8 @@ module execution_engine(
 		ehEnable,
 		shutdownSave,
 		command_done,
+		//dont know this input
+		commandInd,
 		//management outputs
 		testsPassed,
 		untested,
@@ -134,7 +141,10 @@ module execution_engine(
 	// Authorization inputs for authorization checks
 	input auth_success;			// 1-bit input signal from authorization submodule indicating successful authorization
 	input auth_fail;			// 1-bit input signal from authorization submodule indicating failed authorization
-	
+	input param_decrypt_success;
+	input param_decrypt_fail;
+	input param_unmarshall_success;
+	input param_unmarshall_fail;
 	// NV memory submodule inputs
 	input nv_phEnableNV_in;
 	input nv_shEnable_in;
@@ -155,6 +165,8 @@ module execution_engine(
 	input [15:0] st_testsPassed;
 	input [15:0] st_untested;
 	
+	//??
+	input commandInd;
 	// Outputs
 	output        response_valid;		// 1-bit output response valid signal
 	output [31:0] response_code;		// 32-bit output response code
@@ -164,7 +176,7 @@ module execution_engine(
 	   
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////
 	output	 [15:0] orderlyInput;		// 2-byte (16 bits) input from memory of state of last shutdown state
-	output 		     initialized;			// 1-bit input intialized bit (from execution engine)
+	output reg	     initialized;			// 1-bit input intialized bit (from execution engine)
 	output	 [15:0] testsRun;				// 2-byte (16 bits) input of amount of tests run by the self-test module, from the execution engine
 	output	 [15:0] testsPassed;			// 2-byte (16 bits) input of amount of tests that have run and passed by the self-test module, from the execution engine
 	output	 [15:0] untested;				// 2-byte (16 bits) input of amount of tests that still need to be run by the self-test module, from the execution engine
@@ -446,6 +458,11 @@ module execution_engine(
 	reg [1:0]  s_decrypt_count;
 	reg [1:0]  s_encrypt_count;
 	
+	reg s_header_valid_error;
+	reg s_mode_check_error;
+	reg s_auth_check_error;
+	reg s_param_decrypt_error;
+	reg s_param_unmarshall_error;
 	
 	wire [15:0] commandIndex;
 	wire nv;
@@ -840,12 +857,11 @@ module execution_engine(
                s_handle_type  = current_handle[31:24];
                s_handle_index_bits = current_handle[23:0];
 
-						  
-					/*if((handle_type == 8'h01 && handle_index_bits > 8'd23) ||
+					/*
+					if((handle_type == 8'h01 && handle_index_bits > 8'd23) ||
 					  ((handle_type == 8'h01 || handle_type == 8'h02 || handle_type == 8'h03 || handle_type == 8'h81) && !phEnableNV && !shEnable && !ehEnable)) begin
-						s_handle_error = 1'b1;
-					end*/
-					
+					end
+					*/
 					if (!handle_error) begin
 						s_handle_index = handle_index + 1'b1;
 					end
@@ -1187,12 +1203,15 @@ module execution_engine(
 			STATE_HEADER_VALID: begin
 				// IMPLEMENTED: Basic header validation
 				if(command_tag != TPM_ST_NO_SESSIONS && command_tag != TPM_ST_SESSIONS) begin
+					s_header_valid_error = 1'b1;
 					response_code = TPM_RC_BAD_TAG;
 				end
 				else if(command_size != command_length) begin
+					s_header_valid_error = 1'b1;
 					response_code = TPM_RC_COMMAND_SIZE;
 				end
 				else if(!command_valid) begin
+					s_header_valid_error = 1'b1;
 					response_code = TPM_RC_COMMAND_CODE;
 				end
 
@@ -1206,12 +1225,14 @@ module execution_engine(
 				if(op_state == FAILURE_MODE_STATE) begin
 					// In Failure mode, only TPM2_GetTestResult or TPM2_GetCapability allowed with no sessions
 					if(commandIndex != TPM_CC_GET_TEST_RESULT || commandIndex != TPM_CC_GET_CAPABILITY || command_tag != TPM_ST_NO_SESSIONS) begin
+						s_mode_check_error = 1'b1;
 						response_code = TPM_RC_FAILURE;
 					end
 				end
 				else if(op_state != OPERATIONAL_STATE) begin
 					// TPM not initialized - first command must be TPM2_Startup
 					if(commandIndex != TPM_CC_STARTUP) begin
+						s_mode_check_error = 1'b1;
 						response_code = TPM_RC_INITIALIZE;
 					end
 					else begin
@@ -1325,7 +1346,7 @@ module execution_engine(
 				// IMPLEMENTED: Basic physical presence check.
 				if(authHandle == TPM_RH_PLATFORM && !physical_presence) begin
 					if(commandIndex == TPM_CC_CLEAR || commandIndex == TPM_CC_CLEAR_CONTROL || commandIndex == TPM_CC_HIERARCHY_CONTROL) begin
-						response_valid = 1'b1;
+						s_auth_check_error = 1'b1;
 						response_code = TPM_RC_PP;
 					end
 				end
@@ -1348,18 +1369,12 @@ module execution_engine(
 				else if(commandIndex == TPM_CC_HIERARCHY_CONTROL) begin
 					if(auth_success == 1'b1) begin
 						authHierarchy = authHandle;
-						response_valid = 1'b1;
-						response_code = TPM_RC_SUCCESS;
 					end
 					else if(auth_fail == 1'b1) begin
+						s_auth_check_error = 1'b1;
 						authHierarchy = TPM_RH_NULL;
-						response_valid = 1'b1;
 						response_code = TPM_RC_VALUE;
 					end
-				end
-				else if(1'b0) begin // PLACEHOLDER: Replace with actual authorization checks
-					response_valid = 1'b1;
-					response_code = TPM_RC_AUTH_FAIL;
 				end
 			end
 			
@@ -1369,6 +1384,14 @@ module execution_engine(
 			STATE_PARAM_DECRYPT: begin
 				//Do not do yet implement some sort of signal
 				// For now, always proceed to parameter unmarshaling
+				if(param_decrypt_success == 1'b1)begin
+					
+				end
+				else if(param_decrypt_fail == 1'b1)begin
+					//placeholder there are many specific response codes that would be determined by the submodule
+					response_code = TPM_RC_ATTRIBUTES;
+					s_param_decrypt_error = 1'b1;
+				end
 			end
 			
 			// ====================================================================
@@ -1384,7 +1407,14 @@ module execution_engine(
 				//    - Verify reserved fields are zero
 				// 3. Handle TPM2B structures with size prefixes
 				// 4. Return appropriate error codes (TPM_RC_SIZE, TPM_RC_VALUE, TPM_RC_SCHEME, etc.)
-				
+				if(param_unmarshall_success == 1'b1)begin
+					
+				end
+				else if(param_unmarshall_fail == 1'b1)begin
+					//placeholder there are many specific response codes that would be determined by the submodule
+					response_code = TPM_RC_ATTRIBUTES;
+					s_param_unmarshall_error = 1'b1;
+				end
 				// For now, always proceed to execution
 			end
 			
@@ -1407,9 +1437,10 @@ module execution_engine(
 				// 4. Update audit log if command auditing enabled
 				// 5. Calculate final response_length
 				// 6. Format proper response structure
-				
+				if(op_state != OPERATIONAL_STATE || !s_session_error || !s_handle_error || !s_header_valid_error || !s_mode_check_error ||!s_auth_check_error || !s_param_decrypt_error || !s_param_unmarshall_error)begin
+					initialized = 1'b1;
+				end
 				response_valid = 1'b1;
-				response_code = TPM_RC_SUCCESS;
 				response_length = 16'h0A; // Minimum response size for success
 			end
 			default: begin
