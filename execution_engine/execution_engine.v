@@ -888,11 +888,7 @@ module execution_engine(
                s_handle_type  = current_handle[31:24];
                s_handle_index_bits = current_handle[23:0];
 
-					/*
-					if((handle_type == 8'h01 && handle_index_bits > 8'd23) ||
-					  ((handle_type == 8'h01 || handle_type == 8'h02 || handle_type == 8'h03 || handle_type == 8'h81) && !phEnableNV && !shEnable && !ehEnable)) begin
-					end
-					*/
+					
 					if (!handle_error) begin
 						s_handle_index = handle_index + 1'b1;
 					end
@@ -1479,6 +1475,7 @@ module execution_engine(
 		endcase
 	end
 endmodule
+
 
 
 
