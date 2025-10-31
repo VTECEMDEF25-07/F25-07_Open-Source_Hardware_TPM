@@ -127,6 +127,8 @@ module execution_engine_fsm (
     
     // General Control Signals
     output reg [31:0] response_code
+	 output wire execution_startup_done,
+
 );
 
     // State Definitions 
@@ -169,6 +171,7 @@ module execution_engine_fsm (
     // Additional state tracking registers
     reg [3:0] nvm_operation_state;
     reg [3:0] command_phase;
+	 
     
     // SEQUENTIAL BLOCK 	
     always @(posedge clock or negedge rst_n) begin
@@ -179,6 +182,7 @@ module execution_engine_fsm (
         end
     end
 	 
+	
 	
     
     // COMBINATIONAL BLOCK
@@ -234,6 +238,7 @@ module execution_engine_fsm (
         execution_complete_signal = 1'b0;
         execution_error_signal = 1'b0;
         response_code = TPM_RC_SUCCESS;
+		  execution_startup_done = 1'b0;
         
         // FSM State Machine Logic
         case (state)
@@ -376,7 +381,7 @@ module execution_engine_fsm (
                                 next_state = S_VM;
                             end else if (nvm_delete_fail == 1'b1) begin
                                 next_state = EXECUTION_ERROR;
-                                response_code = TPM_RC_HANDLE;
+                                 = TPM_RC_HANDLE;
                             end else begin
                                 next_state = S_NVM;
                             end
@@ -617,6 +622,11 @@ module execution_engine_fsm (
             EXECUTION_DONE: begin
                 execution_complete_signal = 1'b1;
                 response_code = TPM_RC_SUCCESS;
+					 
+					 if (command_code == TPM_CC_Startup) begin
+                    execution_startup_done = 1'b1;
+                end
+					 
                 if (control_ack == 1'b1) begin
                     next_state = EXECUTION_IDLE;
                 end else begin
@@ -630,6 +640,11 @@ module execution_engine_fsm (
             EXECUTION_ERROR: begin
                 execution_error_signal = 1'b1;
                 // response_code set by the state that caused the error
+					 
+			       if (command_code == TPM_CC_Startup) begin
+                    execution_startup_done = 1'b1;
+                end
+					 
                 if (control_ack == 1'b1) begin
                     next_state = EXECUTION_IDLE;
                 end else begin
