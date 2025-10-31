@@ -39,6 +39,9 @@ module execution_engine(
 		param_decrypt_fail,
 		param_unmarshall_success,
 		param_unmarshall_fail,
+		//execution engine inputs
+		execution_startup_done,
+		execution_response_code,
 		// NV memory submodule inputs
 		nv_phEnableNV_in,
 		nv_shEnable_in,
@@ -144,6 +147,11 @@ module execution_engine(
 	input param_decrypt_fail;
 	input param_unmarshall_success;
 	input param_unmarshall_fail;
+	//startup error signal
+	input execution_startup_done;
+	//execution response code
+	input execution_response_code;
+	
 	// NV memory submodule inputs
 	input nv_phEnableNV_in;
 	input nv_shEnable_in;
@@ -456,6 +464,7 @@ module execution_engine(
 	reg [1:0]  s_decrypt_count;
 	reg [1:0]  s_encrypt_count;
 	
+	reg s_execution_startup_done;
 	reg s_header_valid_error;
 	reg s_mode_check_error;
 	reg s_auth_check_error;
@@ -472,8 +481,8 @@ module execution_engine(
 
 	wire x509sign;
 	wire sign;
-	wire encrypt;
-	wire decrypt;
+	wire object_encrypt;
+	wire object_decrypt;
 	wire restricted;
 	wire encryptedDuplication;
 	wire noDA;
@@ -589,8 +598,8 @@ module execution_engine(
 		// object_attributes bits[31:20] reserved
 		assign x509sign = object_attributes[19];
 		assign sign = object_attributes[18];
-		assign encrypt = object_attributes[18];
-		assign decrypt = object_attributes[17];
+		assign object_encrypt = object_attributes[18];
+		assign object_decrypt = object_attributes[17];
 		assign restricted = object_attributes[16];
 		// object_attributes bits[15:12] reserved
 		assign encryptedDuplication = object_attributes[11];
@@ -1009,10 +1018,6 @@ module execution_engine(
 							state = STATE_HANDLE_VALID;
 						end
 					end
-					else begin
-						state = STATE_HANDLE_VALID;
-					end
-					
 				end
 				
 				// ====================================================================
@@ -1450,6 +1455,8 @@ module execution_engine(
 			// ====================================================================
 			STATE_EXECUTE: begin
 				//start command processing
+				s_execution_startup_done = execution_startup_done;
+				response_code = execution_response_code;
 				command_start = 1'b1;
 			end
 			
@@ -1464,7 +1471,10 @@ module execution_engine(
 				// 4. Update audit log if command auditing enabled
 				// 5. Calculate final response_length
 				// 6. Format proper response structure
-				if(op_state != OPERATIONAL_STATE || !s_session_error || !s_handle_error || !s_header_valid_error || !s_mode_check_error ||!s_auth_check_error || !s_param_decrypt_error || !s_param_unmarshall_error)begin
+				
+				//Check whether the initiliazed signal can be sent based on if previous errors were set
+				if(commandIndex == TPM_CC_STARTUP || op_state != OPERATIONAL_STATE || !s_session_error || !s_handle_error || !s_header_valid_error || 
+						   !s_mode_check_error ||!s_auth_check_error || !s_param_decrypt_error || !s_param_unmarshall_error || !s_execution_startup_done)begin
 					initialized = 1'b1;
 				end
 				response_valid = 1'b1;
