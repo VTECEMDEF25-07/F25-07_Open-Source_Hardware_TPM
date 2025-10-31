@@ -412,7 +412,7 @@ module execution_engine(
 	reg [3:0]  state;
 	reg 		  session_present;
 	reg 		  response_valid;
-	reg [31:0] response_code;
+	reg [31:0] s_response_code;
 	reg [15:0] response_length;
 	reg [3:0]  current_state;
 	reg [2:0]  handle_index;
@@ -441,6 +441,7 @@ module execution_engine(
 	reg [1:0]  decrypt_count;
 	reg [1:0]  encrypt_count;
 	
+	reg [31:0] response_code;
 	reg [2:0]  s_handle_index;
 	reg [2:0]  s_handle_count;
 	reg [31:0] s_current_handle;
@@ -464,6 +465,8 @@ module execution_engine(
 	reg [1:0]  s_audit_count;
 	reg [1:0]  s_decrypt_count;
 	reg [1:0]  s_encrypt_count;
+	reg auth_check_error;
+	reg auth_response_code;
 	
 	reg s_execution_startup_done;
 	reg s_header_valid_error;
@@ -555,8 +558,10 @@ module execution_engine(
 				audit_count <= 2'd0;
 				decrypt_count <= 2'd0;
 				encrypt_count <= 2'd0;
+				response_code <= 32'd0;
 			end
 			else begin
+				response_code <= s_response_code;
 				current_state <= state;
 				handle_count <= s_handle_count;
 				handle_error <= s_handle_error;
@@ -1010,7 +1015,10 @@ module execution_engine(
 							state = STATE_HANDLE_VALID;
 						end
 					end
-					else if(op_state != OPERATIONAL_STATE) begin
+					else if(op_state == OPERATIONAL_STATE)begin
+							state = STATE_HANDLE_VALID;
+					end
+					else begin
 						// TPM not initialized - first command must be TPM2_Startup
 						if(commandIndex != TPM_CC_STARTUP) begin
 							state = STATE_POST_PROCESS;
@@ -1032,9 +1040,6 @@ module execution_engine(
 							  
 							if (handle_error) begin
 								state = STATE_POST_PROCESS;
-							end
-							else begin
-								state = STATE_HANDLE_VALID;
 							end
 						 end
 						 else begin
@@ -1200,10 +1205,10 @@ module execution_engine(
 	// ============================================================================
 	always@(*) begin
 		s_handle_error = handle_error;
-		s_auth_check_error
+		s_auth_check_error = 1'b0;
 		// Default output values
 		response_valid =   1'b0;
-		response_code =   32'b0;
+		s_response_code =   32'b0;
 		response_length = 16'h0;
 		command_start   = 1'b0;
 		session_present = 1'b0;
@@ -1215,7 +1220,7 @@ module execution_engine(
 			// ====================================================================
 			STATE_IDLE: begin
 					response_valid =   1'b0;
-					response_code =   32'b0;
+					s_response_code =   32'b0;
 					response_length = 16'h0;
 				if(command_ready) begin
 					session_present = (command_tag == TPM_ST_SESSIONS);
@@ -1231,15 +1236,15 @@ module execution_engine(
 				// IMPLEMENTED: Basic header validation
 				if(command_tag != TPM_ST_NO_SESSIONS && command_tag != TPM_ST_SESSIONS) begin
 					s_header_valid_error = 1'b1;
-					response_code = TPM_RC_BAD_TAG;
+					s_response_code = TPM_RC_BAD_TAG;
 				end
 				else if(command_size != command_length) begin
 					s_header_valid_error = 1'b1;
-					response_code = TPM_RC_COMMAND_SIZE;
+					s_response_code = TPM_RC_COMMAND_SIZE;
 				end
 				else if(!command_valid) begin
 					s_header_valid_error = 1'b1;
-					response_code = TPM_RC_COMMAND_CODE;
+					s_response_code = TPM_RC_COMMAND_CODE;
 				end
 
 			end
@@ -1253,17 +1258,14 @@ module execution_engine(
 					// In Failure mode, only TPM2_GetTestResult or TPM2_GetCapability allowed with no sessions
 					if(commandIndex != TPM_CC_GET_TEST_RESULT || commandIndex != TPM_CC_GET_CAPABILITY || command_tag != TPM_ST_NO_SESSIONS) begin
 						s_mode_check_error = 1'b1;
-						response_code = TPM_RC_FAILURE;
+						s_response_code = TPM_RC_FAILURE;
 					end
 				end
 				else if(op_state != OPERATIONAL_STATE) begin
 					// TPM not initialized - first command must be TPM2_Startup
 					if(commandIndex != TPM_CC_STARTUP) begin
 						s_mode_check_error = 1'b1;
-						response_code = TPM_RC_INITIALIZE;
-					end
-					else begin
-					
+						s_response_code = TPM_RC_INITIALIZE;
 					end
 				end
 			end
@@ -1275,13 +1277,13 @@ module execution_engine(
 				// Check that the TPM shall successfully unmarshal the number of handles required by the command and validate that the value of the handle is consistent with the command syntax
 				if(cHandles > handle_count) begin
 					s_handle_error = 1'b1;
-					response_code = TPM_RC_VALUE;
+					s_response_code = TPM_RC_VALUE;
 				end
 				// If the handle references a transient object, check that the handle references a loaded object
 				else if(handle_type == TPM_HT_TRANSIENT) begin
 					if(!loaded_object_present) begin
 						s_handle_error = 1'b1;
-						response_code = TPM_RC_REFERENCE_H0 + handle_index;
+						s_response_code = TPM_RC_REFERENCE_H0 + handle_index;
 					end
 				end
 				else if(handle_type == TPM_HT_PERSISTENT) begin
@@ -1290,11 +1292,11 @@ module execution_engine(
 						(entity_hierarchy == TPM_RH_ENDORSEMENT && !ehEnable) ||
 						 !nv_object_present) begin
 						s_handle_error = 1'b1;
-						response_code = TPM_RC_HANDLE;
+						s_response_code = TPM_RC_HANDLE;
 					end
 					else if(!ram_available) begin
 						s_handle_error = 1'b1;
-						response_code = TPM_RC_OBJECT_MEMORY;
+						s_response_code = TPM_RC_OBJECT_MEMORY;
 					end
 				end
 				else if(handle_type == TPM_HT_NV_INDEX) begin
@@ -1303,11 +1305,11 @@ module execution_engine(
 						(entity_hierarchy == TPM_RH_OWNER && !shEnable) || 
 						(entity_hierarchy == TPM_RH_ENDORSEMENT && !ehEnable)) begin
 						s_handle_error = 1'b1;
-						response_code = TPM_RC_HANDLE;
+						s_response_code = TPM_RC_HANDLE;
 					end
 					else if((nv_write && tpma_nv_writeLocked) || (nv_read && tpma_nv_readLocked)) begin
 						s_handle_error = 1'b1;
-						response_code = TPM_RC_NV_LOCKED;
+						s_response_code = TPM_RC_NV_LOCKED;
 					end
 				end
 				else if(handle_type == TPM_HT_HMAC_SESSION || 
@@ -1316,7 +1318,7 @@ module execution_engine(
 						  handle_type == TPM_HT_SAVED_SESSION) begin
 					if(!session_present) begin
 						s_handle_error = 1'b1;
-						response_code = TPM_RC_REFERENCE_H0 + handle_index;
+						s_response_code = TPM_RC_REFERENCE_H0 + handle_index;
 					end
 				end
 				else if(handle_type == TPM_HT_PERMANENT) begin
@@ -1324,13 +1326,13 @@ module execution_engine(
 						(current_handle == TPM_RH_OWNER && !shEnable) || 
 						(current_handle == TPM_RH_ENDORSEMENT && !ehEnable)) begin
 						s_handle_error = 1'b1;
-						response_code = TPM_RC_HIERARCHY;
+						s_response_code = TPM_RC_HIERARCHY;
 					end
 				end
 				// Check if the handle references a PCR, then the value is within the range of PCR supported by the TPM
 				else if(handle_type == TPM_HT_PCR && pcrSelect > PCR_SELECT_MAX) begin
 					s_handle_error = 1'b1;
-					response_code = TPM_RC_VALUE;
+					s_response_code = TPM_RC_VALUE;
 				end
 			end
 			// ====================================================================
@@ -1339,28 +1341,28 @@ module execution_engine(
 			STATE_SESSION_VALID: begin
 				if(command_tag == TPM_ST_NO_SESSIONS) begin
 					if(command_code_tag == TPM_ST_SESSIONS) begin
-						response_code = TPM_RC_AUTH_CONTEXT;
+						s_response_code = TPM_RC_AUTH_CONTEXT;
 					end
 				end
 				else if(command_tag == TPM_ST_SESSIONS) begin
 					if(command_code_tag == TPM_ST_NO_SESSIONS) begin
-						response_code = TPM_RC_AUTH_MISSING;
+						s_response_code = TPM_RC_AUTH_MISSING;
 					end
 					else if(command_code_tag == TPM_ST_SESSIONS) begin
 						if(session_handle_type != TPM_HT_HMAC_SESSION || session_handle_type != TPM_HT_POLICY_SESSION || session_handle_type != TPM_RS_PW) begin
-							response_code = TPM_RC_HANDLE;
+							s_response_code = TPM_RC_HANDLE;
 						end
 						else if(!session_loaded) begin
-							response_code = TPM_RC_REFERENCE_S0 + session_index;
+							s_response_code = TPM_RC_REFERENCE_S0 + session_index;
 						end
 						else if(max_session_amount == session_index && authorization_size > 32'd0) begin
-							response_code = TPM_RC_AUTHSIZE;
+							s_response_code = TPM_RC_AUTHSIZE;
 						end
 						else if(audit_count > 2'd1 || decrypt_count > 2'd1 || encrypt_count > 2'd1 || (!auth_session && !audit && !decrypt && !encrypt)) begin
-							response_code = TPM_RC_ATTRIBUTES;
+							s_response_code = TPM_RC_ATTRIBUTES;
 						end
 						else if(!auth_session && auth_necessary) begin
-							response_code = TPM_RC_AUTH_MISSING;
+							s_response_code = TPM_RC_AUTH_MISSING;
 						end
 					end
 				end
@@ -1374,7 +1376,7 @@ module execution_engine(
 				if(auth_done) begin
 					// Response code will come from authorization subsystem
 					response_valid = 1'b1;
-					response_code = auth_response_code;
+					s_response_code = auth_response_code;
 					
 					// If authorization successful tell other modules the authorization hierarchy, if it fails tell them the null hierarchy
 					if(auth_success) begin
@@ -1398,7 +1400,7 @@ module execution_engine(
 				end
 				else if(param_decrypt_fail == 1'b1)begin
 					//placeholder there are many specific response codes that would be determined by the submodule
-					response_code = TPM_RC_ATTRIBUTES;
+					s_response_code = TPM_RC_ATTRIBUTES;
 					s_param_decrypt_error = 1'b1;
 				end
 			end
@@ -1421,7 +1423,7 @@ module execution_engine(
 				end
 				else if(param_unmarshall_fail == 1'b1)begin
 					//placeholder there are many specific response codes that would be determined by the submodule
-					response_code = TPM_RC_ATTRIBUTES;
+					s_response_code = TPM_RC_ATTRIBUTES;
 					s_param_unmarshall_error = 1'b1;
 				end
 				// For now, always proceed to execution
@@ -1433,7 +1435,7 @@ module execution_engine(
 			STATE_EXECUTE: begin
 				//start command processing
 				s_execution_startup_done = execution_startup_done;
-				response_code = execution_response_code;
+				s_response_code = execution_response_code;
 				command_start = 1'b1;
 			end
 			
