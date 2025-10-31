@@ -32,8 +32,8 @@ module execution_engine(
 		authHandle,
 		pcrSelect,
 		// Authorization submodule inputs
+		auth_done,
 		auth_success,
-		auth_fail,
 		//inputs from param decrypt submodule
 		param_decrypt_success,
 		param_decrypt_fail,
@@ -141,8 +141,9 @@ module execution_engine(
 	input [7:0] pcrSelect;
 	
 	// Authorization inputs for authorization checks
+	input auth_done;			// 1-bit input signal from authorization submodule indicating completion of authorization checks
 	input auth_success;			// 1-bit input signal from authorization submodule indicating successful authorization
-	input auth_fail;			// 1-bit input signal from authorization submodule indicating failed authorization
+	
 	input param_decrypt_success;
 	input param_decrypt_fail;
 	input param_unmarshall_success;
@@ -1117,17 +1118,10 @@ module execution_engine(
 				// STAGE 6: AUTHORIZATION CHECKS - TPM 2.0 Part 3, Section 5.6
 				// ====================================================================
 				STATE_AUTH_CHECK: begin
-					// IMPLEMENTED: Basic physical presence check
-					if(authHandle == TPM_RH_PLATFORM && !physical_presence) begin
-						if(commandIndex == TPM_CC_CLEAR || commandIndex == TPM_CC_CLEAR_CONTROL || commandIndex == TPM_CC_HIERARCHY_CONTROL) begin
-							state = STATE_POST_PROCESS;
-						end
+					// Check for error from authorization subsystem
+					if(auth_check_error == 1'b1) begin
+						state = STATE_POST_PROCESS;
 					end
-					
-					////////////////////////////////////
-					//To be implemented with a submodule
-					/////////////////////////////////////
-					
 					else begin
 						state = STATE_PARAM_DECRYPT;
 					end
@@ -1206,6 +1200,7 @@ module execution_engine(
 	// ============================================================================
 	always@(*) begin
 		s_handle_error = handle_error;
+		s_auth_check_error
 		// Default output values
 		response_valid =   1'b0;
 		response_code =   32'b0;
@@ -1375,37 +1370,19 @@ module execution_engine(
 			// STAGE 6: AUTHORIZATION CHECKS - TPM 2.0 Part 3, Section 5.6
 			// ====================================================================
 			STATE_AUTH_CHECK: begin
-				// IMPLEMENTED: Basic physical presence check.
-				if(authHandle == TPM_RH_PLATFORM && !physical_presence) begin
-					if(commandIndex == TPM_CC_CLEAR || commandIndex == TPM_CC_CLEAR_CONTROL || commandIndex == TPM_CC_HIERARCHY_CONTROL) begin
-						s_auth_check_error = 1'b1;
-						response_code = TPM_RC_PP;
-					end
-				end
-				// TODO: IMPLEMENT COMPREHENSIVE AUTHORIZATION:
-				// 1. Check lockout mode and DA protection
-				// 2. For each entity requiring authorization:
-				//    - HMAC Authorization: Verify HMAC using authValue and session secret
-				//    - Policy Authorization: Validate policySession against authPolicy
-				//    - Password Authorization: Compare password with authValue
-				// 3. Check role authorization (ADMIN/DUP/USER) requirements
-				// 4. Validate policy session contents:
-				//    - policyDigest matches authPolicy
-				//    - cpHash matches command
-				//    - commandCode matches
-				//    - Session not expired
-				//    - PCR values match if specified
-				// 5. Return TPM_RC_AUTH_FAIL, TPM_RC_POLICY_FAIL, TPM_RC_LOCKOUT on failure
-
-				// Implementation of authorization checks neccessary for TPM2_HierarchyControl command
-				else if(commandIndex == TPM_CC_HIERARCHY_CONTROL) begin
-					if(auth_success == 1'b1) begin
+				// Check to see if authorization subsystem has finished before updating authorization dependent information
+				if(auth_done) begin
+					// Response code will come from authorization subsystem
+					response_valid = 1'b1;
+					response_code = auth_response_code;
+					
+					// If authorization successful tell other modules the authorization hierarchy, if it fails tell them the null hierarchy
+					if(auth_success) begin
 						authHierarchy = authHandle;
 					end
-					else if(auth_fail == 1'b1) begin
-						s_auth_check_error = 1'b1;
+					else begin
 						authHierarchy = TPM_RH_NULL;
-						response_code = TPM_RC_VALUE;
+						s_auth_check_error = 1'b1;
 					end
 				end
 			end
@@ -1485,6 +1462,7 @@ module execution_engine(
 		endcase
 	end
 endmodule
+
 
 
 
