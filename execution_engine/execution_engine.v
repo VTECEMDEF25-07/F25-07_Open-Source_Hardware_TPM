@@ -24,7 +24,6 @@ module execution_engine(
 		session1_valid,
 		session2_valid,
 		authorization_size,
-		command_code_tag,
 		session_loaded,
 		max_session_amount,
 		auth_session,
@@ -130,7 +129,6 @@ module execution_engine(
 	input session1_valid;
 	input session2_valid;
 	input [31:0] authorization_size;
-	input [15:0] command_code_tag;
 	input	session_loaded;
 	input [15:0] max_session_amount;
 	input auth_session;
@@ -440,6 +438,7 @@ module execution_engine(
 	reg [1:0]  audit_count;
 	reg [1:0]  decrypt_count;
 	reg [1:0]  encrypt_count;
+	reg [15:0] command_code_tag;
 	
 	reg [31:0] response_code;
 	reg [2:0]  s_handle_index;
@@ -969,6 +968,70 @@ module execution_engine(
 				end
 			end
 		end
+
+		// Session tag necessary for each command type:
+		always@(*) begin
+			if(commandIndex == TPM_CC_STARTUP ||
+				commandIndex == TPM_CC_CONTEXT_SAVE ||
+				commandIndex == TPM_CC_CONTEXT_LOAD ||
+				commandIndex == TPM_CC_FLUSH_CONTEXT) begin
+				command_code_tag = TPM_ST_NO_SESSIONS;
+			end
+			else
+				command_code_tag = TPM_ST_SESSIONS;
+				if(!audit) begin
+					if(commandIndex == TPM_CC_SHUTDOWN ||
+						commandIndex == TPM_CC_SELF_TEST ||
+						commandIndex == TPM_CC_INCREMENTAL_SELF_TEST ||
+						commandIndex == TPM_CC_GET_TEST_RESULT ||
+						commandIndex == TPM_CC_POLICY_RESTART ||
+						commandIndex == TPM_CC_ECC_PARAMETERS ||
+						commandIndex == TPM_CC_PCR_READ ||
+						commandIndex == TPM_CC_POLICY_OR ||
+						commandIndex == TPM_CC_POLICY_LOCALITY ||
+						commandIndex == TPM_CC_POLICY_COMMAND_CODE ||
+						commandIndex == TPM_CC_POLICY_PHYSICAL_PRESENCE ||
+						commandIndex == TPM_CC_POLICY_AUTH_VALUE ||
+						commandIndex == TPM_CC_POLICY_PASSWORD ||
+						commandIndex == TPM_CC_POLICY_NV_WRITTEN ||
+						commandIndex == TPM_CC_READ_CLOCK ||
+						commandIndex == TPM_CC_GET_CAPABILITY ||
+						commandIndex == TPM_CC_TEST_PARMS ||
+						commandIndex == TPM_CC_AC_GET_CAPABILITY) begin
+						command_code_tag = TPM_ST_NO_SESSIONS;
+					end
+					else if((commandIndex == TPM_CC_START_AUTH_SESSION ||
+								commandIndex == TPM_CC_LOAD_EXTERNAL ||
+								commandIndex == TPM_CC_MAKE_CREDENTIAL ||
+								commandIndex == TPM_CC_RSA_ENCRYPT ||
+								commandIndex == TPM_CC_HASH ||
+								commandIndex == TPM_CC_POLICY_SIGNED) && !encrypt && !decrypt) begin
+						command_code_tag = TPM_ST_NO_SESSIONS;
+					end
+					else if((commandIndex == TPM_CC_STIR_RANDOM ||
+								commandIndex == TPM_CC_HASH_SEQUENCE_START ||
+								commandIndex == TPM_CC_POLICY_TICKET ||
+								commandIndex == TPM_CC_POLICY_PCR ||
+								commandIndex == TPM_CC_POLICY_COUNTER_TIMER ||
+								commandIndex == TPM_CC_POLICY_CP_HASH ||
+								commandIndex == TPM_CC_POLICY_NAME_HASH ||
+								commandIndex == TPM_CC_POLICY_DUPLICATION_SELECT ||
+								commandIndex == TPM_CC_POLICY_AUTHORIZE ||
+								commandIndex == TPM_CC_POLICY_TEMPLATE) && !decrypt) begin
+						command_code_tag = TPM_ST_NO_SESSIONS;
+					end
+					else if((commandIndex == TPM_CC_READ_PUBLIC ||
+								commandIndex == TPM_CC_ECDH_KEY_GEN ||
+								commandIndex == TPM_CC_GET_RANDOM ||
+								commandIndex == TPM_CC_EC_EPHEMERAL ||
+								commandIndex == TPM_CC_VERIFY_SIGNATURE ||
+								commandIndex == TPM_CC_POLICY_GET_DIGEST ||
+								commandIndex == TPM_CC_NV_READ_PUBLIC) && !encrypt) begin
+						command_code_tag = TPM_ST_NO_SESSIONS;
+					end
+				end
+			end
+		end
 		
 		always@(*) begin
 			state = current_state;
@@ -1464,6 +1527,7 @@ module execution_engine(
 		endcase
 	end
 endmodule
+
 
 
 
