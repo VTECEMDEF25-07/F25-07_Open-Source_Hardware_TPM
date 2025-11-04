@@ -219,31 +219,36 @@ module execution_engine(
 	// ============================================================================
 	// RESPONSE CODES - TCG TPM 2.0 Specification Part 2, Section 6.6: Response Codes
 	// ============================================================================
- localparam TPM_RC_SUCCESS       = 32'h00000000,
-               TPM_RC_BAD_TAG       = 32'h0000001E,  // Bad command tag:contentReference[oaicite:22]{index=22}
-               TPM_RC_COMMAND_SIZE  = 32'h00000042,  // Command size mismatch
-               TPM_RC_COMMAND_CODE  = 32'h00000043,  // Unimplemented/unsupported command
-               TPM_RC_FAILURE       = 32'h00000101,  // TPM in failure mode
-               TPM_RC_INITIALIZE    = 32'h0000012B,  // TPM not initialized
-               TPM_RC_HANDLE        = 32'h0000000B,  // Handle error (e.g., invalid handle or hierarchy disabled)
-               TPM_RC_AUTH_MISSING  = 32'h00000124,  // Authorization required but not provided
-               TPM_RC_AUTH_FAIL     = 32'h00000125,  // Authorization failure
-               TPM_RC_PP            = 32'h00000028,  // Physical presence required (e.g., for TPM2_Clear)
-					TPM_RC_AUTHSIZE		= 32'h00000144,  // the value of authorizationSize is out of range or the number of octets in the Authorization Area is greater than required
-					TPM_RC_AUTH_CONTEXT  = 32'h00000145,  // use of an authorization session with a context command or another command that cannot have an authorization session.
-               // Additional response codes for handle-specific errors:
-               TPM_RC_REFERENCE_H0  = 32'h00000120,  // 1st handle references a transient object or session that is not loaded:contentReference[oaicite:23]{index=23}
-               TPM_RC_REFERENCE_H1  = 32'h00000121,  // 2nd handle not loaded
-               TPM_RC_REFERENCE_H2  = 32'h00000122,  // 3rd handle not loaded
-               // (TPM_RC_REFERENCE_H3, H4... would continue if more handles)
-					// Additional response codes for handle-specific errors:
-               TPM_RC_REFERENCE_S0  = 32'h00000918,  
-               // (TPM_RC_REFERENCE_H3, H4... would continue if more handles)
-               TPM_RC_NV_LOCKED     = 32'h000000E0,  // NV index is locked (NOTE: spec combines RC_NV_LOCKED with parameter/handle index coding, but using a generic code here)
-               TPM_RC_HIERARCHY     = 32'h0000010A,  // Hierarchy is disabled:contentReference[oaicite:24]{index=24}
-               TPM_RC_VALUE         = 32'h0000000F,  // Value is out of range or inconsistent (e.g., bad PCR index or handle type):contentReference[oaicite:25]{index=25}
-					TPM_RC_ATTRIBUTES		= 32'h00000082,  // inconsistent attributes
-					TPM_RC_OBJECT_MEMORY = 32'h00000902;  // out of memory for object contexts
+ localparam RC_VER1 = 12'h100,	// set for all format 0 response codes
+				RC_FMT1 = 12'h080,	// This bit is SET in all format 1 response codes 
+											// The codes in this group may have a value added to them to indicate the handle, session, or parameter to which they apply.
+				RC_WARN = 12'h900;	// set for warning response codes
+				
+ localparam TPM_RC_SUCCESS       = 12'h000,
+				TPM_RC_BAD_TAG       = 12'h01E,  // Bad command tag:contentReference[oaicite:22]{index=22}
+				TPM_RC_COMMAND_SIZE  = 12'h042,  // Command size mismatch
+				TPM_RC_COMMAND_CODE  = 12'h043,  // Unimplemented/unsupported command
+				TPM_RC_FAILURE       = RC_VER1 + 12'h001,  // TPM in failure mode
+				TPM_RC_INITIALIZE    = RC_VER1 + 12'h000,  // TPM not initialized
+				TPM_RC_HANDLE        = RC_FMT1 + 12'h00B,  // Handle error (e.g., invalid handle or hierarchy disabled)
+				TPM_RC_AUTH_MISSING  = RC_VER1 + 12'h024,  // Authorization required but not provided
+				TPM_RC_AUTH_FAIL     = RC_FMT1 + 12'h00E,  // Authorization failure
+				TPM_RC_PP            = RC_FMT1 + 12'h010,  // Physical presence required (e.g., for TPM2_Clear)
+				TPM_RC_AUTHSIZE		= RC_VER1 + 12'h044,  // the value of authorizationSize is out of range or the number of octets in the Authorization Area is greater than required
+				TPM_RC_AUTH_CONTEXT  = RC_VER1 + 12'h045,  // use of an authorization session with a context command or another command that cannot have an authorization session.
+				// Additional response codes for handle-specific errors:
+				TPM_RC_REFERENCE_H0  = RC_WARN + 12'h010,  // 1st handle references a transient object or session that is not loaded:contentReference[oaicite:23]{index=23}
+				TPM_RC_REFERENCE_H1  = RC_WARN + 12'h011,  // 2nd handle not loaded
+				TPM_RC_REFERENCE_H2  = RC_WARN + 12'h012,  // 3rd handle not loaded
+				// (TPM_RC_REFERENCE_H3, H4... would continue if more handles)
+				// Additional response codes for handle-specific errors:
+				TPM_RC_REFERENCE_S0  = RC_WARN + 12'h018,  
+				// (TPM_RC_REFERENCE_H3, H4... would continue if more handles)
+				TPM_RC_NV_LOCKED     = RC_VER1 + 12'h048,  // NV index is locked (NOTE: spec combines RC_NV_LOCKED with parameter/handle index coding, but using a generic code here)
+				TPM_RC_HIERARCHY     = RC_FMT1 + 12'h005,  // Hierarchy is disabled:contentReference[oaicite:24]{index=24}
+				TPM_RC_VALUE         = RC_VER1 + 12'h024,  // Value is out of range or inconsistent (e.g., bad PCR index or handle type):contentReference[oaicite:25]{index=25}
+				TPM_RC_ATTRIBUTES		= RC_FMT1 + 12'h002,  // inconsistent attributes
+				TPM_RC_OBJECT_MEMORY = RC_WARN + 12'h002;  // out of memory for object contexts
 
 	// ============================================================================
 	// HANDLE TYPES
@@ -559,7 +564,7 @@ module execution_engine(
 				response_code <= 32'd0;
 			end
 			else begin
-				response_code <= s_response_code;
+				response_code <= {20'h0, s_response_code};
 				current_state <= state;
 				handle_count <= s_handle_count;
 				handle_error <= s_handle_error;
@@ -1284,14 +1289,12 @@ module execution_engine(
 			// ====================================================================
 			STATE_IDLE: begin
 					response_valid =   1'b0;
-					s_response_code =   32'b0;
+					s_response_code =   12'b0;
 					response_length = 16'h0;
 				if(command_ready) begin
 					session_present = (command_tag == TPM_ST_SESSIONS);
 				end
 			end
-
-			// Emma's Notes: you said that it should be a command_ready signal which transitions to stage 2 not command_valid
 			
 			// ====================================================================
 			// STAGE 2: HEADER VALIDATION - TPM 2.0 Part 3, Section 5.2
@@ -1527,6 +1530,7 @@ module execution_engine(
 		endcase
 	end
 endmodule
+
 
 
 
