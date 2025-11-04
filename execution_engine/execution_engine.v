@@ -6,7 +6,6 @@ module execution_engine(
 		command_size,
 		command_code,
 		command_length,
-		physical_presence,
 		//command buffer inputs
 		handle_0,
 		handle_1,
@@ -33,6 +32,7 @@ module execution_engine(
 		// Authorization submodule inputs
 		auth_done,
 		auth_success,
+		auth_response_code,
 		//inputs from param decrypt submodule
 		param_decrypt_success,
 		param_decrypt_fail,
@@ -94,7 +94,6 @@ module execution_engine(
 	input	 [31:0] command_size;
 	input  [31:0] command_code;
 	input  [15:0] command_length;		// 16-bit input command length
-	input         physical_presence;	// 1-bit input physical presence signal results from testing functions basically a safety check somewhere else
 	
 	input [31:0] handle_0;
 	input [31:0] handle_1;
@@ -141,6 +140,7 @@ module execution_engine(
 	// Authorization inputs for authorization checks
 	input auth_done;			// 1-bit input signal from authorization submodule indicating completion of authorization checks
 	input auth_success;			// 1-bit input signal from authorization submodule indicating successful authorization
+	input [11:0] auth_response_code;
 	
 	input param_decrypt_success;
 	input param_decrypt_fail;
@@ -415,7 +415,7 @@ module execution_engine(
 	reg [3:0]  state;
 	reg 		  session_present;
 	reg 		  response_valid;
-	reg [31:0] s_response_code;
+	reg [11:0] s_response_code;
 	reg [15:0] response_length;
 	reg [3:0]  current_state;
 	reg [2:0]  handle_index;
@@ -469,14 +469,14 @@ module execution_engine(
 	reg [1:0]  s_decrypt_count;
 	reg [1:0]  s_encrypt_count;
 	reg auth_check_error;
-	reg auth_response_code;
 	
 	reg s_execution_startup_done;
-	reg s_header_valid_error;
-	reg s_mode_check_error;
+	reg header_valid_error, s_header_valid_error;
+	reg mode_check_error, s_mode_check_error;
 	reg s_auth_check_error;
-	reg s_param_decrypt_error;
-	reg s_param_unmarshall_error;
+	reg param_decrypt_error, s_param_decrypt_error;
+	reg param_unmarshall_error, s_param_unmarshall_error;
+	reg s_initialized;
 	
 	wire [15:0] commandIndex;
 	wire nv;
@@ -538,6 +538,10 @@ module execution_engine(
 		always@(posedge clock, negedge reset_n) begin
 			if(!reset_n) begin
 				current_state <= STATE_IDLE;
+				mode_check_error <= 1'b0;
+				header_valid_error <= 1'b0;
+				param_unmarshall_error <= 1'b0;
+				param_decrypt_error <= 1'b0;
 				handle_count <= 2'd0;
 				handle_error <= 1'b0;
 				current_handle <= 32'd0;
@@ -561,11 +565,17 @@ module execution_engine(
 				audit_count <= 2'd0;
 				decrypt_count <= 2'd0;
 				encrypt_count <= 2'd0;
+				auth_check_error <= 1'b0;
+				initialized <= 1'b0;
 				response_code <= 32'd0;
 			end
 			else begin
 				response_code <= {20'h0, s_response_code};
 				current_state <= state;
+				mode_check_error <= s_mode_check_error;
+				header_valid_error <= s_header_valid_error;
+				param_unmarshall_error <= s_param_unmarshall_error;
+				param_decrypt_error <= s_param_decrypt_error;
 				handle_count <= s_handle_count;
 				handle_error <= s_handle_error;
 				current_handle <= s_current_handle;
@@ -589,6 +599,8 @@ module execution_engine(
 				audit_count <= s_audit_count;
 				decrypt_count <= s_decrypt_count;
 				encrypt_count <= s_encrypt_count;
+				auth_check_error <= s_auth_check_error;
+				initialized <= s_initialized;
 			end
 		end
 		
@@ -922,7 +934,7 @@ module execution_engine(
 				commandIndex == TPM_CC_FLUSH_CONTEXT) begin
 				command_code_tag = TPM_ST_NO_SESSIONS;
 			end
-			else
+			else begin
 				command_code_tag = TPM_ST_SESSIONS;
 				if(!audit) begin
 					if(commandIndex == TPM_CC_SHUTDOWN ||
@@ -1273,11 +1285,19 @@ module execution_engine(
 	// COMBINATIONAL LOGIC BLOCK - ALL OUTPUTS AND NEXT STATE
 	// ============================================================================
 	always@(*) begin
+		// carry error values from previous state
+		s_mode_check_error = mode_check_error;
+		s_header_valid_error = header_valid_error;
 		s_handle_error = handle_error;
-		s_auth_check_error = 1'b0;
+		s_auth_check_error = auth_check_error;
+		s_param_unmarshall_error = param_unmarshall_error;
+		s_param_decrypt_error = param_decrypt_error;
+		s_execution_startup_done = execution_startup_done;
+		s_initialized = initialized;
+		
 		// Default output values
 		response_valid =   1'b0;
-		s_response_code = response_code;
+		s_response_code = response_code[11:0];
 		response_length = 16'h0;
 		command_start   = 1'b0;
 		session_present = 1'b0;
@@ -1520,7 +1540,7 @@ module execution_engine(
 				//Check whether the initiliazed signal can be sent based on if previous errors were set
 				if(commandIndex == TPM_CC_STARTUP || op_state != OPERATIONAL_STATE || !s_session_error || !s_handle_error || !s_header_valid_error || 
 						   !s_mode_check_error ||!s_auth_check_error || !s_param_decrypt_error || !s_param_unmarshall_error || !s_execution_startup_done)begin
-					initialized = 1'b1;
+					s_initialized = 1'b1;
 				end
 				response_valid = 1'b1;
 				response_length = 16'h0A; // Minimum response size for success
@@ -1530,6 +1550,7 @@ module execution_engine(
 		endcase
 	end
 endmodule
+
 
 
 
