@@ -2,7 +2,7 @@
 // Filename:     management_module.v
 // Author:       Emma Wallace
 // Date Created: 23/04/25
-// Version:      6
+// Version:      7
 // Description:  This module is designed to be a management module for a discrete 
 //					  Trusted Platform Module (TPM).
 //               The management module design is based off the Trusted Computing Group's
@@ -12,7 +12,7 @@
 //					  - clock - The system clock.
 //					  - reset_n - An asynchronous active-low reset signal
 //					  - keyStart_n - A synchronous active-low enable signal.
-//					  - tpm_cc - A 32-bit command code input signal to the TPM.
+//					  - tpm_cc - A 16-bit command code index input signal to the TPM.
 //					  - cmd_param - The 33 least significant bits of the command parameter input to the TPM.
 //					  - orderlyInput - From memory, the orderly state of the last system shutdown.
 //					  - initialized - From the execution engine, the state of system initialization.
@@ -50,6 +50,8 @@
 //									  logic block to fix logic because of board testing. Added
 //									  comments for clarity.
 // 01/10/2025  EKRW    6     Made changes to sequential block for Failure Mode State.
+// 11/4/2025   EKRW    7     Fixed command code and response code formats, plus added 
+//									  more comments
 ///////////////////////////////////////////////////////////////////////////////////////
 
 module management_module(		 
@@ -83,46 +85,51 @@ module management_module(
 	input 		  reset_n;				// Active-low input reset signal
 	input			  keyStart_n;			// Active-low input enable signal
 
-	input  [31:0] tpm_cc;				// 4-byte (16 bits) input command
+	input  [15:0] tpm_cc;				// 2-byte (16 bits) input command
 	input  [32:0] cmd_param;			// 33 least-significant bits of 4086-byte input command parameters
 		
-	input	 [15:0] orderlyInput;		// 4-byte (16 bits) input from memory of state of last shutdown state
+	input	 [15:0] orderlyInput;		// 2-byte (16 bits) input from memory of state of last shutdown state
 	input 		  initialized;			// 1-bit input intialized bit (from execution engine)
-	input	 [31:0] authHierarchy;		// 4-byte (16 bits) input verifying which hiearchy was authorized (from execution engine)
-	input  [31:0] executionEng_rc;	// 4-byte (16 bits) input of execution engine response code
-	input  [7:0]  locality;				// 8-bit input of current locality
-	input	 [15:0] testsRun;				// 4-byte (16 bits) input of amount of tests run by the self-test module, from the execution engine
-	input	 [15:0] testsPassed;			// 4-byte (16 bits) input of amount of tests that have run and passed by the self-test module, from the execution engine
-	input	 [15:0] untested;				// 4-byte (16 bits) input of amount of tests that still need to be run by the self-test module, from the execution engine
+	input	 [31:0] authHierarchy;		// 2-byte (16 bits) input verifying which hiearchy was authorized (from execution engine)
+	input  [31:0] executionEng_rc;	// 2-byte (16 bits) input of execution engine response code
+	input  [7:0]  locality;				// 4-bit input of current locality
+	input	 [15:0] testsRun;				// 2-byte (16 bits) input of amount of tests run by the self-test module, from the execution engine
+	input	 [15:0] testsPassed;			// 2-byte (16 bits) input of amount of tests that have run and passed by the self-test module, from the execution engine
+	input	 [15:0] untested;				// 2-byte (16 bits) input of amount of tests that still need to be run by the self-test module, from the execution engine
 	input 		  nv_phEnableNV;		// 1-bit input of state of phEnableNV switch, from Non-Volatile memory
 	input	        nv_shEnable;			// 1-bit input of state of shEnable switch, from Non-Volatile memory
 	input         nv_ehEnable;			// 1-bit input of state of ehEnable switch, from Non-Volatile memory
 		
 	output [2:0]  op_state;				// 3-bit output operational state to execution engine
 	output [2:0]  startup_type;		// 3-bit output startup type to execution engine
-	output [31:0] tpm_rc;				// 8-byte (32 bits) output response code to command response buffer
+	output [31:0] tpm_rc;				// 4-byte (32 bits) output response code to command response buffer
 	output 		  phEnable;				// 1-bit output platform hierarchy enable 
 	output 		  phEnableNV;			// 1-bit output platform hiearchy NV memory enable
 	output 		  shEnable;				// 1-bit output owner hierarchy enable
 	output 		  ehEnable;				// 1-bit output privacy administrator hierarchy enable
-	output [15:0] shutdownSave;		// 1-bit output shutdownType
+	output [15:0] shutdownSave;		// 2-byte (16 bits) output shutdownType
 	
 	
 	// Relevant Command Codes to Management module
-	localparam TPM_CC_HIERARCHYCONTROL    = 32'h00000121,
-				  TPM_CC_INCREMENTALSELFTEST = 32'h00000142,
-				  TPM_CC_SELFTEST 			  = 32'h00000143,
-				  TPM_CC_STARTUP 				  = 32'h00000144, 
-				  TPM_CC_SHUTDOWN 		     = 32'h00000145,
-				  TPM_CC_GETTESTRESULT 		  = 32'h0000017C,
-				  TPM_CC_GETCAPABILITY 		  = 32'h0000017A;
+	localparam TPM_CC_HIERARCHYCONTROL    = 16'h0121,
+				  TPM_CC_INCREMENTALSELFTEST = 16'h0142,
+				  TPM_CC_SELFTEST 			  = 16'h0143,
+				  TPM_CC_STARTUP 				  = 16'h0144, 
+				  TPM_CC_SHUTDOWN 		     = 16'h0145,
+				  TPM_CC_GETTESTRESULT 		  = 16'h017C,
+				  TPM_CC_GETCAPABILITY 		  = 16'h017A;
 				  
-	// Relevant Response Codes to managment module			  
-	localparam TPM_RC_FAILURE		= 32'h00000101,
-				  TPM_RC_SUCCESS 		= 32'h00000000,
-				  TPM_RC_INITIALIZE	= 32'h00000100,
-				  TPM_RC_VALUE			= 32'h00000084,
-				  TPM_RC_AUTH_TYPE   = 32'h00000124;
+	// Relevant Response Codes to managment module	
+	localparam RC_VER1 = 12'h100,	// set for all format 0 response codes
+				  RC_FMT1 = 12'h080,	// This bit is SET in all format 1 response codes 
+											// The codes in this group may have a value added to them to indicate the handle, session, or parameter to which they apply.
+				  RC_WARN = 12'h900;	// set for warning response codes
+				  
+	localparam TPM_RC_SUCCESS 		= 12'h000,
+				  TPM_RC_INITIALIZE	= RC_VER1 + 12'h000,		// TPM not initialized by TPM2_Startup or already initialized
+				  TPM_RC_FAILURE		= RC_VER1 + 12'h001,		// commands not being accepted because of a TPM failure
+				  TPM_RC_AUTH_TYPE   = RC_VER1 + 12'h024,		// authorization handle is not correct for command
+				  TPM_RC_VALUE			= RC_FMT1 + 12'h004;		// value is out of range or is not correct for the context
 	
 	// TPM_SU command parameters:
 	localparam TPM_SU_CLEAR = 4'h0000, TPM_SU_STATE = 4'h0001;
@@ -136,6 +143,13 @@ module management_module(
 				  TPM_RH_ENDORSEMENT = 32'h4000000B,
 				  TPM_RH_PLATFORM    = 32'h4000000C,
 				  TPM_RH_PLATFORM_NV = 32'h4000000D;
+				  
+	// Localities:
+	localparam TPM_LOC_ZERO  = 8'b00000001,
+				  TPM_LOC_ONE   = 8'b00000010,
+				  TPM_LOC_TWO   = 8'b00000100,
+				  TPM_LOC_THREE = 8'b00001000,
+				  TPM_LOC_FOUR  = 8'b00010000;
 	
 	// Startup types
 	localparam TPM_DONE = 3'd0, TPM_RESET = 3'd1, TPM_RESTART = 3'd2, TPM_RESUME = 3'd3, TPM_TYPE = 3'd4;
@@ -151,7 +165,8 @@ module management_module(
 		 
 	reg [2:0] startup_type, startup_state;
 	reg [2:0] op_state, state;
-	reg [31:0] tpm_rc_state, tpmi_rh_enables, tpmi_rh_hierarchy, tpm_rc;
+	reg [31:0] tpmi_rh_enables, tpmi_rh_hierarchy, tpm_rc;
+	reg [11:0] tpm_rc_state;
 	
 	wire startupEnable, operationEnable, shutdownEnable; //, selftestEnable
 	
@@ -172,7 +187,7 @@ module management_module(
 		else begin
 			if(!keyStart_n) begin
 				op_state     <= state;							// update operational state from combinational logic
-				tpm_rc		 <= tpm_rc_state;					// update response code from combinational logic
+				tpm_rc		 <= {20'h0,tpm_rc_state};					// update response code from combinational logic
 				startup_input <= cmd_param[15:0];			// store startup input from command parameters input
 				shutdown_input <= orderlyInput;				// reload orderly shutdown state from last shutdown
 				s_testsPassed <= testsPassed;
@@ -195,9 +210,6 @@ module management_module(
 					shEnable     <= sHierarchy;
 					ehEnable     <= eHierarchy;
 				end
-				//else if(selftestEnable) begin
-					
-				//end
 				else if(shutdownEnable) begin
 					shutdownSave <= cmd_param[15:0];
 				end
@@ -208,7 +220,6 @@ module management_module(
 	// Enable signals to activate input information collection at operational states
 	assign startupEnable = (op_state == STARTUP_STATE);
 	assign operationEnable = (op_state == OPERATIONAL_STATE);
-	//assign selftestEnable = (op_state == SELF_TEST_STATE);
 	assign shutdownEnable = (op_state == SHUTDOWN_STATE);
 	
 	
@@ -290,6 +301,8 @@ module management_module(
 				end
 			end
 			else begin
+				// If previous shutdown was disorderly and startup type input is equal to STARTUP_STATE, 
+				// send the TPM back to initialization state and CRT should force the input startup type to STARTUP_CLEAR.
 				if(startup_input == TPM_SU_STATE) begin
 					startup_state = TPM_TYPE;
 				end
@@ -316,6 +329,7 @@ module management_module(
 		
 		// cases where hierarchy enables change:
 		if(op_state == STARTUP_STATE && startup_type != TPM_DONE && startup_type != TPM_TYPE) begin
+			// In all startup cases platform hierarchy enable is set.
 			pHierarchy = 1'b1;
 			// TPM Resume uploads previous states of hierarchy enables from Non-Volatile memory
 			if(startup_type == TPM_RESUME) begin
@@ -331,7 +345,10 @@ module management_module(
 			end
 		end
 		else if(op_state == OPERATIONAL_STATE) begin
-			if(tpm_cc == TPM_CC_HIERARCHYCONTROL && locality == 8'b00000001) begin
+			// TPM2_HierarchyControl is the only command code that directly changes the hierarchy enable switches
+			// TPM must be in locality zero to do this command.
+			if(tpm_cc == TPM_CC_HIERARCHYCONTROL && locality == TPM_LOC_ZERO) begin
+				// Platform authorization will let you set or clear every hierarchy enable switch except its own, which it can only clear.
 				if(tpmi_rh_hierarchy == TPM_RH_PLATFORM) begin
 					if(tpmi_rh_enables == TPM_RH_ENDORSEMENT) begin
 						eHierarchy = tpmi_yes_no;
@@ -348,11 +365,13 @@ module management_module(
 						end
 					end
 				end
+				// Owner authorization will only give you the capability to clear the platform owner hierarchy enable switch
 				else if(tpmi_rh_hierarchy == TPM_RH_OWNER && tpmi_rh_enables == TPM_RH_OWNER) begin
 					if(tpmi_yes_no == TPMI_NO) begin
 						sHierarchy = tpmi_yes_no;
 					end
 				end
+				// Endorsement authorization will only give you the capability to clear the endorsement hierarchy enable switch
 				else if(tpmi_rh_hierarchy == TPM_RH_ENDORSEMENT && tpmi_rh_enables == TPM_RH_ENDORSEMENT) begin
 					if(tpmi_yes_no == TPMI_NO) begin
 						eHierarchy = tpmi_yes_no;
@@ -386,7 +405,7 @@ module management_module(
 			end
 		end
 		else if(op_state == OPERATIONAL_STATE) begin
-			if(tpm_cc == TPM_CC_HIERARCHYCONTROL && locality == 8'b00000001) begin
+			if(tpm_cc == TPM_CC_HIERARCHYCONTROL && locality == TPM_LOC_ZERO) begin
 				if(tpmi_rh_hierarchy == TPM_RH_PLATFORM) begin
 					if(tpmi_rh_enables == TPM_RH_ENDORSEMENT ||
 						tpmi_rh_enables == TPM_RH_OWNER || 
@@ -434,6 +453,7 @@ module management_module(
 			end
 		end
 		else if(op_state == FAILURE_MODE_STATE) begin
+			// In failure mode, only TPM2_GetTestResult and TPM2_CetCapability commands can be run, all other commands induce failure.
 			if(tpm_cc == TPM_CC_GETTESTRESULT) begin
 				tpm_rc_state = executionEng_rc;
 			end
@@ -448,6 +468,7 @@ module management_module(
 	end
 	
 endmodule
+
 
 
 
