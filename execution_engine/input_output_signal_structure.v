@@ -126,8 +126,8 @@ module execution_engine_fsm (
     input wire clock_tick_complete,
     
     // General Control Signals
-    output reg [31:0] response_code
-	 output wire execution_startup_done,
+    output reg [31:0] response_code,
+	 output reg execution_startup_done
 
 );
 
@@ -153,6 +153,7 @@ module execution_engine_fsm (
                       TPM_CC_HierarchyControl         = 32'h00000121,
                       TPM_CC_NV_UndefineSpace         = 32'h00000122,
                       TPM_CC_ChangeEPS                = 32'h00000124;
+	localparam [31:0] TPM_CC_Startup = 32'h00000144; // need to change this
     
     // TPM Response Codes
     localparam [31:0] TPM_RC_SUCCESS     = 32'h00000000,
@@ -381,7 +382,7 @@ module execution_engine_fsm (
                                 next_state = S_VM;
                             end else if (nvm_delete_fail == 1'b1) begin
                                 next_state = EXECUTION_ERROR;
-                                 = TPM_RC_HANDLE;
+                                 response_code = TPM_RC_HANDLE;
                             end else begin
                                 next_state = S_NVM;
                             end
