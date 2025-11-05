@@ -181,7 +181,7 @@ module execution_engine(
 	   
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////
 	output	 [15:0] orderlyInput;		// 2-byte (16 bits) input from memory of state of last shutdown state
-	output 	     initialized;			// 1-bit input intialized bit (from execution engine)
+	output reg	     initialized;			// 1-bit input intialized bit (from execution engine)
 	output	 [15:0] testsRun;				// 2-byte (16 bits) input of amount of tests run by the self-test module, from the execution engine
 	output	 [15:0] testsPassed;			// 2-byte (16 bits) input of amount of tests that have run and passed by the self-test module, from the execution engine
 	output	 [15:0] untested;				// 2-byte (16 bits) input of amount of tests that still need to be run by the self-test module, from the execution engine
@@ -208,7 +208,7 @@ module execution_engine(
 	// ============================================================================
 	// OPERATIONAL STATES FROM MANAGEMENT MODULE
 	// ============================================================================
-	localparam POWER_OFF_STATE      = 3'b000,
+	localparam POWER_OFF_STATE       = 3'b000,
 				  INITIALIZATION_STATE = 3'b001, 
 				  STARTUP_STATE        = 3'b010,
 				  OPERATIONAL_STATE    = 3'b011,
@@ -277,11 +277,11 @@ module execution_engine(
 	// ============================================================================
 	// PERMANENT HANDLES
 	// ============================================================================
-	localparam TPM_RH_PLATFORM  	= 32'h4000000C,	// Handle references the Platform Primary Seed (PPS), platformAuth, and platformPolicy
-				  TPM_RH_OWNER    	= 32'h40000001,	// Handle references the Storage Primary Seed (SPS), the ownerAuth, and the ownerPolicy
-			     TPM_RH_ENDORSEMENT = 32'h4000000B,	// Handle references the Endorsement Primary Seed (EPS), endorsementAuth, and endorsementPolicy
-			     TPM_RH_NULL		  	= 32'h40000007,	// A handle associated with the null hierarchy, and Empty Auth authValue, and an Empty Policy authPolicy
-				  TPM_RS_PW			 	= 32'h40000009;  // authorization value used to indicate a password authorization session
+	localparam TPM_RH_PLATFORM  = 32'h4000000C,	// Handle references the Platform Primary Seed (PPS), platformAuth, and platformPolicy
+			   TPM_RH_OWNER    	 = 32'h40000001,	// Handle references the Storage Primary Seed (SPS), the ownerAuth, and the ownerPolicy
+			   TPM_RH_ENDORSEMENT = 32'h4000000B,	// Handle references the Endorsement Primary Seed (EPS), endorsementAuth, and endorsementPolicy
+			   TPM_RH_NULL		  	 = 32'h40000007,	// A handle associated with the null hierarchy, and Empty Auth authValue, and an Empty Policy authPolicy
+				TPM_RS_PW			 = 32'h40000009;  // authorization value used to indicate a password authorization session
 	
 	// ============================================================================
 	// COMMAND TAGS AND CODES
@@ -414,45 +414,69 @@ module execution_engine(
 	// ============================================================================
 	reg [3:0]  state;
 	reg 		  session_present;
-	reg 		  response_valid, s_response_valid;
-	reg [31:0] response_code;
+	reg 		  response_valid;
 	reg [11:0] s_response_code;
-	reg [15:0] response_length, s_response_length;
+	reg [15:0] response_length;
 	reg [3:0]  current_state;
+	reg [2:0]  handle_index;
+	reg [2:0]  handle_count;
+	reg [31:0] current_handle;
+	reg [7:0]  handle_type;
+	reg [23:0] handle_index_bits;
+	reg 		  handle_error;
 	reg [15:0] command_code_tag;
+	reg [1:0]  session_index;     // Index of the session currently being processed (0–2)
+	reg [1:0]  session_count;     // Number of valid sessions encountered
+	reg        session_error;     // Flag to detect session validation failure
+	reg [7:0]  session_handle_type;
+	reg [31:0] current_session_handle;
+	reg [7:0]  current_session_attributes;
+	reg [15:0] current_session_hmac_size;
+	reg        current_session_valid;
 	reg [31:0] authHierarchy;
-
-	reg [2:0]  handle_index, s_handle_index;
-	reg [2:0]  handle_count, s_handle_count;
-	reg [31:0] current_handle, s_current_handle;
-	reg [7:0]  handle_type, s_handle_type;
-	reg [23:0] handle_index_bits, s_handle_index_bits;
-	reg [1:0]  session_index, s_session_index;     // Index of the session currently being processed (0–2)
-	reg [1:0]  session_count, s_session_count;     // Number of valid sessions encountered
-	reg        continueSession, s_continueSession;
-	reg [7:0]  session_handle_type, s_session_handle_type;
-	reg [31:0] current_session_handle, s_current_session_handle;
-	reg [7:0]  current_session_attributes, s_current_session_attributes;
-	reg [15:0] current_session_hmac_size, s_current_session_hmac_size;
-	reg        current_session_valid, s_current_session_valid;
-	reg		  audit, s_audit;
-	reg		  decrypt, s_decrypt;
-	reg		  encrypt, s_encrypt;
-	reg		  auditReset, s_auditReset;
-	reg		  auditExclusive, s_auditExclusive;
-	reg [1:0]  audit_count, s_audit_count;
-	reg [1:0]  decrypt_count, s_decrypt_count;
-	reg [1:0]  encrypt_count, s_encrypt_count;
+	reg		  audit;
+	reg		  decrypt;
+	reg		  encrypt;
+	reg		  auditReset;
+	reg		  auditExclusive;
+	reg		  continueSession;
+	reg [1:0]  audit_count;
+	reg [1:0]  decrypt_count;
+	reg [1:0]  encrypt_count;
 	
+	reg [31:0] response_code;
+	reg [2:0]  s_handle_index;
+	reg [2:0]  s_handle_count;
+	reg [31:0] s_current_handle;
+	reg [7:0]  s_handle_type;
+	reg [23:0] s_handle_index_bits;
+	reg 		  s_handle_error;
+	reg [1:0]  s_session_index;     // Index of the session currently being processed (0–2)
+	reg [1:0]  s_session_count;     // Number of valid sessions encountered
+	reg        s_session_error;     // Flag to detect session validation failure
+	reg [7:0]  s_session_handle_type;
+	reg [31:0] s_current_session_handle;
+	reg [7:0]  s_current_session_attributes;
+	reg [15:0] s_current_session_hmac_size;
+	reg        s_current_session_valid;
+	reg		  s_audit;
+	reg		  s_decrypt;
+	reg		  s_encrypt;
+	reg		  s_auditReset;
+	reg		  s_auditExclusive;
+	reg		  s_continueSession;
+	reg [1:0]  s_audit_count;
+	reg [1:0]  s_decrypt_count;
+	reg [1:0]  s_encrypt_count;
+	reg auth_check_error;
+	
+	reg s_execution_startup_done;
 	reg header_valid_error, s_header_valid_error;
 	reg mode_check_error, s_mode_check_error;
-	reg handle_error, s_handle_error;
-	reg session_error, s_session_error;
-	reg auth_check_error, s_auth_check_error;
+	reg s_auth_check_error;
 	reg param_decrypt_error, s_param_decrypt_error;
 	reg param_unmarshall_error, s_param_unmarshall_error;
-	reg s_execution_startup_done;
-	reg initialized, s_initialized;
+	reg s_initialized;
 	
 	wire [15:0] commandIndex;
 	wire nv;
@@ -544,10 +568,9 @@ module execution_engine(
 				auth_check_error <= 1'b0;
 				initialized <= 1'b0;
 				response_code <= 32'd0;
-				response_valid <= 1'b0;
-				response_length <= 16'd0;
 			end
 			else begin
+				response_code <= {20'h0, s_response_code};
 				current_state <= state;
 				mode_check_error <= s_mode_check_error;
 				header_valid_error <= s_header_valid_error;
@@ -578,9 +601,7 @@ module execution_engine(
 				encrypt_count <= s_encrypt_count;
 				auth_check_error <= s_auth_check_error;
 				initialized <= s_initialized;
-				response_code <= {20'h0, s_response_code};
-				response_valid <= s_response_valid;
-				response_length <= s_response_length;
+
 			end
 		end
 		
@@ -1030,7 +1051,6 @@ module execution_engine(
 		end
 		
 		always@(*) begin
-			state = current_state;
 			s_session_error = session_error;
 			s_audit_count = audit_count;
 			s_decrypt_count = decrypt_count;
@@ -1276,21 +1296,25 @@ module execution_engine(
 		s_initialized = initialized;
 		
 		// Default output values
-		s_response_valid = response_valid;
+		response_valid =   1'b0;
 		s_response_code = response_code[11:0];
-		s_response_length = response_length;
+		response_length = 16'h0;
 		command_start   = 1'b0;
 		session_present = 1'b0;
 		authHierarchy = 32'h00000000;
+		if(state == STATE_HANDLE_VALID) begin			// Check that the TPM shall successfully unmarshal the number of handles required by the command and validate that the value of the handle is consistent with the command syntax
 		
-		case(state)
+                            end
+
+		case(current_state)
 			// ====================================================================
 			// STAGE 1: IDLE - Wait for command
 			// ====================================================================
 			STATE_IDLE: begin
-					s_response_valid =   1'b0;
+					response_valid =   1'b0;
 					s_response_code =   12'b0;
-					s_response_length = 16'h0;
+					response_length = 16'h0;
+					s_handle_error = 1'b0;
 				if(command_ready) begin
 					session_present = (command_tag == TPM_ST_SESSIONS);
 				end
@@ -1298,7 +1322,7 @@ module execution_engine(
 			
 			// ====================================================================
 			// STAGE 2: HEADER VALIDATION - TPM 2.0 Part 3, Section 5.2
-			// ====================================================================
+			// ===================================================================
 			STATE_HEADER_VALID: begin
 				// IMPLEMENTED: Basic header validation
 				if(command_tag != TPM_ST_NO_SESSIONS && command_tag != TPM_ST_SESSIONS) begin
@@ -1341,35 +1365,34 @@ module execution_engine(
 			// STAGE 4: HANDLE VALIDATION - TPM 2.0 Part 3, Section 5.4
 			// ====================================================================
 			STATE_HANDLE_VALID: begin
-				// Check that the TPM shall successfully unmarshal the number of handles required by the command and validate that the value of the handle is consistent with the command syntax
-				if(cHandles > handle_count) begin
-					s_handle_error = 1'b1;
-					s_response_code = TPM_RC_VALUE;
-				end
-				// If the handle references a transient object, check that the handle references a loaded object
-				else if(handle_type == TPM_HT_TRANSIENT) begin
-					if(!loaded_object_present) begin
-						s_handle_error = 1'b1;
+    				if(cHandles > handle_count) begin
+	                		s_handle_error = 1'b1;
+		        		s_response_code = TPM_RC_VALUE;
+		        	end
+		    		// If the handle references a transient object, check that the handle references a loaded object
+		        	else if(handle_type == TPM_HT_TRANSIENT) begin
+		                	if(!loaded_object_present) begin
+					        s_handle_error = 1'b1;
 						s_response_code = TPM_RC_REFERENCE_H0 + handle_index;
 					end
 				end
 				else if(handle_type == TPM_HT_PERSISTENT) begin
 					if((entity_hierarchy == TPM_RH_PLATFORM && !phEnable) || 
-						(entity_hierarchy == TPM_RH_OWNER && !shEnable) || 
-						(entity_hierarchy == TPM_RH_ENDORSEMENT && !ehEnable) ||
-						 !nv_object_present) begin
+			                   (entity_hierarchy == TPM_RH_OWNER && !shEnable) || 
+				           (entity_hierarchy == TPM_RH_ENDORSEMENT && !ehEnable) ||
+			                   !nv_object_present) begin
 						s_handle_error = 1'b1;
-						s_response_code = TPM_RC_HANDLE;
+						s_response_code = TPM_RC_HANDLE;TPM
 					end
 					else if(!ram_available) begin
 						s_handle_error = 1'b1;
 						s_response_code = TPM_RC_OBJECT_MEMORY;
 					end
 				end
-				else if(handle_type == TPM_HT_NV_INDEX) begin
-					if(!nv_index_present ||
-					   (entity_hierarchy == TPM_RH_PLATFORM && !phEnable) || 
-						(entity_hierarchy == TPM_RH_OWNER && !shEnable) || 
+			else if(handle_type == TPM_HT_NV_INDEX) begin
+				if(!nv_index_present ||
+			           (entity_hierarchy == TPM_RH_PLATFORM && !phEnable) || 
+			            (entity_hierarchy == TPM_RH_OWNER && !shEnable) || 
 						(entity_hierarchy == TPM_RH_ENDORSEMENT && !ehEnable)) begin
 						s_handle_error = 1'b1;
 						s_response_code = TPM_RC_HANDLE;
@@ -1522,15 +1545,14 @@ module execution_engine(
 						   !s_mode_check_error ||!s_auth_check_error || !s_param_decrypt_error || !s_param_unmarshall_error || !s_execution_startup_done)begin
 					s_initialized = 1'b1;
 				end
-				s_response_valid = 1'b1;
-				s_response_length = 16'h0A; // Minimum response size for success
+				response_valid = 1'b1;
+				response_length = 16'h0A; // Minimum response size for success
 			end
 			default: begin
 			end
 		endcase
 	end
 endmodule
-
 
 
 
