@@ -433,7 +433,7 @@ module execution_engine(
 	reg [7:0]  current_session_attributes;
 	reg [15:0] current_session_hmac_size;
 	reg        current_session_valid;
-	reg [31:0] authHierarchy;
+	reg [31:0] authHierarchy, s_authHierarchy;
 	reg		  audit;
 	reg		  decrypt;
 	reg		  encrypt;
@@ -568,6 +568,7 @@ module execution_engine(
 				auth_check_error <= 1'b0;
 				initialized <= 1'b0;
 				response_code <= 32'd0;
+				authHierarchy <= 32'd0;
 			end
 			else begin
 				response_code <= {20'h0, s_response_code};
@@ -601,7 +602,7 @@ module execution_engine(
 				encrypt_count <= s_encrypt_count;
 				auth_check_error <= s_auth_check_error;
 				initialized <= s_initialized;
-
+				authHierarchy <= s_authHierarchy;
 			end
 		end
 		
@@ -1304,7 +1305,7 @@ module execution_engine(
 		response_length = 16'h0;
 		command_start   = 1'b0;
 		session_present = 1'b0;
-		authHierarchy = 32'h00000000;
+		s_authHierarchy = authHierarchy;
 		if(state == STATE_HANDLE_VALID) begin			// Check that the TPM shall successfully unmarshal the number of handles required by the command and validate that the value of the handle is consistent with the command syntax
 		
                             end
@@ -1318,6 +1319,7 @@ module execution_engine(
 					s_response_code =   12'b0;
 					response_length = 16'h0;
 					s_handle_error = 1'b0;
+					s_authHierarchy = 32'd0;
 				if(command_ready) begin
 					session_present = (command_tag == TPM_ST_SESSIONS);
 				end
@@ -1472,10 +1474,10 @@ module execution_engine(
 					
 					// If authorization successful tell other modules the authorization hierarchy, if it fails tell them the null hierarchy
 					if(auth_success) begin
-						authHierarchy = authHandle;
+						s_authHierarchy = authHandle;
 					end
 					else begin
-						authHierarchy = TPM_RH_NULL;
+						s_authHierarchy = TPM_RH_NULL;
 						s_auth_check_error = 1'b1;
 					end
 				end
@@ -1556,6 +1558,7 @@ module execution_engine(
 		endcase
 	end
 endmodule
+
 
 
 
