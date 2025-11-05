@@ -1143,6 +1143,9 @@ module execution_engine(
 					
 					state = STATE_SESSION_VALID;
 					
+					if (session_error)
+						state = STATE_POST_PROCESS;
+					
 					if((command_tag == TPM_ST_NO_SESSIONS && command_code_tag == TPM_ST_SESSIONS) || (command_tag == TPM_ST_SESSIONS && command_code_tag == TPM_ST_NO_SESSIONS)) begin
 						s_session_error = 1'b1;
 					end
@@ -1382,7 +1385,7 @@ module execution_engine(
 				           (entity_hierarchy == TPM_RH_ENDORSEMENT && !ehEnable) ||
 			                   !nv_object_present) begin
 						s_handle_error = 1'b1;
-						s_response_code = TPM_RC_HANDLE;TPM
+						s_response_code = TPM_RC_HANDLE; // TPM
 					end
 					else if(!ram_available) begin
 						s_handle_error = 1'b1;
