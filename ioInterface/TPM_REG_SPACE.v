@@ -38,7 +38,8 @@ module	TPM_REG_SPACE
 	input		[11:0]	c_rspInAddr,
 	output		[7:0]	c_cmdByteOut,
 	input		[7:0]	c_rspByteIn,
-	input			c_execDone
+	input			c_execDone,
+	output			c_execAck
 );
 	// TPM_ACCESS -- STATE MACHINE
 	reg		r_tpmRegValidSts [0:4];
@@ -288,7 +289,7 @@ module	TPM_REG_SPACE
 // Return to Idle on receipt of 1 written to TPM_STS.commandReady
 // Transfer to Completion once Execution is done
 			Execution:
-				sts_next_s = r_commandReady_i ? Idle : r_IDS_EXEC /*e_execDone*/ ? Completion : Execution;
+				sts_next_s = r_commandReady_i ? Idle : e_execDone ? Completion : Execution;
 // Return to Idle on receipt of 1 written to TPM_STS.commandReady
 			Completion:
 				sts_next_s = r_commandReady_i ? Idle : Completion;
@@ -365,7 +366,7 @@ module	TPM_REG_SPACE
 		end
 		else if (~t_req | f_fifoAccess)
 		begin
-			t_readByte <= f_fifoAccess & l_allowAccess ? f_fifoOut : 8'hFF;
+			t_readByte <= f_fifoAccess & l_allowAccess & r_dataAvail ? f_fifoOut : 8'hFF;
 			
 			case (sts_s) // TPM_STS
 			
@@ -627,9 +628,9 @@ module	TPM_REG_SPACE
 			if (t_dir)
 				t_readByte <=
 				{
-					r_stsValid,
+					1'b1, // r_stsValid,
 					r_commandReady_e,
-					r_tpmGo, // 1'h0, IDS debug ... tpmGo should be private
+					1'h0,
 					r_dataAvail,
 					r_Expect,
 					r_selfTestDone,
@@ -819,6 +820,8 @@ module	TPM_REG_SPACE
 		r_stsValidIntOccured |
 		r_dataAvailIntOccured
 	);
+	
+	assign	c_execAck = sts_s == Completion;
 	
 	FIFO_BUFFER io_fifo
 	(

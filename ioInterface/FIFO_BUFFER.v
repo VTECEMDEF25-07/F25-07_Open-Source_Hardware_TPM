@@ -85,7 +85,7 @@ module	FIFO_BUFFER
 		GetCmdSize:
 			next_state = bufAddr == 12'd6 ? CmdIn : GetCmdSize;
 		CmdIn:
-			next_state = ~f_fifoAccess & (bufAddr >= b_size[11:0]) ? TpmGo_wait : CmdIn;
+			next_state = ~f_fifoAccess & (bufAddr >= b_size[11:0]-12'd1) ? TpmGo_wait : CmdIn;
 		TpmGo_wait:
 			next_state = r_tpmGo ? CmdOut_start : TpmGo_wait;
 		CmdOut_start:

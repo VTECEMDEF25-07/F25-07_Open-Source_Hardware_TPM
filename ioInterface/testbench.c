@@ -248,6 +248,42 @@ L_GEN:
 	return retVal;
 }
 
+void tb_assertRC(unsigned char *rspData, unsigned expected, char *str)
+{
+	if (_connected)
+	{
+		if 	(rspData[6] != (expected & 0xFF000000) >> 24 ||
+			 rspData[7] != (expected & 0x00FF0000) >> 16 ||
+			 rspData[8] != (expected & 0x0000FF00) >>  8 ||
+			 rspData[9] != (expected & 0x000000FF) >>  0)
+		{
+			printf("\n%s\n\n", str);
+			_errors++;
+		}
+	}
+	
+	if (_generateVerilogTB)
+	{
+		fprintf(_vFP,
+			"\t\tif (\n"
+			"\t\t\treadData[6] != 8'd%u ||\n"
+			"\t\t\treadData[7] != 8'd%u ||\n"
+			"\t\t\treadData[8] != 8'd%u ||\n"
+			"\t\t\treadData[9] != 8'd%u\n"
+			"\t\t)\n"
+			"\t\tbegin\n"
+			"\t\t\t$error(\"%s\");\n"
+			"\t\t\terrors = errors + 1;\n"
+			"\t\tend\n"
+			"\n",
+			(expected & 0xFF000000) >> 24,
+			(expected & 0x00FF0000) >> 16,
+			(expected & 0x0000FF00) >> 8,
+			(expected & 0x000000FF) >> 0,
+			str);
+	}
+}
+
 void check_assert(void)
 {
 	if (!_connected)
@@ -326,10 +362,11 @@ void tpm_reset(void)
 
 void tb_comment(char *str)
 {
-	if (!_generateVerilogTB)
-		return;
+	if (_connected)
+		printf("\ntb_comment:\n\t%s\n\n", str);
 	
-	fprintf(_vFP, "\n\t\t// %s\n", str);
+	if (_generateVerilogTB)
+		fprintf(_vFP, "\n\t\t// %s\n", str);
 }
 
 void verilog_tpm_transaction(unsigned size, unsigned dir, unsigned locality, unsigned reg, unsigned char *header, unsigned char *data)
@@ -627,7 +664,11 @@ unsigned tpm_waitExec(unsigned locality, unsigned tries)
 		for(unsigned char data = 0; attempt < tries && !(data & r_dataAvail); attempt++)
 			tpm_transaction(READ, 1, locality, TPM_STS, &data);
 		if (attempt == tries)
+		{
 			printf("\nError: TPM Execution timeout.\n");
+			_generateVerilogTB = oldGen;
+			return 1;
+		}
 	}
 	
 	_generateVerilogTB = oldGen;
@@ -752,6 +793,241 @@ void print_tpm_transaction(unsigned dir, unsigned size, unsigned locality, unsig
 	}
 }
 
+#include "TpmTypes.h"
+
+void tpm_command(unsigned locality, unsigned commandCode, unsigned short tag, unsigned *handles, unsigned *sessionHandles, unsigned char *sessionAttributes, unsigned nParams, unsigned char *parameters)
+{
+	unsigned nHandles = 0;
+	unsigned nSessions = 0;
+	
+	switch (commandCode)
+	{
+		case TPM_CC_Startup:			nHandles = 0, nSessions = 0; break; // 3'd0, 3'd0
+		case TPM_CC_Shutdown:			nHandles = 0, nSessions = 0; break; // 3'd0, 3'd0
+		case TPM_CC_SelfTest:			nHandles = 0, nSessions = 0; break; // 3'd0, 3'd0
+		case TPM_CC_IncrementalSelfTest:	nHandles = 0, nSessions = 0; break; // 3'd0, 3'd0
+		case TPM_CC_GetTestResult:		nHandles = 0, nSessions = 0; break; // 3'd0, 3'd0
+		case TPM_CC_StirRandom:			nHandles = 0, nSessions = 0; break; // 3'd0, 3'd0
+		case TPM_CC_GetRandom:			nHandles = 0, nSessions = 0; break; // 3'd0, 3'd0
+		case TPM_CC_GetCapability:		nHandles = 0, nSessions = 0; break; // 3'd0, 3'd0
+		case TPM_CC_FirmwareRead:		nHandles = 0, nSessions = 0; break; // 3'd0, 3'd0
+		case TPM_CC_GetTime:			nHandles = 2, nSessions = 2; break; // 3'd2, 3'd2
+		case TPM_CC_ReadClock:			nHandles = 0, nSessions = 0; break; // 3'd0, 3'd0
+		case TPM_CC_ECC_Parameters:		nHandles = 0, nSessions = 0; break; // 3'd0, 3'd0
+		case TPM_CC_TestParms:			nHandles = 0, nSessions = 0; break; // 3'd0, 3'd0
+		case TPM_CC_Hash:			nHandles = 0, nSessions = 0; break; // 3'd0, 3'd0
+		case TPM_CC_PCR_Read:			nHandles = 0, nSessions = 0; break; // 3'd0, 3'd0
+		case TPM_CC_GetCommandAuditDigest:	nHandles = 2, nSessions = 2; break; // 3'd2, 3'd2
+		case TPM_CC_GetSessionAuditDigest:	nHandles = 3, nSessions = 2; break; // 3'd3, 3'd2
+		case TPM_CC_NV_ReadPublic:		nHandles = 1, nSessions = 0; break; // 3'd1, 3'd0
+		case TPM_CC_AC_GetCapability:		nHandles = 1, nSessions = 0; break; // 3'd1, 3'd0
+		
+		case TPM_CC_Clear:			nHandles = 1, nSessions = 1; break; // 3'd1, 3'd1
+		case TPM_CC_HierarchyControl:		nHandles = 1, nSessions = 1; break; // 3'd1, 3'd1
+		case TPM_CC_ClearControl:		nHandles = 1, nSessions = 1; break; // 3'd1, 3'd1
+		case TPM_CC_ClockSet:			nHandles = 1, nSessions = 1; break; // 3'd1, 3'd1
+		case TPM_CC_ClockRateAdjust:		nHandles = 1, nSessions = 1; break; // 3'd1, 3'd1
+		case TPM_CC_HierarchyChangeAuth:	nHandles = 1, nSessions = 1; break; // 3'd1, 3'd1
+		case TPM_CC_NV_DefineSpace:		nHandles = 1, nSessions = 1; break; // 3'd1, 3'd1
+		case TPM_CC_PCR_Allocate:		nHandles = 1, nSessions = 1; break; // 3'd1, 3'd1
+		case TPM_CC_PCR_SetAuthPolicy:		nHandles = 1, nSessions = 1; break; // 3'd1, 3'd1
+		case TPM_CC_PP_Commands:		nHandles = 1, nSessions = 1; break; // 3'd1, 3'd1
+		case TPM_CC_SetPrimaryPolicy:		nHandles = 1, nSessions = 1; break; // 3'd1, 3'd1
+		case TPM_CC_SetAlgorithmSet:		nHandles = 1, nSessions = 1; break; // 3'd1, 3'd1
+		case TPM_CC_SetCommandCodeAuditStatus:	nHandles = 1, nSessions = 1; break; // 3'd1, 3'd1
+		case TPM_CC_CreatePrimary:		nHandles = 1, nSessions = 1; break; // 3'd1, 3'd1
+		case TPM_CC_NV_GlobalWriteLock:		nHandles = 1, nSessions = 1; break; // 3'd1, 3'd1
+		case TPM_CC_NV_Increment:		nHandles = 2, nSessions = 1; break; // 3'd2, 3'd1
+		case TPM_CC_NV_SetBits:			nHandles = 2, nSessions = 1; break; // 3'd2, 3'd1
+		case TPM_CC_NV_Extend:			nHandles = 2, nSessions = 1; break; // 3'd2, 3'd1
+		case TPM_CC_NV_WriteLock:		nHandles = 2, nSessions = 1; break; // 3'd2, 3'd1
+		case TPM_CC_DictionaryAttackLockReset:	nHandles = 1, nSessions = 1; break; // 3'd1, 3'd1
+		case TPM_CC_DictionaryAttackParameters:	nHandles = 1, nSessions = 1; break; // 3'd1, 3'd1
+		case TPM_CC_NV_ChangeAuth:		nHandles = 1, nSessions = 1; break; // 3'd1, 3'd1
+		case TPM_CC_PCR_Event:			nHandles = 1, nSessions = 1; break; // 3'd1, 3'd1
+		case TPM_CC_PCR_Reset:			nHandles = 1, nSessions = 1; break; // 3'd1, 3'd1
+		case TPM_CC_PCR_Extend:			nHandles = 1, nSessions = 1; break; // 3'd1, 3'd1
+		case TPM_CC_PCR_SetAuthValue:		nHandles = 1, nSessions = 1; break; // 3'd1, 3'd1
+		case TPM_CC_SequenceComplete:		nHandles = 1, nSessions = 1; break; // 3'd1, 3'd1
+		case TPM_CC_EventSequenceComplete:	nHandles = 2, nSessions = 2; break; // 3'd2, 3'd2
+		case TPM_CC_FlushContext:		nHandles = 1, nSessions = 0; break; // 3'd1, 3'd0
+		case TPM_CC_Create:			nHandles = 1, nSessions = 1; break; // 3'd1, 3'd1
+		case TPM_CC_Load:			nHandles = 1, nSessions = 1; break; // 3'd1, 3'd1
+		case TPM_CC_Unseal:			nHandles = 1, nSessions = 1; break; // 3'd1, 3'd1
+		case TPM_CC_Sign:			nHandles = 1, nSessions = 1; break; // 3'd1, 3'd1
+		case TPM_CC_ReadPublic:			nHandles = 1, nSessions = 0; break; // 3'd1, 3'd0
+		case TPM_CC_ECDH_KeyGen: 		nHandles = 1, nSessions = 0; break; // 3'd1, 3'd0
+		case TPM_CC_RSA_Decrypt:		nHandles = 1, nSessions = 0; break; // 3'd1, 3'd0
+		case TPM_CC_ECDH_ZGen: 			nHandles = 1, nSessions = 1; break; // 3'd1, 3'd1
+		case TPM_CC_ContextSave:		nHandles = 1, nSessions = 0; break; // 3'd1, 3'd0
+		case TPM_CC_ContextLoad:		nHandles = 0, nSessions = 0; break; // 3'd0, 3'd0
+		case TPM_CC_NV_Read:			nHandles = 2, nSessions = 1; break; // 3'd2, 3'd1
+		case TPM_CC_NV_ReadLock:		nHandles = 2, nSessions = 1; break; // 3'd2, 3'd1
+		case TPM_CC_ObjectChangeAuth:		nHandles = 2, nSessions = 1; break; // 3'd2, 3'd1
+		case TPM_CC_PolicySecret:		nHandles = 2, nSessions = 1; break; // 3'd2, 3'd1
+		case TPM_CC_Rewrap:			nHandles = 2, nSessions = 1; break; // 3'd2, 3'd1
+		case TPM_CC_RSA_Encrypt:		nHandles = 1, nSessions = 0; break; // 3'd1, 3'd0
+		case TPM_CC_VerifySignature:		nHandles = 1, nSessions = 0; break; // 3'd1, 3'd0
+		case TPM_CC_Commit:			nHandles = 1, nSessions = 1; break; // 3'd1, 3'd1
+		case TPM_CC_EC_Ephemeral:		nHandles = 0, nSessions = 0; break; // 3'd0, 3'd0
+		case TPM_CC_CreateLoaded:		nHandles = 1, nSessions = 1; break; // 3'd1, 3'd1
+		case TPM_CC_AC_Send:			nHandles = 3, nSessions = 2; break; // 3'd3, 3'd2
+		
+		case TPM_CC_NV_UndefineSpace:		nHandles = 2, nSessions = 1; break; // 3'd2, 3'd1
+		case TPM_CC_NV_UndefineSpaceSpecial:	nHandles = 2, nSessions = 2; break; // 3'd2, 3'd2
+		case TPM_CC_EvictControl:		nHandles = 2, nSessions = 1; break; // 3'd2, 3'd1
+		case TPM_CC_ChangeEPS:			nHandles = 1, nSessions = 1; break; // 3'd1, 3'd1
+		case TPM_CC_ChangePPS:			nHandles = 1, nSessions = 1; break; // 3'd1, 3'd1
+		case TPM_CC_NV_Write:			nHandles = 2, nSessions = 1; break; // 3'd2, 3'd1
+		case TPM_CC_StartAuthSession:		nHandles = 2, nSessions = 0; break; // 3'd2, 3'd0
+		case TPM_CC_ActivateCredential:		nHandles = 2, nSessions = 2; break; // 3'd2, 3'd2
+		case TPM_CC_Certify:			nHandles = 2, nSessions = 2; break; // 3'd2, 3'd2
+		case TPM_CC_PolicyNV:			nHandles = 3, nSessions = 1; break; // 3'd3, 3'd1
+		case TPM_CC_CertifyCreation:		nHandles = 2, nSessions = 1; break; // 3'd2, 3'd1
+		case TPM_CC_Duplicate:			nHandles = 2, nSessions = 1; break; // 3'd2, 3'd1
+		case TPM_CC_Quote:			nHandles = 1, nSessions = 1; break; // 3'd1, 3'd1
+		case TPM_CC_HMAC:			nHandles = 1, nSessions = 1; break; // 3'd1, 3'd1
+		case TPM_CC_Import:			nHandles = 1, nSessions = 1; break; // 3'd1, 3'd1
+		case TPM_CC_PolicySigned:		nHandles = 2, nSessions = 0; break; // 3'd2, 3'd0
+		case TPM_CC_EncryptDecrypt: 		nHandles = 1, nSessions = 1; break; // 3'd1, 3'd1
+		case TPM_CC_MakeCredential: 		nHandles = 1, nSessions = 0; break; // 3'd1, 3'd0
+		case TPM_CC_PolicyAuthorize: 		nHandles = 1, nSessions = 0; break; // 3'd1, 3'd0
+		case TPM_CC_PolicyAuthValue: 		nHandles = 1, nSessions = 0; break; // 3'd1, 3'd0
+		case TPM_CC_PolicyCommandCode: 		nHandles = 1, nSessions = 0; break; // 3'd1, 3'd0
+		case TPM_CC_PolicyCounterTimer:		nHandles = 1, nSessions = 0; break; // 3'd1, 3'd0
+		case TPM_CC_PolicyCpHash:		nHandles = 1, nSessions = 0; break; // 3'd1, 3'd0
+		case TPM_CC_PolicyLocality:		nHandles = 1, nSessions = 0; break; // 3'd1, 3'd0
+		case TPM_CC_PolicyNameHash:		nHandles = 1, nSessions = 0; break; // 3'd1, 3'd0
+		case TPM_CC_PolicyOR:			nHandles = 1, nSessions = 0; break; // 3'd1, 3'd0
+		case TPM_CC_PolicyTicket:		nHandles = 1, nSessions = 0; break; // 3'd1, 3'd0
+		case TPM_CC_PolicyPCR:			nHandles = 1, nSessions = 0; break; // 3'd1, 3'd0
+		case TPM_CC_PolicyRestart:		nHandles = 1, nSessions = 0; break; // 3'd1, 3'd0
+		case TPM_CC_PolicyPhysicalPresence: 	nHandles = 1, nSessions = 0; break; // 3'd1, 3'd0
+		case TPM_CC_PolicyDuplicationSelect:	nHandles = 1, nSessions = 0; break; // 3'd1, 3'd0
+		case TPM_CC_PolicyGetDigest:		nHandles = 1, nSessions = 0; break; // 3'd1, 3'd0
+		case TPM_CC_PolicyPassword:		nHandles = 1, nSessions = 0; break; // 3'd1, 3'd0
+		case TPM_CC_ZGen_2Phase: 		nHandles = 1, nSessions = 1; break; // 3'd1, 3'd1
+		case TPM_CC_PolicyNvWritten:		nHandles = 1, nSessions = 0; break; // 3'd1, 3'd0
+		case TPM_CC_PolicyTemplate:		nHandles = 1, nSessions = 0; break; // 3'd1, 3'd0
+		case TPM_CC_PolicyAuthorizeNV:		nHandles = 3, nSessions = 1; break; // 3'd3, 3'd1
+		case TPM_CC_EncryptDecrypt2:		nHandles = 1, nSessions = 1; break; // 3'd1, 3'd1
+		case TPM_CC_Policy_AC_SendSelect:	nHandles = 1, nSessions = 0; break; // 3'd1, 3'd0
+		case TPM_CC_NV_Certify:			nHandles = 3, nSessions = 2; break; // 3'd3, 3'd2
+	
+		case TPM_CC_HashSequenceStart:		nHandles = 0, nSessions = 0; break; // 3'd0, 3'd0
+		case TPM_CC_HMAC_Start:			nHandles = 1, nSessions = 1; break; // 3'd1, 3'd1
+		case TPM_CC_SequenceUpdate:		nHandles = 1, nSessions = 1; break; // 3'd1, 3'd1
+		case TPM_CC_LoadExternal:		nHandles = 0, nSessions = 0; break; // 3'd0, 3'd0
+		
+		// default case represents an undefined command code
+		default:				nHandles = 0, nSessions = 0; break; // 3'd7, 3'd7
+	}
+	
+	if (tag == TPM_ST_NO_SESSIONS)
+		nSessions = 0;
+	
+	unsigned char nonce[] = "This is a placeholder nonce buffer.";
+	unsigned char hmac[] = "This is a placeholder HMAC buffer.";
+	
+	unsigned char nonceSize[2];
+	nonceSize[0] = ((unsigned short)sizeof(nonce) & 0xFF00) >> 8;
+	nonceSize[1] = ((unsigned short)sizeof(nonce) & 0x00FF) >> 0;
+	
+	unsigned char hmacSize[2];
+	hmacSize[0] = ((unsigned short)sizeof(hmac) & 0xFF00) >> 8;
+	hmacSize[1] = ((unsigned short)sizeof(hmac) & 0x00FF) >> 0;
+	
+	unsigned cmdSize = 10;
+	unsigned authSize = nSessions*(9 + sizeof(nonce) + sizeof(hmac));
+	
+	cmdSize += nParams;
+	cmdSize += nHandles*4;
+	if (nSessions)
+		cmdSize += 4 + authSize;
+	
+	
+	unsigned char cmdHeader[10];
+	cmdHeader[0] = (tag & 0xFF00) >> 8;
+	cmdHeader[1] = (tag & 0x00FF) >> 0;
+	cmdHeader[2] = (cmdSize & 0xFF000000) >> 24;
+	cmdHeader[3] = (cmdSize & 0x00FF0000) >> 16;
+	cmdHeader[4] = (cmdSize & 0x0000FF00) >> 8;
+	cmdHeader[5] = (cmdSize & 0x000000FF) >> 0;
+	cmdHeader[6] = (commandCode & 0xFF000000) >> 24;
+	cmdHeader[7] = (commandCode & 0x00FF0000) >> 16;
+	cmdHeader[8] = (commandCode & 0x0000FF00) >> 8;
+	cmdHeader[9] = (commandCode & 0x000000FF) >> 0;
+	
+	unsigned char word[4], buf[4096];
+	
+	// send command header
+	tpm_transaction(WRITE, sizeof(cmdHeader), locality, TPM_DATA_FIFO, cmdHeader);
+	
+	// send handles
+	for(unsigned i=0; i<nHandles; i++)
+	{
+		word[0] = (handles[i] & 0xFF000000) >> 24;
+		word[1] = (handles[i] & 0x00FF0000) >> 16;
+		word[2] = (handles[i] & 0x0000FF00) >> 8;
+		word[3] = (handles[i] & 0x000000FF) >> 0;
+		memcpy(buf, word, sizeof(word));
+	}
+	tpm_transaction(WRITE, nHandles*sizeof(word), locality, TPM_DATA_FIFO, buf);
+	
+	// send authorization area size
+	if (nSessions)
+	{
+		word[0] = (authSize & 0xFF000000) >> 24;
+		word[1] = (authSize & 0x00FF0000) >> 16;
+		word[2] = (authSize & 0x0000FF00) >> 8;
+		word[3] = (authSize & 0x000000FF) >> 0;
+		tpm_transaction(WRITE, sizeof(word), locality, TPM_DATA_FIFO, word);
+	}
+	
+	// send sessions (auths)
+	for(unsigned i=0; i<nSessions; i++)
+	{
+		unsigned index = 0;
+		
+		// send session handle
+		word[0] = (sessionHandles[i] & 0xFF000000) >> 24;
+		word[1] = (sessionHandles[i] & 0x00FF0000) >> 16;
+		word[2] = (sessionHandles[i] & 0x0000FF00) >> 8;
+		word[3] = (sessionHandles[i] & 0x000000FF) >> 0;
+		memcpy(buf, word, sizeof(word)); index += sizeof(word);
+		
+		// send nonce size
+		memcpy(buf+index, nonceSize, sizeof(nonceSize)); index += sizeof(nonceSize);
+		
+		// send nonce
+		memcpy(buf+index, nonce, sizeof(nonce)); index += sizeof(nonce);
+		
+		// send session attribute
+		memcpy(buf+index, sessionAttributes+i, 1); index += 1;
+		
+		// send hmac size
+		memcpy(buf+index, hmacSize, sizeof(hmacSize)); index += sizeof(hmacSize);
+		
+		// send hmac
+		memcpy(buf+index, hmac, sizeof(hmac)); index += sizeof(hmac);
+		
+		// bulk write of auth area
+		while(index>64)
+		{
+			tpm_transaction(WRITE, 64, locality, TPM_DATA_FIFO, buf);
+			index -= 64;
+		}
+		tpm_transaction(WRITE, index, locality, TPM_DATA_FIFO, buf);
+	}
+	
+	// send command parameters by byte (not extendable, will need replacement)
+	for(unsigned i=0; i<nParams; i++)
+	{
+		tpm_transaction(WRITE, 1, locality, TPM_DATA_FIFO, parameters+i);
+	}
+	
+}
+
 void test_debugRW(void);
 void test_localityChanging(void);
 void test_localityPermissions(void);
@@ -759,6 +1035,8 @@ void test_statusStateMachine(void);
 void test_localitySeizeCommandAbort(void);
 void test_sendReceiveCMD(void);
 void test_hierarchyControl(void);
+void test_hierarchyControl2(void);
+void test_ccQuote(void);
 
 int main(int argc, char **argv)
 {
@@ -774,7 +1052,9 @@ int main(int argc, char **argv)
 //	test_statusStateMachine();
 //	test_localitySeizeCommandAbort();
 //	test_sendReceiveCMD();
-	test_hierarchyControl();
+//	test_hierarchyControl();
+//	test_hierarchyControl2();
+	test_ccQuote();
 	
 	check_assert();
 	ftdi_close();
@@ -1239,7 +1519,7 @@ void test_localitySeizeCommandAbort(void)
 }
 
 #define TPM_CC_VEND 0x20000000
-#define TPM_ST_NO_SESSIONS 0x8001
+// #define TPM_ST_NO_SESSIONS 0x8001
 
 void test_sendReceiveCMD(void)
 {
@@ -1499,9 +1779,11 @@ void test_sendReceiveCMD(void)
 
 }
 
+// #define TPM_RC_SUCCESS 0x00000000
+// #define TPM_RC_VALUE 0x00000084
 #define TPM_CC_STARTUP 0x00000144
 #define TPM_CC_HIERARCHYCONTROL 0x00000121
-#define TPM_ST_SESSIONS 0x8002
+// #define TPM_ST_SESSIONS 0x8002 // TPM_ST_NO_SESSIONS 0x8001
 
 void test_hierarchyControl(void)
 {
@@ -1533,11 +1815,29 @@ void test_hierarchyControl(void)
 	
 	unsigned char data[64];
 	
+	tb_comment("Using Locality 0 as active locality.");
+	
 	data[0] = r_requestUse;
 	print_tpm_transaction(WRITE, 1, 0, TPM_ACCESS, data);
 	
 	data[0] = r_commandReady;
 	print_tpm_transaction(WRITE, 1, 0, TPM_STS, data);
+	
+	tb_comment("Send command TPM_CC_STARTUP : TPM_SU_CLEAR -> put TPM in operational state.");
+	
+	if (_connected)
+	{
+		printf("TPM Command:\n\t");
+		for(unsigned i=0; i<10; i++)
+		{
+			printf("%02x ", cmdHeader[i]);
+		}
+		for(unsigned i=0; i<2; i++)
+		{
+			printf("%02x ", cmdDataStartup[i]);
+		}
+		printf("\n");
+	}
 	
 	print_tpm_transaction(WRITE, 10, 0, TPM_DATA_FIFO, cmdHeader);
 	print_tpm_transaction(WRITE, 2, 0, TPM_DATA_FIFO, cmdDataStartup);
@@ -1545,26 +1845,66 @@ void test_hierarchyControl(void)
 	data[0] = r_tpmGo;
 	print_tpm_transaction(WRITE, 1, 0, TPM_STS, data);
 	
-	data[0] = r_dbgExecEngineDone;
-	print_tpm_transaction(WRITE, 1, 0, IDS_CTRL, data);
-	
 	tpm_waitExec(0, 15);
+	
+	print_tpm_transaction(READ, 10, 0, TPM_DATA_FIFO, data);
+	if (_connected)
+	{
+		printf("TPM Response:\n\t");
+		for(unsigned i=0; i<10; i++)
+		{
+			printf("%02x ", data[i]);
+		}
+		printf("\n");
+	}
 	
 	data[0] = r_commandReady;
 	print_tpm_transaction(WRITE, 1, 0, TPM_STS, data);
 	
-	tb_comment("Management Module should be in operational state.");
+	tb_comment("Management Module now in operational state.");
 	
 	unsigned char cmdData[] =
 	{
-		0x00, 0x00, 0x00, 0x00, // auth handle ??
-		0x40, 0x00, 0x00, 0x0C, // TPMI_RH_ENABLES
+		0x40, 0x00, 0x00, 0x0C, // TPMI_RH_ENABLES ; PLATFORM ENABLE
 		0x01 // TPMI_YES_NO
 	};
 	cmdDataSize_s = sizeof(cmdData);
 	
+	unsigned char handle[4];
+	handle[0] = 0xde;
+	handle[1] = 0xad;
+	handle[2] = 0xbe;
+	handle[3] = 0xef;
+	
+	unsigned char sessionHandle[4];
+	sessionHandle[0] = 0xBA;
+	sessionHandle[1] = 0xAD;
+	sessionHandle[2] = 0xF0;
+	sessionHandle[3] = 0x0D;
+	
+	unsigned char sessionAttribute[1];
+	sessionAttribute[0] = 0x2A;
+	
+	unsigned char nonce[] = "This is the nonce buffer.";
+	
+	unsigned char nonceSize[2];
+	nonceSize[0] = 0x00;
+	nonceSize[1] = sizeof(nonce);
+	
+	unsigned char hmac[] = "This is the hmac buffer.";
+	
+	unsigned char hmacSize[2];
+	hmacSize[0] = 0x00;
+	hmacSize[1] = sizeof(hmac);
+	
+	unsigned char authSize[4];
+	authSize[0] = 0x00;
+	authSize[1] = 0x00;
+	authSize[2] = 0x00;
+	authSize[3] = 0x09 + sizeof(hmac) + sizeof(nonce);
+	
 	cc = TPM_CC_HIERARCHYCONTROL;
-	cmdSize = 9+cmdDataSize_s;
+	cmdSize = 9+cmdDataSize_s + 4+9+4 + sizeof(hmac) + sizeof(nonce);
 	st = TPM_ST_SESSIONS;
 	
 	cmdHeader[0] = (st & 0xFF00) >> 8;
@@ -1580,21 +1920,45 @@ void test_hierarchyControl(void)
 	
 	print_tpm_transaction(WRITE, 1, 0, TPM_STS, data);
 	
+	if (cmdData[8])
+		tb_comment("Send command TPM_CC_HIERARCHYCONTROL : TPM_RH_PLATFORM, TPMI_YES");
+	else
+		tb_comment("Send command TPM_CC_HIERARCHYCONTROL : TPM_RH_PLATFORM, TPMI_NO");
+	
+	if (_connected)
+	{
+		printf("TPM Command:\n\t");
+		for(unsigned i=0; i<10; i++)
+		{
+			printf("%02x ", cmdHeader[i]);
+		}
+		for(unsigned i=0; i<9; i++)
+		{
+			printf("%02x ", cmdData[i]);
+		}
+		printf("\n");
+	}
+	
 	print_tpm_transaction(WRITE, 10, 0, TPM_DATA_FIFO, cmdHeader);
-	print_tpm_transaction(WRITE, 9, 0, TPM_DATA_FIFO, cmdData);
+	print_tpm_transaction(WRITE, 4, 0, TPM_DATA_FIFO, handle);
+	print_tpm_transaction(WRITE, 4, 0, TPM_DATA_FIFO, authSize);
+	print_tpm_transaction(WRITE, 4, 0, TPM_DATA_FIFO, sessionHandle);
+	print_tpm_transaction(WRITE, 2, 0, TPM_DATA_FIFO, nonceSize);
+	print_tpm_transaction(WRITE, sizeof(nonce), 0, TPM_DATA_FIFO, nonce);
+	print_tpm_transaction(WRITE, 1, 0, TPM_DATA_FIFO, sessionAttribute);
+	print_tpm_transaction(WRITE, 2, 0, TPM_DATA_FIFO, hmacSize);
+	print_tpm_transaction(WRITE, sizeof(hmac), 0, TPM_DATA_FIFO, hmac);
+	print_tpm_transaction(WRITE, sizeof(cmdData), 0, TPM_DATA_FIFO, cmdData);
 	
 	data[0] = r_tpmGo;
 	print_tpm_transaction(WRITE, 1, 0, TPM_STS, data);
-	
-	data[0] = r_dbgExecEngineDone;
-	print_tpm_transaction(WRITE, 1, 0, IDS_CTRL, data);
 	
 	tpm_waitExec(0, 15);
 	
 	print_tpm_transaction(READ, 10, 0, TPM_DATA_FIFO, data);
 	if (_connected)
 	{
-		printf("TPM Response:\n");
+		printf("TPM Response:\n\t");
 		for(unsigned i=0; i<10; i++)
 		{
 			printf("%02x ", data[i]);
@@ -1605,4 +1969,347 @@ void test_hierarchyControl(void)
 	data[0] = r_commandReady;
 	print_tpm_transaction(WRITE, 1, 0, TPM_STS, data);
 	
+	data[0] = r_activeLocality;
+	print_tpm_transaction(WRITE, 1, 0, TPM_ACCESS, data);
+	
+}
+
+void test_hierarchyControl2(void)
+{
+	tpm_reset();
+	tb_comment("test_hierarchyControl");
+	
+	unsigned char cmdHeader[10];
+	unsigned char cmdDataStartup[] =
+	{
+		0x00, 0x00 // TPM_SU_CLEAR
+	};
+	unsigned short cmdDataSize_s = sizeof(cmdDataStartup);
+	unsigned char cmdDataSize[2] = { (cmdDataSize_s & 0xFF00) >> 8, cmdDataSize_s & 0xFF };
+	
+	unsigned cc = TPM_CC_STARTUP;
+	unsigned cmdSize = 9+cmdDataSize_s;
+	unsigned short st = TPM_ST_NO_SESSIONS;
+	
+	cmdHeader[0] = (st & 0xFF00) >> 8;
+	cmdHeader[1] = (st & 0x00FF) >> 0;
+	cmdHeader[2] = (cmdSize & 0xFF000000) >> 24;
+	cmdHeader[3] = (cmdSize & 0x00FF0000) >> 16;
+	cmdHeader[4] = (cmdSize & 0x0000FF00) >> 8;
+	cmdHeader[5] = (cmdSize & 0x000000FF) >> 0;
+	cmdHeader[6] = (cc & 0xFF000000) >> 24;
+	cmdHeader[7] = (cc & 0x00FF0000) >> 16;
+	cmdHeader[8] = (cc & 0x0000FF00) >> 8;
+	cmdHeader[9] = (cc & 0x000000FF) >> 0;
+	
+	unsigned char data[64];
+	
+	tb_comment("Using Locality 0 as active locality.");
+	
+	data[0] = r_requestUse;
+	print_tpm_transaction(WRITE, 1, 0, TPM_ACCESS, data);
+	
+	data[0] = r_commandReady;
+	print_tpm_transaction(WRITE, 1, 0, TPM_STS, data);
+	
+	tb_comment("Send command TPM_CC_STARTUP : TPM_SU_CLEAR -> put TPM in operational state.");
+	
+	if (_connected)
+	{
+		printf("TPM Command:\n\t");
+		for(unsigned i=0; i<10; i++)
+		{
+			printf("%02x ", cmdHeader[i]);
+		}
+		for(unsigned i=0; i<2; i++)
+		{
+			printf("%02x ", cmdDataStartup[i]);
+		}
+		printf("\n");
+	}
+	
+	unsigned handles[3];
+	unsigned sessionHandles[3];
+	unsigned char sessionAttributes[3];
+	unsigned nParams;
+	unsigned char parameters[3];
+	
+	tpm_command(0, TPM_CC_Startup, TPM_ST_NO_SESSIONS,
+		handles, sessionHandles, sessionAttributes, sizeof(cmdDataStartup), cmdDataStartup);
+	
+//	print_tpm_transaction(WRITE, 10, 0, TPM_DATA_FIFO, cmdHeader);
+//	print_tpm_transaction(WRITE, 2, 0, TPM_DATA_FIFO, cmdDataStartup);
+	
+	data[0] = r_tpmGo;
+	print_tpm_transaction(WRITE, 1, 0, TPM_STS, data);
+	
+	tpm_waitExec(0, 15);
+	
+	print_tpm_transaction(READ, 10, 0, TPM_DATA_FIFO, data);
+	if (_connected)
+	{
+		printf("TPM Response:\n\t");
+		for(unsigned i=0; i<10; i++)
+		{
+			printf("%02x ", data[i]);
+		}
+		printf("\n");
+	}
+	
+	data[0] = r_commandReady;
+	print_tpm_transaction(WRITE, 1, 0, TPM_STS, data);
+	
+	tb_comment("Management Module now in operational state.");
+	
+	unsigned char cmdData[] =
+	{
+		0x40, 0x00, 0x00, 0x0C, // TPMI_RH_ENABLES ; PLATFORM ENABLE
+		0x01 // TPMI_YES_NO
+	};
+	cmdDataSize_s = sizeof(cmdData);
+	
+	unsigned char handle[4];
+	handle[0] = 0xde;
+	handle[1] = 0xad;
+	handle[2] = 0xbe;
+	handle[3] = 0xef;
+	
+	unsigned char sessionHandle[4];
+	sessionHandle[0] = 0xBA;
+	sessionHandle[1] = 0xAD;
+	sessionHandle[2] = 0xF0;
+	sessionHandle[3] = 0x0D;
+	
+	unsigned char sessionAttribute[1];
+	sessionAttribute[0] = 0x2A;
+	
+	unsigned char nonce[] = "This is the nonce buffer.";
+	
+	unsigned char nonceSize[2];
+	nonceSize[0] = 0x00;
+	nonceSize[1] = sizeof(nonce);
+	
+	unsigned char hmac[] = "This is the hmac buffer.";
+	
+	unsigned char hmacSize[2];
+	hmacSize[0] = 0x00;
+	hmacSize[1] = sizeof(hmac);
+	
+	unsigned char authSize[4];
+	authSize[0] = 0x00;
+	authSize[1] = 0x00;
+	authSize[2] = 0x00;
+	authSize[3] = 0x09 + sizeof(hmac) + sizeof(nonce);
+	
+	cc = TPM_CC_HIERARCHYCONTROL;
+	cmdSize = 9+cmdDataSize_s + 4+9+4 + sizeof(hmac) + sizeof(nonce);
+	st = TPM_ST_SESSIONS;
+	
+	cmdHeader[0] = (st & 0xFF00) >> 8;
+	cmdHeader[1] = (st & 0x00FF) >> 0;
+	cmdHeader[2] = (cmdSize & 0xFF000000) >> 24;
+	cmdHeader[3] = (cmdSize & 0x00FF0000) >> 16;
+	cmdHeader[4] = (cmdSize & 0x0000FF00) >> 8;
+	cmdHeader[5] = (cmdSize & 0x000000FF) >> 0;
+	cmdHeader[6] = (cc & 0xFF000000) >> 24;
+	cmdHeader[7] = (cc & 0x00FF0000) >> 16;
+	cmdHeader[8] = (cc & 0x0000FF00) >> 8;
+	cmdHeader[9] = (cc & 0x000000FF) >> 0;
+	
+	print_tpm_transaction(WRITE, 1, 0, TPM_STS, data);
+	
+	if (cmdData[8])
+		tb_comment("Send command TPM_CC_HIERARCHYCONTROL : TPM_RH_PLATFORM, TPMI_YES");
+	else
+		tb_comment("Send command TPM_CC_HIERARCHYCONTROL : TPM_RH_PLATFORM, TPMI_NO");
+	
+	if (_connected)
+	{
+		printf("TPM Command:\n\t");
+		for(unsigned i=0; i<10; i++)
+		{
+			printf("%02x ", cmdHeader[i]);
+		}
+		for(unsigned i=0; i<9; i++)
+		{
+			printf("%02x ", cmdData[i]);
+		}
+		printf("\n");
+	}
+	
+/*	print_tpm_transaction(WRITE, 10, 0, TPM_DATA_FIFO, cmdHeader);
+	print_tpm_transaction(WRITE, 4, 0, TPM_DATA_FIFO, handle);
+	print_tpm_transaction(WRITE, 4, 0, TPM_DATA_FIFO, authSize);
+	print_tpm_transaction(WRITE, 4, 0, TPM_DATA_FIFO, sessionHandle);
+	print_tpm_transaction(WRITE, 2, 0, TPM_DATA_FIFO, nonceSize);
+	print_tpm_transaction(WRITE, sizeof(nonce), 0, TPM_DATA_FIFO, nonce);
+	print_tpm_transaction(WRITE, 1, 0, TPM_DATA_FIFO, sessionAttribute);
+	print_tpm_transaction(WRITE, 2, 0, TPM_DATA_FIFO, hmacSize);
+	print_tpm_transaction(WRITE, sizeof(hmac), 0, TPM_DATA_FIFO, hmac);
+	print_tpm_transaction(WRITE, sizeof(cmdData), 0, TPM_DATA_FIFO, cmdData);
+*/
+	
+	handles[0] = TPM_RH_PLATFORM;
+	sessionHandles[0] = 0xbaadf00d;
+	sessionAttributes[0] = 0x2a;
+	
+	tpm_command(0, TPM_CC_HierarchyControl, TPM_ST_SESSIONS,
+		handles, sessionHandles, sessionAttributes, sizeof(cmdData), cmdData);
+		
+	data[0] = r_tpmGo;
+	print_tpm_transaction(WRITE, 1, 0, TPM_STS, data);
+	
+	tpm_waitExec(0, 15);
+	
+	print_tpm_transaction(READ, 10, 0, TPM_DATA_FIFO, data);
+	if (_connected)
+	{
+		printf("TPM Response:\n\t");
+		for(unsigned i=0; i<10; i++)
+		{
+			printf("%02x ", data[i]);
+		}
+		printf("\n");
+	}
+	
+	data[0] = r_commandReady;
+	print_tpm_transaction(WRITE, 1, 0, TPM_STS, data);
+	
+	data[0] = r_activeLocality;
+	print_tpm_transaction(WRITE, 1, 0, TPM_ACCESS, data);
+}
+
+void test_ccQuote(void)
+{
+	tpm_reset();
+	tb_comment("test_ccQuote");
+	
+	unsigned char data[64];
+	
+	unsigned char startupParam[] =
+	{
+		0x00, 0x00 // TPM_SU_CLEAR
+	};
+	
+	tb_comment("Using Locality 0 as active locality.");
+	
+	data[0] = r_requestUse;
+	print_tpm_transaction(WRITE, 1, 0, TPM_ACCESS, data);
+	
+	data[0] = r_commandReady;
+	print_tpm_transaction(WRITE, 1, 0, TPM_STS, data);
+	
+	tb_comment("Send command TPM_CC_STARTUP : TPM_SU_CLEAR -> put TPM in operational state.");
+		
+	unsigned handles[3];
+	unsigned sessionHandles[3];
+	unsigned char sessionAttributes[3];
+	unsigned nParams;
+	unsigned char parameters[3];
+	
+	tpm_command(0, TPM_CC_Startup, TPM_ST_NO_SESSIONS,
+		handles, sessionHandles, sessionAttributes, sizeof(startupParam), startupParam);
+	
+	data[0] = r_tpmGo;
+	print_tpm_transaction(WRITE, 1, 0, TPM_STS, data);
+	
+	if (tpm_waitExec(0, 15))
+	{
+		printf("Critical error: TPM timeout. Terminating test.\n");
+		_connected = 0;
+	}
+	
+	print_tpm_transaction(READ, 10, 0, TPM_DATA_FIFO, data);
+	if (_connected)
+	{
+		printf("TPM Response:\n\t");
+		for(unsigned i=0; i<10; i++)
+		{
+			printf("%02x ", data[i]);
+		}
+		printf("\n");
+	}
+
+	tb_assertRC(data, TPM_RC_SUCCESS,
+		"Response code error: Expected TPM_RC_SUCCESS.");
+	
+	data[0] = r_commandReady;
+	print_tpm_transaction(WRITE, 1, 0, TPM_STS, data);
+	
+	tb_comment("Management Module now in operational state.");
+	
+	unsigned char cmdData[] =
+	{
+		0x40, 0x00, 0x00, 0x0C, // TPMI_RH_ENABLES ; PLATFORM ENABLE
+		0x01 // TPMI_YES_NO
+	};
+	
+	print_tpm_transaction(WRITE, 1, 0, TPM_STS, data);
+	
+	handles[0] = TPM_RH_PLATFORM;
+	sessionHandles[0] = (TPM_HT_HMAC_SESSION << 24) | 0x123456;
+	sessionAttributes[0] = 0x2a;
+	
+	tpm_command(0, TPM_CC_Quote, TPM_ST_NO_SESSIONS,
+		handles, sessionHandles, sessionAttributes, sizeof(cmdData), cmdData);
+		
+	data[0] = r_tpmGo;
+	print_tpm_transaction(WRITE, 1, 0, TPM_STS, data);
+	
+	if (tpm_waitExec(0, 15))
+	{
+		printf("Critical error: TPM timeout. Terminating test.\n");
+		_connected = 0;
+	}
+	
+	print_tpm_transaction(READ, 10, 0, TPM_DATA_FIFO, data);
+	if (_connected)
+	{
+		printf("TPM Response:\n\t");
+		for(unsigned i=0; i<10; i++)
+		{
+			printf("%02x ", data[i]);
+		}
+		printf("\n");
+	}
+	
+	tb_assertRC(data, TPM_RC_AUTH_CONTEXT,
+		"Response code error: Expected TPM_RC_AUTH_CONTEXT.");
+	
+	data[0] = r_commandReady;
+	print_tpm_transaction(WRITE, 1, 0, TPM_STS, data);
+	
+	print_tpm_transaction(WRITE, 1, 0, TPM_STS, data);
+	
+	tpm_command(0, TPM_CC_Quote, TPM_ST_SESSIONS,
+		handles, sessionHandles, sessionAttributes, sizeof(cmdData), cmdData);
+		
+	data[0] = r_tpmGo;
+	print_tpm_transaction(WRITE, 1, 0, TPM_STS, data);
+	
+	if (tpm_waitExec(0, 15))
+	{
+		printf("Critical error: TPM timeout. Terminating test.\n");
+		_connected = 0;
+	}
+	
+	print_tpm_transaction(READ, 10, 0, TPM_DATA_FIFO, data);
+	if (_connected)
+	{
+		printf("TPM Response:\n\t");
+		for(unsigned i=0; i<10; i++)
+		{
+			printf("%02x ", data[i]);
+		}
+		printf("\n");
+	}
+	
+	tb_assertRC(data, TPM_RC_SUCCESS,
+		"Response code error: Expected TPM_RC_SUCCESS.");
+	
+	data[0] = r_commandReady;
+	print_tpm_transaction(WRITE, 1, 0, TPM_STS, data);
+	
+	data[0] = r_activeLocality;
+	print_tpm_transaction(WRITE, 1, 0, TPM_ACCESS, data);
 }
