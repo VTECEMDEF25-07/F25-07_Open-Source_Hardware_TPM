@@ -121,7 +121,15 @@ module tb_execution_engine_header_valid();
 	// ============================================================================
     localparam TPM_ST_NO_SESSIONS = 16'h8001,	// Command has no sessions
 	       TPM_ST_SESSIONS    = 16'h8002;	// Command has sessions
-	
+	// ============================================================================
+	// PERMANENT HANDLES
+	// ============================================================================
+    localparam TPM_RH_PLATFORM  = 32'h4000000C,	// Handle references the Platform Primary Seed (PPS), platformAuth, and platformPolicy
+	       TPM_RH_OWNER    	 = 32'h40000001,	// Handle references the Storage Primary Seed (SPS), the ownerAuth, and the ownerPolicy
+	       TPM_RH_ENDORSEMENT = 32'h4000000B,	// Handle references the Endorsement Primary Seed (EPS), endorsementAuth, and endorsementPolicy
+	       TPM_RH_NULL		  	 = 32'h40000007,	// A handle associated with the null hierarchy, and Empty Auth authValue, and an Empty Policy authPolicy
+               TPM_RS_PW			 = 32'h40000009;  // authorization value used to indicate a password authorization session
+
 // =========================
 // Clock / reset scaffolding
 // =========================
@@ -140,7 +148,6 @@ reg  [15:0] command_tag;
 reg  [31:0] command_size;
 reg  [31:0] command_code;
 reg  [15:0] command_length;
-reg         physical_presence;
 
 reg  [31:0] handle_0;
 reg  [31:0] handle_1;
@@ -176,7 +183,6 @@ reg         session1_valid;
 reg         session2_valid;
 
 reg  [31:0] authorization_size;
-reg  [15:0] command_code_tag;
 reg         session_loaded;
 reg  [15:0] max_session_amount;
 reg         auth_session;
@@ -217,7 +223,7 @@ reg  [15:0] st_untested;
 reg execution_startup_done;
 //execution response code
 reg execution_response_code;
-
+reg [11:0] auth_response_code;
 // ===================
 // DUT output signals
 // ===================
@@ -248,7 +254,6 @@ execution_engine DUT (
     .command_size         (command_size),
     .command_code         (command_code),
     .command_length       (command_length),
-    .physical_presence    (physical_presence),
     // command buffer inputs
     .handle_0             (handle_0),
     .handle_1             (handle_1),
@@ -266,7 +271,6 @@ execution_engine DUT (
     .session1_valid       (session1_valid),
     .session2_valid       (session2_valid),
     .authorization_size   (authorization_size),
-    .command_code_tag     (command_code_tag),
     .session_loaded       (session_loaded),
     .max_session_amount   (max_session_amount),
     .auth_session         (auth_session),
@@ -276,6 +280,7 @@ execution_engine DUT (
     // Authorization submodule inputs
     .auth_success         (auth_success),
     .auth_done            (auth_done),
+    .auth_response_code   (auth_response_code),
     // param decrypt / unmarshall submodule inputs
     .param_decrypt_success(param_decrypt_success),
     .param_decrypt_fail   (param_decrypt_fail),
@@ -337,13 +342,13 @@ initial begin
     clk                  = 1'b0;
     reset_n              = 1'b0;
 
+    auth_response_code = 12'd0;
     // Top-level command interface
     command_ready        = 1'b0;
     command_tag          = 16'd0;
     command_size         = 32'd0;
     command_code         = 32'd0;
     command_length       = 16'd0;
-    physical_presence    = 1'b0;
 
     // Command buffer inputs
     handle_0             = 32'd0;
@@ -351,7 +356,7 @@ initial begin
     handle_2             = 32'd0;
 
     // Management inputs
-    op_state             = 3'd0;
+    op_state             = 3'b011;
     startup_type         = 3'd0;
     phEnable             = 1'b0;
     phEnableNV           = 1'b0;
@@ -380,7 +385,6 @@ initial begin
     session2_valid       = 1'b0;
 
     authorization_size   = 32'd0;
-    command_code_tag     = 16'd0;
     session_loaded       = 1'b0;
     max_session_amount   = 16'd0;
     auth_session         = 1'b0;
@@ -421,10 +425,34 @@ initial begin
     //execution response code
     execution_response_code = 1'b0;
     /////////////////////////////////////////////////
-    /// Test for TPM_RC_BAD_TAG in STATE_HEADER_VALID
+    /// Test for TPM_RC_VALUE in STATE_HANDLE_VALID
     //////////////////////////////////////////////////
     // Hold reset low for a bit, then release (still no stimulus)
     #(3*CLK_PERIOD);
+    reset_n = 1'b1;
+    command_code = TPM_CC_STARTUP | 32'h0E000000; 
+    command_ready = 1'b1;
+    command_tag = TPM_ST_NO_SESSIONS;
+    command_size = 16'd2;
+    command_length = 16'd2;
+    /////////////////////////////////////////////////
+    /// Test for TPM_RC_REFRENCE_H0 in STATE_HANDLE_VALID
+    //////////////////////////////////////////////////
+    #80;
+    command_ready = 1'b0;
+    #40
+    command_code = TPM_CC_HIERARCHY_CONTROL; 
+    command_ready = 1'b1;
+    command_tag = TPM_ST_NO_SESSIONS;
+    command_size = 16'd2;
+    command_length = 16'd2;
+    handle_0 = 32'h80000000;
+    loaded_object_present = 1'b0;
+    /////////////////////////////////////////////////
+    /// Test for TPM_RC_BAD_TAG in STATE_HEADER_VALID
+    //////////////////////////////////////////////////
+    // Hold reset low for a bit, then release (still no stimulus)
+    #80;
     reset_n = 1'b1;
     command_code = TPM_CC_STARTUP;
     command_ready = 1'b1;
@@ -433,7 +461,7 @@ initial begin
     //////////////////////////////////////////////////////////////////
     /// Test for TPM_RC_COMMAND_SIZE in STATE_HEADER_VALID
     /////////////////////////////////////////////////////////////////
-    #40
+    #80;
     command_code = TPM_CC_STARTUP;
     command_tag = TPM_ST_NO_SESSIONS;
     command_size = 16'd1;
@@ -444,7 +472,7 @@ initial begin
     /////////////////////////////////////////////////////////////////
     //test for TPM_RC_COMMAND_CODE in STATE_HEADER_VALID
     ///////////////////////////////////////////////////////////////
-    #40;
+    #80;
     command_code = 32'hFFFFFFFF;
     command_tag = TPM_ST_NO_SESSIONS;
     command_size = 16'd2;

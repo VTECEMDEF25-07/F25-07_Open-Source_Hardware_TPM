@@ -254,7 +254,7 @@ module execution_engine(
 	// HANDLE TYPES
 	// ============================================================================
 	localparam TPM_HT_PCR 				= 8'h00,
-				  TPM_HT_NV_INDEX 		= 8'h01,
+				  TPM_HT_NV_INDEX       = 8'h01,
 				  TPM_HT_HMAC_SESSION 	= 8'h02,
 				  TPM_HT_LOADED_SESSION = 8'h02,
 				  TPM_HT_POLICY_SESSION = 8'h03,
@@ -420,20 +420,20 @@ module execution_engine(
 	reg [3:0]  current_state;
 	reg [2:0]  handle_index;
 	reg [2:0]  handle_count;
-	reg [31:0] current_handle;
-	reg [7:0]  handle_type;
-	reg [23:0] handle_index_bits;
+	wire [31:0] current_handle;
+	wire [7:0]  handle_type;
+	wire [23:0] handle_index_bits;
 	reg 		  handle_error;
 	reg [15:0] command_code_tag;
-	reg [1:0]  session_index;     // Index of the session currently being processed (0–2)
+	reg [1:0]  session_index;     // Index of the session currently being processed 
 	reg [1:0]  session_count;     // Number of valid sessions encountered
 	reg        session_error;     // Flag to detect session validation failure
-	reg [7:0]  session_handle_type;
-	reg [31:0] current_session_handle;
-	reg [7:0]  current_session_attributes;
-	reg [15:0] current_session_hmac_size;
-	reg        current_session_valid;
-	reg [31:0] authHierarchy, s_authHierarchy;
+	wire [7:0]  session_handle_type;
+	wire [31:0] current_session_handle;
+	wire [7:0]  current_session_attributes;
+	wire [15:0] current_session_hmac_size;
+	wire        current_session_valid;
+	reg [31:0] authHierarchy;
 	reg		  audit;
 	reg		  decrypt;
 	reg		  encrypt;
@@ -530,8 +530,34 @@ module execution_engine(
 	wire tpma_nv_ppWrite;
 	
 	wire command_valid;
-	
-	
+
+	assign current_handle =
+   		(handle_index == 3'b000) ? handle_0 :
+                (handle_index == 3'b001) ? handle_1 :
+                                           handle_2;
+
+	assign handle_type       = current_handle[31:24];
+	assign handle_index_bits = current_handle[23:0];
+	assign current_session_handle =
+    (session_index == 2'd0) ? session0_handle :
+    (session_index == 2'd1) ? session1_handle :
+                              session2_handle;
+
+	assign current_session_attributes =
+    (session_index == 2'd0) ? session0_attributes :
+    (session_index == 2'd1) ? session1_attributes :
+                              session2_attributes;
+
+	assign current_session_hmac_size =
+    (session_index == 2'd0) ? session0_hmac_size :
+    (session_index == 2'd1) ? session1_hmac_size :
+                              session2_hmac_size;
+
+	assign current_session_valid =
+		(session_index == 2'd0) ? session0_valid :
+		(session_index == 2'd1) ? session1_valid :
+											session2_valid;
+	assign session_handle_type = current_session_handle[31:24];
 	// ============================================================================
 	// SEQUENTIAL LOGIC BLOCK - STATE TRANSITIONS ONLY
 	// ============================================================================
@@ -544,9 +570,6 @@ module execution_engine(
 				param_decrypt_error <= 1'b0;
 				handle_count <= 2'd0;
 				handle_error <= 1'b0;
-				current_handle <= 32'd0;
-				handle_type <= 8'd0;
-				handle_index_bits <= 8'd0;
 				handle_index <= 3'd0;
 				session_index <= 2'd0;
 				session_count <= 2'd0;
@@ -556,11 +579,7 @@ module execution_engine(
 				auditReset <= 1'b0;
 				auditExclusive <= 1'b0;
 				continueSession <= 1'b0;
-				session_handle_type <= 8'd0;
-				current_session_handle <= 32'd0;
-				current_session_attributes <= 8'd0;
-				current_session_hmac_size <= 8'd0;
-				current_session_valid <= 1'b0;
+
 				session_error <= 1'b0;
 				audit_count <= 2'd0;
 				decrypt_count <= 2'd0;
@@ -568,7 +587,6 @@ module execution_engine(
 				auth_check_error <= 1'b0;
 				initialized <= 1'b0;
 				response_code <= 32'd0;
-				authHierarchy <= 32'd0;
 			end
 			else begin
 				response_code <= {20'h0, s_response_code};
@@ -579,9 +597,9 @@ module execution_engine(
 				param_decrypt_error <= s_param_decrypt_error;
 				handle_count <= s_handle_count;
 				handle_error <= s_handle_error;
-				current_handle <= s_current_handle;
-				handle_type <= s_handle_type;
-				handle_index_bits <= s_handle_index_bits;
+
+				
+
 				handle_index <= s_handle_index;
 				session_index <= s_session_index;
 				session_count <= s_session_count;
@@ -591,18 +609,16 @@ module execution_engine(
 				auditReset <= s_auditReset;
 				auditExclusive <= s_auditExclusive;
 				continueSession <= s_continueSession;
-				session_handle_type <= s_session_handle_type;
-				current_session_handle <= s_current_session_handle;
-				current_session_attributes <= s_current_session_attributes;
-				current_session_hmac_size <= s_current_session_hmac_size;
-				current_session_valid <= s_current_session_valid;
+
+
+				
 				session_error <= s_session_error;
 				audit_count <= s_audit_count;
 				decrypt_count <= s_decrypt_count;
 				encrypt_count <= s_encrypt_count;
 				auth_check_error <= s_auth_check_error;
 				initialized <= s_initialized;
-				authHierarchy <= s_authHierarchy;
+
 			end
 		end
 		
@@ -662,7 +678,6 @@ module execution_engine(
 		assign tpma_nv_authWrite = nv_index_attributes[2];
 		assign tpma_nv_ownerWrite = nv_index_attributes[1];
 		assign tpma_nv_ppWrite = nv_index_attributes[0];
-		
 	assign nv_write = (commandIndex == TPM_CC_NV_DEFINE_SPACE ||
 								 commandIndex == TPM_CC_NV_WRITE ||
 								 commandIndex == TPM_CC_NV_INCREMENT ||
@@ -913,13 +928,6 @@ module execution_engine(
 			if(current_state == STATE_HANDLE_VALID) begin
 				if (handle_index < handle_count) begin
 					// Extract current handle
-               s_current_handle = (handle_index == 3'b000) ? handle_0 :
-                                (handle_index == 3'b001) ? handle_1 :
-                                                           handle_2;
-
-               s_handle_type  = current_handle[31:24];
-               s_handle_index_bits = current_handle[23:0];
-
 					
 					if (!handle_error) begin
 						s_handle_index = handle_index + 1'b1;
@@ -1050,7 +1058,6 @@ module execution_engine(
 				end
 			end
 		end
-		
 		always@(*) begin
 			s_session_error = session_error;
 			s_audit_count = audit_count;
@@ -1113,18 +1120,22 @@ module execution_engine(
 				// STAGE 4: HANDLE VALIDATION - TPM 2.0 Part 3, Section 5.4
 				// ====================================================================
 				STATE_HANDLE_VALID: begin
-						 if (handle_index < handle_count) begin
+					 	if (handle_error) begin
+							state = STATE_POST_PROCESS;
+						end
+						else if (handle_index < handle_count) begin
 							  //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 							  //cant currently check if handles are loaded in the appropriate spots add submodule
 							  /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 							  
 						 end
 						 else begin
-						 	if (handle_error) begin
+					 		if (handle_error) begin
+
 								state = STATE_POST_PROCESS;
 							end
 							else begin
-							state = STATE_SESSION_VALID;
+						 	state = STATE_SESSION_VALID;
 							end
 						 end
 					end
@@ -1305,10 +1316,70 @@ module execution_engine(
 		response_length = 16'h0;
 		command_start   = 1'b0;
 		session_present = 1'b0;
-		s_authHierarchy = authHierarchy;
+		authHierarchy = 32'h00000000;
+
 		if(state == STATE_HANDLE_VALID) begin			// Check that the TPM shall successfully unmarshal the number of handles required by the command and validate that the value of the handle is consistent with the command syntax
-		
+			if(cHandles > handle_count) begin
+	                		s_handle_error = 1'b1;
+		        		s_response_code = TPM_RC_VALUE;
+		        	end
+		    		// If the handle references a transient object, check that the handle references a loaded object
+		        	else if(handle_type == TPM_HT_TRANSIENT) begin
+		                	if(!loaded_object_present) begin
+					        s_handle_error = 1'b1;
+						s_response_code = TPM_RC_REFERENCE_H0 + handle_index;
+					end
+				end
+				else if(handle_type == TPM_HT_PERSISTENT) begin
+					if((entity_hierarchy == TPM_RH_PLATFORM && !phEnable) || 
+			                   (entity_hierarchy == TPM_RH_OWNER && !shEnable) || 
+				           (entity_hierarchy == TPM_RH_ENDORSEMENT && !ehEnable) ||
+			                   !nv_object_present) begin
+						s_handle_error = 1'b1;
+						s_response_code = TPM_RC_HANDLE; 
+					end
+					else if(!ram_available) begin
+						s_handle_error = 1'b1;
+						s_response_code = TPM_RC_OBJECT_MEMORY;
+					end
+				end
+			else if(handle_type == TPM_HT_NV_INDEX) begin
+				if(!nv_index_present ||
+			           (entity_hierarchy == TPM_RH_PLATFORM && !phEnable) || 
+			            (entity_hierarchy == TPM_RH_OWNER && !shEnable) || 
+						(entity_hierarchy == TPM_RH_ENDORSEMENT && !ehEnable)) begin
+						s_handle_error = 1'b1;
+						s_response_code = TPM_RC_HANDLE;
+					end
+					else if((nv_write && tpma_nv_writeLocked) || (nv_read && tpma_nv_readLocked)) begin
+						s_handle_error = 1'b1;
+						s_response_code = TPM_RC_NV_LOCKED;
+					end
+				end
+				else if(handle_type == TPM_HT_HMAC_SESSION || 
+						  handle_type == TPM_HT_LOADED_SESSION || 
+						  handle_type == TPM_HT_POLICY_SESSION || 
+						  handle_type == TPM_HT_SAVED_SESSION) begin
+					if(!session_present) begin
+						s_handle_error = 1'b1;
+						s_response_code = TPM_RC_REFERENCE_H0 + handle_index;
+					end
+				end
+				else if(handle_type == TPM_HT_PERMANENT) begin
+					if((current_handle == TPM_RH_PLATFORM && !phEnable) || 
+						(current_handle == TPM_RH_OWNER && !shEnable) || 
+						(current_handle == TPM_RH_ENDORSEMENT && !ehEnable)) begin
+						s_handle_error = 1'b1;
+						s_response_code = TPM_RC_HIERARCHY;
+					end
+				end
+				// Check if the handle references a PCR, then the value is within the range of PCR supported by the TPM
+				else if(handle_type == TPM_HT_PCR && pcrSelect > PCR_SELECT_MAX) begin
+					s_handle_error = 1'b1;
+					s_response_code = TPM_RC_VALUE;
+				end
                             end
+
 
 		case(current_state)
 			// ====================================================================
@@ -1319,7 +1390,6 @@ module execution_engine(
 					s_response_code =   12'b0;
 					response_length = 16'h0;
 					s_handle_error = 1'b0;
-					s_authHierarchy = 32'd0;
 				if(command_ready) begin
 					session_present = (command_tag == TPM_ST_SESSIONS);
 				end
@@ -1370,65 +1440,7 @@ module execution_engine(
 			// STAGE 4: HANDLE VALIDATION - TPM 2.0 Part 3, Section 5.4
 			// ====================================================================
 			STATE_HANDLE_VALID: begin
-    				if(cHandles > handle_count) begin
-	                		s_handle_error = 1'b1;
-		        		s_response_code = TPM_RC_VALUE;
-		        	end
-		    		// If the handle references a transient object, check that the handle references a loaded object
-		        	else if(handle_type == TPM_HT_TRANSIENT) begin
-		                	if(!loaded_object_present) begin
-					        s_handle_error = 1'b1;
-						s_response_code = TPM_RC_REFERENCE_H0 + handle_index;
-					end
-				end
-				else if(handle_type == TPM_HT_PERSISTENT) begin
-					if((entity_hierarchy == TPM_RH_PLATFORM && !phEnable) || 
-			                   (entity_hierarchy == TPM_RH_OWNER && !shEnable) || 
-				           (entity_hierarchy == TPM_RH_ENDORSEMENT && !ehEnable) ||
-			                   !nv_object_present) begin
-						s_handle_error = 1'b1;
-						s_response_code = TPM_RC_HANDLE; // TPM
-					end
-					else if(!ram_available) begin
-						s_handle_error = 1'b1;
-						s_response_code = TPM_RC_OBJECT_MEMORY;
-					end
-				end
-			else if(handle_type == TPM_HT_NV_INDEX) begin
-				if(!nv_index_present ||
-			           (entity_hierarchy == TPM_RH_PLATFORM && !phEnable) || 
-			            (entity_hierarchy == TPM_RH_OWNER && !shEnable) || 
-						(entity_hierarchy == TPM_RH_ENDORSEMENT && !ehEnable)) begin
-						s_handle_error = 1'b1;
-						s_response_code = TPM_RC_HANDLE;
-					end
-					else if((nv_write && tpma_nv_writeLocked) || (nv_read && tpma_nv_readLocked)) begin
-						s_handle_error = 1'b1;
-						s_response_code = TPM_RC_NV_LOCKED;
-					end
-				end
-				else if(handle_type == TPM_HT_HMAC_SESSION || 
-						  handle_type == TPM_HT_LOADED_SESSION || 
-						  handle_type == TPM_HT_POLICY_SESSION || 
-						  handle_type == TPM_HT_SAVED_SESSION) begin
-					if(!session_present) begin
-						s_handle_error = 1'b1;
-						s_response_code = TPM_RC_REFERENCE_H0 + handle_index;
-					end
-				end
-				else if(handle_type == TPM_HT_PERMANENT) begin
-					if((current_handle == TPM_RH_PLATFORM && !phEnable) || 
-						(current_handle == TPM_RH_OWNER && !shEnable) || 
-						(current_handle == TPM_RH_ENDORSEMENT && !ehEnable)) begin
-						s_handle_error = 1'b1;
-						s_response_code = TPM_RC_HIERARCHY;
-					end
-				end
-				// Check if the handle references a PCR, then the value is within the range of PCR supported by the TPM
-				else if(handle_type == TPM_HT_PCR && pcrSelect > PCR_SELECT_MAX) begin
-					s_handle_error = 1'b1;
-					s_response_code = TPM_RC_VALUE;
-				end
+    				
 			end
 			// ====================================================================
 			// STAGE 5: SESSION VALIDATION - TPM 2.0 Part 3, Section 5.5
@@ -1444,20 +1456,24 @@ module execution_engine(
 						s_response_code = TPM_RC_AUTH_MISSING;
 					end
 					else if(command_code_tag == TPM_ST_SESSIONS) begin
-						if(session_handle_type != TPM_HT_HMAC_SESSION || session_handle_type != TPM_HT_POLICY_SESSION || session_handle_type != TPM_RS_PW) begin
+						if (session_handle_type == TPM_HT_HMAC_SESSION &&
+    						    session_handle_type == TPM_HT_POLICY_SESSION &&
+    						    current_session_handle == TPM_RS_PW) begin
+							if(!session_loaded) begin
+								s_response_code = TPM_RC_REFERENCE_S0 + session_index;
+							end
+							else if(max_session_amount == session_index && authorization_size > 32'd0) begin
+								s_response_code = TPM_RC_AUTHSIZE;
+							end
+							else if(audit_count > 2'd1 || decrypt_count > 2'd1 || encrypt_count > 2'd1 || (!auth_session && !audit && !decrypt && !encrypt)) begin
+								s_response_code = TPM_RC_ATTRIBUTES;
+							end
+							else if(!auth_session && auth_necessary) begin
+								s_response_code = TPM_RC_AUTH_MISSING;
+							end
+						end
+						else begin
 							s_response_code = TPM_RC_HANDLE;
-						end
-						else if(!session_loaded) begin
-							s_response_code = TPM_RC_REFERENCE_S0 + session_index;
-						end
-						else if(max_session_amount == session_index && authorization_size > 32'd0) begin
-							s_response_code = TPM_RC_AUTHSIZE;
-						end
-						else if(audit_count > 2'd1 || decrypt_count > 2'd1 || encrypt_count > 2'd1 || (!auth_session && !audit && !decrypt && !encrypt)) begin
-							s_response_code = TPM_RC_ATTRIBUTES;
-						end
-						else if(!auth_session && auth_necessary) begin
-							s_response_code = TPM_RC_AUTH_MISSING;
 						end
 					end
 				end
@@ -1474,10 +1490,10 @@ module execution_engine(
 					
 					// If authorization successful tell other modules the authorization hierarchy, if it fails tell them the null hierarchy
 					if(auth_success) begin
-						s_authHierarchy = authHandle;
+						authHierarchy = authHandle;
 					end
 					else begin
-						s_authHierarchy = TPM_RH_NULL;
+						authHierarchy = TPM_RH_NULL;
 						s_auth_check_error = 1'b1;
 					end
 				end
@@ -1558,7 +1574,6 @@ module execution_engine(
 		endcase
 	end
 endmodule
-
 
 
 
