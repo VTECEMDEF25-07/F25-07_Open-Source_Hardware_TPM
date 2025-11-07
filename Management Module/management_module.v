@@ -405,6 +405,10 @@ module management_module(
 			end
 		end
 		else if(op_state == OPERATIONAL_STATE) begin
+			// If you reach the operational state, startup has completed, therefore TPM_CC_Startup is no longer a valid command
+			if(tpm_cc == TPM_CC_STARTUP && initialized) begin
+				tpm_rc_state = TPM_RC_INITIALIZE;
+			end
 			if(tpm_cc == TPM_CC_HIERARCHYCONTROL && locality == TPM_LOC_ZERO) begin
 				if(tpmi_rh_hierarchy == TPM_RH_PLATFORM) begin
 					if(tpmi_rh_enables == TPM_RH_ENDORSEMENT ||
@@ -468,6 +472,7 @@ module management_module(
 	end
 	
 endmodule
+
 
 
 
