@@ -44,14 +44,16 @@
 //									  unneccessary signals.
 // 25/09/2025  EKRW    3     Edits were made to the timing and tests for the failure
 //					 				  mode state and incremental self test transtion were added.
-//	26/09/2025  EKRW    4     Added comments for clarity.
+// 26/09/2025  EKRW    4     Added comments for clarity.
 // 30/09/2025  EKRW    5     Changes made to sequential logic block to fix timing of
 //									  outputs. Changes made to hierarchy enable combinational
 //									  logic block to fix logic because of board testing. Added
 //									  comments for clarity.
 // 01/10/2025  EKRW    6     Made changes to sequential block for Failure Mode State.
-// 11/4/2025   EKRW    7     Fixed command code and response code formats, plus added 
+// 04/11/2025  EKRW    7     Fixed command code and response code formats, plus added 
 //									  more comments
+// 06/11/2025  EKRW    8     Added response code output for if command TPM_CC_Startup tries
+//							 to run when startup procedures have already been run.
 ///////////////////////////////////////////////////////////////////////////////////////
 
 module management_module(		 
@@ -472,6 +474,7 @@ module management_module(
 	end
 	
 endmodule
+
 
 
 
