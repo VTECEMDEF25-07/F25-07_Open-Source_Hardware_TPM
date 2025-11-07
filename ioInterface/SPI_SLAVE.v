@@ -1,6 +1,7 @@
 module SPI_SLAVE
 (
-	input			clock,		// 50 MHz
+	input			clock50,	// 50 MHz
+	input			clock100,
 	input			reset_n,
 	
 	output	reg		RX_valid,	// data valid pulse
@@ -47,7 +48,7 @@ module SPI_SLAVE
 	end
 	
 	// RX data sync
-	always @(posedge clock, negedge reset_n)
+	always @(posedge clock50, negedge reset_n)
 	begin
 		if (!reset_n)
 		begin
@@ -79,7 +80,7 @@ module SPI_SLAVE
 	
 	
 	reg	prev_SPI_clock;
-	always @(posedge clock)
+	always @(posedge clock50)
 	begin
 		prev_SPI_clock <= SPI_clock;
 		prev_TX_done <= TX_done;
@@ -95,18 +96,16 @@ module SPI_SLAVE
 		
 	end
 	
-	wire		CLOCK_100;
-	PLL_100	PLL0( .refclk(clock), .rst(~reset_n), .outclk_0(CLOCK_100) );
 	
 	wire	det_clock0, det_clock1, det_clock;
 	
 	DET_FF	det_ff0
 	(
-		CLOCK_100, reset_n, SPI_clock, det_clock0
+		clock100, reset_n, SPI_clock, det_clock0
 	);
 	DET_FF	det_ff1
 	(
-		CLOCK_100, reset_n, det_clock0, det_clock1
+		clock100, reset_n, det_clock0, det_clock1
 	);
 	
 	assign	det_clock = det_clock0 & ~det_clock1;
@@ -128,11 +127,11 @@ module SPI_SLAVE
 	reg	prev_TX_valid;
 	wire	neg_TX_valid;
 	
-	always @(posedge clock)
+	always @(posedge clock50)
 		prev_TX_valid <= TX_valid;
 	assign	neg_TX_valid = ~TX_valid & prev_TX_valid;
 	
-	always @(posedge clock, negedge reset_n)
+	always @(posedge clock50, negedge reset_n)
 	begin
 		if (!reset_n)
 		begin

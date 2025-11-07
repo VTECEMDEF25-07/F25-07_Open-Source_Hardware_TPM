@@ -1,3 +1,21 @@
+// FIFO_BUFFER.v
+// modules:
+//	FIFO_BUFFER
+//	GENERIC_BUFFER
+//
+// Authors:
+//	Ian Sizemore (idsizemore@vt.edu)
+//
+// Date: 11/6/25
+//
+// General Description:
+//	This file describes the FIFO buffer of the TPM.
+//	The FIFO buffer is part of the FRS module (FIFO-Register-Space;
+//	the controlling logic module of the I/O system).
+//	Its purpose is to store command data as it is being send to the I/O system,
+//	store response data as it is being read from the I/O system,
+//	and to move command/response data back and forth from the CRB (Command/Reponse Buffer).
+
 module	FIFO_BUFFER
 (
 	input			clock,
@@ -22,48 +40,53 @@ module	FIFO_BUFFER
 	output			f_fifoComplete,	// fifo buffer contains full frs command data
 	output			f_fifoEmpty,	// fifo buffer's response data has been fully read to frs
 	
-	input		[11:0]	t_address,	// apparent address from transaction perspective
-	input		[11:0]	t_baseAddr,	// initial transaction address (used to calculate internal buffer address)
-	input			t_updateAddr,
+	input		[11:0]	t_address,	// unused
+	input		[11:0]	t_baseAddr,	// unused
+	input			t_updateAddr,	// signals that it is time to increment the internal buffer address
 	
-	output		[31:0]	c_cmdSize,
-	input		[31:0]	c_rspSize,
-	output			c_cmdSend,
-	input			c_rspSend,
-	input			c_cmdDone,
-	input			c_rspDone,
-	input		[11:0]	c_cmdInAddr,
-	input		[11:0]	c_rspInAddr
+	output		[31:0]	c_cmdSize,	// command length, from TPM command header
+	input		[31:0]	c_rspSize,	// response length, from TPM response header
+	output			c_cmdSend,	// signals to CRB that we are ready to send command data
+	input			c_rspSend,	// signal from CRB that indicates a write of 1 byte of response data (this is buf.wren_n during response data transmission)
+	input			c_cmdDone,	// signal from CRB that it is finished reading command data
+	input			c_rspDone,	// signal from CRB that is is finished sending response data
+						// 	During FIFO-to-CRB command data and CRB-to-FIFO response data transmissions,
+						//	the CRB gains full control of the FIFO buffer, including the buffer address
+						//	and the buffer wren_n (during response transmission).
+	input		[11:0]	c_cmdInAddr,	// CRB-controlled buffer address during command transmission
+	input		[11:0]	c_rspInAddr	// CRB-controlled buffer address during response transmission
 );
 	
+	// connections and instantiation of the internal buffer
 	reg		bufWren_n;
 	reg	[11:0]	bufAddr, m_bufAddr;
 	reg	[31:0]	b_size;
 	reg	[7:0]	bufIn;
 	wire	[7:0]	bufOut;
 	
-	GENERIC_BUFFER	buffer
+	GENERIC_BUFFER	internal_buffer
 	(
 		.clock(clock),
 		.wren_n(bufWren_n), .addr(m_bufAddr),
 		.wrByte(bufIn), .rdByte(bufOut)
 	);
 	
+	// State machine of the FIFO Buffer
 	localparam
-		Idle			= 0,
-		GetCmdSize		= 1,
-		CmdIn			= 2,
-		CmdIn_last		= 3,
-		TpmGo_wait		= 4,
-		CmdOut_start		= 5,
-		CmdOut_wait		= 6,
-		Exec_wait		= 7,
-		GetRspSize		= 8,
-		RspIn_start		= 9,
-		RspIn_wait		= 10,
-		AddrRst			= 11,
-		RspOut			= 12,
-		CommandReady_wait	= 13;
+		Idle			= 0,	// waiting for a fifoAccess request from FRS...
+		GetCmdSize		= 1,	// in the first 6 bytes of the command, bytes 3,4,5,6 indicate the command size
+		CmdIn			= 2,	// after obtaining the command size, this state controls obtaining the rest of the command
+		CmdIn_last		= 3,	// unusued
+		TpmGo_wait		= 4,	// wait for a TpmGo signal from FRS (signals to move command to execution)
+		CmdOut_start		= 5,	// start the transmission of command data to CRB
+		CmdOut_wait		= 6,	// transmission of command data to CRB
+		Exec_wait		= 7,	// wait for execution to finish ; waiting for a response to be ready
+		GetRspSize		= 8,	// in the first 6 bytes of the response, bytes 3,4,5,6 indicate response size
+		RspIn_start		= 9,	// start the transmission of response data from CRB
+		RspIn_wait		= 10,	// transmission of response data from CRB
+		AddrRst			= 11,	// used to reset the internal address in the case FRB signals responseRetry
+		RspOut			= 12,	// transmission state for response data being read to the FRS
+		CommandReady_wait	= 13;	// after the response has been fully read, we wait for the FRS to return to its Idle state (signaled by commandReady)
 	reg	[3:0]	state, next_state;
 	
 	always @(posedge clock, negedge reset_n)
@@ -76,6 +99,7 @@ module	FIFO_BUFFER
 			state <= next_state;
 	end
 	
+	// combinational logic to implement the FIFO buffer state machine
 	always @*
 	begin
 		case (state)
@@ -259,14 +283,17 @@ module	FIFO_BUFFER
 	
 endmodule
 
+
+// A generic buffer module, which instantiates as sync-ram
+// Defaults to 4096 addressable bytes
 module	GENERIC_BUFFER
 #(parameter WORD_SIZE = 8, BUF_SIZE = 4096)
 (
 	input					clock,
-	input					wren_n,
-	input		[$clog2(BUF_SIZE)-1:0]	addr,
-	input		[WORD_SIZE-1:0]		wrByte,
-	output	reg	[WORD_SIZE-1:0]		rdByte
+	input					wren_n,	// write enable, active low
+	input		[$clog2(BUF_SIZE)-1:0]	addr,	// mem address
+	input		[WORD_SIZE-1:0]		wrByte,	// write byte in
+	output	reg	[WORD_SIZE-1:0]		rdByte	// read byte out
 );
 	
 	reg	[WORD_SIZE-1:0]	mem[0:BUF_SIZE-1];
