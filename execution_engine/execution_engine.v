@@ -1031,6 +1031,7 @@ module execution_engine(
 			end
 		end
 		always@(*) begin
+			state = current_state;
 			s_session_error = session_error;
 			s_audit_count = audit_count;
 			s_decrypt_count = decrypt_count;
@@ -1283,6 +1284,7 @@ module execution_engine(
 	// ============================================================================
 	always@(*) begin
 		// carry error values from previous state
+		s_handle_index = handle_index;
 		s_mode_check_error = mode_check_error;
 		s_header_valid_error = header_valid_error;
 		s_handle_error = handle_error;
