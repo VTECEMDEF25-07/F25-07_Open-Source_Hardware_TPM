@@ -357,7 +357,7 @@ wire [31:0] authHierarchy;
 
         // provide one valid-looking session in lane 0
         session0_handle     = {TPM_HT_HMAC_SESSION,24'h000000};
-        session0_attributes = 8'b1000_0000; // set 'auth' bit as you encode it
+        session0_attributes = 8'b10000000; // set 'auth' bit as you encode it
         session0_valid      = 1'b1;
         session_loaded      = 1'b1;
         auth_session        = 1'b1;
@@ -375,8 +375,8 @@ wire [31:0] authHierarchy;
         command_size    = 32'd8;
         command_length  = 16'd8;
 
-        session0_handle     = {8'hAA,24'h000000}; // invalid type 0xAA
-        session0_attributes = 8'b1000_0000;
+        session0_handle     = {8'hAA, 24'h000000}; // invalid type 0xAA
+        session0_attributes = 8'b00000000;
         session0_valid      = 1'b1;
         session_loaded      = 1'b1;
         auth_session        = 1'b1;
@@ -393,11 +393,10 @@ wire [31:0] authHierarchy;
         command_code    = {8'h0E, TPM_CC_CLEAR};
         command_size    = 32'd8;
         command_length  = 16'd8;
-
         // choose lane1 semantics by populating lane1 (DUT selects via internal index)
-        session1_handle     = {TPM_HT_HMAC_SESSION,24'h000000};
-        session1_attributes = 8'b1000_0000;
-        session1_valid      = 1'b1;
+        session0_handle     = {TPM_HT_HMAC_SESSION,24'h000000};
+        session0_attributes = 8'b00000000;
+        session0_valid      = 1'b1;
 
         // still present but mark not loaded
         session_loaded      = 1'b0;
@@ -416,9 +415,9 @@ wire [31:0] authHierarchy;
         command_size        = 32'd8;
         command_length      = 16'd8;
 
-        session1_handle     = {TPM_HT_HMAC_SESSION,24'h000000};
-        session1_attributes = 8'b1000_0000;
-        session1_valid      = 1'b1;
+        session0_handle     = {8'h00,24'h000000};
+        session0_attributes = 8'b10000000;
+        session0_valid      = 1'b1;
 
         session_loaded      = 1'b1;
         auth_session        = 1'b1;
@@ -441,8 +440,8 @@ wire [31:0] authHierarchy;
         command_size        = 32'd8;
         command_length      = 16'd8;
 
-        session0_handle     = {TPM_HT_HMAC_SESSION,24'h000000};
-        session0_attributes = 8'b0000_0000; // no audit/decrypt/encrypt/auth bits
+        session0_handle     = {8'h00,24'h000000};
+        session0_attributes = 8'b00000000; // no audit/decrypt/encrypt/auth bits
         session0_valid      = 1'b1;
 
         session_loaded      = 1'b1;
@@ -461,16 +460,16 @@ wire [31:0] authHierarchy;
         command_size        = 32'd8;
         command_length      = 16'd8;
 
-        session0_handle     = {TPM_HT_HMAC_SESSION,24'h000000};
-        session0_attributes = 8'b0000_0000;
+        session0_handle     = {8'h00,24'h000000};
+        session0_attributes = 8'b10000000;
         session0_valid      = 1'b1;
 
+
         session_loaded      = 1'b1;
-        auth_session        = 1'b0;      // missing
-        auth_necessary      = 1'b1;      // required
+        auth_session        = 1'b0;    
+        auth_necessary      = 1'b1;    
         #40;
         command_ready       = 1'b0;
-        auth_necessary      = 1'b0;
 
         // ----------------------------------------------------------------------
         // Finish

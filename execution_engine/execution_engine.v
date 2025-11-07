@@ -426,7 +426,6 @@ module execution_engine(
 	reg 		  handle_error;
 	reg [15:0] command_code_tag;
 	reg [1:0]  session_index;     // Index of the session currently being processed 
-	reg [1:0]  session_count;     // Number of valid sessions encountered
 	reg        session_error;     // Flag to detect session validation failure
 	wire [7:0]  session_handle_type;
 	wire [31:0] current_session_handle;
@@ -452,7 +451,6 @@ module execution_engine(
 	reg [23:0] s_handle_index_bits;
 	reg 		  s_handle_error;
 	reg [1:0]  s_session_index;     // Index of the session currently being processed (0–2)
-	reg [1:0]  s_session_count;     // Number of valid sessions encountered
 	reg        s_session_error;     // Flag to detect session validation failure
 	reg [7:0]  s_session_handle_type;
 	reg [31:0] s_current_session_handle;
@@ -572,7 +570,6 @@ module execution_engine(
 				handle_error <= 1'b0;
 				handle_index <= 3'd0;
 				session_index <= 2'd0;
-				session_count <= 2'd0;
 				audit <= 1'b0;
 				decrypt <= 1'b0;
 				encrypt <= 1'b0;
@@ -602,7 +599,6 @@ module execution_engine(
 
 				handle_index <= s_handle_index;
 				session_index <= s_session_index;
-				session_count <= s_session_count;
 				audit <= s_audit;
 				decrypt <= s_decrypt;
 				encrypt <= s_encrypt;
@@ -918,23 +914,6 @@ module execution_engine(
 			end
 		end
 					
-		always@(*) begin
-			
-			s_current_handle = current_handle;
-			s_handle_type = handle_type;
-			s_handle_index_bits = handle_index_bits;
-			s_handle_index = handle_index;
-			
-			if(current_state == STATE_HANDLE_VALID) begin
-				if (handle_index < handle_count) begin
-					// Extract current handle
-					
-					if (!handle_error) begin
-						s_handle_index = handle_index + 1'b1;
-					end
-				end
-			end
-		end
 
 		// Session tag necessary for each command type:
 		always@(*) begin
@@ -1001,8 +980,6 @@ module execution_engine(
 		end
 		
 		always@(*) begin
-			s_session_index = session_index;
-			s_session_count = session_count;
 			s_audit = audit;
 			s_decrypt = decrypt;
 			s_encrypt = encrypt;
@@ -1014,7 +991,6 @@ module execution_engine(
 			s_current_session_attributes = current_session_attributes;
 			s_current_session_hmac_size = current_session_hmac_size;
 			s_current_session_valid = current_session_valid;
-			
 			if(command_tag == TPM_ST_SESSIONS) begin
 			// Map flattened inputs into a common structure for session processing.
 				if (session_index == 2'd0) begin
@@ -1041,8 +1017,6 @@ module execution_engine(
 				// ----------------------------------------------------------------
 				if (session_index < 2'd3 && current_session_valid) begin
 
-					// Count how many sessions we've processed so far.
-					s_session_count = session_count + 1'b1;
 					
 					s_audit = current_session_attributes[7];
 					s_encrypt = current_session_attributes[6];
@@ -1052,9 +1026,7 @@ module execution_engine(
 					s_continueSession = current_session_attributes[0];
 					
 					s_session_handle_type = current_session_handle[31:24];
-					
-					// Step 4: Move on to the next session
-					s_session_index = session_index + 1'b1;
+
 				end
 			end
 		end
@@ -1063,12 +1035,16 @@ module execution_engine(
 			s_audit_count = audit_count;
 			s_decrypt_count = decrypt_count;
 			s_encrypt_count = encrypt_count;
-			
+			s_session_index = 3'b000;
 			case(current_state)
 				// ====================================================================
 				// STAGE 1: IDLE - Wait for command
 				// ====================================================================
 				STATE_IDLE: begin
+					s_session_error = 1'b0;
+					s_audit_count = 2'b0;
+					s_decrypt_count = 2'b0;
+					s_encrypt_count = 2'b0;
 					if(command_ready) begin
 						state = STATE_HEADER_VALID;
 					end
@@ -1200,17 +1176,23 @@ module execution_engine(
 						
 						if(!auth_session && auth_necessary) s_session_error = 1'b1;
 					end 
+					else if(!session_error &&  session_index < 2'd3 && current_session_valid) begin
+							s_session_index = session_index + 1'b1;
+					end
 					else begin
 						// Final step after checking all sessions
 						// If we validated more than 3, that's an error
-						if (session_count > 2'd3) s_session_error = 1'b1;
-
+						if (session_index > 2'd3)begin
+							s_session_error = 1'b1;
+							s_session_index = 3'b000;
+						end
 						// If all sessions are valid, move to the next FSM stage
 						if (!session_error) begin
+							s_session_index = 3'b000;
 							state = STATE_AUTH_CHECK;
 						end else begin
 							// If we encountered any error, prepare a failure response
-
+							s_session_index = 3'b000;
 							state = STATE_POST_PROCESS;
 						end
 					end
@@ -1319,6 +1301,10 @@ module execution_engine(
 		authHierarchy = 32'h00000000;
 
 		if(state == STATE_HANDLE_VALID) begin			// Check that the TPM shall successfully unmarshal the number of handles required by the command and validate that the value of the handle is consistent with the command syntax
+			s_current_handle = current_handle;
+			s_handle_type = handle_type;
+			s_handle_index_bits = handle_index_bits;
+			s_handle_index = handle_index;
 			if(cHandles > handle_count) begin
 	                		s_handle_error = 1'b1;
 		        		s_response_code = TPM_RC_VALUE;
@@ -1377,8 +1363,11 @@ module execution_engine(
 				else if(handle_type == TPM_HT_PCR && pcrSelect > PCR_SELECT_MAX) begin
 					s_handle_error = 1'b1;
 					s_response_code = TPM_RC_VALUE;
+				end else if (handle_index < handle_count) begin
+					// Extract current handle
+					s_handle_index = handle_index + 1'b1;
 				end
-                            end
+            end
 
 
 		case(current_state)
@@ -1390,6 +1379,7 @@ module execution_engine(
 					s_response_code =   12'b0;
 					response_length = 16'h0;
 					s_handle_error = 1'b0;
+					s_handle_index = 3'b000;
 				if(command_ready) begin
 					session_present = (command_tag == TPM_ST_SESSIONS);
 				end
@@ -1446,6 +1436,7 @@ module execution_engine(
 			// STAGE 5: SESSION VALIDATION - TPM 2.0 Part 3, Section 5.5
 			// ====================================================================
 			STATE_SESSION_VALID: begin
+				//s_session_index = session_index;
 				if(command_tag == TPM_ST_NO_SESSIONS) begin
 					if(command_code_tag == TPM_ST_SESSIONS) begin
 						s_response_code = TPM_RC_AUTH_CONTEXT;
@@ -1456,9 +1447,9 @@ module execution_engine(
 						s_response_code = TPM_RC_AUTH_MISSING;
 					end
 					else if(command_code_tag == TPM_ST_SESSIONS) begin
-						if (session_handle_type == TPM_HT_HMAC_SESSION &&
-    						    session_handle_type == TPM_HT_POLICY_SESSION &&
-    						    current_session_handle == TPM_RS_PW) begin
+						if (session_handle_type != TPM_HT_HMAC_SESSION &&
+    						    session_handle_type != TPM_HT_POLICY_SESSION &&
+    						    current_session_handle != TPM_RS_PW) begin
 							if(!session_loaded) begin
 								s_response_code = TPM_RC_REFERENCE_S0 + session_index;
 							end
