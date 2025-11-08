@@ -160,7 +160,7 @@ unsigned init_verilog_gen(int argc, char **argv)
 		"\treg\t\tSPI_rst_n;\n"
 		"\twire\t\tSPI_PIRQ_n;\n"
 		"\n"
-		"\ttest0_top\ttpm\n"
+		"\ttest0_top\tdut\n"
 		"\t(\n"
 		"\t\t.CLOCK_50(clock), .RESET_N(reset_n),\n"
 		"\t\t.GPIO_1_2(SPI_clock), .GPIO_1_3(SPI_mosi),\n"
@@ -972,7 +972,8 @@ void tpm_command(unsigned locality, unsigned commandCode, unsigned short tag, un
 		word[3] = (handles[i] & 0x000000FF) >> 0;
 		memcpy(buf, word, sizeof(word));
 	}
-	tpm_transaction(WRITE, nHandles*sizeof(word), locality, TPM_DATA_FIFO, buf);
+	if (nHandles)
+		tpm_transaction(WRITE, nHandles*sizeof(word), locality, TPM_DATA_FIFO, buf);
 	
 	// send authorization area size
 	if (nSessions)
@@ -1010,6 +1011,9 @@ void tpm_command(unsigned locality, unsigned commandCode, unsigned short tag, un
 		
 		// send hmac
 		memcpy(buf+index, hmac, sizeof(hmac)); index += sizeof(hmac);
+		
+		for(unsigned j=0; j<index; j++)
+			printf("%02X ", buf[j]);
 		
 		// bulk write of auth area
 		while(index>64)
@@ -1053,7 +1057,7 @@ int main(int argc, char **argv)
 //	test_localitySeizeCommandAbort();
 //	test_sendReceiveCMD();
 //	test_hierarchyControl();
-//	test_hierarchyControl2();
+	test_hierarchyControl2();
 	test_ccQuote();
 	
 	check_assert();
@@ -1984,23 +1988,6 @@ void test_hierarchyControl2(void)
 	{
 		0x00, 0x00 // TPM_SU_CLEAR
 	};
-	unsigned short cmdDataSize_s = sizeof(cmdDataStartup);
-	unsigned char cmdDataSize[2] = { (cmdDataSize_s & 0xFF00) >> 8, cmdDataSize_s & 0xFF };
-	
-	unsigned cc = TPM_CC_STARTUP;
-	unsigned cmdSize = 9+cmdDataSize_s;
-	unsigned short st = TPM_ST_NO_SESSIONS;
-	
-	cmdHeader[0] = (st & 0xFF00) >> 8;
-	cmdHeader[1] = (st & 0x00FF) >> 0;
-	cmdHeader[2] = (cmdSize & 0xFF000000) >> 24;
-	cmdHeader[3] = (cmdSize & 0x00FF0000) >> 16;
-	cmdHeader[4] = (cmdSize & 0x0000FF00) >> 8;
-	cmdHeader[5] = (cmdSize & 0x000000FF) >> 0;
-	cmdHeader[6] = (cc & 0xFF000000) >> 24;
-	cmdHeader[7] = (cc & 0x00FF0000) >> 16;
-	cmdHeader[8] = (cc & 0x0000FF00) >> 8;
-	cmdHeader[9] = (cc & 0x000000FF) >> 0;
 	
 	unsigned char data[64];
 	
@@ -2014,20 +2001,6 @@ void test_hierarchyControl2(void)
 	
 	tb_comment("Send command TPM_CC_STARTUP : TPM_SU_CLEAR -> put TPM in operational state.");
 	
-	if (_connected)
-	{
-		printf("TPM Command:\n\t");
-		for(unsigned i=0; i<10; i++)
-		{
-			printf("%02x ", cmdHeader[i]);
-		}
-		for(unsigned i=0; i<2; i++)
-		{
-			printf("%02x ", cmdDataStartup[i]);
-		}
-		printf("\n");
-	}
-	
 	unsigned handles[3];
 	unsigned sessionHandles[3];
 	unsigned char sessionAttributes[3];
@@ -2036,9 +2009,6 @@ void test_hierarchyControl2(void)
 	
 	tpm_command(0, TPM_CC_Startup, TPM_ST_NO_SESSIONS,
 		handles, sessionHandles, sessionAttributes, sizeof(cmdDataStartup), cmdDataStartup);
-	
-//	print_tpm_transaction(WRITE, 10, 0, TPM_DATA_FIFO, cmdHeader);
-//	print_tpm_transaction(WRITE, 2, 0, TPM_DATA_FIFO, cmdDataStartup);
 	
 	data[0] = r_tpmGo;
 	print_tpm_transaction(WRITE, 1, 0, TPM_STS, data);
@@ -2066,55 +2036,6 @@ void test_hierarchyControl2(void)
 		0x40, 0x00, 0x00, 0x0C, // TPMI_RH_ENABLES ; PLATFORM ENABLE
 		0x01 // TPMI_YES_NO
 	};
-	cmdDataSize_s = sizeof(cmdData);
-	
-	unsigned char handle[4];
-	handle[0] = 0xde;
-	handle[1] = 0xad;
-	handle[2] = 0xbe;
-	handle[3] = 0xef;
-	
-	unsigned char sessionHandle[4];
-	sessionHandle[0] = 0xBA;
-	sessionHandle[1] = 0xAD;
-	sessionHandle[2] = 0xF0;
-	sessionHandle[3] = 0x0D;
-	
-	unsigned char sessionAttribute[1];
-	sessionAttribute[0] = 0x2A;
-	
-	unsigned char nonce[] = "This is the nonce buffer.";
-	
-	unsigned char nonceSize[2];
-	nonceSize[0] = 0x00;
-	nonceSize[1] = sizeof(nonce);
-	
-	unsigned char hmac[] = "This is the hmac buffer.";
-	
-	unsigned char hmacSize[2];
-	hmacSize[0] = 0x00;
-	hmacSize[1] = sizeof(hmac);
-	
-	unsigned char authSize[4];
-	authSize[0] = 0x00;
-	authSize[1] = 0x00;
-	authSize[2] = 0x00;
-	authSize[3] = 0x09 + sizeof(hmac) + sizeof(nonce);
-	
-	cc = TPM_CC_HIERARCHYCONTROL;
-	cmdSize = 9+cmdDataSize_s + 4+9+4 + sizeof(hmac) + sizeof(nonce);
-	st = TPM_ST_SESSIONS;
-	
-	cmdHeader[0] = (st & 0xFF00) >> 8;
-	cmdHeader[1] = (st & 0x00FF) >> 0;
-	cmdHeader[2] = (cmdSize & 0xFF000000) >> 24;
-	cmdHeader[3] = (cmdSize & 0x00FF0000) >> 16;
-	cmdHeader[4] = (cmdSize & 0x0000FF00) >> 8;
-	cmdHeader[5] = (cmdSize & 0x000000FF) >> 0;
-	cmdHeader[6] = (cc & 0xFF000000) >> 24;
-	cmdHeader[7] = (cc & 0x00FF0000) >> 16;
-	cmdHeader[8] = (cc & 0x0000FF00) >> 8;
-	cmdHeader[9] = (cc & 0x000000FF) >> 0;
 	
 	print_tpm_transaction(WRITE, 1, 0, TPM_STS, data);
 	
@@ -2137,21 +2058,9 @@ void test_hierarchyControl2(void)
 		printf("\n");
 	}
 	
-/*	print_tpm_transaction(WRITE, 10, 0, TPM_DATA_FIFO, cmdHeader);
-	print_tpm_transaction(WRITE, 4, 0, TPM_DATA_FIFO, handle);
-	print_tpm_transaction(WRITE, 4, 0, TPM_DATA_FIFO, authSize);
-	print_tpm_transaction(WRITE, 4, 0, TPM_DATA_FIFO, sessionHandle);
-	print_tpm_transaction(WRITE, 2, 0, TPM_DATA_FIFO, nonceSize);
-	print_tpm_transaction(WRITE, sizeof(nonce), 0, TPM_DATA_FIFO, nonce);
-	print_tpm_transaction(WRITE, 1, 0, TPM_DATA_FIFO, sessionAttribute);
-	print_tpm_transaction(WRITE, 2, 0, TPM_DATA_FIFO, hmacSize);
-	print_tpm_transaction(WRITE, sizeof(hmac), 0, TPM_DATA_FIFO, hmac);
-	print_tpm_transaction(WRITE, sizeof(cmdData), 0, TPM_DATA_FIFO, cmdData);
-*/
-	
-	handles[0] = TPM_RH_PLATFORM;
-	sessionHandles[0] = 0xbaadf00d;
-	sessionAttributes[0] = 0x2a;
+	handles[0] = 0x02123456;
+	sessionHandles[0] = 0x02345678;
+	sessionAttributes[0] = 0x00;
 	
 	tpm_command(0, TPM_CC_HierarchyControl, TPM_ST_SESSIONS,
 		handles, sessionHandles, sessionAttributes, sizeof(cmdData), cmdData);
@@ -2171,6 +2080,9 @@ void test_hierarchyControl2(void)
 		}
 		printf("\n");
 	}
+	
+	tb_assertRC(data, TPM_RC_VALUE,
+		"Expected TPM_RC_VALUE.");
 	
 	data[0] = r_commandReady;
 	print_tpm_transaction(WRITE, 1, 0, TPM_STS, data);
@@ -2246,9 +2158,9 @@ void test_ccQuote(void)
 	
 	print_tpm_transaction(WRITE, 1, 0, TPM_STS, data);
 	
-	handles[0] = TPM_RH_PLATFORM;
-	sessionHandles[0] = (TPM_HT_HMAC_SESSION << 24) | 0x123456;
-	sessionAttributes[0] = 0x2a;
+	handles[0] = TPM_HT_PERMANENT;
+	sessionHandles[0] = (TPM_HT_TRANSIENT << 24) | 0x123456;
+	sessionAttributes[0] = 0x00;
 	
 	tpm_command(0, TPM_CC_Quote, TPM_ST_NO_SESSIONS,
 		handles, sessionHandles, sessionAttributes, sizeof(cmdData), cmdData);

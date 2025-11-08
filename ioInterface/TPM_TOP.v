@@ -65,9 +65,9 @@ module	TPM_TOP
 	management_module mm
 	(
 		.clock(CLOCK_50), .reset_n(rst_n),
-		.keyStart_n(~execStart), .tpm_cc(commandCode),
+		.keyStart_n(~execStart), .tpm_cc(commandCode[15:0]),
 		.cmd_param({commandParam[39:8], commandParam[0]}), .orderlyInput(orderlyInput),
-		.initialized(1'b1), .authHierarchy(authHierarchy),
+		.initialized(1'b1), .authHierarchy(commandParam[39:8]),
 		.executionEng_rc(ee_responseCode), .locality(locality),
 		.testsRun(testsRun), .testsPassed(testsPassed),
 		.untested(untested), .nv_phEnableNV(nv_phEnableNV),

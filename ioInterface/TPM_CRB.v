@@ -24,7 +24,7 @@ module	TPM_CRB
 	output	reg	[7:0]	rspByteOut,
 	
 	output			execDone,
-	output			execStart,
+	output	reg		execStart,
 	input			execAck,
 	input			rspReady,
 	
@@ -228,6 +228,7 @@ module	TPM_CRB
 	reg	[15:0]	sessionHmacSize [0:2];
 	reg	[11:0]	sessionHmacAddr [0:2];
 	reg	[31:0]	responseCode_hold;
+	reg		responseRec;
 	
 	wire		ccValid;
 	
@@ -248,6 +249,7 @@ module	TPM_CRB
 			end
 			
 			responseCode_hold <= `TPM_RC_SUCCESS;
+			responseRec <= 1'b0;
 			commandCode <= 32'h00;
 			commandParam <= 32'h00;
 			expectedTag <= `TPM_ST_NO_SESSIONS;
@@ -283,6 +285,7 @@ module	TPM_CRB
 				end
 		*/		
 				responseCode_hold <= `TPM_RC_SUCCESS;
+				responseRec <= 1'b0;
 				commandCode <= 32'h00;
 				commandParam <= 32'h00;
 				expectedTag <= `TPM_ST_NO_SESSIONS;
@@ -492,7 +495,11 @@ module	TPM_CRB
 				setup_mm <= 1'b1;
 			
 			Exec_wait0:
+			begin
+				if (!responseRec)
+					responseRec <= rspReady;
 				responseCode_hold <= responseCode;
+			end
 			
 			Exec_done:
 				if (!proc_ee)
@@ -587,11 +594,21 @@ module	TPM_CRB
 //	assign	rspByteOut = rspOut;
 	assign	cmdDone = state == Exec_start;
 	assign	rspDone = state == Complete;
-	assign	execStart =
-		state == Exec_wait0 || state == Exec_wait1 ||
-		~setup_mm && (state == Exec_setup0 || state == Exec_setup1);
+//	assign	execStart =
+//		state == Exec_wait0 || state == Exec_wait1 ||
+//		~setup_mm && (state == Exec_setup0 || state == Exec_setup1);
 	assign	execDone = state == Exec_done;
 	assign	commandTag = cmd_st;
+	
+	always @*
+	begin
+		if (proc_ee)
+			execStart = state == Exec_start;
+		else
+			execStart =
+				state == Exec_wait0 || state == Exec_wait1 ||
+				~setup_mm && (state == Exec_setup0 || state == Exec_setup1);
+	end
 	
 	// placeholder
 	assign	rspSize = 32'd10;
