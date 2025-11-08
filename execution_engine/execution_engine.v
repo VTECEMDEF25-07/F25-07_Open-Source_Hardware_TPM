@@ -1131,11 +1131,13 @@ module execution_engine(
 					// ----------------------------------------------------------------
 					
 					state = STATE_SESSION_VALID;
-					
-					if (session_error)
+						
+					if (session_error || !current_session_valid && |session_index)
+					begin
 						state = STATE_POST_PROCESS;
-					
-					if((command_tag == TPM_ST_NO_SESSIONS && command_code_tag == TPM_ST_SESSIONS) || (command_tag == TPM_ST_SESSIONS && command_code_tag == TPM_ST_NO_SESSIONS)) begin
+						s_session_index = session_index - 1'b1;
+					end
+					else if((command_tag == TPM_ST_NO_SESSIONS && command_code_tag == TPM_ST_SESSIONS) || (command_tag == TPM_ST_SESSIONS && command_code_tag == TPM_ST_NO_SESSIONS)) begin
 						s_session_error = 1'b1;
 					end
 					else if(command_tag == TPM_ST_SESSIONS && command_code_tag == TPM_ST_SESSIONS) begin
@@ -1176,6 +1178,10 @@ module execution_engine(
 						if(!session_loaded) s_session_error = 1'b1;
 						
 						if(!auth_session && auth_necessary) s_session_error = 1'b1;
+						
+						if(!session_error &&  session_index < 2'd3 && current_session_valid) begin
+							s_session_index = session_index + 1'b1;
+						end
 					end 
 					else if(!session_error &&  session_index < 2'd3 && current_session_valid) begin
 							s_session_index = session_index + 1'b1;
@@ -1302,74 +1308,100 @@ module execution_engine(
 		session_present = 1'b0;
 		authHierarchy = 32'h00000000;
 
-		if(state == STATE_HANDLE_VALID) begin			// Check that the TPM shall successfully unmarshal the number of handles required by the command and validate that the value of the handle is consistent with the command syntax
+		if(state == STATE_HANDLE_VALID)
+		begin	// Check that the TPM shall successfully unmarshal the number of handles required by the command and validate that the value of the handle is consistent with the command syntax
 			s_current_handle = current_handle;
 			s_handle_type = handle_type;
 			s_handle_index_bits = handle_index_bits;
 			s_handle_index = handle_index;
-			if(cHandles > handle_count) begin
-	                		s_handle_error = 1'b1;
-		        		s_response_code = TPM_RC_VALUE;
-		        	end
-		    		// If the handle references a transient object, check that the handle references a loaded object
-		        	else if(handle_type == TPM_HT_TRANSIENT) begin
-		                	if(!loaded_object_present) begin
-					        s_handle_error = 1'b1;
-						s_response_code = TPM_RC_REFERENCE_H0 + handle_index;
-					end
+			
+			if(cHandles > handle_count)
+			begin
+	               		s_handle_error = 1'b1;
+		       		s_response_code = TPM_RC_VALUE;
+		       	end
+			// If the handle references a transient object, check that the handle references a loaded object
+		        else if(handle_type == TPM_HT_TRANSIENT)
+			begin
+		               	if(!loaded_object_present)
+				begin
+				        s_handle_error = 1'b1;
+					s_response_code = TPM_RC_REFERENCE_H0 + handle_index;
 				end
-				else if(handle_type == TPM_HT_PERSISTENT) begin
-					if((entity_hierarchy == TPM_RH_PLATFORM && !phEnable) || 
-			                   (entity_hierarchy == TPM_RH_OWNER && !shEnable) || 
-				           (entity_hierarchy == TPM_RH_ENDORSEMENT && !ehEnable) ||
-			                   !nv_object_present) begin
-						s_handle_error = 1'b1;
-						s_response_code = TPM_RC_HANDLE; 
-					end
-					else if(!ram_available) begin
+			end
+			else if(handle_type == TPM_HT_PERSISTENT)
+			begin
+				if (
+					(entity_hierarchy == TPM_RH_PLATFORM && !phEnable) || 
+			                (entity_hierarchy == TPM_RH_OWNER && !shEnable) || 
+					(entity_hierarchy == TPM_RH_ENDORSEMENT && !ehEnable) ||
+			                !nv_object_present
+				)
+				begin
+					s_handle_error = 1'b1;
+					s_response_code = TPM_RC_HANDLE; 
+				end
+				else if(!ram_available)
+				begin
 						s_handle_error = 1'b1;
 						s_response_code = TPM_RC_OBJECT_MEMORY;
-					end
 				end
-			else if(handle_type == TPM_HT_NV_INDEX) begin
-				if(!nv_index_present ||
-			           (entity_hierarchy == TPM_RH_PLATFORM && !phEnable) || 
-			            (entity_hierarchy == TPM_RH_OWNER && !shEnable) || 
-						(entity_hierarchy == TPM_RH_ENDORSEMENT && !ehEnable)) begin
-						s_handle_error = 1'b1;
-						s_response_code = TPM_RC_HANDLE;
-					end
-					else if((nv_write && tpma_nv_writeLocked) || (nv_read && tpma_nv_readLocked)) begin
-						s_handle_error = 1'b1;
-						s_response_code = TPM_RC_NV_LOCKED;
-					end
-				end
-				else if(handle_type == TPM_HT_HMAC_SESSION || 
-						  handle_type == TPM_HT_LOADED_SESSION || 
-						  handle_type == TPM_HT_POLICY_SESSION || 
-						  handle_type == TPM_HT_SAVED_SESSION) begin
-					if(!session_present) begin
-						s_handle_error = 1'b1;
-						s_response_code = TPM_RC_REFERENCE_H0 + handle_index;
-					end
-				end
-				else if(handle_type == TPM_HT_PERMANENT) begin
-					if((current_handle == TPM_RH_PLATFORM && !phEnable) || 
-						(current_handle == TPM_RH_OWNER && !shEnable) || 
-						(current_handle == TPM_RH_ENDORSEMENT && !ehEnable)) begin
-						s_handle_error = 1'b1;
-						s_response_code = TPM_RC_HIERARCHY;
-					end
-				end
-				// Check if the handle references a PCR, then the value is within the range of PCR supported by the TPM
-				else if(handle_type == TPM_HT_PCR && pcrSelect > PCR_SELECT_MAX) begin
+			end
+			else if(handle_type == TPM_HT_NV_INDEX)
+			begin
+				if (
+					!nv_index_present ||
+					(entity_hierarchy == TPM_RH_PLATFORM && !phEnable) || 
+					(entity_hierarchy == TPM_RH_OWNER && !shEnable) || 
+					(entity_hierarchy == TPM_RH_ENDORSEMENT && !ehEnable)
+				) 
+				begin
 					s_handle_error = 1'b1;
-					s_response_code = TPM_RC_VALUE;
-				end else if (handle_index < handle_count) begin
-					// Extract current handle
-					s_handle_index = handle_index + 1'b1;
+					s_response_code = TPM_RC_HANDLE;
 				end
-            end
+				else if((nv_write && tpma_nv_writeLocked) || (nv_read && tpma_nv_readLocked))
+				begin
+					s_handle_error = 1'b1;
+					s_response_code = TPM_RC_NV_LOCKED;
+				end
+			end
+			else if (
+					handle_type == TPM_HT_HMAC_SESSION || 
+					handle_type == TPM_HT_LOADED_SESSION || 
+					handle_type == TPM_HT_POLICY_SESSION || 
+					handle_type == TPM_HT_SAVED_SESSION
+			) 
+			begin
+				if(!session_present)
+				begin
+					s_handle_error = 1'b1;
+					s_response_code = TPM_RC_REFERENCE_H0 + handle_index;
+				end
+			end
+			else if(handle_type == TPM_HT_PERMANENT)
+			begin
+				if (
+					(current_handle == TPM_RH_PLATFORM && !phEnable) || 
+					(current_handle == TPM_RH_OWNER && !shEnable) || 
+					(current_handle == TPM_RH_ENDORSEMENT && !ehEnable)
+				)
+				begin
+					s_handle_error = 1'b1;
+					s_response_code = TPM_RC_HIERARCHY;
+				end
+			end
+			// Check if the handle references a PCR, then the value is within the range of PCR supported by the TPM
+			else if(handle_type == TPM_HT_PCR && pcrSelect > PCR_SELECT_MAX)
+			begin
+				s_handle_error = 1'b1;
+				s_response_code = TPM_RC_VALUE;
+			end
+			else if (handle_index < handle_count)
+			begin
+				// Extract current handle
+				s_handle_index = handle_index + 1'b1;
+			end
+		end
 
 
 		case(current_state)
