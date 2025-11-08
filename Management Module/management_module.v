@@ -187,9 +187,9 @@ module management_module(
 			shutdownSave <= TPM_SU_CLEAR;
 		end
 		else begin
+			tpm_rc		 <= {20'h0,tpm_rc_state};					// update response code from combinational logic
 			if(!keyStart_n) begin
 				op_state     <= state;							// update operational state from combinational logic
-				tpm_rc		 <= {20'h0,tpm_rc_state};					// update response code from combinational logic
 				startup_input <= cmd_param[15:0];			// store startup input from command parameters input
 				shutdown_input <= orderlyInput;				// reload orderly shutdown state from last shutdown
 				s_testsPassed <= testsPassed;
