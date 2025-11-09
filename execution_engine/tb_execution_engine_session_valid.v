@@ -349,6 +349,7 @@ wire [31:0] authHierarchy;
         // Maps to: s_response_code <= TPM_RC_AUTH_MISSING
         // ----------------------------------------------------------------------
         #40;
+        max_session_amount  = 2'd1;
         command_ready   = 1'b1;
         command_tag     = TPM_ST_SESSIONS;
         command_code    = {8'h0E, TPM_CC_STARTUP}; // drives NO_SESSIONS tag inside DUT
@@ -369,6 +370,7 @@ wire [31:0] authHierarchy;
         // Maps to: s_response_code <= TPM_RC_HANDLE (earlier branch)
         // ----------------------------------------------------------------------
         #40;
+        max_session_amount  = 2'd1;
         command_ready   = 1'b1;
         command_tag     = TPM_ST_SESSIONS;
         command_code    = {8'h0E, TPM_CC_CLEAR}; // SESSIONS inside DUT
@@ -401,6 +403,7 @@ wire [31:0] authHierarchy;
         // still present but mark not loaded
         session_loaded      = 1'b0;
         auth_session        = 1'b1;
+        max_session_amount  = 2'd1;
         #40;
         command_ready = 1'b0;
 
@@ -422,12 +425,11 @@ wire [31:0] authHierarchy;
         session_loaded      = 1'b1;
         auth_session        = 1'b1;
 
-        max_session_amount  = 2'd1;
+        max_session_amount  = 2'd3;
         authorization_size  = 32'd8;
         #40;
         command_ready       = 1'b0;
         authorization_size  = 32'd0;
-        max_session_amount  = 2'd0;
 
         // ----------------------------------------------------------------------
         // PHASE 6: SESSIONS/SESSIONS ATTRIBUTES (none of flags set)
@@ -443,7 +445,7 @@ wire [31:0] authHierarchy;
         session0_handle     = {8'h00,24'h000000};
         session0_attributes = 8'b00000000; // no audit/decrypt/encrypt/auth bits
         session0_valid      = 1'b1;
-
+        max_session_amount  = 2'd1;
         session_loaded      = 1'b1;
         auth_session        = 1'b0;
         #40;
@@ -454,19 +456,29 @@ wire [31:0] authHierarchy;
         // Maps to: s_response_code <= TPM_RC_AUTH_MISSING
         // ----------------------------------------------------------------------
         #40;
+        max_session_amount  = 2'd3;
         command_ready       = 1'b1;
         command_tag         = TPM_ST_SESSIONS;
         command_code        = {8'h0E, TPM_CC_CLEAR};
         command_size        = 32'd8;
         command_length      = 16'd8;
 
-        session0_handle     = {8'h00,24'h000000};
+        session0_handle     = {TPM_HT_HMAC_SESSION,24'h000000};
         session0_attributes = 8'b10000000;
         session0_valid      = 1'b1;
+	session0_hmac_size = 16'd5;
 
+        session1_handle     = {TPM_HT_HMAC_SESSION,24'h000000};
+        session1_attributes = 8'b01000000;
+        session1_valid      = 1'b1;
+	session1_hmac_size = 16'd5;
 
+        session2_handle     = {TPM_HT_HMAC_SESSION,24'h000000};
+	session2_hmac_size = 16'd5;
+        session2_attributes = 8'b10000000;
+        session2_valid      = 1'b1;
         session_loaded      = 1'b1;
-        auth_session        = 1'b0;    
+        auth_session        = 1'b1;    
         auth_necessary      = 1'b1;    
         #40;
         command_ready       = 1'b0;
