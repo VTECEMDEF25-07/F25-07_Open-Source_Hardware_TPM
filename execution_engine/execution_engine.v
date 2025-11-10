@@ -1448,6 +1448,9 @@ module execution_engine(
 						if (session_handle_type != TPM_HT_HMAC_SESSION &&
     						    session_handle_type != TPM_HT_POLICY_SESSION &&
     						    current_session_handle != TPM_RS_PW) begin
+							s_response_code = TPM_RC_HANDLE;
+						end
+						else begin
 							if(!session_loaded) begin
 								s_response_code = TPM_RC_REFERENCE_S0 + session_index;
 							end
@@ -1460,9 +1463,6 @@ module execution_engine(
 							else if(!auth_session && auth_necessary) begin
 								s_response_code = TPM_RC_AUTH_MISSING;
 							end
-						end
-						else begin
-							s_response_code = TPM_RC_HANDLE;
 						end
 					end
 				end
@@ -1564,6 +1564,7 @@ module execution_engine(
 		endcase
 	end
 endmodule
+
 
 
 
