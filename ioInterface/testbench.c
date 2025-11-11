@@ -1050,15 +1050,15 @@ int main(int argc, char **argv)
 	if (!(_connected || _generateVerilogTB))
 		return 1;
 	
-//	test_debugRW();
-//	test_localityChanging();
-//	test_localityPermissions();
-//	test_statusStateMachine();
-//	test_localitySeizeCommandAbort();
+	test_debugRW(); // pass!
+	test_localityChanging(); // pass!
+	test_localityPermissions(); // pass!
+	test_statusStateMachine(); // pass!
+	test_localitySeizeCommandAbort(); // pass!
 //	test_sendReceiveCMD();
-//	test_hierarchyControl();
-	test_hierarchyControl2();
-	test_ccQuote();
+	test_hierarchyControl(); // pass!
+	test_hierarchyControl2(); // pass!
+	test_ccQuote(); // pass!
 	
 	check_assert();
 	ftdi_close();
@@ -1277,7 +1277,7 @@ tb_comment("Locality 4 will be used for this test");
 	print_tpm_transaction(WRITE, 1, 4, TPM_ACCESS, data);
 	print_tpm_transaction(READ, 1, 4, TPM_STS, data);
 	
-	tb_assert(data, 0, 0xff, EQUAL, 0,
+	tb_assert(data, 0, 0xff, EQUAL, r_stsValid,
 		"Testbench failure: TPM_STS state incorrect.");
 	
 	data[0] = r_commandReady;
@@ -1285,7 +1285,7 @@ tb_comment("Locality 4 will be used for this test");
 	print_tpm_transaction(READ, 1, 4, TPM_STS, data);
 	
 tb_comment("TPM should be in Idle state, as Locality 1 cannot control TPM_STS (Locality 4 is in control)");
-	tb_assert(data, 0, 0xff, EQUAL, 0,
+	tb_assert(data, 0, 0xff, EQUAL, r_stsValid,
 		"Testbench failure: TPM_STS state incorrect.");
 	
 tb_comment("Check which interrupts are supported");
@@ -1308,8 +1308,6 @@ tb_comment("TPM should now be in Ready state ... commandReadyInterrupt should be
 	
 tb_comment("Check the commandReadyInterrupt");
 	print_tpm_transaction(READ, 1, 4, TPM_INT_STATUS, data);
-//	if ((data[0] & r_commandReadyIntOccurred) == 0)
-//		printf("\nTestbench failure: commandReadyIntOccured incorrect (expected high).\n");
 	
 	tb_assert(data, 0, r_commandReadyIntOccurred, EQUAL, r_commandReadyIntOccurred,
 		"Testbench Failure: commandReadyInt should be high.");
@@ -1319,15 +1317,15 @@ tb_comment("Reset interrupts");
 	
 tb_comment("Ensure interrupts have been reset");
 	print_tpm_transaction(READ, 1, 4, TPM_INT_STATUS, data);
-//	if (data[0] != 0)
-//		printf("\nTestbench failure: interrupts have not been cleared.\n");
 	
 	tb_assert(data, 0, r_commandReadyIntOccurred, EQUAL, 0,
 		"Testbench Failure: commandReadyInt should be low.");
 	
 tb_comment("Write first byte to FIFO, state should transition to Reception");
-	unsigned char str[64] = "This is a test string.\n";
-	print_tpm_transaction(WRITE, 24, 4, TPM_DATA_FIFO, str);
+
+tb_comment("Send first byte of command tag.");
+	data[0] = TPM_ST_NO_SESSIONS >> 8;
+	print_tpm_transaction(WRITE, 1, 4, TPM_DATA_FIFO, data);
 	print_tpm_transaction(READ, 1, 4, TPM_STS, data);
 	
 	tb_assert(data, 0, r_Expect, EQUAL, r_Expect,
@@ -1342,10 +1340,36 @@ tb_comment("Write of tpmGo does nothing, as the command hasn't finished sending 
 		"Testbench Failure: TPM_STS.Expect should be 1.");
 	
 tb_comment("Once FIFO is full (command fully sent), tmpGo may be used ; Expect = 0");
-	data[0] = r_dbgFifoComplete;
-	print_tpm_transaction(WRITE, 1, 4, IDS_CTRL, data);
-	print_tpm_transaction(READ, 1, 4, TPM_STS, data);
+
+tb_comment("Send second byte of command tag.");
+	data[0] = TPM_ST_NO_SESSIONS & 0xFF;
+	print_tpm_transaction(WRITE, 1, 4, TPM_DATA_FIFO, data);
+
+tb_comment("Send command header.");
+	data[0] = 0x00;
+	for(unsigned i=0; i<3; i++)
+		tpm_transaction(WRITE, 1, 4, TPM_DATA_FIFO, data);
+	data[0] = 0x0A;
+	print_tpm_transaction(WRITE, 1, 4, TPM_DATA_FIFO, data);
 	
+	print_tpm_transaction(READ, 1, 4, TPM_STS, data);
+	tb_assert(data, 0, r_Expect, EQUAL, r_Expect,
+		"Testbench Failure: TPM_STS.Expect should be 1.");
+	
+tb_comment("Send command code.");
+	data[0] = (TPM_CC_Startup & 0xFF000000) >> 24;
+	data[1] = (TPM_CC_Startup & 0x00FF0000) >> 16;
+	data[2] = (TPM_CC_Startup & 0x0000FF00) >> 8;
+	print_tpm_transaction(WRITE, 3, 4, TPM_DATA_FIFO, data);
+	
+	print_tpm_transaction(READ, 1, 4, TPM_STS, data);
+	tb_assert(data, 0, r_Expect, EQUAL, r_Expect,
+		"Testbench Failure: TPM_STS.Expect should be 1.");
+	
+	data[0] = (TPM_CC_Startup & 0x000000FF) >> 0;
+	print_tpm_transaction(WRITE, 1, 4, TPM_DATA_FIFO, data);
+	
+	print_tpm_transaction(READ, 1, 4, TPM_STS, data);
 	tb_assert(data, 0, r_Expect, EQUAL, 0,
 		"Testbench Failure: TPM_STS.Expect should be 0.");
 	
@@ -1355,8 +1379,10 @@ tb_comment("Now tpmGo can be sent, state transitions to Execution");
 	print_tpm_transaction(READ, 1, 4, TPM_STS, data);
 	
 tb_comment("Once Execution is finished, state transitions to Complete ; dataAvail = 1");
-	data[0] = r_dbgExecEngineDone;
-	print_tpm_transaction(WRITE, 1, 4, IDS_CTRL, data);
+//	data[0] = r_dbgExecEngineDone;
+//	print_tpm_transaction(WRITE, 1, 4, IDS_CTRL, data);
+	
+	tpm_waitExec(4, 15);
 	print_tpm_transaction(READ, 1, 4, TPM_STS, data);
 	
 	tb_assert(data, 0, r_dataAvail, EQUAL, r_dataAvail,
@@ -1364,8 +1390,6 @@ tb_comment("Once Execution is finished, state transitions to Complete ; dataAvai
 	
 tb_comment("Check the dataAvailInterrupt");
 	print_tpm_transaction(READ, 1, 4, TPM_INT_STATUS, data);
-//	if ((data[0] & r_dataAvailIntOccurred) == 0)
-//		printf("\nTestbench failure: dataAvailIntOccured incorrect (expected high).\n");
 	
 	tb_assert(data, 0, r_dataAvailIntOccurred, EQUAL, r_dataAvailIntOccurred,
 		"Testbench Failure: dataAvail Interrupt should be high.");
@@ -1375,19 +1399,34 @@ tb_comment("Reset interrupts");
 	
 tb_comment("Ensure interrupts have been reset");
 	print_tpm_transaction(READ, 1, 4, TPM_INT_STATUS, data);
-//	if (data[0] != 0)
-//		printf("\nTestbench failure: interrupts have not been cleared.\n");
 	
 	tb_assert(data, 0, r_dataAvailIntOccurred, EQUAL, 0,
 		"Testbench Failure: dataAvail Interrupt should be low.");
 	
-	print_tpm_transaction(READ, 24, 4, TPM_DATA_FIFO, data);
-	
+tb_comment("Read data out of FIFO.");
+	print_tpm_transaction(READ, 10, 4, TPM_DATA_FIFO, data);
+
 tb_comment("Once Fifo has been fully read, dataAvail = 0");
-	data[0] = r_dbgFifoEmpty;
-	print_tpm_transaction(WRITE, 1, 4, IDS_CTRL, data);
+//	data[0] = r_dbgFifoEmpty;
+//	print_tpm_transaction(WRITE, 1, 4, IDS_CTRL, data);
+
 	print_tpm_transaction(READ, 1, 4, TPM_STS, data);
+	tb_assert(data, 0, r_dataAvail, EQUAL, 0,
+		"Testbench Failure: TPM_STS.dataAvail should be 0.");
+
+tb_comment("Test responseRetry");
+	data[0] = r_responseRetry;
+	print_tpm_transaction(WRITE, 1, 4, TPM_STS, data);
 	
+	print_tpm_transaction(READ, 1, 4, TPM_STS, data);
+	tb_assert(data, 0, r_dataAvail, EQUAL, r_dataAvail,
+		"Testbench Failure: TPM_STS.dataAvail should be 1.");
+
+tb_comment("Read data out of FIFO.");
+	for(unsigned i=0; i<10; i++)
+		tpm_transaction(READ, 1, 4, TPM_DATA_FIFO, data);
+
+	print_tpm_transaction(READ, 1, 4, TPM_STS, data);
 	tb_assert(data, 0, r_dataAvail, EQUAL, 0,
 		"Testbench Failure: TPM_STS.dataAvail should be 0.");
 	

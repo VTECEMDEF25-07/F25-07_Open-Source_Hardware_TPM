@@ -127,7 +127,7 @@ module	FIFO_BUFFER
 		AddrRst:
 			next_state = RspOut;
 		RspOut:
-			next_state = r_commandReady ? Idle : ~f_fifoAccess & (bufAddr == b_size[11:0] + 12'd2) ? CommandReady_wait : RspOut;
+			next_state = r_commandReady ? Idle : ~f_fifoAccess & (bufAddr == b_size[11:0] + 12'd1) ? CommandReady_wait : RspOut;
 		CommandReady_wait:
 			next_state = r_commandReady ? Idle : r_responseRetry ? AddrRst : CommandReady_wait;
 		
@@ -181,10 +181,10 @@ module	FIFO_BUFFER
 			bufAddr <= t_updateAddr & f_fifoWrite ? bufAddr + 12'h1 : bufAddr;
 			case (bufAddr[2:0])
 			
-			3'd2:	b_size <= { cmdByteIn, b_size[23:0] };
-			3'd3:	b_size <= { b_size[31:24], cmdByteIn, b_size[15:0] };
-			3'd4:	b_size <= { b_size[31:16], cmdByteIn, b_size[7:0] };
-			3'd5:	b_size <= { b_size[31:8], cmdByteIn };
+			3'd2:	b_size <= { bufOut, b_size[23:0] };
+			3'd3:	b_size <= { b_size[31:24], bufOut, b_size[15:0] };
+			3'd4:	b_size <= { b_size[31:16], bufOut, b_size[7:0] };
+			3'd5:	b_size <= { b_size[31:8], bufOut };
 			
 			endcase
 		end
