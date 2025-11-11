@@ -1035,6 +1035,7 @@ module execution_engine(
 			s_audit_count = audit_count;
 			s_decrypt_count = decrypt_count;
 			s_encrypt_count = encrypt_count;
+			state = STATE_IDLE;   
 			s_session_index = 3'b000;
 			case(current_state)
 				// ====================================================================
@@ -1103,7 +1104,7 @@ module execution_engine(
 							  //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 							  //cant currently check if handles are loaded in the appropriate spots add submodule
 							  /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-							  
+							  state = STATE_HANDLE_VALID;
 						 end
 						 else begin
 					 		if (handle_error) begin
@@ -1288,6 +1289,7 @@ module execution_engine(
 		s_param_decrypt_error = param_decrypt_error;
 		s_execution_startup_done = execution_startup_done;
 		s_initialized = initialized;
+		s_handle_index = handle_index;
 		
 		// Default output values
 		response_valid =   1'b0;
@@ -1311,6 +1313,9 @@ module execution_engine(
 		                	if(!loaded_object_present) begin
 					        s_handle_error = 1'b1;
 						s_response_code = TPM_RC_REFERENCE_H0 + handle_index;
+					end else begin
+						// Extract current handle
+						s_handle_index = handle_index + 1'b1;
 					end
 				end
 				else if(handle_type == TPM_HT_PERSISTENT) begin
@@ -1324,6 +1329,8 @@ module execution_engine(
 					else if(!ram_available) begin
 						s_handle_error = 1'b1;
 						s_response_code = TPM_RC_OBJECT_MEMORY;
+					end else begin
+						s_handle_index = handle_index + 1'b1;
 					end
 				end
 			else if(handle_type == TPM_HT_NV_INDEX) begin
@@ -1337,6 +1344,8 @@ module execution_engine(
 					else if((nv_write && tpma_nv_writeLocked) || (nv_read && tpma_nv_readLocked)) begin
 						s_handle_error = 1'b1;
 						s_response_code = TPM_RC_NV_LOCKED;
+					end else begin
+						s_handle_index = handle_index + 1'b1;
 					end
 				end
 				else if(handle_type == TPM_HT_HMAC_SESSION || 
@@ -1346,6 +1355,9 @@ module execution_engine(
 					if(!session_present) begin
 						s_handle_error = 1'b1;
 						s_response_code = TPM_RC_REFERENCE_H0 + handle_index;
+					end else begin
+						// Extract current handle
+						s_handle_index = handle_index + 1'b1;
 					end
 				end
 				else if(handle_type == TPM_HT_PERMANENT) begin
@@ -1354,16 +1366,19 @@ module execution_engine(
 						(current_handle == TPM_RH_ENDORSEMENT && !ehEnable)) begin
 						s_handle_error = 1'b1;
 						s_response_code = TPM_RC_HIERARCHY;
+					end else begin
+						// Extract current handle
+						s_handle_index = handle_index + 1'b1;
 					end
 				end
 				// Check if the handle references a PCR, then the value is within the range of PCR supported by the TPM
 				else if(handle_type == TPM_HT_PCR && pcrSelect > PCR_SELECT_MAX) begin
 					s_handle_error = 1'b1;
 					s_response_code = TPM_RC_VALUE;
-				end else if (handle_index < handle_count) begin
-					// Extract current handle
+				end else begin
 					s_handle_index = handle_index + 1'b1;
 				end
+				
             end
 
 
