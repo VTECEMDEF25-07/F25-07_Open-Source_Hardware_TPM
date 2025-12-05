@@ -1,3 +1,92 @@
+// testbench.c
+//
+// functions:
+//	ftdi_connect
+//	ftdi_close
+//	init_verilog_gen
+//	tb_assert
+//	tb_assertRC
+//	check_assert
+//	tb_stop
+//	close_verilog_gen
+//	tpm_reset
+//	tb_comment
+//	verilog_tpm_transaction
+//	tpm_transaction
+//	tpm_waitExec
+//	print_tpm_transaction
+//	tpm_command
+//	
+// test functions:
+//	test_debugRW
+//	test_localityChanging
+//	test_localityPermissions
+//	test_statusStateMachine
+//	test_localitySeizeCommandAbort
+//	test_sendReceiveCMD
+//	test_hierarchyControl
+//	test_hierarchyControl2
+//	test_ccQuote
+//
+// this file is compilable:
+//	main
+// 
+// Compile Directions:
+//	gcc testbench.c -llibMPSSE -L.
+//	The above assumes libmpsse.dll is in the working directory, replace -L.
+//	with -L <path to libmpsse.dll> otherwise.
+//	The resulting executable must also be able to find the DLL; the DLL should either be
+//	in the same directory as the executable, or the DLL should be in a system path.
+//
+// Dependencies:
+//	windows.h
+//	FTDI/ftd2xx.h
+//	FTDI/libMPSSE_spi.h
+//	libmpsse.dll
+//
+//	Check the FTDI folder in the project documents for the FTDI files, or download from:
+//		https://ftdichip.com/wp-content/uploads/2025/08/libmpsse-windows-1.0.8.zip
+//	
+// Drivers:
+//	FTDI D2XX Drivers (https://ftdichip.com/drivers/d2xx-drivers/)
+//	For VT students: these drivers should already be on your computer after Quartus
+//	and its USB Blaster have been installed (the USB Blaster uses the same drivers).
+//
+// Authors:
+//	Ian Sizemore (idsizemore@vt.edu)
+//
+// Date: 11/6/25
+//
+// General Description:
+//	This file implements the testing strategy for the I/O module, and integration testing.
+//	This file could be (should be) partitioned into several source files, but I would rather
+//	not break something so close to submission.
+//	The layout is as follows:
+//		Functions/definitions used by test functions
+//		Main
+//		Test functions
+//	
+//	This file both tests the physical FPGA, and generates equivalent Verilog testbench
+//	code. This allows for one testscript to be written in C to test both hardware and simulation.
+//	
+//	The program communicates with the board using the 
+//	FTDI C232HM-DDHSL-0 Cable (https://ftdichip.com/products/c232hm-ddhsl-0-2/).
+//	
+// Usage:
+//	Compile tests:
+//		gcc testbench.c -llibMPSSE -L. -o testing.exe
+//	1. Board/cable are plugged into PC
+//		> testing.exe
+//		(tests run, results shown)
+//		> testing.exe tb_test.v
+//		(tests run, results shown ; Verilog testbench generated to tb_test.v)
+//	2. Board/cable not plugged into PC
+//		> testing.exe
+//		(cable not found, nothing happens)
+//		> testing.exe tb_test.v
+//		(Verilog testbench generated to tb_test.v)
+//
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -6,20 +95,28 @@
 #include "FTDI/ftd2xx.h"
 #include "FTDI/libMPSSE_spi.h"
 
+// macro for checking ftdi status during initialization
 #define STATUS_CHECK(exp) {if(exp!=FT_OK){printf("%s:%d:%s(): status(0x%x) \
 != FT_OK\n",__FILE__, __LINE__, __FUNCTION__,exp);exit(1);}else{;}};
 
+// ftdi cable values
 int _devFound = -1;
 ChannelConfig _devConfig;
 FT_HANDLE _handle;
 FT_STATUS _status;
 
+// global error counter
 unsigned _errors = 0;
+// global generate verilog testbench bool
 unsigned _generateVerilogTB = 0;
+// global connected via cable bool
 unsigned _connected = 0;
+// global verilog testbench filename
 char _verilogTBFilename[64];
+// global verilog testbench file pointer
 FILE *_vFP = NULL;
 
+// connect to FTDI cable at frequency specified by freq
 int ftdi_connect(DWORD freq)
 {
 	FT_DEVICE_LIST_INFO_NODE devList;
@@ -64,6 +161,7 @@ int ftdi_connect(DWORD freq)
 	return 0;
 }
 
+// close connection to ftdi cable
 void ftdi_close(void)
 {
 	if (!_connected)
@@ -73,6 +171,7 @@ void ftdi_close(void)
 	SPI_CloseChannel(_handle);
 }
 
+// definitions for FIFO Registers
 enum
 {
 	TPM_ACCESS = 0x000,
@@ -88,6 +187,7 @@ enum
 	TPM_DATA_FIFO = 0x024,
 	TPM_XDATA_FIFO = 0x080,
 	
+	// debug registers
 	IDS_RW = 0xF24,
 	IDS_OVERFLOW = 0xF28,
 	IDS_CTRL = 0xF29,
@@ -102,15 +202,19 @@ enum
 	LOC4 = 4
 };
 
+// initialize verilog generation from CLI
 unsigned init_verilog_gen(int argc, char **argv)
 {
+	// do nothing if no arguments
 	if (argc == 1)
 		return 1;
 	
+	// otherwise, copy argument 2 into _verilogTBFilename
 	unsigned i = 0;
 	for(char *c = argv[1], *d = _verilogTBFilename; *c && i < 64; i++)
 		*d++ = *c++;
 	
+	// append filename with ~.v if it is too large
 	if (i == 64)
 	{
 		_verilogTBFilename[60] = '~';
@@ -121,28 +225,34 @@ unsigned init_verilog_gen(int argc, char **argv)
 	else
 		_verilogTBFilename[i] = '\0';
 	
+	// if filename is too small, exit
 	if (i < 3)
 	{
 		printf("Could not use %s for output (filename too short). Verilog Testbench will not be generated.\n", _verilogTBFilename);
 		return 1;
 	}
 	
+	// open file for writing
 	_vFP = fopen(_verilogTBFilename, "w");
 	
+	// if we could not open the file, exit
 	if (!_vFP)
 	{
 		printf("Could not use %s for output. Verilog Testbench will not be generated.\n", _verilogTBFilename);
 		return 1;
 	}
 	
+	// we have opened a file, set the generateVerilogTB bool to true
 	_generateVerilogTB = 1;
 	printf("Generating Verilog Testbench: %s\n\n", _verilogTBFilename);
 	
+	// change string so that it can be used to name the top module in the testbench
 	if (i == 64)
 		_verilogTBFilename[60] = '\0';
 	else
 		_verilogTBFilename[i-2] = '\0';
 	
+	// testbench code
 	fprintf(_vFP,
 		"// Auto-Generated Verilog Testbench\n"
 		"`timescale 1ns/1ns\n"
@@ -160,7 +270,7 @@ unsigned init_verilog_gen(int argc, char **argv)
 		"\treg\t\tSPI_rst_n;\n"
 		"\twire\t\tSPI_PIRQ_n;\n"
 		"\n"
-		"\ttest0_top\tdut\n"
+		"\ttest0_top\tdut\n"		// if the top module name changes, this will need to match it
 		"\t(\n"
 		"\t\t.CLOCK_50(clock), .RESET_N(reset_n),\n"
 		"\t\t.GPIO_1_2(SPI_clock), .GPIO_1_3(SPI_mosi),\n"
@@ -197,6 +307,7 @@ unsigned init_verilog_gen(int argc, char **argv)
 		"\n",
 		_verilogTBFilename);
 	
+	// return filename string to original state
 	if (i == 64)
 		_verilogTBFilename[60] = '~';
 	else
@@ -208,6 +319,15 @@ unsigned init_verilog_gen(int argc, char **argv)
 #define EQUAL 1
 #define UNEQUAL 0
 
+// this function is used for checking test results.
+// while a simple if () can be used in the C testbench, this function performs
+// both tests in C and generates the equivalent verilog
+// *data: the read data vector,
+// byte: the index of *data
+// filter: bitmash for the byte
+// comp: comparison (EQUAL or UNEQUAL)
+// expected: expected value
+// *str: string to print on error
 unsigned tb_assert(unsigned char *data, unsigned byte, unsigned char filter, unsigned comp, unsigned char expected, char *str)
 {
 	unsigned retVal = 0;
@@ -248,6 +368,10 @@ L_GEN:
 	return retVal;
 }
 
+// this function is used to assert response codes
+// *rspData: response code data pointer
+// expected: expected response code
+// *str: message to print on error
 void tb_assertRC(unsigned char *rspData, unsigned expected, char *str)
 {
 	if (_connected)
@@ -284,6 +408,7 @@ void tb_assertRC(unsigned char *rspData, unsigned expected, char *str)
 	}
 }
 
+// use this function to print a summary of whether or not errors have occured
 void check_assert(void)
 {
 	if (!_connected)
@@ -295,6 +420,7 @@ void check_assert(void)
 		printf("\nThere were no errors in testing.\n");
 }
 
+// use this function to issue $stop in the verilog testbench
 void tb_stop(void)
 {
 	if (_generateVerilogTB)
@@ -308,13 +434,17 @@ void tb_stop(void)
 */
 }
 
+// use this function to wrap up the verilog testbench
 void close_verilog_gen(void)
 {	
+	// do nothing if we arent generating the verilog testbench
 	if (!_generateVerilogTB)
 		return;
 	
+	// disable verilog testbench generation
 	_generateVerilogTB = 0;
 	
+	// close verilog
 	fprintf(_vFP,
 		"\n"
 		"\t\tif (errors)\n"
@@ -342,9 +472,11 @@ void close_verilog_gen(void)
 		"\n"
 		"endmodule\n");
 	
+	// close file pointer
 	fclose(_vFP);
 }
 
+// use this function to reset the tpm via SPI_RST signal
 void tpm_reset(void)
 {
 	if (_connected)
@@ -360,6 +492,9 @@ void tpm_reset(void)
 				"\t\t@(posedge clock);\n\n");
 }
 
+// this function prints *str to console during hardware testing,
+// and adds comments within the verilog testbench. this second functionality
+// is useful for ctrl-finding within the generated verilog code for debugging tests
 void tb_comment(char *str)
 {
 	if (_connected)
@@ -369,6 +504,13 @@ void tb_comment(char *str)
 		fprintf(_vFP, "\n\t\t// %s\n", str);
 }
 
+// this function generates verilog to control a tpm transaction
+// size: transaction size
+// dir: transaction direction
+// locality: transaction locality
+// reg: transaction regsiter
+// *header: transaction header
+// *data: transaction read/write data
 void verilog_tpm_transaction(unsigned size, unsigned dir, unsigned locality, unsigned reg, unsigned char *header, unsigned char *data)
 {
 	static unsigned entry = 0;
@@ -408,9 +550,6 @@ void verilog_tpm_transaction(unsigned size, unsigned dir, unsigned locality, uns
 	fprintf(_vFP, "%u\n", locality);
 	
 	fprintf(_vFP, "\t\tgenEntry = %u;\n\n", entry++);
-	
-//	if (reg == TPM_DATA_FIFO)
-//		fprintf(_vFP, "\t\t$stop;\n\n");
 	
 	unsigned uHeader = 0;
 	uHeader |= header[0] << 24;
@@ -484,6 +623,12 @@ void verilog_tpm_transaction(unsigned size, unsigned dir, unsigned locality, uns
 	fprintf(_vFP, "\t\trepeat (5) @(posedge clock);\n\n");
 }
 
+// this function handles tpm transactions
+// dir: transaction direction
+// size: transaction size
+// locality: transaction locality
+// reg: transaction register
+// *data: transaction read/write data
 void tpm_transaction(unsigned dir, unsigned size, unsigned locality, unsigned reg, unsigned char *data)
 {
 	unsigned char in, header[4] =
@@ -530,6 +675,9 @@ void tpm_transaction(unsigned dir, unsigned size, unsigned locality, unsigned re
 	}
 }
 
+
+// definitions for bit fields within the TPM FIFO Register Space
+// names match those within TPM_REG_SPACE.v
 enum
 {
 	// TPM_ACCESS
@@ -573,6 +721,9 @@ enum
 	r_dbgFifoComplete = 1 << 0
 };
 
+// this function is used to wait for the tpm to finish executing a command
+// locality: must be the active locality
+// tries: how many times we should poll the dataAvail register to check for command completion
 unsigned tpm_waitExec(unsigned locality, unsigned tries)
 {
 	unsigned timeout = 0;
@@ -675,6 +826,12 @@ unsigned tpm_waitExec(unsigned locality, unsigned tries)
 	return 0;
 }
 
+// a wrapper for tpm_transaction, which also prints information about the transaction to console
+// dir: transaction direction
+// size: transaction size
+// locality: transaction locality
+// reg: transaction register
+// *data: transaction read/write data
 void print_tpm_transaction(unsigned dir, unsigned size, unsigned locality, unsigned reg, unsigned char *data)
 {
 	tpm_transaction(dir, size, locality, reg, data);
@@ -795,11 +952,22 @@ void print_tpm_transaction(unsigned dir, unsigned size, unsigned locality, unsig
 
 #include "TpmTypes.h"
 
+// used to send command to the TPM
+// locality: locality sending command
+// commandCode: code of command
+// tag: command tag
+// the size of the follow three arrays is determined internally by the command code. to be safe, they should be size 4
+// *handles: array of handle data
+// *sessionHandles: array of sessionHandles
+// *sessionAttributes: array of sessionAttributes
+// nParams: number of parameters (in bytes)
+// *parameters: parameters
 void tpm_command(unsigned locality, unsigned commandCode, unsigned short tag, unsigned *handles, unsigned *sessionHandles, unsigned char *sessionAttributes, unsigned nParams, unsigned char *parameters)
 {
 	unsigned nHandles = 0;
 	unsigned nSessions = 0;
 	
+	// decode number of handles, sessions from command code
 	switch (commandCode)
 	{
 		case TPM_CC_Startup:			nHandles = 0, nSessions = 0; break; // 3'd0, 3'd0
@@ -923,20 +1091,25 @@ void tpm_command(unsigned locality, unsigned commandCode, unsigned short tag, un
 		default:				nHandles = 0, nSessions = 0; break; // 3'd7, 3'd7
 	}
 	
+	// if the tag dictates there will be no sessions, overwrite nSessions to 0
 	if (tag == TPM_ST_NO_SESSIONS)
 		nSessions = 0;
 	
+	// placeholder nonce and hmac data
 	unsigned char nonce[] = "This is a placeholder nonce buffer.";
 	unsigned char hmac[] = "This is a placeholder HMAC buffer.";
 	
+	// calculate nonce buffer size
 	unsigned char nonceSize[2];
 	nonceSize[0] = ((unsigned short)sizeof(nonce) & 0xFF00) >> 8;
 	nonceSize[1] = ((unsigned short)sizeof(nonce) & 0x00FF) >> 0;
 	
+	// calculate hmac buffer size
 	unsigned char hmacSize[2];
 	hmacSize[0] = ((unsigned short)sizeof(hmac) & 0xFF00) >> 8;
 	hmacSize[1] = ((unsigned short)sizeof(hmac) & 0x00FF) >> 0;
 	
+	// calculate command, auth sizes
 	unsigned cmdSize = 10;
 	unsigned authSize = nSessions*(9 + sizeof(nonce) + sizeof(hmac));
 	
@@ -945,7 +1118,7 @@ void tpm_command(unsigned locality, unsigned commandCode, unsigned short tag, un
 	if (nSessions)
 		cmdSize += 4 + authSize;
 	
-	
+	// create command header
 	unsigned char cmdHeader[10];
 	cmdHeader[0] = (tag & 0xFF00) >> 8;
 	cmdHeader[1] = (tag & 0x00FF) >> 0;
@@ -1012,8 +1185,8 @@ void tpm_command(unsigned locality, unsigned commandCode, unsigned short tag, un
 		// send hmac
 		memcpy(buf+index, hmac, sizeof(hmac)); index += sizeof(hmac);
 		
-		for(unsigned j=0; j<index; j++)
-			printf("%02X ", buf[j]);
+	//	for(unsigned j=0; j<index; j++)
+	//		printf("%02X ", buf[j]);
 		
 		// bulk write of auth area
 		while(index>64)
@@ -1032,6 +1205,8 @@ void tpm_command(unsigned locality, unsigned commandCode, unsigned short tag, un
 	
 }
 
+
+// name test function signatures here
 void test_debugRW(void);
 void test_localityChanging(void);
 void test_localityPermissions(void);
@@ -1042,30 +1217,62 @@ void test_hierarchyControl(void);
 void test_hierarchyControl2(void);
 void test_ccQuote(void);
 
+// main simply runs setup functions, test function, and closing functions
 int main(int argc, char **argv)
 {
+	// initialize ftdi connection at 24 MHz
 	ftdi_connect(24000000);
+	// init verilog tb generation with command line inputs
 	init_verilog_gen(argc, argv);
 	
+	// if we could not connect to the ftdi cable nor are setup to generate a verilog file, return
 	if (!(_connected || _generateVerilogTB))
 		return 1;
 	
-	test_debugRW(); // pass!
-	test_localityChanging(); // pass!
-	test_localityPermissions(); // pass!
-	test_statusStateMachine(); // pass!
-	test_localitySeizeCommandAbort(); // pass!
-//	test_sendReceiveCMD();
-	test_hierarchyControl(); // pass!
-	test_hierarchyControl2(); // pass!
-	test_ccQuote(); // pass!
 	
+	// test functions
+	test_debugRW(); // pass
+	test_localityChanging(); // pass
+	test_localityPermissions(); // pass
+	test_statusStateMachine(); // pass
+	test_localitySeizeCommandAbort(); // pass
+	test_hierarchyControl(); // pass
+	test_hierarchyControl2(); // pass
+	test_ccQuote(); // pass
+
+
+/*	// expo demo table loop
+	for(;; Sleep(1000))
+	{
+
+		test_hierarchyControl2();
+		check_assert();
+		_errors = 0;
+		
+		test_ccQuote();
+		check_assert();
+		_errors = 0;
+		
+		// resetting error count was necessary as
+		// the cable will occasionally drop a transmission, and these test functions
+		// do not properly run the checks to see if the transmission made it before trying
+		// to execution tpm commands, which would result with errors
+	}
+*/	
+	
+	// check for any errors that occured during testing
 	check_assert();
+	// close ftdi connection
 	ftdi_close();
+	//close verilog file generation
 	close_verilog_gen();
+	
 	return 0;
 }
 
+// this test simply writes 4 bytes, reads them back, and sees if they match
+// this uses debug FIFO registers, and is the simplest test.
+// if this test does not work, something has been setup wrong (check cables?)
 void test_debugRW(void)
 {
 	tpm_reset();
@@ -1088,6 +1295,7 @@ void test_debugRW(void)
 			"Testbench Failure (RW).");
 }
 
+// this tests the changing of the active locality
 void test_localityChanging(void)
 {
 	tpm_reset();
@@ -1159,6 +1367,8 @@ void test_localityChanging(void)
 	printf("\n");
 }
 
+// this tests locality permissions:
+// only the active locality should be able to read/write to a specific register
 void test_localityPermissions(void)
 {
 	tpm_reset();
@@ -1265,6 +1475,7 @@ void test_localityPermissions(void)
 			"Error: Read allowed from wrong locality.");
 }
 
+// this tests the i/o status state machine
 void test_statusStateMachine(void)
 {
 	tpm_reset();
@@ -1379,6 +1590,7 @@ tb_comment("Now tpmGo can be sent, state transitions to Execution");
 	print_tpm_transaction(READ, 1, 4, TPM_STS, data);
 	
 tb_comment("Once Execution is finished, state transitions to Complete ; dataAvail = 1");
+// old debug feature use, from before CRB was implemented
 //	data[0] = r_dbgExecEngineDone;
 //	print_tpm_transaction(WRITE, 1, 4, IDS_CTRL, data);
 	
@@ -1407,6 +1619,7 @@ tb_comment("Read data out of FIFO.");
 	print_tpm_transaction(READ, 10, 4, TPM_DATA_FIFO, data);
 
 tb_comment("Once Fifo has been fully read, dataAvail = 0");
+// old debug feature use, from before FIFO buffer was implemented
 //	data[0] = r_dbgFifoEmpty;
 //	print_tpm_transaction(WRITE, 1, 4, IDS_CTRL, data);
 
@@ -1444,6 +1657,8 @@ tb_comment("Locality 4 gives up control");
 		"Testbench Failure: Locality 4 should not be active.");
 }
 
+// test the ability for locality seizure
+// higher localities should be able to seize control from lesser localities
 void test_localitySeizeCommandAbort(void)
 {
 	tpm_reset();
@@ -1564,6 +1779,11 @@ void test_localitySeizeCommandAbort(void)
 #define TPM_CC_VEND 0x20000000
 // #define TPM_ST_NO_SESSIONS 0x8001
 
+
+// this test function no longer works, as it relied on old debug features that have been
+// removed during development of the TPM. it remains to illustrate how debug features can be added to the TPM
+// this used to test sending/receiving command data (before the CRB existed, a dummy module would simply echo the sent data)
+// new tests replace this
 void test_sendReceiveCMD(void)
 {
 	tpm_reset();
@@ -1828,6 +2048,11 @@ void test_sendReceiveCMD(void)
 #define TPM_CC_HIERARCHYCONTROL 0x00000121
 // #define TPM_ST_SESSIONS 0x8002 // TPM_ST_NO_SESSIONS 0x8001
 
+
+// this tests the hierarchyControl command, which is managed by the management module (this tests the integration with the management module)
+// this is different from the following test, which uses tpm_command to send command data.
+// this test sends command data through tpm_transaction calls, and remains as it shows how this can be done
+// when more control on how command data is sent is needed
 void test_hierarchyControl(void)
 {
 	tpm_reset();
@@ -2017,6 +2242,8 @@ void test_hierarchyControl(void)
 	
 }
 
+// this tests the hierarchyControl function
+// the command data is sent using tpm_command, rather than tpm_transaction calls (see above test function)
 void test_hierarchyControl2(void)
 {
 	tpm_reset();
@@ -2031,7 +2258,7 @@ void test_hierarchyControl2(void)
 	unsigned char data[64];
 	
 	tb_comment("Using Locality 0 as active locality.");
-	
+
 	data[0] = r_requestUse;
 	print_tpm_transaction(WRITE, 1, 0, TPM_ACCESS, data);
 	
@@ -2078,25 +2305,11 @@ void test_hierarchyControl2(void)
 	
 	print_tpm_transaction(WRITE, 1, 0, TPM_STS, data);
 	
-	if (cmdData[8])
+	if (cmdData[4])
 		tb_comment("Send command TPM_CC_HIERARCHYCONTROL : TPM_RH_PLATFORM, TPMI_YES");
 	else
 		tb_comment("Send command TPM_CC_HIERARCHYCONTROL : TPM_RH_PLATFORM, TPMI_NO");
-	
-	if (_connected)
-	{
-		printf("TPM Command:\n\t");
-		for(unsigned i=0; i<10; i++)
-		{
-			printf("%02x ", cmdHeader[i]);
-		}
-		for(unsigned i=0; i<9; i++)
-		{
-			printf("%02x ", cmdData[i]);
-		}
-		printf("\n");
-	}
-	
+		
 	handles[0] = 0x02123456;
 	sessionHandles[0] = 0x02345678;
 	sessionAttributes[0] = 0x00;
@@ -2123,6 +2336,39 @@ void test_hierarchyControl2(void)
 	tb_assertRC(data, TPM_RC_VALUE,
 		"Expected TPM_RC_VALUE.");
 	
+	cmdData[4] = 0x00;
+	
+	data[0] = r_commandReady;
+	print_tpm_transaction(WRITE, 1, 0, TPM_STS, data);
+	print_tpm_transaction(WRITE, 1, 0, TPM_STS, data);
+	
+	if (cmdData[4])
+		tb_comment("Send command TPM_CC_HIERARCHYCONTROL : TPM_RH_PLATFORM, TPMI_YES");
+	else
+		tb_comment("Send command TPM_CC_HIERARCHYCONTROL : TPM_RH_PLATFORM, TPMI_NO");
+	
+	tpm_command(0, TPM_CC_HierarchyControl, TPM_ST_SESSIONS,
+		handles, sessionHandles, sessionAttributes, sizeof(cmdData), cmdData);
+		
+	data[0] = r_tpmGo;
+	print_tpm_transaction(WRITE, 1, 0, TPM_STS, data);
+	
+	tpm_waitExec(0, 15);
+	
+	print_tpm_transaction(READ, 10, 0, TPM_DATA_FIFO, data);
+	if (_connected)
+	{
+		printf("TPM Response:\n\t");
+		for(unsigned i=0; i<10; i++)
+		{
+			printf("%02x ", data[i]);
+		}
+		printf("\n");
+	}
+	
+	tb_assertRC(data, TPM_RC_SUCCESS,
+		"Expected TPM_RC_SUCCESS.");
+	
 	data[0] = r_commandReady;
 	print_tpm_transaction(WRITE, 1, 0, TPM_STS, data);
 	
@@ -2130,6 +2376,8 @@ void test_hierarchyControl2(void)
 	print_tpm_transaction(WRITE, 1, 0, TPM_ACCESS, data);
 }
 
+// this tests the ccQuote command with and without sessions (it requires sessions)
+// this is handles by the execution engine, and therefore this tests the integration with the execution engine
 void test_ccQuote(void)
 {
 	tpm_reset();
@@ -2200,6 +2448,8 @@ void test_ccQuote(void)
 	handles[0] = TPM_HT_PERMANENT;
 	sessionHandles[0] = (TPM_HT_TRANSIENT << 24) | 0x123456;
 	sessionAttributes[0] = 0x00;
+
+	tb_comment("Send command TPM_CC_QUOTE [Without Sessions]. Expect RC of 0x145.");
 	
 	tpm_command(0, TPM_CC_Quote, TPM_ST_NO_SESSIONS,
 		handles, sessionHandles, sessionAttributes, sizeof(cmdData), cmdData);
@@ -2231,6 +2481,8 @@ void test_ccQuote(void)
 	print_tpm_transaction(WRITE, 1, 0, TPM_STS, data);
 	
 	print_tpm_transaction(WRITE, 1, 0, TPM_STS, data);
+
+	tb_comment("Send command TPM_CC_QUOTE [With Sessions]. Expect RC of 0x000.");
 	
 	tpm_command(0, TPM_CC_Quote, TPM_ST_SESSIONS,
 		handles, sessionHandles, sessionAttributes, sizeof(cmdData), cmdData);

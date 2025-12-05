@@ -1,7 +1,21 @@
+// SPI_SLAVE.v
+// modules:
+//	SPI_SLAVE
+//	DET_FF
+//
+// Authors:
+//	Ian Sizemore (idsizemore@vt.edu)
+//
+// Date: 11/6/25
+//
+// General Description:
+//	This is the SPI serializer module, which handles the SPI protocol connection between
+//	the Host System and the I/O module (specifically the transaction handler).
+
 module SPI_SLAVE
 (
-	input			clock50,	// 50 MHz
-	input			clock100,
+	input			clock50,	// 50 MHz (sysclock, arbitrary)
+	input			clock100,	// 100 MHz (used for sampling SPI, >60 MHz should work)
 	input			reset_n,
 	
 	output	reg		RX_valid,	// data valid pulse
@@ -112,15 +126,19 @@ module SPI_SLAVE
 	
 	reg	[8:0]	TX_temp;
 	
-	always @(posedge det_clock) // @(negedge SPI_clock) //, posedge test)
+	// TX_temp is a shift register, which shifts out MISO bits.
+	// det_clock has a posedge sooner than SPI_clock does, which allows
+	// slow SPI master devices more time to capture the MISO signal
+	// (think of a device with a long MISO setup requirement).
+	// det_clock is a negedge detector of the SPI_clock, and is fed by
+	// dual edge triggered flipflops
+	always @(posedge det_clock)
 	begin
-		if (  TX_counter == 3'd7) // TX_valid ) //
+		if (  TX_counter == 3'd7)
 		begin
 			TX_temp <= { TX_temp[7], TX_preload };
-//			TX_received <= 1'b1;
 		end else begin
 			TX_temp <= TX_temp << 1'b1;
-//			TX_received <= 1'b0;
 		end
 	end
 	
@@ -131,6 +149,7 @@ module SPI_SLAVE
 		prev_TX_valid <= TX_valid;
 	assign	neg_TX_valid = ~TX_valid & prev_TX_valid;
 	
+	// preload TX byte early to avoid timing issues
 	always @(posedge clock50, negedge reset_n)
 	begin
 		if (!reset_n)
@@ -165,6 +184,8 @@ module SPI_SLAVE
 	
 endmodule
 
+
+// Dual edge triggered flipflop
 module	DET_FF
 (
 	input	clock, reset_n,

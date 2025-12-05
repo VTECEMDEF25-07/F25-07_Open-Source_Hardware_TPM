@@ -1,16 +1,34 @@
+// TPM_TOP.v
+// modules:
+//	TPM_TOP
+//
+// Authors:
+//	Ian Sizemore (idsizemore@vt.edu)
+//
+// Date: 11/6/25
+//
+// General Description:
+//	This file describes the top module of the TPM.
+//	This instantiates and connects the i/o module, the management module,
+//	and the execution engine.
+// 
+
 module	TPM_TOP
 (
-	input		CLOCK_50,
-	input		CLOCK_100,
-	input		RESET_n,
+	input		CLOCK_50,	// 50 MHz sysclock
+	input		CLOCK_100,	// 100 MHz clock (used for sampling SPI_CLOCK)
+	input		RESET_n,	// async reset
 	
-	input		SPI_CLOCK,
-	input		SPI_CS_n,
-	input		SPI_RST_n,
-	input		SPI_MOSI,
-	output		SPI_MISO,
-	output		SPI_PIRQ_n
+	input		SPI_CLOCK,	// SPI clock
+	input		SPI_CS_n,	// SPI chip select
+	input		SPI_RST_n,	// SPI async reset
+	input		SPI_MOSI,	// SPI mosi
+	output		SPI_MISO,	// SPI miso
+	output		SPI_PIRQ_n	// SPI interrupt request
 );
+
+	// this module is simply instantiations and their connections
+
 	wire		rst_n;
 	assign	rst_n = SPI_RST_n & RESET_n;
 	

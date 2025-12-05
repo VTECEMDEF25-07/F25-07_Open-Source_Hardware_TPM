@@ -1,4 +1,21 @@
-// `include TPM_REG_SPACE_H
+// TPM_REG_SPACE.v
+// modules:
+//	TPM_REG_SPACE
+//
+// Authors:
+//	Ian Sizemore (idsizemore@vt.edu)
+//
+// Date: 11/6/25
+//
+// General Description:
+//	This module is the central module of the I/O module.
+//	It is referred to as "frs" in comments ("fifo register space", from the spec).
+//	This module contains the state machine for the I/O module, a state machine for handling locality,
+//	handles the fifo register space, handles interrupts, and contains the instantiation of the fifo buffer.
+//	Note: comments and net names containing "IDS" are debug features (a 'todo' which needs change/removal in the future).
+//		Some of these have already been removed, and other that remain may not serve any debug purpose anymore.
+//		Since the project is working and ready for submission, I'm going to leave these debug features present to
+//		avoid breaking something on accident.
 
 `define READ 1
 `define WRITE 0
@@ -8,6 +25,7 @@ module	TPM_REG_SPACE
 	input			clock,
 	input			reset_n,
 	
+	// connections to transaction handler
 	input			t_req,		// SPI transaction request
 	input			t_dir,		// SPI transaction direction (READ = 1; WRITE = 0)
 	input		[5:0]	t_size,		// SPI transaction size
@@ -15,32 +33,36 @@ module	TPM_REG_SPACE
 	input		[15:0]	t_baseAddr,	// SPI transaction starting address
 	input		[7:0]	t_writeByte,	// SPI transaction write byte
 	output	reg	[7:0]	t_readByte,	// SPI transaction read byte
+	input			updateAddr,	// singal to update address, used for timing fifo buffer accesses
 	
-	input			e_execDone,
-	output			e_execStart,
+	input			e_execDone,	// execution done, from CRB
+	output			e_execStart,	// UNUSED
 	
-	output			SPI_PIRQ_n,	// SPI PCI-IRQ output
+	output			SPI_PIRQ_n,	// SPI IRQ to host
 	
-	output		[2:0]	debug,
-	output			dbg,
+	output		[2:0]	debug,		// may be removed
+	output			dbg,		// may be removed
+		
+	output	reg	[7:0]	locality_out,	// active locality
 	
-	input			updateAddr,
-	
-	output	reg	[7:0]	locality_out,
-	
-	output		[31:0]	c_cmdSize,
-	input		[31:0]	c_rspSize,
-	output			c_cmdSend,
-	input			c_rspSend,
-	input			c_cmdDone,
-	input			c_rspDone,
-	input		[11:0]	c_cmdInAddr,
-	input		[11:0]	c_rspInAddr,
-	output		[7:0]	c_cmdByteOut,
-	input		[7:0]	c_rspByteIn,
-	input			c_execDone,
-	output			c_execAck
+	// command response buffer connections
+	output		[31:0]	c_cmdSize,	// command size
+	input		[31:0]	c_rspSize,	// response size
+	output			c_cmdSend,	// command send
+	input			c_rspSend,	// response send
+	input			c_cmdDone,	// command send done
+	input			c_rspDone,	// response send done
+	input		[11:0]	c_cmdInAddr,	// command send address
+	input		[11:0]	c_rspInAddr,	// response send address
+	output		[7:0]	c_cmdByteOut,	// command send byte
+	input		[7:0]	c_rspByteIn,	// response send byte
+	input			c_execDone,	// execution done
+	output			c_execAck	// ack execution done
 );
+	
+	// fifo reg names (r_ prefix for regs, w_ for wires; _e postfix for external, _i for internal)
+	// note: some of these are unused
+	
 	// TPM_ACCESS -- STATE MACHINE
 	reg		r_tpmRegValidSts [0:4];
 	reg		r_activeLocality_i [0:4], r_activeLocality_e [0:4];
@@ -132,6 +154,7 @@ module	TPM_REG_SPACE
 	wire		f_fifoEmpty;
 	wire	[7:0]	f_fifoOut;
 	
+	// fifo access is true during a transaction request to one of these addresses
 	assign	f_fifoAccess = t_req &
 	(
 		t_baseAddr[11:0] == 12'h027 |
@@ -148,6 +171,7 @@ module	TPM_REG_SPACE
 //	assign	f_fifoComplete = r_IDS_FIFO_W;
 //	assign	f_fifoEmpty = r_IDS_FIFO_R;
 	
+	// locality requests
 	wire	[4:0]	l_requests;
 	assign	l_requests[0] = r_requestUse[0];
 	assign	l_requests[1] = r_requestUse[1];
@@ -155,9 +179,11 @@ module	TPM_REG_SPACE
 	assign	l_requests[3] = r_requestUse[3];
 	assign	l_requests[4] = r_requestUse[4];
 	
+	// r_Seize vector
 	wire	[4:0]	r_Seize_v;
 	assign	r_Seize_v = { r_Seize[4],r_Seize[3],r_Seize[2],r_Seize[1],r_Seize[0] };
 	
+	// combinational logic to determine l_SeizeRequest, which stores decimal priority level of the request
 	reg	[7:0]	l_activeLocality;
 	reg	[3:0]	l_SeizeRequest;
 	always @*
@@ -174,27 +200,32 @@ module	TPM_REG_SPACE
 		endcase
 	end
 	
+	// l_trySeize is true if there is a SeizeRequest from a locality higher than the active locality
 	wire		l_trySeize;
 	assign	l_trySeize = |r_Seize_v & l_SeizeRequest > l_activeLocality;
 	
+	// state machine for keeping track of active locality
 	localparam
-		LocNull		= 0,
-		LocRel		= 1,
-		Loc$0		= 2,
-		Loc$1		= 3,
-		Loc$2		= 4,
-		Loc$3		= 5,
-		Loc$4		= 6;
+		LocNull		= 0,	// no active locality
+		LocRel		= 1,	// active locality reliquishes control
+		Loc$0		= 2,	// locality 0
+		Loc$1		= 3,	// locality 1
+		Loc$2		= 4,	// locality 2
+		Loc$3		= 5,	// locality 3
+		Loc$4		= 6;	// locality 4
 	reg	[2:0]	loc_s, loc_next_s;
 	
+	// state machine register
 	always @(posedge clock, negedge reset_n)
 	begin
 		if (!reset_n)
 			loc_s <= LocNull;
+		// only update when there is not an active transaction ; if l_trySeize, force transfer to reliquish
 		else if (~t_req | f_fifoAccess)
 			loc_s <= l_trySeize ? LocRel : loc_next_s;
 	end
 	
+	// combinational logic for active locality output
 	always @* case (loc_s)
 	
 	default:	locality_out = 8'h00;
@@ -206,21 +237,29 @@ module	TPM_REG_SPACE
 	
 	endcase
 	
+	// locality state machine next state combinational logic
 	always @*
 	begin
 		case (loc_s)
+			// stay in Locality NULL until a request comes in, then NULL reliqushes
 			LocNull:
 				loc_next_s = l_requests == 5'h00 ? LocNull : LocRel;
+			// reliquish control when r_activeLocality_i is written to
 			Loc$0:
 				loc_next_s = r_activeLocality_i[0] ? LocRel : Loc$0;
+			// reliquish control when r_activeLocality_i is written to
 			Loc$1:
 				loc_next_s = r_activeLocality_i[1] ? LocRel : Loc$1;
+			// reliquish control when r_activeLocality_i is written to
 			Loc$2:
 				loc_next_s = r_activeLocality_i[2] ? LocRel : Loc$2;
+			// reliquish control when r_activeLocality_i is written to
 			Loc$3:
 				loc_next_s = r_activeLocality_i[3] ? LocRel : Loc$3;
+			// reliquish control when r_activeLocality_i is written to
 			Loc$4:
 				loc_next_s = r_activeLocality_i[4] ? LocRel : Loc$4;
+			// when a locality reliquishes control, control is transferred to the highest request
 			LocRel:
 			casez (l_requests)
 				5'b1????: loc_next_s = Loc$4;
@@ -236,6 +275,7 @@ module	TPM_REG_SPACE
 		endcase
 	end
 	
+	// combinational logic for l_activeLocality
 	always @*
 	begin
 		case (loc_s)
@@ -250,9 +290,11 @@ module	TPM_REG_SPACE
 		endcase
 	end
 	
+	// signal that reports when a locality is changing
 	wire	l_locChanged;
 	assign	l_locChanged = loc_s == LocRel;
 	
+	// determines if the transaction should be allowed ... only if the transaction's locality is that of the active locality
 	wire	l_allowAccess;
 	assign	l_allowAccess = l_activeLocality == t_baseAddr[15:12];
 	
@@ -265,14 +307,17 @@ module	TPM_REG_SPACE
 		Completion	= 4;
 	reg	[2:0]	sts_s, sts_next_s;	assign debug = sts_s;
 	
+	// Status state machine 
 	always @(posedge clock, negedge reset_n)
 	begin
 		if (!reset_n)
 			sts_s <= Idle;
+		// only update outside of transactions, return to Idle on a sucessful Seize
 		else if (~t_req | f_fifoAccess)
 			sts_s <= l_trySeize ? Idle : sts_next_s;
 	end
 	
+	// status state machine next state combinational logic
 	always @*
 	begin
 		case (sts_s)
@@ -300,8 +345,13 @@ module	TPM_REG_SPACE
 		endcase
 	end
 	
+	
+	// FIFO register space block (also status state machine sequential logic, also interrupts)
+	// Blocks are named to help document where individual register behaviors are implemented,
+	//	block names end with $x, where x represents the byte of the register.
+	//	I.e., block TPM_INT_ENABLE$3 implements read/write behavior of the TPM_INT_ENABLE register's fourth byte.
 	always @(posedge clock, negedge reset_n)
-	begin	
+	begin : REG_SPACE	
 		if (!reset_n) // default values for registers
 		begin : REG_SPACE_RESET
 			
@@ -364,11 +414,14 @@ module	TPM_REG_SPACE
 			r_IDS_EXEC <= 1'b0;
 			r_IDS_OVERFLOW <= 8'h00;
 		end
+		// status state machine sequential logic block (and locality fsm)
 		else if (~t_req | f_fifoAccess)
-		begin
+		begin : STS_FSM_SEQ
+			// t_readByte is 0xFF unless the transaction is accessing the fifo buffer,
+			// 	in the correct locality, and the fifo has data available
 			t_readByte <= f_fifoAccess & l_allowAccess & r_dataAvail ? f_fifoOut : 8'hFF;
 			
-			case (sts_s) // TPM_STS
+			case (sts_s) // TPM_STS status state machine
 			
 			Idle, Execution:
 			begin
@@ -409,19 +462,21 @@ module	TPM_REG_SPACE
 			
 			endcase
 			
-			// TPM_ACCESS
+			// TPM_ACCESS / locality state machine
 			
+			// if the active locality is being seized, notify the host by updating the register
 			if (l_trySeize)
-		//	begin
 				r_beenSeized[l_activeLocality] <= 1'b1;
-				r_Seize[0] <= 1'b0;
-				r_Seize[1] <= 1'b0;
-				r_Seize[2] <= 1'b0;
-				r_Seize[3] <= 1'b0;
-				r_Seize[4] <= 1'b0;
-		//	end
+				
+			// clear requests
+			r_Seize[0] <= 1'b0;
+			r_Seize[1] <= 1'b0;
+			r_Seize[2] <= 1'b0;
+			r_Seize[3] <= 1'b0;
+			r_Seize[4] <= 1'b0;
 			r_requestUse[l_activeLocality] <= 1'b0;
 			
+			// clear requests
 			r_commandReady_i <= 1'b0;
 			r_tpmGo <= 1'b0;
 			r_responseRetry <= 1'b0;
@@ -442,12 +497,13 @@ module	TPM_REG_SPACE
 					r_localityChangeIntOccured <= r_localityChangeIntOccured | l_locChanged;
 			end
 		end
+		// The access register is the only register that may be accessed regardless of the active locality
 		else if (t_req & ~f_fifoAccess & t_address[11:0] == 12'h000)
 		begin : TPM_ACCESS$0
 			if (t_dir)
 				t_readByte <=
 				{
-					loc_s != LocRel, // IDS ??? r_tpmRegValidSts[t_address[15:12]],
+					loc_s != LocRel, // r_tpmRegValidSts[t_address[15:12]],
 					1'b0,
 					l_activeLocality[3:0] == t_address[15:12], // r_activeLocality_e[t_address[15:12]],
 					r_beenSeized[t_address[15:12]],
@@ -464,6 +520,7 @@ module	TPM_REG_SPACE
 				r_requestUse[t_address[15:12]] <= t_writeByte[1] | t_writeByte[3];
 			end
 		end
+		// all other FIFO registers read and write behaviors
 		else if (t_req & ~f_fifoAccess & l_allowAccess) case (t_address[11:0])
 		12'h00B:
 		begin : TPM_INT_ENABLE$3
@@ -608,9 +665,9 @@ module	TPM_REG_SPACE
 					2'h0
 				};
 			else
-			begin // IDS writing behaviors require additional logic once state machine is setup
+			begin
 				r_resetEstablishmentBit <= t_writeByte[1];
-				r_commandCancel <= t_writeByte[0];
+				r_commandCancel <= t_writeByte[0]; // IDS todo
 			end
 		end
 		12'h01A:
@@ -628,7 +685,7 @@ module	TPM_REG_SPACE
 			if (t_dir)
 				t_readByte <=
 				{
-					1'b1, // r_stsValid,
+					1'b1, // r_stsValid, IDS .. always 1? no process delay
 					r_commandReady_e,
 					1'h0,
 					r_dataAvail,
@@ -637,7 +694,7 @@ module	TPM_REG_SPACE
 					2'h0
 				};
 			else
-			begin // IDS writing behaviors require additional logic once state machine is setup
+			begin
 				r_commandReady_i <= t_writeByte[6];
 				r_tpmGo <= t_writeByte[5];
 				r_responseRetry <= t_writeByte[1];
@@ -660,7 +717,7 @@ module	TPM_REG_SPACE
 					w_CapIFRes[1]
 				};
 			else
-			begin // IDS writing behaviors require additional logic once state machine is setup
+			begin
 				r_IntfSelLock <= r_IntfSelLock | t_writeByte[3];
 				if (!r_IntfSelLock)
 					r_InterfaceSelector <= t_writeByte[2:1];
@@ -717,7 +774,8 @@ module	TPM_REG_SPACE
 		
 		default:
 			t_readByte <= 8'hFF;
-		
+			
+		// addresses beyond this point are reserved by spec and are being used for some debug purposes
 		
 		12'hF29:
 		begin
@@ -774,6 +832,7 @@ module	TPM_REG_SPACE
 		
 		endcase
 		else
+			// read 0xFF on bad address
 			t_readByte <= 8'hFF;
 	end
 	
@@ -823,6 +882,7 @@ module	TPM_REG_SPACE
 	
 	assign	c_execAck = sts_s == Completion;
 	
+	// instantiation of the fifo buffer
 	FIFO_BUFFER io_fifo
 	(
 		.clock(clock), .reset_n(reset_n),

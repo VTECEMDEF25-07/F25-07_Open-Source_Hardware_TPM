@@ -1,3 +1,13 @@
+// TPM_TYPES.vh
+//
+// Date: 11/6/25
+//
+// General Description:
+//	This is a Verilog header file, which defines some TPM constants.
+//	It is not complete.
+//	See .\TPMCmd\tpm\include\public\TpmTypes.h in the Microsoft Software implementation,
+//	as this file is based on that header.
+
 // Table "Definition of TPM_CC Constants" (Part 2: Structures)
 `define TPM_CC_FIRST                      32'h0000011F
 `define TPM_CC_NV_UndefineSpaceSpecial    32'h0000011F

@@ -1,9 +1,24 @@
+// test0_top.v
+// modules:
+//	test0_top
+//
+// Authors:
+//	Ian Sizemore (idsizemore@vt.edu)
+//
+// Date: 11/6/25
+//
+// General Description:
+//	Top level module for our physical fpga testing.
+//	Other top level modules for different devices will likely look similar.
+//	This module targets the Terasic DE0-CV development board.
+
 module test0_top
 (
 	input		CLOCK_50,
 	input		RESET_N,
 	output	[9:0]	LEDR,
 	
+	// the colors indicate the wires used by the FTDI USB-SPI cable
 	input /*orange*/GPIO_1_2,	// SPI_clock	[CLK_n]
 	input /*yellow*/GPIO_1_3,	// SPI_mosi
 	output/*green*/	GPIO_1_4,	// SPI_miso

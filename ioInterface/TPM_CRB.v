@@ -1,3 +1,19 @@
+// TPM_CRB.v
+// modules:
+//	TPM_CRB
+//	CRB_TRANS
+//
+// Authors:
+//	Ian Sizemore (idsizemore@vt.edu)
+//
+// Date: 11/6/25
+//
+// General Description:
+//	This file describes the Command/Reponse Buffer of the TPM.
+//	The CRB handles data flow from the FRS to the management/execution modules.
+//	Command data is parsed into a set of output busses, and reponse data is fed to the FIFO buffer.
+
+// this includes defined TPM constants (command codes, etc.)
 `include "TPM_TYPES.vh"
 
 module	TPM_CRB
@@ -5,49 +21,51 @@ module	TPM_CRB
 	input			clock,
 	input			reset_n,
 	
-	input		[7:0]	locality,
-	input			cmdAbort,
+	input		[7:0]	locality,	// locality, from frs
+	input			cmdAbort,	// abort command, from frs
 	
-	input		[31:0]	cmdSize,
-	output		[31:0]	rspSize,
+	input		[31:0]	cmdSize,	// command size, from fifo buffer
+	output		[31:0]	rspSize,	// reponse size, to fifo buffer
 	
-	input			cmdSend,
-	output			rspSend,
+	input			cmdSend,	// ready to send command, from fifo buffer
+	output			rspSend,	// response byte write pulse, to fifo buffer
 	
-	output			cmdDone,
-	output			rspDone,
+	output			cmdDone,	// command data fully read, to fifo buffer
+	output			rspDone,	// response data fully sent, to fifo buffer
 	
-	output		[11:0]	cmdOutAddr,
-	output		[11:0]	rspOutAddr,
+	output		[11:0]	cmdOutAddr,	// command buffer address, to fifo buffer
+	output		[11:0]	rspOutAddr,	// response buffer address, to fifo buffer
 	
-	input		[7:0]	cmdByteIn,
-	output	reg	[7:0]	rspByteOut,
+	input		[7:0]	cmdByteIn,	// command byte, from fifo buffer
+	output	reg	[7:0]	rspByteOut,	// response byte, to fifo buffer
 	
-	output			execDone,
-	output	reg		execStart,
-	input			execAck,
-	input			rspReady,
+	output			execDone,	// execution completed, to fifo buffer
+	output	reg		execStart,	// start execution, to management/execution
+	input			execAck,	// ack of execDone, from fifo buffer
+	input			rspReady,	// response data ready, from execution
 	
-	output	reg	[31:0]	commandCode,
-	output		[15:0]	commandTag,
-	input		[31:0]	responseCode,
-	output	reg	[39:0]	commandParam,
-	output	reg	[15:0]	expectedTag,
+	output	reg	[31:0]	commandCode,	// command code, to management/execution
+	output		[15:0]	commandTag,	// command tag, to management/execution
+	input		[31:0]	responseCode,	// response code, from management/execution
+	output	reg	[39:0]	commandParam,	// command params, to management
+	output	reg	[15:0]	expectedTag,	// expected tag (unusued)
 	
-	output		[31:0]	handle0, handle1, handle2,
-	output		[31:0]	sessionHandle0, sessionHandle1, sessionHandle2,
-	output		[15:0]	sessionNonceSize0, sessionNonceSize1, sessionNonceSize2,
-	output		[11:0]	sessionNonceAddr0, sessionNonceAddr1, sessionNonceAddr2,
-	output		[7:0]	sessionAttributes0, sessionAttributes1, sessionAttributes2,
-	output		[15:0]	sessionHmacSize0, sessionHmacSize1, sessionHmacSize2,
-	output		[11:0]	sessionHmacAddr0, sessionHmacAddr1, sessionHmacAddr2,
-	output	reg	[31:0]	authSize,
+	output		[31:0]	handle0, handle1, handle2,					// command handle data, to execution
+	output		[31:0]	sessionHandle0, sessionHandle1, sessionHandle2,			// command session handle data, to execution
+	output		[15:0]	sessionNonceSize0, sessionNonceSize1, sessionNonceSize2,	// command session nonce buffer size, to execution (unusued)
+	output		[11:0]	sessionNonceAddr0, sessionNonceAddr1, sessionNonceAddr2,	// command session nonce buffer data, to execution (unusued)
+	output		[7:0]	sessionAttributes0, sessionAttributes1, sessionAttributes2,	// command session attributes, to execution
+	output		[15:0]	sessionHmacSize0, sessionHmacSize1, sessionHmacSize2,		// command session hmac buffer size, to execution
+	output		[11:0]	sessionHmacAddr0, sessionHmacAddr1, sessionHmacAddr2,		// command session hmac buffer data, to execution (unusued)
+	output	reg	[31:0]	authSize,							// command auth size, to execution
 	
-	output	reg		sessionValid0, sessionValid1, sessionValid2
+	output	reg		sessionValid0, sessionValid1, sessionValid2			// command session valid, to execution
 );
 	
+	// command tag
 	reg	[15:0]	cmd_st;
 	
+	// local cmd buffer (unusued)
 	reg		cmdWren_n;
 	reg	[11:0]	cmdAddr;
 	reg	[7:0]	cmdIn;
@@ -60,12 +78,11 @@ module	TPM_CRB
 		.wrByte(cmdIn), .rdByte(cmdOut)
 	);
 	
+	// local response buffer (unusued; non-functional placeholder)
 	reg		rspWren_n;
 	reg	[11:0]	rspAddr;
 	reg	[7:0]	rspIn;
 	wire	[7:0]	rspOut;
-	
-//	assign	rspByteOut = rspOut;
 	
 	GENERIC_BUFFER	rspBuffer
 	(
@@ -74,13 +91,28 @@ module	TPM_CRB
 		.wrByte(rspIn), .rdByte(rspOut)
 	);
 	
-	reg		ci_start;
-	wire		ci_done;
-	wire	[11:0]	ci_addr;
-	reg	[11:0]	ci_size;
-	reg		ci_restart;
-	wire		ci_wren;
-	wire	[11:0]	ci_rel;
+	// note: neither unused buffers above sythensize (the synthesis tool should recognize this, and optimize them away)
+	//	a future team may find use for these buffer, so they are left as-is
+	
+	// a state machine in a separate module is used to clock bytes to/from the fifo buffer
+	// the ci_ connections are used to communicate with this state mahcine
+	
+	reg		ci_start;	// start transfer
+	wire		ci_done;	// transfer done
+	wire	[11:0]	ci_addr;	// current byte address
+	reg	[11:0]	ci_size;	// transfer size
+	reg		ci_restart;	// reset the transfer fsm
+	wire		ci_wren;	// write enable pulse for transfers
+	wire	[11:0]	ci_rel;		// relative address for current byte
+	
+	// relative address explanation:
+	//	reading command buffer of 24 bytes
+	//	after the first 8 bytes, lets say we want the following 4 bytes
+	//	reset -> size = 8, start : done
+	//	then, size = 4, start
+	//		during this transfer, ci_addr will be 8 .. 12
+	//		ci_rel will be 0 .. 4
+	//	: done
 	
 	CRB_TRANS fsm_ci
 	(
@@ -91,126 +123,168 @@ module	TPM_CRB
 	);
 	
 	
-	
+	// state machine
 	localparam
-		Idle			= 0,
-		CmdHeader_start		= 1,
-		CmdHeader_wait		= 2,
-		CmdDecode		= 3,
-		HandleCountCheck	= 4,	// {
-		ReadHandle_start	= 5,
-		ReadHandle_wait		= 6,
-		UpdateHandleCount	= 7,	// }
-		ReadAuthSize_start	= 8,
-		ReadAuthSize_wait	= 9,
-		SessionCountCheck	= 10,	// {
-		ReadSessionA_start	= 11,
-		ReadSessionA_wait	= 12,
-		ReadNonce_start		= 13,
-		ReadNonce_wait		= 14,
-		ReadSessionB_start	= 15,
-		ReadSessionB_wait	= 16,
-		ReadHmac_start		= 17,
-		ReadHmac_wait		= 18,
-		UpdateSessionCount	= 19,	// }
-		CmdRead_start		= 20,
-		CmdRead_wait		= 21,
-		FullRead		= 22,
-		Exec_setup0		= 23,
-		Exec_setup1		= 24,
-		Exec_start		= 25,
-		Exec_wait0		= 26,
-		Exec_wait1		= 27,
-		Exec_done		= 28,
-		AssembleRsp		= 29,
-		RspOut_start		= 30,
-		RspOut_wait		= 31,
-		Complete		= 32;
+		Idle			= 0,	// waiting for cmdSend from fifo buffer
+		CmdHeader_start		= 1,	// start reading command header from fifo
+		CmdHeader_wait		= 2,	// read command header
+		CmdDecode		= 3,	// determine command session, handle count
+	// loop	
+	/*{*/	HandleCountCheck	= 4,	// compare counter to handle count
+		ReadHandle_start	= 5,	// start reading command handle
+		ReadHandle_wait		= 6,	// read command handle
+	/*}*/	UpdateHandleCount	= 7,	// update counter
+		ReadAuthSize_start	= 8,	// start reading command auth size
+		ReadAuthSize_wait	= 9,	// read command auth size
+	// loop
+	/*{*/	SessionCountCheck	= 10,	// compare counter to session count
+		ReadSessionA_start	= 11,	// start reading command session data
+		ReadSessionA_wait	= 12,	// read command session data
+		ReadNonce_start		= 13,	// start reading nonce data
+		ReadNonce_wait		= 14,	// read nonce data
+		ReadSessionB_start	= 15,	// start reading command session data
+		ReadSessionB_wait	= 16,	// read command session data
+		ReadHmac_start		= 17,	// start reading hmac data
+		ReadHmac_wait		= 18,	// read hmac data
+	/*}*/	UpdateSessionCount	= 19,	// update counter
+	
+		CmdRead_start		= 20,	// start reading command data
+		CmdRead_wait		= 21,	// read command data
+		FullRead		= 22,	// determine if read bytes == expected bytes
+		Exec_setup0		= 23,	// setup execution
+		Exec_setup1		= 24,	// setup execution
+		Exec_start		= 25,	// start execution
+		Exec_wait0		= 26,	// wait for execution
+		Exec_wait1		= 27,	// wait for execution
+		Exec_done		= 28,	// execution complete
+		AssembleRsp		= 29,	// assemble response
+		RspOut_start		= 30,	// start sending response to fifo
+		RspOut_wait		= 31,	// send response to fifo
+		Complete		= 32;	// complete
 	reg	[5:0]	state, next_state;
 	
-	reg	[2:0]	it;
-	reg	[2:0]	nHandles, nHandles_comb;
-	reg	[2:0]	nSessions, nSessions_comb;
+	reg	[2:0]	it; // iterator for loops
+	reg	[2:0]	nHandles, nHandles_comb;	// number of handles
+	reg	[2:0]	nSessions, nSessions_comb;	// number of sessions
 	reg		proc_ee, badRead, setup_mm;
+	// proc_ee: is the command processed by the execution engine?
+	// badRead: does the fully read number of bytes mismatch from the command header indicated cmdSize?
+	// setup_mm: has the management module been setup? (it requires an extra pulse on initialization)
 	
+	// state machine register
 	always @(posedge clock, negedge reset_n)
 	begin
 		if (!reset_n)
 			state <= Idle;
+		// "cheat" transfer to Exec_setup0 for malformed command data (more data than expected)
 		else if (state > CmdDecode && state < FullRead && ci_addr > cmdSize[11:0] + 12'd1)
 			state <= Exec_setup0;
 		else
 			state <= next_state;
 	end
 	
+	// state machine transfer comb logic
 	always @*
 	begin
 		case (state)
 		
+		// go to CmdHeader_start when cmdSend is received from fifo buffer
 		Idle:
 			next_state = cmdSend ? CmdHeader_start : Idle;
+		// go to CmdHeader_wait
 		CmdHeader_start:
 			next_state = CmdHeader_wait;
+		// go to CmdDecode when ci_done is received
 		CmdHeader_wait:
 			next_state = ci_done ? CmdDecode : CmdHeader_wait;
+		// go to go to HandleCountCheck
 		CmdDecode:
 			next_state = HandleCountCheck;
+		// go to ReadHandle_start while it < nHandles, otherwise transfer to CmdRead_start (if no sessions), or ReadAuthSize_start (if sessions)
 		HandleCountCheck:
 			next_state = it < nHandles ? ReadHandle_start : (nSessions == 3'd0 ? CmdRead_start : ReadAuthSize_start);
+		// go to go to ReadHandle_wait
 		ReadHandle_start:
 			next_state = ReadHandle_wait;
+		// go to UpdateHandleCount when ci_done is received
 		ReadHandle_wait:
 			next_state = ci_done ? UpdateHandleCount : ReadHandle_wait;
+		// go to HandleCountCheck
 		UpdateHandleCount:
 			next_state = HandleCountCheck;
+		// go to ReadAuthSize_wait
 		ReadAuthSize_start:
 			next_state = ReadAuthSize_wait;
+		// go to SessionCountCheck when ci_done is received
 		ReadAuthSize_wait:
 			next_state = ci_done ? SessionCountCheck : ReadAuthSize_wait;
+		// go to ReadSessionA_start while it < nSessions, otherwise CmdRead_start
 		SessionCountCheck:
 			next_state = it < nSessions ? ReadSessionA_start : CmdRead_start;
+		// go to ReadSessionA_wait
 		ReadSessionA_start:
 			next_state = ReadSessionA_wait;
+		// go to ReadNonce_start when ci_done is received
 		ReadSessionA_wait:
 			next_state = ci_done ? ReadNonce_start : ReadSessionA_wait;
+		// go to ReadNonce_wait
 		ReadNonce_start:
 			next_state = ReadNonce_wait;
+		// go to ReadSessionB_start when ci_done is received
 		ReadNonce_wait:
 			next_state = ci_done ? ReadSessionB_start : ReadNonce_wait;
+		// go to ReadSessionB_wait
 		ReadSessionB_start:
 			next_state = ReadSessionB_wait;
+		// go to ReadHmac_start when ci_done is received
 		ReadSessionB_wait:
 			next_state = ci_done ? ReadHmac_start : ReadSessionB_wait;
+		// go to ReadHmac_wait
 		ReadHmac_start:
 			next_state = ReadHmac_wait;
+		// go to UpdateSessionCount when ci_done is received
 		ReadHmac_wait:
 			next_state = ci_done ? UpdateSessionCount : ReadHmac_wait;
+		// go to SessionCountCheck
 		UpdateSessionCount:
 			next_state = SessionCountCheck;
+		// go to CmdRead_wait
 		CmdRead_start:
 			next_state = CmdRead_wait;
+		// go to FullRead when ci_done is received
 		CmdRead_wait:
 			next_state = ci_done ? FullRead : CmdRead_wait;
+		// go to Exec_setup0
 		FullRead:
 			next_state = Exec_setup0;
+		// go to Exec_setup1
 		Exec_setup0:
 			next_state = Exec_setup1;
+		// go to Exec_start
 		Exec_setup1:
 			next_state = Exec_start;
+		// go to Exec_wait0
 		Exec_start:
 			next_state = Exec_wait0;
+		// go to Exec_wait1 if the command is not processed by execution, or if response is ready
 		Exec_wait0:
 			next_state = (proc_ee & ~rspReady) ? Exec_wait0 : Exec_wait1;
+		// go to Exec_done
 		Exec_wait1:
 			next_state = Exec_done;
+		// go to AssembleRsp once execAck is received from fifo buffer
 		Exec_done:
 			next_state = execAck ? AssembleRsp : Exec_done;
+		// go to RspOut_start
 		AssembleRsp:
 			next_state = RspOut_start;
+		// go to RspOut_wait
 		RspOut_start:
 			next_state = RspOut_wait;
+		// go to Complete when ci_done is received
 		RspOut_wait:
 			next_state = ci_done ? Complete : RspOut_wait;
+		// go to Idle
 		Complete:
 			next_state = Idle;
 		
@@ -220,6 +294,8 @@ module	TPM_CRB
 		endcase
 	end
 	
+	// these signals are the same as their similarly named output wires,
+	// but are internally handled by more convenient arrays
 	reg	[31:0]	handle [0:2];
 	reg	[31:0]	sessionHandle [0:2];
 	reg	[15:0]	sessionNonceSize [0:2];
@@ -230,10 +306,13 @@ module	TPM_CRB
 	reg	[31:0]	responseCode_hold;
 	reg		responseRec;
 	
+	// is the command code valid?
 	wire		ccValid;
 	
+	// state machine sequential logic
 	always @(posedge clock, negedge reset_n)
 	begin
+		// reset logic
 		if (!reset_n)
 		begin : ASYNC_RESET
 			integer i;
@@ -270,9 +349,12 @@ module	TPM_CRB
 		end
 		else case (state)
 			
+			// reset logic
 			Idle:
 			begin : IDLE_RESET
-		/*		integer i;
+		/* this reset logic section has been disabled so that the values can be seen within simulation for validation purposes
+		   it may be enabled, but is not necessary for operation
+				integer i;
 				for(i=0; i<3; i=i+1)
 				begin
 					handle[i] <= 32'h00;
@@ -304,9 +386,11 @@ module	TPM_CRB
 				ci_restart <= 1'b1;
 			end
 			
+			// update the iterator in these states
 			UpdateHandleCount, UpdateSessionCount:
 				it <= it + 3'd1;
 			
+			// setup the transfer fsm to read the command header
 			CmdHeader_start:
 			begin
 				ci_start <= 1'b1;
@@ -314,6 +398,7 @@ module	TPM_CRB
 				ci_restart <= 1'b0;
 			end
 			
+			// read in command header data
 			CmdHeader_wait:
 			begin
 				ci_start <= 1'b0;
@@ -330,6 +415,7 @@ module	TPM_CRB
 				endcase
 			end
 			
+			// set regs based on read command header data
 			CmdDecode:
 			begin
 				ci_restart <= 1'b0;
@@ -340,12 +426,14 @@ module	TPM_CRB
 					|| commandCode == `TPM_CC_Startup);
 			end
 			
+			// setup transfer fsm to read handle data
 			ReadHandle_start:
 			begin
 				ci_start <= 1'b1;
 				ci_size <= 12'd4;
 			end
 			
+			// read in handle data
 			ReadHandle_wait:
 			begin
 				ci_start <= 1'b0;
@@ -359,6 +447,7 @@ module	TPM_CRB
 				endcase
 			end
 			
+			// setup transfer fsm to read auth size
 			ReadAuthSize_start:
 			begin
 				ci_start <= 1'b1;
@@ -366,6 +455,7 @@ module	TPM_CRB
 				it <= 3'd0;
 			end
 			
+			// read in auth size
 			ReadAuthSize_wait:
 			begin
 				ci_start <= 1'b0;
@@ -379,12 +469,14 @@ module	TPM_CRB
 				endcase
 			end
 			
+			// setup transfer fsm to read session data
 			ReadSessionA_start:
 			begin
 				ci_start <= 1'b1;
 				ci_size <= 12'd6;
 			end
 			
+			// read in session data
 			ReadSessionA_wait:
 			begin
 				ci_start <= 1'b0;
@@ -400,6 +492,7 @@ module	TPM_CRB
 				endcase
 			end
 			
+			// setup transfer fsm to read nonce data
 			ReadNonce_start:
 			begin
 				ci_start <= 1'b1;
@@ -407,15 +500,18 @@ module	TPM_CRB
 				sessionNonceAddr[it] <= ci_addr;
 			end
 			
+			// read in nonce data
 			ReadNonce_wait:
 				ci_start <= 1'b0;
 			
+			// setup transfer fsm to read session data
 			ReadSessionB_start:
 			begin
 				ci_start <= 1'b1;
 				ci_size <= 12'd3;
 			end
 			
+			// read session data
 			ReadSessionB_wait:
 			begin
 				ci_start <= 1'b0;
@@ -428,6 +524,7 @@ module	TPM_CRB
 				endcase
 			end
 			
+			// setup transfer fsm to read hmac
 			ReadHmac_start:
 			begin
 				ci_start <= 1'b1;
@@ -435,20 +532,25 @@ module	TPM_CRB
 				sessionHmacAddr[it] <= ci_addr;
 			end
 			
+			// read in hmac data
 			ReadHmac_wait:
 				ci_start <= 1'b0;
 			
+			// setup transfer fsm to read remaining command data (parameters)
 			CmdRead_start:
 			begin
 				ci_start <= 1'b1;
 				ci_size <= cmdSize[11:0] - ci_addr;
 			end
 			
+			// read in remaining command data (parameters)
 			CmdRead_wait:
 			begin
 				ci_start <= 1'b0;
 				case (ci_rel)
 				
+				// due to the way the management module is setup (the only module that currently utilizes command parameters),
+				// the commandParam output uses different bytes depending on the command code
 				12'h000: 
 				begin
 					if (commandCode == `TPM_CC_Startup)
@@ -482,18 +584,23 @@ module	TPM_CRB
 				endcase
 			end
 			
+			// determine if the command was read correctly
 			FullRead:
 				badRead <= 1'b0;
 			
+			// execution setup
 			Exec_setup0:
 				ci_restart <= 1'b1;
 			
+			// execution setup
 			Exec_setup1:
 				ci_restart <= 1'b0;
 			
+			// execution start
 			Exec_start:
 				setup_mm <= 1'b1;
 			
+			// wait for execution response, hold response code once it is received
 			Exec_wait0:
 			begin
 				if (!responseRec)
@@ -501,22 +608,26 @@ module	TPM_CRB
 				responseCode_hold <= responseCode;
 			end
 			
+			// execution done, store response code if the processor was execution engine
 			Exec_done:
 				if (!proc_ee)
 					responseCode_hold <= responseCode;
 			
+			// currently, all there is to assemble of the response is the tag
 			AssembleRsp:
 			begin
 				if (responseCode != `TPM_RC_SUCCESS)
 					cmd_st <= `TPM_ST_NO_SESSIONS;
 			end
 			
+			// setup transfer fsm for sending response
 			RspOut_start:
 			begin
 				ci_start <= 1'b1;
 				ci_size <= 12'd10;
 			end
 			
+			// send out response
 			RspOut_wait:
 			begin
 				ci_start <= 1'b0;
@@ -540,8 +651,10 @@ module	TPM_CRB
 			
 	end
 	
+	// state machine combinational logic
 	always @*
 	begin
+		// base logic
 		cmdAddr = 12'hFFF;
 		cmdWren_n = 1'b1;
 		cmdIn = 8'hFF;
@@ -553,6 +666,7 @@ module	TPM_CRB
 		
 		case (state)
 		
+		// inactive logic
 		Idle, Complete:
 		begin
 			cmdAddr = 12'hFFF;
@@ -565,6 +679,7 @@ module	TPM_CRB
 			rspIn = cmdIn;
 		end
 		
+		// command in states
 		default:
 		begin
 			cmdAddr = ci_addr;
@@ -575,6 +690,7 @@ module	TPM_CRB
 			rspIn = cmdIn;
 		end
 		
+		// response in states
 		Exec_setup0, Exec_setup1, Exec_start,
 		Exec_wait0, Exec_wait1, Exec_done,
 		AssembleRsp, RspOut_start, RspOut_wait:
@@ -586,20 +702,18 @@ module	TPM_CRB
 		endcase
 	end
 	
-//	assign	ci_start = state == CmdIn_start || state == RspOut_start;
-	
+	// static assignments
 	assign	cmdOutAddr = cmdAddr;
 	assign	rspOutAddr = rspAddr;
 	assign	rspSend = ci_wren;
-//	assign	rspByteOut = rspOut;
+	
 	assign	cmdDone = state == Exec_start;
 	assign	rspDone = state == Complete;
-//	assign	execStart =
-//		state == Exec_wait0 || state == Exec_wait1 ||
-//		~setup_mm && (state == Exec_setup0 || state == Exec_setup1);
+	
 	assign	execDone = state == Exec_done;
 	assign	commandTag = cmd_st;
 	
+	// combinational logic for execStart
 	always @*
 	begin
 		if (proc_ee)
@@ -613,6 +727,7 @@ module	TPM_CRB
 	// placeholder
 	assign	rspSize = 32'd10;
 	
+	// combinational logic to determine number of handles, sessions; ccValid (from spec)
 	always @* case (commandCode)
 		`TPM_CC_Startup:			{ nHandles_comb, nSessions_comb } = { 3'd0, 3'd0 };
 		`TPM_CC_Shutdown:			{ nHandles_comb, nSessions_comb } = { 3'd0, 3'd0 };
@@ -738,6 +853,7 @@ module	TPM_CRB
 	
 	assign	ccValid = nHandles_comb != 3'd7;
 	
+	// logic to determine which sessions index values are valid
 	always @(posedge clock, negedge reset_n)
 	begin
 		if (!reset_n)
@@ -755,6 +871,7 @@ module	TPM_CRB
 		endcase
 	end
 	
+	// static assignments for outputs
 	assign	handle0 = handle[0];
 	assign	handle1 = handle[1];
 	assign	handle2 = handle[2];
@@ -779,33 +896,38 @@ module	TPM_CRB
 	
 endmodule
 
+
+// Module to contain transfer state machine
+// Handles logic to transfer data from buffer to buffer (between fifo and crb)
 module	CRB_TRANS
 (
 	input			clock,
 	input			reset_n,
 	
-	input			start,
-	input			restart,
-	output			done,
+	input			start,		// start transfer
+	input			restart,	// reset address
+	output			done,		// transfer complete
 	
-	input		[11:0]	size_in,
-	output	reg	[11:0]	addr,
-	output			wren_n,
+	input		[11:0]	size_in,	// size of transfer
+	output	reg	[11:0]	addr,		// address
+	output			wren_n,		// write enable active low
 	
-	output		[11:0]	rel_addr
+	output		[11:0]	rel_addr	// relative address
 );
-	
+	// local size, previous transfer size
 	reg	[11:0]	size, prev_index;
 	
+	// state machine
 	localparam
-		Idle		= 0,
-		Setup		= 1,
-		Write0		= 2,
-		Write1		= 3,
-		UpdateAddr	= 4,
-		Complete	= 5;
+		Idle		= 0,	// wait for start
+		Setup		= 1,	// setup
+		Write0		= 2,	// write
+		Write1		= 3,	// write (two clock cycles per write)
+		UpdateAddr	= 4,	// update address
+		Complete	= 5;	// completed
 	reg	[2:0]	state, next_state;
 	
+	// state machine reg
 	always @(posedge clock, negedge reset_n)
 	begin
 		if (!reset_n)
@@ -814,20 +936,27 @@ module	CRB_TRANS
 			state <= next_state;
 	end
 	
+	// state machine next state combinational logic
 	always @*
 	begin
 		case (state)
 		
+		// go to Setup when start is received
 		Idle:
 			next_state = start ? Setup : Idle;
+		// go to Write0 if size_in is not 0
 		Setup:
 			next_state = size_in == 12'd0 ? Complete : Write0;
+		// go to Write1
 		Write0:
 			next_state = Write1;
+		// go to UpdateAddr
 		Write1:
 			next_state = UpdateAddr;
+		// go to Write0 if addr != size, else Complete
 		UpdateAddr:
 			next_state = addr == size ? Complete : Write0;
+		// go to Idle
 		Complete:
 			next_state = Idle;
 		
@@ -837,14 +966,17 @@ module	CRB_TRANS
 		endcase
 	end
 	
+	// state machine sequential logic
 	always @(posedge clock, negedge reset_n)
 	begin
+		// reset logic
 		if (!reset_n)
 		begin
 			addr <= 12'h000;
 			size <= 12'h000;
 			prev_index <= 12'h000;
 		end
+		// restart logic
 		else if (restart)
 		begin
 			addr <= 12'h000;
@@ -853,21 +985,23 @@ module	CRB_TRANS
 		end
 		else case (state)
 		
+		// prev_index is updated to the previous size
 		Idle:
 			prev_index <= size;
-		
+		// size is incremented by input size
 		Setup:
 			size <= size + size_in;
-		
+		// addr is incremented
 		UpdateAddr:
 			addr <= addr + 12'h1;
-		
+		// addr is decremented to re-adjust
 		Complete:
 			addr <= addr - 12'h1;
 		
 		endcase
 	end
 	
+	// static assignments
 	assign	wren_n = state != Write1;
 	assign	done = state == Complete;
 	assign	rel_addr = addr - prev_index;

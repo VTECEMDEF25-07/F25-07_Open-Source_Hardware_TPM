@@ -93,9 +93,9 @@ module	FIFO_BUFFER
 	begin
 		if (!reset_n)
 			state <= Idle;
-		else if (f_abort)
+		else if (f_abort) // reset on receipt of f_abort
 			state <= Idle;
-		else //if (f_fifoAccess)
+		else
 			state <= next_state;
 	end
 	
@@ -104,30 +104,43 @@ module	FIFO_BUFFER
 	begin
 		case (state)
 		
+		// go to GetCmdSize if fifoAccess is requested
 		Idle:
 			next_state = f_fifoAccess ? GetCmdSize : Idle;
+		// go to CmdIn after 6 bytes have been read
 		GetCmdSize:
 			next_state = bufAddr == 12'd6 ? CmdIn : GetCmdSize;
+		// go to TpmGo_wait once the command has been fully read
 		CmdIn:
 			next_state = ~f_fifoAccess & (bufAddr >= b_size[11:0]-12'd1) ? TpmGo_wait : CmdIn;
+		// go to CmdOut_start after tpmGo has been received (from frs, signals to start command execution)
 		TpmGo_wait:
 			next_state = r_tpmGo ? CmdOut_start : TpmGo_wait;
+		// go to CmdOut_wait (used to pulse a control signal)
 		CmdOut_start:
 			next_state = CmdOut_wait;
+		// go to Exec_wait after c_cmdDone has been received (command fully read)
 		CmdOut_wait:
 			next_state = c_cmdDone ? Exec_wait : CmdOut_wait;
+		// go to GetRspSize after e_execDone has been received
 		Exec_wait:
 			next_state = e_execDone ? GetRspSize : Exec_wait;
+		// go to RspIn_start ; rspSize is read from execution engine
 		GetRspSize:
 			next_state = RspIn_start;
+		// go to RspIn_wait (this is a pulse control signal)
 		RspIn_start:
 			next_state = RspIn_wait;
+		// go to AddrRst after c_rspDone has been received (response fully read)
 		RspIn_wait:
 			next_state = c_rspDone ? AddrRst : RspIn_wait;
+		// go to RspOut (this sets the address index to 0)
 		AddrRst:
 			next_state = RspOut;
+		// go to Idle if r_commandReady is received from frs ; go to AddrRst if r_responseRetry is received from frs ; go to CommandReady_wait after response has been fully read out
 		RspOut:
-			next_state = r_commandReady ? Idle : ~f_fifoAccess & (bufAddr == b_size[11:0] + 12'd1) ? CommandReady_wait : RspOut;
+			next_state = r_commandReady ? Idle : r_responseRetry ? AddrRst : ~f_fifoAccess & (bufAddr == b_size[11:0] + 12'd1) ? CommandReady_wait : RspOut;
+		// go to Idle if r_commandReady is received from frs ; go to AddrRst if r_responseRetry is received from frs 
 		CommandReady_wait:
 			next_state = r_commandReady ? Idle : r_responseRetry ? AddrRst : CommandReady_wait;
 		
@@ -137,6 +150,7 @@ module	FIFO_BUFFER
 		endcase
 	end
 	
+	// these regs are used for edge detection of the named signals
 	reg	prev_updateAddr, prev_fifoWrite, prev_fifoRead;
 	always @(posedge clock)
 	begin
@@ -145,6 +159,7 @@ module	FIFO_BUFFER
 		prev_fifoRead <= f_fifoRead;
 	end
 	
+	// this reg is used to control the timing when the frs writes to the FIFO buffer
 	reg	allowWrite;
 	always @(posedge clock, negedge reset_n)
 	begin
@@ -156,28 +171,27 @@ module	FIFO_BUFFER
 			allowWrite <= 1'b0;
 	end
 	
+	// state machine sequential logic
 	always @(posedge clock, negedge reset_n)
 	begin
+		// reset logic
 		if (!reset_n)
 		begin
 			bufAddr <= 12'hFFF;
-	//		bufWren_n <= 1'b1;
-	//		bufIn <= 8'h00;
 			b_size <= 32'hFFFFFFFF;
 		end
 		else case (state)
 		
+		// reset logic
 		Idle:
 		begin
 			bufAddr <= 12'hFFF;
-	//		bufWren_n <= 1'b1;
-	//		bufIn <= 8'h00;
 			b_size <= 32'hFFFFFFFF;
 		end
 		
+		// during GetCmdSize, the cmdSize is stored within b_size (buffer size)
 		GetCmdSize:
 		begin
-	//		bufWren_n <= ~f_fifoWrite;
 			bufAddr <= t_updateAddr & f_fifoWrite ? bufAddr + 12'h1 : bufAddr;
 			case (bufAddr[2:0])
 			
@@ -191,7 +205,6 @@ module	FIFO_BUFFER
 		
 		CmdIn:
 		begin
-	//		bufWren_n <= ~f_fifoWrite;
 			bufAddr <= t_updateAddr & f_fifoWrite ? bufAddr + 12'h1 : bufAddr;
 		end
 		
@@ -200,35 +213,29 @@ module	FIFO_BUFFER
 			bufAddr <= 12'h0;
 		end
 		
+		// obtain response size from execution engine
 		GetRspSize:
 		begin
 			b_size <= c_rspSize;
 		end
 		
+		// address update behavior is odd for this state, but this is necessary to handle both single-byte and multi-byte reads
 		RspOut:
 		begin
 			if (f_fifoRead & t_updateAddr)
 				bufAddr <= bufAddr + 12'h1;
 			else if (~f_fifoRead & prev_fifoRead)
 				bufAddr <= bufAddr - 12'h1;
-			//bufAddr <= t_updateAddr & f_fifoRead ? bufAddr + 12'h1 : bufAddr;
 		end
 		
-/*		CmdIn_last:
-		begin
-			bufWren_n <= ~f_fifoWrite;
-		end
-		
-		TpmGo_wait:
-		begin
-			bufWren_n <= 1'b1; // ~f_fifoWrite;
-		end*/
 		
 		endcase
 	end
 	
+	// state machine combinational logic
 	always @*
 	begin
+		// base condition
 		bufIn = 8'hFF;
 		rspByteOut = 8'hFF;
 		bufWren_n = 1'b1;
@@ -236,6 +243,7 @@ module	FIFO_BUFFER
 		
 		case (state)
 		
+		// base condition
 		default:
 		begin
 			bufIn = 8'hFF;
@@ -244,6 +252,7 @@ module	FIFO_BUFFER
 			m_bufAddr = bufAddr;
 		end
 		
+		// for cmd reading states
 		GetCmdSize, CmdIn, CmdIn_last, CmdIn_last:
 		begin
 			bufIn = cmdByteIn;
@@ -251,18 +260,21 @@ module	FIFO_BUFFER
 			m_bufAddr = bufAddr;
 		end
 		
+		// for response read out to frs
 		RspOut:
 		begin
 			rspByteOut = bufOut;
 			m_bufAddr = bufAddr;
 		end
 		
+		// for command send to crb
 		CmdOut_wait:
 		begin
 			bufWren_n = 1'b1;
 			m_bufAddr = c_cmdInAddr;
 		end
 		
+		// for response read from crb
 		RspIn_wait:
 		begin
 			bufWren_n = c_rspSend;
@@ -273,6 +285,8 @@ module	FIFO_BUFFER
 		endcase
 	end
 	
+	
+	// static assignments
 	assign	f_fifoComplete = state >= TpmGo_wait;
 	assign	f_fifoEmpty = state == CommandReady_wait;
 	

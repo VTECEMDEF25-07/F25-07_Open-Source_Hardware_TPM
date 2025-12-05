@@ -6177,7 +6177,7 @@ module	tb_test();
 			SPI_clock = 1'b0;
 		end
 
-		writeData = 8'd85;
+		writeData = 8'd59;
 		for(i=8; i!=0; i=i-1)
 		begin
 			SPI_mosi = writeData[i-1];
@@ -6197,7 +6197,7 @@ module	tb_test();
 			SPI_clock = 1'b0;
 		end
 
-		writeData = 8'd75;
+		writeData = 8'd10;
 		for(i=8; i!=0; i=i-1)
 		begin
 			SPI_mosi = writeData[i-1];
@@ -6207,7 +6207,7 @@ module	tb_test();
 			SPI_clock = 1'b0;
 		end
 
-		writeData = 8'd178;
+		writeData = 8'd255;
 		for(i=8; i!=0; i=i-1)
 		begin
 			SPI_mosi = writeData[i-1];
@@ -6217,7 +6217,7 @@ module	tb_test();
 			SPI_clock = 1'b0;
 		end
 
-		writeData = 8'd126;
+		writeData = 8'd95;
 		for(i=8; i!=0; i=i-1)
 		begin
 			SPI_mosi = writeData[i-1];
@@ -6227,7 +6227,7 @@ module	tb_test();
 			SPI_clock = 1'b0;
 		end
 
-		writeData = 8'd168;
+		writeData = 8'd156;
 		for(i=8; i!=0; i=i-1)
 		begin
 			SPI_mosi = writeData[i-1];
@@ -9742,7 +9742,7 @@ module	tb_test();
 		repeat (5) @(posedge clock);
 
 
-		// Send command TPM_CC_HIERARCHYCONTROL : TPM_RH_PLATFORM, TPMI_NO
+		// Send command TPM_CC_HIERARCHYCONTROL : TPM_RH_PLATFORM, TPMI_YES
 
 		// GenEntry 179: Write 10 bytes to TPM_DATA_FIFO0
 		genEntry = 179;
@@ -11195,8 +11195,1495 @@ module	tb_test();
 		repeat (5) @(posedge clock);
 
 
-		// GenEntry 192: Write 1 bytes to TPM_ACCESS0
+		// GenEntry 192: Write 1 bytes to TPM_STS0
 		genEntry = 192;
+
+		header = 32'd1087635480;
+		repeat (5) @(posedge clock);
+		SPI_cs_n = 1'b0;
+		repeat (5) @(posedge clock);
+
+		for(i=32; i!=0; i=i-1)
+		begin
+			SPI_mosi = header[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			in = SPI_miso;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd64;
+		while(in == 1'b0) for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			in = SPI_miso;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		repeat (5) @(posedge clock);
+		SPI_cs_n = 1'b1;
+		repeat (5) @(posedge clock);
+
+
+		// Send command TPM_CC_HIERARCHYCONTROL : TPM_RH_PLATFORM, TPMI_NO
+
+		// GenEntry 193: Write 10 bytes to TPM_DATA_FIFO0
+		genEntry = 193;
+
+		header = 32'd1238630436;
+		repeat (5) @(posedge clock);
+		SPI_cs_n = 1'b0;
+		repeat (5) @(posedge clock);
+
+		for(i=32; i!=0; i=i-1)
+		begin
+			SPI_mosi = header[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			in = SPI_miso;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd128;
+		while(in == 1'b0) for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			in = SPI_miso;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd2;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd0;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd0;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd0;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd103;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd0;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd0;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd1;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd33;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		repeat (5) @(posedge clock);
+		SPI_cs_n = 1'b1;
+		repeat (5) @(posedge clock);
+
+
+		// GenEntry 194: Write 4 bytes to TPM_DATA_FIFO0
+		genEntry = 194;
+
+		header = 32'd1137967140;
+		repeat (5) @(posedge clock);
+		SPI_cs_n = 1'b0;
+		repeat (5) @(posedge clock);
+
+		for(i=32; i!=0; i=i-1)
+		begin
+			SPI_mosi = header[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			in = SPI_miso;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd2;
+		while(in == 1'b0) for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			in = SPI_miso;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd18;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd52;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd86;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		repeat (5) @(posedge clock);
+		SPI_cs_n = 1'b1;
+		repeat (5) @(posedge clock);
+
+
+		// GenEntry 195: Write 4 bytes to TPM_DATA_FIFO0
+		genEntry = 195;
+
+		header = 32'd1137967140;
+		repeat (5) @(posedge clock);
+		SPI_cs_n = 1'b0;
+		repeat (5) @(posedge clock);
+
+		for(i=32; i!=0; i=i-1)
+		begin
+			SPI_mosi = header[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			in = SPI_miso;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd0;
+		while(in == 1'b0) for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			in = SPI_miso;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd0;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd0;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd80;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		repeat (5) @(posedge clock);
+		SPI_cs_n = 1'b1;
+		repeat (5) @(posedge clock);
+
+
+		// GenEntry 196: Write 64 bytes to TPM_DATA_FIFO0
+		genEntry = 196;
+
+		header = 32'd2144600100;
+		repeat (5) @(posedge clock);
+		SPI_cs_n = 1'b0;
+		repeat (5) @(posedge clock);
+
+		for(i=32; i!=0; i=i-1)
+		begin
+			SPI_mosi = header[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			in = SPI_miso;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd2;
+		while(in == 1'b0) for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			in = SPI_miso;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd52;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd86;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd120;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd0;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd36;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd84;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd104;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd105;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd115;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd32;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd105;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd115;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd32;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd97;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd32;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd112;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd108;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd97;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd99;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd101;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd104;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd111;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd108;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd100;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd101;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd114;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd32;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd110;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd111;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd110;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd99;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd101;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd32;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd98;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd117;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd102;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd102;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd101;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd114;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd46;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd0;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd0;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd0;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd35;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd84;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd104;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd105;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd115;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd32;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd105;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd115;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd32;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd97;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd32;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd112;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd108;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd97;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd99;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd101;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd104;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd111;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd108;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd100;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		repeat (5) @(posedge clock);
+		SPI_cs_n = 1'b1;
+		repeat (5) @(posedge clock);
+
+
+		// GenEntry 197: Write 16 bytes to TPM_DATA_FIFO0
+		genEntry = 197;
+
+		header = 32'd1339293732;
+		repeat (5) @(posedge clock);
+		SPI_cs_n = 1'b0;
+		repeat (5) @(posedge clock);
+
+		for(i=32; i!=0; i=i-1)
+		begin
+			SPI_mosi = header[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			in = SPI_miso;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd2;
+		while(in == 1'b0) for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			in = SPI_miso;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd52;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd86;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd120;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd0;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd36;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd84;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd104;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd105;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd115;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd32;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd105;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd115;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd32;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd97;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd32;
+		for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		repeat (5) @(posedge clock);
+		SPI_cs_n = 1'b1;
+		repeat (5) @(posedge clock);
+
+
+		// GenEntry 198: Write 1 bytes to TPM_DATA_FIFO0
+		genEntry = 198;
+
+		header = 32'd1087635492;
+		repeat (5) @(posedge clock);
+		SPI_cs_n = 1'b0;
+		repeat (5) @(posedge clock);
+
+		for(i=32; i!=0; i=i-1)
+		begin
+			SPI_mosi = header[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			in = SPI_miso;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd64;
+		while(in == 1'b0) for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			in = SPI_miso;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		repeat (5) @(posedge clock);
+		SPI_cs_n = 1'b1;
+		repeat (5) @(posedge clock);
+
+
+		// GenEntry 199: Write 1 bytes to TPM_DATA_FIFO0
+		genEntry = 199;
+
+		header = 32'd1087635492;
+		repeat (5) @(posedge clock);
+		SPI_cs_n = 1'b0;
+		repeat (5) @(posedge clock);
+
+		for(i=32; i!=0; i=i-1)
+		begin
+			SPI_mosi = header[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			in = SPI_miso;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd0;
+		while(in == 1'b0) for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			in = SPI_miso;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		repeat (5) @(posedge clock);
+		SPI_cs_n = 1'b1;
+		repeat (5) @(posedge clock);
+
+
+		// GenEntry 200: Write 1 bytes to TPM_DATA_FIFO0
+		genEntry = 200;
+
+		header = 32'd1087635492;
+		repeat (5) @(posedge clock);
+		SPI_cs_n = 1'b0;
+		repeat (5) @(posedge clock);
+
+		for(i=32; i!=0; i=i-1)
+		begin
+			SPI_mosi = header[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			in = SPI_miso;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd0;
+		while(in == 1'b0) for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			in = SPI_miso;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		repeat (5) @(posedge clock);
+		SPI_cs_n = 1'b1;
+		repeat (5) @(posedge clock);
+
+
+		// GenEntry 201: Write 1 bytes to TPM_DATA_FIFO0
+		genEntry = 201;
+
+		header = 32'd1087635492;
+		repeat (5) @(posedge clock);
+		SPI_cs_n = 1'b0;
+		repeat (5) @(posedge clock);
+
+		for(i=32; i!=0; i=i-1)
+		begin
+			SPI_mosi = header[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			in = SPI_miso;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd12;
+		while(in == 1'b0) for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			in = SPI_miso;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		repeat (5) @(posedge clock);
+		SPI_cs_n = 1'b1;
+		repeat (5) @(posedge clock);
+
+
+		// GenEntry 202: Write 1 bytes to TPM_DATA_FIFO0
+		genEntry = 202;
+
+		header = 32'd1087635492;
+		repeat (5) @(posedge clock);
+		SPI_cs_n = 1'b0;
+		repeat (5) @(posedge clock);
+
+		for(i=32; i!=0; i=i-1)
+		begin
+			SPI_mosi = header[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			in = SPI_miso;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd0;
+		while(in == 1'b0) for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			in = SPI_miso;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		repeat (5) @(posedge clock);
+		SPI_cs_n = 1'b1;
+		repeat (5) @(posedge clock);
+
+
+		// GenEntry 203: Write 1 bytes to TPM_STS0
+		genEntry = 203;
+
+		header = 32'd1087635480;
+		repeat (5) @(posedge clock);
+		SPI_cs_n = 1'b0;
+		repeat (5) @(posedge clock);
+
+		for(i=32; i!=0; i=i-1)
+		begin
+			SPI_mosi = header[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			in = SPI_miso;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd32;
+		while(in == 1'b0) for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			in = SPI_miso;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		repeat (5) @(posedge clock);
+		SPI_cs_n = 1'b1;
+		repeat (5) @(posedge clock);
+
+		// GenEntry 5: Wait for TPM Execution
+		genEntry = 5;
+
+		readData[0] = 8'd0;
+		for(tries = 0; tries < 15 && (readData[0] & 8'd16) == 8'd0; tries = tries+1)
+		begin
+			header = 32'd3235119128;
+			repeat (5) @(posedge clock);
+			SPI_cs_n = 1'b0;
+			repeat (5) @(posedge clock);
+
+			for(i=32; i!=0; i=i-1)
+			begin
+				SPI_mosi = header[i-1];
+				`SPI_CLK_PERIOD;
+				SPI_clock = 1'b1;
+				in = SPI_miso;
+				`SPI_CLK_PERIOD;
+				SPI_clock = 1'b0;
+			end
+
+			while(in == 1'b0) for(i=8; i!=0; i=i-1)
+			begin
+				SPI_mosi = writeData[i-1];
+				`SPI_CLK_PERIOD;
+				SPI_clock = 1'b1;
+				in = SPI_miso;
+				`SPI_CLK_PERIOD;
+				SPI_clock = 1'b0;
+			end
+
+			for(i=8; i!=0; i=i-1)
+			begin
+				`SPI_CLK_PERIOD;
+				SPI_clock = 1'b1;
+				readByte[i-1] = SPI_miso;
+				`SPI_CLK_PERIOD;
+				SPI_clock = 1'b0;
+			end
+			readData[0] = readByte;
+
+			repeat (5) @(posedge clock);
+			SPI_cs_n = 1'b1;
+			repeat (5) @(posedge clock);
+
+			#200;
+		end
+
+		if (tries == 15)
+		begin
+			$error("TPM Execution timeout.");
+			errors = errors + 1;
+			$stop;
+		end
+
+
+		// GenEntry 204: Read 10 bytes from TPM_DATA_FIFO0
+		genEntry = 204;
+
+		header = 32'd3386114084;
+		repeat (5) @(posedge clock);
+		SPI_cs_n = 1'b0;
+		repeat (5) @(posedge clock);
+
+		for(i=32; i!=0; i=i-1)
+		begin
+			SPI_mosi = header[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			in = SPI_miso;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd32;
+		while(in == 1'b0) for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			in = SPI_miso;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		for(j=0; j<10; j=j+1)
+		begin
+			for(i=8; i!=0; i=i-1)
+			begin
+				`SPI_CLK_PERIOD;
+				SPI_clock = 1'b1;
+				readByte[i-1] = SPI_miso;
+				`SPI_CLK_PERIOD;
+				SPI_clock = 1'b0;
+			end
+			readData[j] = readByte;
+		end
+
+		repeat (5) @(posedge clock);
+		SPI_cs_n = 1'b1;
+		repeat (5) @(posedge clock);
+
+		if (
+			readData[6] != 8'd0 ||
+			readData[7] != 8'd0 ||
+			readData[8] != 8'd0 ||
+			readData[9] != 8'd0
+		)
+		begin
+			$error("Expected TPM_RC_SUCCESS.");
+			errors = errors + 1;
+		end
+
+
+		// GenEntry 205: Write 1 bytes to TPM_STS0
+		genEntry = 205;
+
+		header = 32'd1087635480;
+		repeat (5) @(posedge clock);
+		SPI_cs_n = 1'b0;
+		repeat (5) @(posedge clock);
+
+		for(i=32; i!=0; i=i-1)
+		begin
+			SPI_mosi = header[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			in = SPI_miso;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		writeData = 8'd64;
+		while(in == 1'b0) for(i=8; i!=0; i=i-1)
+		begin
+			SPI_mosi = writeData[i-1];
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b1;
+			in = SPI_miso;
+			`SPI_CLK_PERIOD;
+			SPI_clock = 1'b0;
+		end
+
+		repeat (5) @(posedge clock);
+		SPI_cs_n = 1'b1;
+		repeat (5) @(posedge clock);
+
+
+		// GenEntry 206: Write 1 bytes to TPM_ACCESS0
+		genEntry = 206;
 
 		header = 32'd1087635456;
 		repeat (5) @(posedge clock);
@@ -11236,8 +12723,8 @@ module	tb_test();
 
 		// Using Locality 0 as active locality.
 
-		// GenEntry 193: Write 1 bytes to TPM_ACCESS0
-		genEntry = 193;
+		// GenEntry 207: Write 1 bytes to TPM_ACCESS0
+		genEntry = 207;
 
 		header = 32'd1087635456;
 		repeat (5) @(posedge clock);
@@ -11270,8 +12757,8 @@ module	tb_test();
 		repeat (5) @(posedge clock);
 
 
-		// GenEntry 194: Write 1 bytes to TPM_STS0
-		genEntry = 194;
+		// GenEntry 208: Write 1 bytes to TPM_STS0
+		genEntry = 208;
 
 		header = 32'd1087635480;
 		repeat (5) @(posedge clock);
@@ -11306,8 +12793,8 @@ module	tb_test();
 
 		// Send command TPM_CC_STARTUP : TPM_SU_CLEAR -> put TPM in operational state.
 
-		// GenEntry 195: Write 10 bytes to TPM_DATA_FIFO0
-		genEntry = 195;
+		// GenEntry 209: Write 10 bytes to TPM_DATA_FIFO0
+		genEntry = 209;
 
 		header = 32'd1238630436;
 		repeat (5) @(posedge clock);
@@ -11430,8 +12917,8 @@ module	tb_test();
 		repeat (5) @(posedge clock);
 
 
-		// GenEntry 196: Write 1 bytes to TPM_DATA_FIFO0
-		genEntry = 196;
+		// GenEntry 210: Write 1 bytes to TPM_DATA_FIFO0
+		genEntry = 210;
 
 		header = 32'd1087635492;
 		repeat (5) @(posedge clock);
@@ -11464,8 +12951,8 @@ module	tb_test();
 		repeat (5) @(posedge clock);
 
 
-		// GenEntry 197: Write 1 bytes to TPM_DATA_FIFO0
-		genEntry = 197;
+		// GenEntry 211: Write 1 bytes to TPM_DATA_FIFO0
+		genEntry = 211;
 
 		header = 32'd1087635492;
 		repeat (5) @(posedge clock);
@@ -11498,8 +12985,8 @@ module	tb_test();
 		repeat (5) @(posedge clock);
 
 
-		// GenEntry 198: Write 1 bytes to TPM_STS0
-		genEntry = 198;
+		// GenEntry 212: Write 1 bytes to TPM_STS0
+		genEntry = 212;
 
 		header = 32'd1087635480;
 		repeat (5) @(posedge clock);
@@ -11531,8 +13018,8 @@ module	tb_test();
 		SPI_cs_n = 1'b1;
 		repeat (5) @(posedge clock);
 
-		// GenEntry 5: Wait for TPM Execution
-		genEntry = 5;
+		// GenEntry 6: Wait for TPM Execution
+		genEntry = 6;
 
 		readData[0] = 8'd0;
 		for(tries = 0; tries < 15 && (readData[0] & 8'd16) == 8'd0; tries = tries+1)
@@ -11587,8 +13074,8 @@ module	tb_test();
 		end
 
 
-		// GenEntry 199: Read 10 bytes from TPM_DATA_FIFO0
-		genEntry = 199;
+		// GenEntry 213: Read 10 bytes from TPM_DATA_FIFO0
+		genEntry = 213;
 
 		header = 32'd3386114084;
 		repeat (5) @(posedge clock);
@@ -11645,8 +13132,8 @@ module	tb_test();
 		end
 
 
-		// GenEntry 200: Write 1 bytes to TPM_STS0
-		genEntry = 200;
+		// GenEntry 214: Write 1 bytes to TPM_STS0
+		genEntry = 214;
 
 		header = 32'd1087635480;
 		repeat (5) @(posedge clock);
@@ -11681,8 +13168,8 @@ module	tb_test();
 
 		// Management Module now in operational state.
 
-		// GenEntry 201: Write 1 bytes to TPM_STS0
-		genEntry = 201;
+		// GenEntry 215: Write 1 bytes to TPM_STS0
+		genEntry = 215;
 
 		header = 32'd1087635480;
 		repeat (5) @(posedge clock);
@@ -11715,8 +13202,10 @@ module	tb_test();
 		repeat (5) @(posedge clock);
 
 
-		// GenEntry 202: Write 10 bytes to TPM_DATA_FIFO0
-		genEntry = 202;
+		// Send command TPM_CC_QUOTE [Without Sessions]. Expect RC of 0x145.
+
+		// GenEntry 216: Write 10 bytes to TPM_DATA_FIFO0
+		genEntry = 216;
 
 		header = 32'd1238630436;
 		repeat (5) @(posedge clock);
@@ -11839,8 +13328,8 @@ module	tb_test();
 		repeat (5) @(posedge clock);
 
 
-		// GenEntry 203: Write 4 bytes to TPM_DATA_FIFO0
-		genEntry = 203;
+		// GenEntry 217: Write 4 bytes to TPM_DATA_FIFO0
+		genEntry = 217;
 
 		header = 32'd1137967140;
 		repeat (5) @(posedge clock);
@@ -11903,8 +13392,8 @@ module	tb_test();
 		repeat (5) @(posedge clock);
 
 
-		// GenEntry 204: Write 1 bytes to TPM_DATA_FIFO0
-		genEntry = 204;
+		// GenEntry 218: Write 1 bytes to TPM_DATA_FIFO0
+		genEntry = 218;
 
 		header = 32'd1087635492;
 		repeat (5) @(posedge clock);
@@ -11937,8 +13426,8 @@ module	tb_test();
 		repeat (5) @(posedge clock);
 
 
-		// GenEntry 205: Write 1 bytes to TPM_DATA_FIFO0
-		genEntry = 205;
+		// GenEntry 219: Write 1 bytes to TPM_DATA_FIFO0
+		genEntry = 219;
 
 		header = 32'd1087635492;
 		repeat (5) @(posedge clock);
@@ -11971,8 +13460,8 @@ module	tb_test();
 		repeat (5) @(posedge clock);
 
 
-		// GenEntry 206: Write 1 bytes to TPM_DATA_FIFO0
-		genEntry = 206;
+		// GenEntry 220: Write 1 bytes to TPM_DATA_FIFO0
+		genEntry = 220;
 
 		header = 32'd1087635492;
 		repeat (5) @(posedge clock);
@@ -12005,8 +13494,8 @@ module	tb_test();
 		repeat (5) @(posedge clock);
 
 
-		// GenEntry 207: Write 1 bytes to TPM_DATA_FIFO0
-		genEntry = 207;
+		// GenEntry 221: Write 1 bytes to TPM_DATA_FIFO0
+		genEntry = 221;
 
 		header = 32'd1087635492;
 		repeat (5) @(posedge clock);
@@ -12039,8 +13528,8 @@ module	tb_test();
 		repeat (5) @(posedge clock);
 
 
-		// GenEntry 208: Write 1 bytes to TPM_DATA_FIFO0
-		genEntry = 208;
+		// GenEntry 222: Write 1 bytes to TPM_DATA_FIFO0
+		genEntry = 222;
 
 		header = 32'd1087635492;
 		repeat (5) @(posedge clock);
@@ -12073,8 +13562,8 @@ module	tb_test();
 		repeat (5) @(posedge clock);
 
 
-		// GenEntry 209: Write 1 bytes to TPM_STS0
-		genEntry = 209;
+		// GenEntry 223: Write 1 bytes to TPM_STS0
+		genEntry = 223;
 
 		header = 32'd1087635480;
 		repeat (5) @(posedge clock);
@@ -12106,8 +13595,8 @@ module	tb_test();
 		SPI_cs_n = 1'b1;
 		repeat (5) @(posedge clock);
 
-		// GenEntry 6: Wait for TPM Execution
-		genEntry = 6;
+		// GenEntry 7: Wait for TPM Execution
+		genEntry = 7;
 
 		readData[0] = 8'd0;
 		for(tries = 0; tries < 15 && (readData[0] & 8'd16) == 8'd0; tries = tries+1)
@@ -12162,8 +13651,8 @@ module	tb_test();
 		end
 
 
-		// GenEntry 210: Read 10 bytes from TPM_DATA_FIFO0
-		genEntry = 210;
+		// GenEntry 224: Read 10 bytes from TPM_DATA_FIFO0
+		genEntry = 224;
 
 		header = 32'd3386114084;
 		repeat (5) @(posedge clock);
@@ -12220,8 +13709,8 @@ module	tb_test();
 		end
 
 
-		// GenEntry 211: Write 1 bytes to TPM_STS0
-		genEntry = 211;
+		// GenEntry 225: Write 1 bytes to TPM_STS0
+		genEntry = 225;
 
 		header = 32'd1087635480;
 		repeat (5) @(posedge clock);
@@ -12254,8 +13743,8 @@ module	tb_test();
 		repeat (5) @(posedge clock);
 
 
-		// GenEntry 212: Write 1 bytes to TPM_STS0
-		genEntry = 212;
+		// GenEntry 226: Write 1 bytes to TPM_STS0
+		genEntry = 226;
 
 		header = 32'd1087635480;
 		repeat (5) @(posedge clock);
@@ -12288,8 +13777,10 @@ module	tb_test();
 		repeat (5) @(posedge clock);
 
 
-		// GenEntry 213: Write 10 bytes to TPM_DATA_FIFO0
-		genEntry = 213;
+		// Send command TPM_CC_QUOTE [With Sessions]. Expect RC of 0x000.
+
+		// GenEntry 227: Write 10 bytes to TPM_DATA_FIFO0
+		genEntry = 227;
 
 		header = 32'd1238630436;
 		repeat (5) @(posedge clock);
@@ -12412,8 +13903,8 @@ module	tb_test();
 		repeat (5) @(posedge clock);
 
 
-		// GenEntry 214: Write 4 bytes to TPM_DATA_FIFO0
-		genEntry = 214;
+		// GenEntry 228: Write 4 bytes to TPM_DATA_FIFO0
+		genEntry = 228;
 
 		header = 32'd1137967140;
 		repeat (5) @(posedge clock);
@@ -12476,8 +13967,8 @@ module	tb_test();
 		repeat (5) @(posedge clock);
 
 
-		// GenEntry 215: Write 4 bytes to TPM_DATA_FIFO0
-		genEntry = 215;
+		// GenEntry 229: Write 4 bytes to TPM_DATA_FIFO0
+		genEntry = 229;
 
 		header = 32'd1137967140;
 		repeat (5) @(posedge clock);
@@ -12540,8 +14031,8 @@ module	tb_test();
 		repeat (5) @(posedge clock);
 
 
-		// GenEntry 216: Write 64 bytes to TPM_DATA_FIFO0
-		genEntry = 216;
+		// GenEntry 230: Write 64 bytes to TPM_DATA_FIFO0
+		genEntry = 230;
 
 		header = 32'd2144600100;
 		repeat (5) @(posedge clock);
@@ -13204,8 +14695,8 @@ module	tb_test();
 		repeat (5) @(posedge clock);
 
 
-		// GenEntry 217: Write 16 bytes to TPM_DATA_FIFO0
-		genEntry = 217;
+		// GenEntry 231: Write 16 bytes to TPM_DATA_FIFO0
+		genEntry = 231;
 
 		header = 32'd1339293732;
 		repeat (5) @(posedge clock);
@@ -13388,8 +14879,8 @@ module	tb_test();
 		repeat (5) @(posedge clock);
 
 
-		// GenEntry 218: Write 1 bytes to TPM_DATA_FIFO0
-		genEntry = 218;
+		// GenEntry 232: Write 1 bytes to TPM_DATA_FIFO0
+		genEntry = 232;
 
 		header = 32'd1087635492;
 		repeat (5) @(posedge clock);
@@ -13422,8 +14913,8 @@ module	tb_test();
 		repeat (5) @(posedge clock);
 
 
-		// GenEntry 219: Write 1 bytes to TPM_DATA_FIFO0
-		genEntry = 219;
+		// GenEntry 233: Write 1 bytes to TPM_DATA_FIFO0
+		genEntry = 233;
 
 		header = 32'd1087635492;
 		repeat (5) @(posedge clock);
@@ -13456,8 +14947,8 @@ module	tb_test();
 		repeat (5) @(posedge clock);
 
 
-		// GenEntry 220: Write 1 bytes to TPM_DATA_FIFO0
-		genEntry = 220;
+		// GenEntry 234: Write 1 bytes to TPM_DATA_FIFO0
+		genEntry = 234;
 
 		header = 32'd1087635492;
 		repeat (5) @(posedge clock);
@@ -13490,8 +14981,8 @@ module	tb_test();
 		repeat (5) @(posedge clock);
 
 
-		// GenEntry 221: Write 1 bytes to TPM_DATA_FIFO0
-		genEntry = 221;
+		// GenEntry 235: Write 1 bytes to TPM_DATA_FIFO0
+		genEntry = 235;
 
 		header = 32'd1087635492;
 		repeat (5) @(posedge clock);
@@ -13524,8 +15015,8 @@ module	tb_test();
 		repeat (5) @(posedge clock);
 
 
-		// GenEntry 222: Write 1 bytes to TPM_DATA_FIFO0
-		genEntry = 222;
+		// GenEntry 236: Write 1 bytes to TPM_DATA_FIFO0
+		genEntry = 236;
 
 		header = 32'd1087635492;
 		repeat (5) @(posedge clock);
@@ -13558,8 +15049,8 @@ module	tb_test();
 		repeat (5) @(posedge clock);
 
 
-		// GenEntry 223: Write 1 bytes to TPM_STS0
-		genEntry = 223;
+		// GenEntry 237: Write 1 bytes to TPM_STS0
+		genEntry = 237;
 
 		header = 32'd1087635480;
 		repeat (5) @(posedge clock);
@@ -13591,8 +15082,8 @@ module	tb_test();
 		SPI_cs_n = 1'b1;
 		repeat (5) @(posedge clock);
 
-		// GenEntry 7: Wait for TPM Execution
-		genEntry = 7;
+		// GenEntry 8: Wait for TPM Execution
+		genEntry = 8;
 
 		readData[0] = 8'd0;
 		for(tries = 0; tries < 15 && (readData[0] & 8'd16) == 8'd0; tries = tries+1)
@@ -13647,8 +15138,8 @@ module	tb_test();
 		end
 
 
-		// GenEntry 224: Read 10 bytes from TPM_DATA_FIFO0
-		genEntry = 224;
+		// GenEntry 238: Read 10 bytes from TPM_DATA_FIFO0
+		genEntry = 238;
 
 		header = 32'd3386114084;
 		repeat (5) @(posedge clock);
@@ -13705,8 +15196,8 @@ module	tb_test();
 		end
 
 
-		// GenEntry 225: Write 1 bytes to TPM_STS0
-		genEntry = 225;
+		// GenEntry 239: Write 1 bytes to TPM_STS0
+		genEntry = 239;
 
 		header = 32'd1087635480;
 		repeat (5) @(posedge clock);
@@ -13739,8 +15230,8 @@ module	tb_test();
 		repeat (5) @(posedge clock);
 
 
-		// GenEntry 226: Write 1 bytes to TPM_ACCESS0
-		genEntry = 226;
+		// GenEntry 240: Write 1 bytes to TPM_ACCESS0
+		genEntry = 240;
 
 		header = 32'd1087635456;
 		repeat (5) @(posedge clock);

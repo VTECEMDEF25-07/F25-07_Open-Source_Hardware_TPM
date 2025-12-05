@@ -1,24 +1,39 @@
+// TPM_IO.v
+// modules:
+//	TPM_IO
+//
+// Authors:
+//	Ian Sizemore (idsizemore@vt.edu)
+//
+// Date: 11/6/25
+//
+// General Description:
+//	Wrapper module to combine induvidual I/O submodules into a single module.
+	
 module	TPM_IO
 (
-	input		clock50,
-	input		clock100,
+	input		clock50,	// 50 MHz	(sysclock, arbitrary)
+	input		clock100,	// 100 MHz	(for SPI timing, should be >60 MHz)
 	input		reset_n,
 	
-	input		SPI_clk,
-	input		SPI_cs_n,
-	input		SPI_mosi,
-	output		SPI_miso,
-	output		SPI_pirq_n,
+	// host system communication
+	input		SPI_clk,	// SPI clock
+	input		SPI_cs_n,	// SPI chip select, active low
+	input		SPI_mosi,	// SPI mosi
+	output		SPI_miso,	// SPI miso
+	output		SPI_pirq_n,	// SPI Interrupt Request, active low
 	
-	output		execStart,
-	output	[31:0]	commandCode,
-	output	[15:0]	commandTag,
-	input		responseReady,
-	input	[31:0]	responseCode,
-	output	[39:0]	commandParam,
-	output	[7:0]	locality,
-	output	[31:0]	commandSize,
+	// internal communication
+	output		execStart,	// start execution
+	output	[31:0]	commandCode,	// command code
+	output	[15:0]	commandTag,	// command tag
+	input		responseReady,	// response is ready
+	input	[31:0]	responseCode,	// response code
+	output	[39:0]	commandParam,	// command parameters for management module
+	output	[7:0]	locality,	// active locality
+	output	[31:0]	commandSize,	// command size
 	
+	// command session data
 	output	[31:0]	handle0, handle1, handle2,
 	output	[31:0]	sessionHandle0, sessionHandle1, sessionHandle2,
 	output	[15:0]	sessionNonceSize0, sessionNonceSize1, sessionNonceSize2,
@@ -28,8 +43,12 @@ module	TPM_IO
 	output	[11:0]	sessionHmacAddr0, sessionHmacAddr1, sessionHmacAddr2,
 	output	[31:0]	authSize,
 	
+	// session validity
 	output		sessionValid0, sessionValid1, sessionValid2
 );
+	
+	// this module is simply instantiations and connections
+	
 	wire	[7:0]	RX_byte, TX_byte;
 	wire		RX_valid, TX_valid;
 	wire		TX_request, TX_received;
