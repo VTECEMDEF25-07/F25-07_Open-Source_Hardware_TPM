@@ -268,11 +268,11 @@ module management_module_top(CLOCK_50, KEY, SW, HEX4, HEX3, HEX2, HEX1, HEX0, LE
 		.shutdownSave(shutdownSaveOut)
 		);
 		 
-	sevensegdecoder_proc_emmaw21 U2(hex4, HEX4);
-	sevensegdecoder_proc_emmaw21 U3(hex3, HEX3);
-	sevensegdecoder_proc_emmaw21 U4(hex2, HEX2);
-	sevensegdecoder_proc_emmaw21 U5(hex1, HEX1);
-	sevensegdecoder_proc_emmaw21 U6(hex0, HEX0);
+	sevensegdecoder_proc U2(hex4, HEX4);
+	sevensegdecoder_proc U3(hex3, HEX3);
+	sevensegdecoder_proc U4(hex2, HEX2);
+	sevensegdecoder_proc U5(hex1, HEX1);
+	sevensegdecoder_proc U6(hex0, HEX0);
 
 	// Combinational logic block to show current operational state on board's hex display
 	always@(op_state_out) begin
