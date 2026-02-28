@@ -1,6 +1,6 @@
-// TPM_TOP.v
+// tpm_top.v
 // modules:
-//	TPM_TOP
+//	tpm_top
 //
 // Authors:
 //	Ian Sizemore (idsizemore@vt.edu)
@@ -13,7 +13,7 @@
 //	and the execution engine.
 // 
 
-module	TPM_TOP
+module	tpm_top
 (
 	input		CLOCK_50,	// 50 MHz sysclock
 	input		CLOCK_100,	// 100 MHz clock (used for sampling SPI_CLOCK)
@@ -58,7 +58,7 @@ module	TPM_TOP
 	wire	[31:0]	ee_responseCode, authHierarchy;
 	wire		initialized;
 	
-	TPM_IO io
+	tpm_io io
 	(
 		.clock50(CLOCK_50), .clock100(CLOCK_100),
 		.reset_n(rst_n),
