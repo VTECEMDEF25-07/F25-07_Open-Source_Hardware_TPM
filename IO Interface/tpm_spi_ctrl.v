@@ -23,29 +23,29 @@
 
 module	tpm_spi_ctrl
 (
-	input			clock,
-	input			reset_n,
+	input			clock_i,
+	input			reset_n_i,
 	
-	input			SPI_CS_n,	// SPI chip select, active low
-	input		[7:0]	SPI_RX_byte,	// SPI received byte, from spi serializer
-	input			SPI_RX_valid,	// SPI received byte valid pulse, from spi serializer
+	input			SPI_CS_n_i,	// SPI chip select, active low
+	input		[7:0]	SPI_RX_byte_i,	// SPI received byte, from spi serializer
+	input			SPI_RX_valid_i,	// SPI received byte valid pulse, from spi serializer
 	
-	output		[7:0]	SPI_TX_byte,	// SPI transfer byte, to spi serializer
-	input			SPI_TX_prepare,	// SPI transfer byte prepare pulse, from spi serializer
-	output			SPI_TX_valid,	// SPI transfer byte valid pulse, to spi serializer
-	input			SPI_TX_ack,	// SPI transfer byte ack pulse, from spi serializer
+	output		[7:0]	SPI_TX_byte_o,	// SPI transfer byte, to spi serializer
+	input			SPI_TX_prepare_i,	// SPI transfer byte prepare pulse, from spi serializer
+	output			SPI_TX_valid_o,	// SPI transfer byte valid pulse, to spi serializer
+	input			SPI_TX_ack_i,	// SPI transfer byte ack pulse, from spi serializer
 	
-	output		[15:0]	FRS_addr,	// transfer byte address, to frs
-	output			FRS_wren_n,	// transfer byte write enable, to frs
-	output			FRS_rden_n,	// transfer byte read enable, to frs
-	output		[7:0]	FRS_wrByte,	// transfer write byte
-	input		[7:0]	FRS_rdByte,	// transfer read byte
+	output		[15:0]	FRS_addr_o,	// transfer byte address, to frs
+	output			FRS_wren_n_o,	// transfer byte write enable, to frs
+	output			FRS_rden_n_o,	// transfer byte read enable, to frs
+	output		[7:0]	FRS_wrByte_o,	// transfer write byte
+	input		[7:0]	FRS_rdByte_i,	// transfer read byte
 	
-	output		[15:0]	FRS_baseAddr,	// transfer byte base address, to frs
-	output		[5:0]	CMD_size,	// transfer size, to frs
-	output			FRS_req,	// transfer request, to frs
+	output		[15:0]	FRS_baseAddr_o,	// transfer byte base address, to frs
+	output		[5:0]	CMD_size_o,	// transfer size, to frs
+	output			FRS_req_o,	// transfer request, to frs
 	
-	output			updateAddr	// pulse to update address, to fifo buffer
+	output			updateAddr_o	// pulse to update address, to fifo buffer
 						// utilized for timing during FIFO buffer transfers
 );
 	
@@ -57,9 +57,9 @@ module	tpm_spi_ctrl
 	reg	[1:0]	state, next_state;
 	
 	// state machine register
-	always @(posedge clock, negedge reset_n)
+	always @(posedge clock_i, negedge reset_n_i)
 	begin
-		if (!reset_n)
+		if (!reset_n_i)
 			state <= Idle;
 		else
 			state <= next_state;
@@ -71,13 +71,13 @@ module	tpm_spi_ctrl
 	always @*
 	begin
 		// reset when device is not selected
-		if (SPI_CS_n)
+		if (SPI_CS_n_i)
 			next_state = Idle;
 		else case (state)
 			
 			// go to ObtainHeader when device is selected
 			Idle:
-				next_state = SPI_CS_n ? Idle : ObtainHeader;
+				next_state = SPI_CS_n_i ? Idle : ObtainHeader;
 			// go to Stall once the header has been obtained
 			ObtainHeader:
 				next_state = headerComplete ? Stall : ObtainHeader;
@@ -91,33 +91,33 @@ module	tpm_spi_ctrl
 		endcase
 	end
 	
-	assign	FRS_req = state == Transaction;
+	assign	FRS_req_o = state == Transaction;
 	
-	wire	[31:0]	commandHeader;
+	wire	[31:0]	commandHeader_o;
 	
 	// fsm to get the header
 	fsm_obtainHeader	fsm_OH
 	(
-		clock, reset_n,
-		state, SPI_RX_byte, SPI_RX_valid,
-		commandHeader, headerComplete
+		clock_i, reset_n_i,
+		state, SPI_RX_byte_i, SPI_RX_valid_i,
+		commandHeader_o, headerComplete
 	);
 	
 	// individual components of the transaction header
-	wire		CMD_rw;
-	wire	[23:0]	CMD_addr;
+	wire		CMD_rw_i;
+	wire	[23:0]	CMD_addr_i;
 	wire	[3:0]	CMD_locality;
 	
-	assign	CMD_rw = commandHeader[31];
-	assign	CMD_size = commandHeader[29:24];
-	assign	CMD_addr = commandHeader[23:0];
-	assign	CMD_locality = commandHeader[15:12];
+	assign	CMD_rw_i = commandHeader_o[31];
+	assign	CMD_size_o = commandHeader_o[29:24];
+	assign	CMD_addr_i = commandHeader_o[23:0];
+	assign	CMD_locality = commandHeader_o[15:12];
 	
 	// fsm for stalling
 	fsm_stall	fsm_S
 	(
-		clock, reset_n, state,
-		CMD_addr, FRS_baseAddr,
+		clock_i, reset_n_i, state,
+		CMD_addr_i, FRS_baseAddr_o,
 		stallComplete
 	);
 	
@@ -133,33 +133,33 @@ module	tpm_spi_ctrl
 	wire		r_updateAddr, w_updateAddr;
 	
 	// mutiplex between read and write signals
-	assign	transactionComplete = CMD_rw ? r_transactionComplete : w_transactionComplete;
-	assign	FRS_addr = CMD_rw ? r_FRS_addr : w_FRS_addr;
-	assign	FRS_wren_n = state == Idle ? 1'b1 : CMD_rw ? r_FRS_wren_n : w_FRS_wren_n;
-	assign	FRS_rden_n = state == Idle ? 1'b1 : CMD_rw ? r_FRS_rden_n : w_FRS_rden_n;
-	assign	FRS_wrByte = CMD_rw ? r_FRS_wrByte : w_FRS_wrByte;
-	assign	SPI_TX_valid = CMD_rw ? r_SPI_TX_valid : w_SPI_TX_valid;
-	assign	updateAddr = CMD_rw ? r_updateAddr : w_updateAddr;
+	assign	transactionComplete = CMD_rw_i ? r_transactionComplete : w_transactionComplete;
+	assign	FRS_addr_o = CMD_rw_i ? r_FRS_addr : w_FRS_addr;
+	assign	FRS_wren_n_o = state == Idle ? 1'b1 : CMD_rw_i ? r_FRS_wren_n : w_FRS_wren_n;
+	assign	FRS_rden_n_o = state == Idle ? 1'b1 : CMD_rw_i ? r_FRS_rden_n : w_FRS_rden_n;
+	assign	FRS_wrByte_o = CMD_rw_i ? r_FRS_wrByte : w_FRS_wrByte;
+	assign	SPI_TX_valid_o = CMD_rw_i ? r_SPI_TX_valid : w_SPI_TX_valid;
+	assign	updateAddr_o = CMD_rw_i ? r_updateAddr : w_updateAddr;
 	
-	assign	SPI_TX_byte = state == Transaction ? CMD_rw ? r_SPI_TX_byte : w_SPI_TX_byte : 8'h00;
+	assign	SPI_TX_byte_o = state == Transaction ? CMD_rw_i ? r_SPI_TX_byte : w_SPI_TX_byte : 8'h00;
 	
 	// fsm for read transactions
 	fsm_transRead	fsm_TR
 	(
-		clock, reset_n, state, r_transactionComplete,
-		CMD_rw, CMD_size, FRS_baseAddr,
-		r_FRS_addr, r_FRS_wren_n, r_FRS_rden_n, r_FRS_wrByte, FRS_rdByte,
-		r_SPI_TX_byte, SPI_TX_prepare, r_SPI_TX_valid, SPI_TX_ack, r_updateAddr
+		clock_i, reset_n_i, state, r_transactionComplete,
+		CMD_rw_i, CMD_size_o, FRS_baseAddr_o,
+		r_FRS_addr, r_FRS_wren_n, r_FRS_rden_n, r_FRS_wrByte, FRS_rdByte_i,
+		r_SPI_TX_byte, SPI_TX_prepare_i, r_SPI_TX_valid, SPI_TX_ack_i, r_updateAddr
 	);
 	
 	// fsm for write transactions
 	fsm_transWrite	fsm_TW
 	(
-		clock, reset_n, state, w_transactionComplete,
-		CMD_rw, CMD_size, FRS_baseAddr, 
-		w_FRS_addr, w_FRS_wren_n, w_FRS_rden_n, w_FRS_wrByte, FRS_rdByte,
-		w_SPI_TX_byte, SPI_TX_prepare, w_SPI_TX_valid, SPI_TX_ack,
-		SPI_RX_byte, SPI_RX_valid, w_updateAddr
+		clock_i, reset_n_i, state, w_transactionComplete,
+		CMD_rw_i, CMD_size_o, FRS_baseAddr_o, 
+		w_FRS_addr, w_FRS_wren_n, w_FRS_rden_n, w_FRS_wrByte, FRS_rdByte_i,
+		w_SPI_TX_byte, SPI_TX_prepare_i, w_SPI_TX_valid, SPI_TX_ack_i,
+		SPI_RX_byte_i, SPI_RX_valid_i, w_updateAddr
 	);
 	
 endmodule
@@ -168,40 +168,40 @@ endmodule
 // substate module for Transaction (write)
 module	fsm_transWrite
 (
-	input			clock,
-	input			reset_n,
-	input		[1:0]	ex_state,	// state from TPM_SPI_CTRL
-	output			done,		// transaction complete signal
+	input			clock_i,
+	input			reset_n_i,
+	input		[1:0]	ex_state_i,	// state from TPM_SPI_CTRL
+	output			done_o,		// transaction complete signal
 	
-	input			CMD_rw,		// transaction direction
-	input		[5:0]	CMD_size,	// transaction size
-	input		[15:0]	FRS_baseAddr,	// transaction base address
+	input			CMD_rw_i,		// transaction direction
+	input		[5:0]	CMD_size_i,	// transaction size
+	input		[15:0]	FRS_baseAddr_i,	// transaction base address
 	
-	output	reg	[15:0]	FRS_addr,	// transaction address
-	output			FRS_wren_n,	// transaction write enable
-	output			FRS_rden_n,	// transaction read enable
-	output	reg	[7:0]	FRS_wrByte,	// transaction write byte
-	input		[7:0]	FRS_rdByte,	// transaction read byte
+	output	reg	[15:0]	FRS_addr_o,	// transaction address
+	output			FRS_wren_n_o,	// transaction write enable
+	output			FRS_rden_n_o,	// transaction read enable
+	output	reg	[7:0]	FRS_wrByte_o,	// transaction write byte
+	input		[7:0]	FRS_rdByte_i,	// transaction read byte
 	
-	output		[7:0]	SPI_TX_byte,	// SPI transfer byte
-	input			SPI_TX_prepare,	// SPI transfer byte prepare pulse
-	output	reg		SPI_TX_valid,	// SPI transfer byte valid pulse
-	input			SPI_TX_ack,	// SPI transfer byte ack
+	output		[7:0]	SPI_TX_byte_o,	// SPI transfer byte
+	input			SPI_TX_prepare_i,	// SPI transfer byte prepare pulse
+	output	reg		SPI_TX_valid_o,	// SPI transfer byte valid pulse
+	input			SPI_TX_ack_i,	// SPI transfer byte ack
 	
-	input		[7:0]	SPI_RX_byte,	// SPI receive byte
-	input			SPI_RX_valid,	// SPI receive byte valid pulse
+	input		[7:0]	SPI_RX_byte_i,	// SPI receive byte
+	input			SPI_RX_valid_i,	// SPI receive byte valid pulse
 	
-	output			addrUpdate	// update addr for fifo buffer timing
+	output			addrUpdate_o	// update addr for fifo buffer timing
 );
 	
 	localparam
 		Idle		= 0,	// wait for transaction to start
 		Setup		= 1,	// setup transaction regs
-		TX_wait		= 2,	// wait for SPI_TX_prepare signal
-		TX_send		= 3,	// SPI_TX_valid pulse
-		TX_hold		= 4,	// wait for SPI_TX_ack
+		TX_wait		= 2,	// wait for SPI_TX_prepare_i signal
+		TX_send		= 3,	// SPI_TX_valid_o pulse
+		TX_hold		= 4,	// wait for SPI_TX_ack_i
 		UpdateAddr	= 5,	// update address
-		RX_wait		= 6,	// wait for SPI_RX_valid
+		RX_wait		= 6,	// wait for SPI_RX_valid_i
 		RX_read		= 7,	// read RX byte from SPI
 		Write0		= 8,	// write RX byte to FRS
 		Write1		= 9,	// two cycle write
@@ -211,9 +211,9 @@ module	fsm_transWrite
 	reg	[3:0]	state, next_state;
 	
 	// state machine register
-	always @(posedge clock, negedge reset_n)
+	always @(posedge clock_i, negedge reset_n_i)
 	begin
-		if (!reset_n)
+		if (!reset_n_i)
 			state <= Idle;
 		else
 			state <= next_state;
@@ -225,31 +225,31 @@ module	fsm_transWrite
 	always @*
 	begin
 		// return to idle when the external state is in idle
-		if (ex_state == ex_Idle)
+		if (ex_state_i == ex_Idle)
 			next_state = Idle;
 		else case (state)
 			
 			// go to TX_wait when the external state is in transaction, write
 			Idle:
-				next_state = ex_state == ex_Transaction && ~CMD_rw ? TX_wait : Idle;
-			// go to RX_wait once SPI_RX_valid is received
+				next_state = ex_state_i == ex_Transaction && ~CMD_rw_i ? TX_wait : Idle;
+			// go to RX_wait once SPI_RX_valid_i is received
 			Setup:
-				next_state = SPI_RX_valid ? RX_wait : Setup;
-			// go to TX_send once SPI_TX_prepare is received
+				next_state = SPI_RX_valid_i ? RX_wait : Setup;
+			// go to TX_send once SPI_TX_prepare_i is received
 			TX_wait:
-				next_state = SPI_TX_prepare ? TX_send : TX_wait;
+				next_state = SPI_TX_prepare_i ? TX_send : TX_wait;
 			// go to TX_hold
 			TX_send:
 				next_state = TX_hold;
-			// go to Setup once SPI_TX_ack is received
+			// go to Setup once SPI_TX_ack_i is received
 			TX_hold:
-				next_state = SPI_TX_ack ? Setup : TX_hold;
+				next_state = SPI_TX_ack_i ? Setup : TX_hold;
 			// go to RX_wait
 			UpdateAddr:
 				next_state = RX_wait;
-			// go to RX_read once SPI_RX_valid is received
+			// go to RX_read once SPI_RX_valid_i is received
 			RX_wait:
-				next_state = SPI_RX_valid ? RX_read : RX_wait;
+				next_state = SPI_RX_valid_i ? RX_read : RX_wait;
 			// go to Write0
 			RX_read:
 				next_state = Write0;
@@ -258,70 +258,70 @@ module	fsm_transWrite
 				next_state = Write1;
 			// go to Complete once number of written bytes == transaction size, otherwise UpdateAddr
 			Write1:
-				next_state = nBytesWritten == CMD_size ? Complete : UpdateAddr;
+				next_state = nBytesWritten == CMD_size_i ? Complete : UpdateAddr;
 			// go to Idle once the external state is Idle
 			Complete:
-				next_state = ex_state == ex_Idle ? Idle : Complete;
+				next_state = ex_state_i == ex_Idle ? Idle : Complete;
 		endcase
 	end
 	
-	assign done = state == Complete;
+	assign done_o = state == Complete;
 	
 	// these outputs are constant in a write transaction
-	assign FRS_wren_n = 1'b0;
-	assign FRS_rden_n = 1'b1;
-	assign SPI_TX_byte = 8'hFF;
+	assign FRS_wren_n_o = 1'b0;
+	assign FRS_rden_n_o = 1'b1;
+	assign SPI_TX_byte_o = 8'hFF;
 	
 	// state machine sequential logic
-	always @(posedge clock, negedge reset_n)
+	always @(posedge clock_i, negedge reset_n_i)
 	begin
 		// reset logic
-		if (!reset_n)
+		if (!reset_n_i)
 		begin
-			FRS_addr <= 16'h0001;
-			FRS_wrByte <= 8'hFF;
+			FRS_addr_o <= 16'h0001;
+			FRS_wrByte_o <= 8'hFF;
 			nBytesWritten <= 6'h3F;
-			SPI_TX_valid <= 1'b0;
+			SPI_TX_valid_o <= 1'b0;
 		end else case (state)
 			
 			// reset logic
 			Idle:
 			begin
-				FRS_addr <= 16'h0001;
-				FRS_wrByte <= 8'hFF;
-				SPI_TX_valid <= 1'b0;
+				FRS_addr_o <= 16'h0001;
+				FRS_wrByte_o <= 8'hFF;
+				SPI_TX_valid_o <= 1'b0;
 			end
 			
 			// setup logic
 			Setup:
 			begin
-				FRS_addr <= FRS_baseAddr;
+				FRS_addr_o <= FRS_baseAddr_i;
 				nBytesWritten <= 6'h3F;
-				SPI_TX_valid <= 1'b0;
+				SPI_TX_valid_o <= 1'b0;
 			end
 				
 			// increment address
 			UpdateAddr:
-				FRS_addr <= FRS_addr + 16'd1;
+				FRS_addr_o <= FRS_addr_o + 16'd1;
 			
-			// pulse SPI_TX_valid
+			// pulse SPI_TX_valid_o
 			TX_send:
-				SPI_TX_valid <= 1'b1;
+				SPI_TX_valid_o <= 1'b1;
 			
 			RX_wait:
-				SPI_TX_valid <= 1'b0;
+				SPI_TX_valid_o <= 1'b0;
 				
 			// move byte from SPI serializer to FRS ; increment nBytesWritten counter
 			RX_read:
 			begin
 				nBytesWritten <= nBytesWritten + 6'd1;
-				FRS_wrByte <= SPI_RX_byte;
+				FRS_wrByte_o <= SPI_RX_byte_i;
 			end
 				
 		endcase
 	end
 
-	assign	addrUpdate = state == UpdateAddr || state == TX_send;
+	assign	addrUpdate_o = state == UpdateAddr || state == TX_send;
 	
 endmodule
 
@@ -329,27 +329,27 @@ endmodule
 // substate module for Transaction (read)
 module	fsm_transRead
 (
-	input			clock,
-	input			reset_n,
-	input		[1:0]	ex_state,	// state from TPM_SPI_CTRL
-	output			done,		// transaction complete signa
+	input			clock_i,
+	input			reset_n_i,
+	input		[1:0]	ex_state_i,	// state from TPM_SPI_CTRL
+	output			done_o,		// transaction complete signa
 	
-	input			CMD_rw,		// transaction direction
-	input		[5:0]	CMD_size,	// transaction size
-	input		[15:0]	FRS_baseAddr,	// transaction base address
+	input			CMD_rw_i,		// transaction direction
+	input		[5:0]	CMD_size_i,	// transaction size
+	input		[15:0]	FRS_baseAddr_i,	// transaction base address
 	
-	output	reg	[15:0]	FRS_addr,	// transaction address
-	output			FRS_wren_n,	// transaction write enable
-	output			FRS_rden_n,	// transaction read enable
-	output		[7:0]	FRS_wrByte,	// transaction write byte
-	input		[7:0]	FRS_rdByte,	// transaction read byte
+	output	reg	[15:0]	FRS_addr_o,	// transaction address
+	output			FRS_wren_n_o,	// transaction write enable
+	output			FRS_rden_n_o,	// transaction read enable
+	output		[7:0]	FRS_wrByte_o,	// transaction write byte
+	input		[7:0]	FRS_rdByte_i,	// transaction read byte
 	
-	output	reg	[7:0]	SPI_TX_byte,	// SPI transfer byte
-	input			SPI_TX_prepare,	// SPI transfer byte prepare pulse
-	output	reg		SPI_TX_valid,	// SPI transfer byte valid pulse
-	input			SPI_TX_ack,	// SPI transfer byte ack
+	output	reg	[7:0]	SPI_TX_byte_o,	// SPI transfer byte
+	input			SPI_TX_prepare_i,	// SPI transfer byte prepare pulse
+	output	reg		SPI_TX_valid_o,	// SPI transfer byte valid pulse
+	input			SPI_TX_ack_i,	// SPI transfer byte ack
 	
-	output			addrUpdate	// udate addr for fifo buffer timing
+	output			addrUpdate_o	// udate addr for fifo buffer timing
 );
 
 	localparam
@@ -358,18 +358,18 @@ module	fsm_transRead
 		UpdateAddr	= 2,	// update address
 		Read0		= 3,	// read byte from frs
 		Read1		= 4,	// two cycle read
-		TX_wait		= 5,	// wait for SPI_TX_prepare
-		TX_send		= 6,	// send SPI_TX_valid
-		TX_hold		= 7,	// wait for SPI_TX_ack
+		TX_wait		= 5,	// wait for SPI_TX_prepare_i
+		TX_send		= 6,	// send SPI_TX_valid_o
+		TX_hold		= 7,	// wait for SPI_TX_ack_i
 		Complete	= 8,	// transaction complete
 		ex_Idle		= 0,
 		ex_Transaction	= 3;
 	reg	[3:0]	state, next_state;
 	
 	// state machine register
-	always @(posedge clock, negedge reset_n)
+	always @(posedge clock_i, negedge reset_n_i)
 	begin
-		if (!reset_n)
+		if (!reset_n_i)
 			state <= Idle;
 		else
 			state <= next_state;
@@ -384,58 +384,58 @@ module	fsm_transRead
 	always @*
 	begin
 		// go to idle when external state is idle
-		if (ex_state == ex_Idle)
+		if (ex_state_i == ex_Idle)
 			next_state = Idle;
 		else case (state)
 			
 			// go to TX_wait if the external state is Transaction, read
 			Idle:
-				next_state = ex_state == ex_Transaction && CMD_rw ? TX_wait : Idle;
+				next_state = ex_state_i == ex_Transaction && CMD_rw_i ? TX_wait : Idle;
 			// go to Read0
 			Setup:
 				next_state = Read0;
 			// go to Complete if number of read bytes == transaction size, otherwise Read0
 			UpdateAddr:
-				next_state = nBytesRead == CMD_size ? Complete : Read0;
+				next_state = nBytesRead == CMD_size_i ? Complete : Read0;
 			// go to Read1
 			Read0:
 				next_state = Read1;
 			// go to TX_wait
 			Read1:
 				next_state = TX_wait;
-			// go to TX_send once SPI_TX_prepare is received
+			// go to TX_send once SPI_TX_prepare_i is received
 			TX_wait:
-				next_state = SPI_TX_prepare ? TX_send : TX_wait;
+				next_state = SPI_TX_prepare_i ? TX_send : TX_wait;
 			// go to TX_hold
 			TX_send:
 				next_state = TX_hold;
-			// on receipt of SPI_TX_ack, go to Setup if destall is true, otherwise UpdateAddr
+			// on receipt of SPI_TX_ack_i, go to Setup if destall is true, otherwise UpdateAddr
 			TX_hold:
-				next_state = SPI_TX_ack ? destall ? Setup : UpdateAddr : TX_hold;
+				next_state = SPI_TX_ack_i ? destall ? Setup : UpdateAddr : TX_hold;
 			// go to Idle once external state is Idle
 			Complete:
-				next_state = ex_state == ex_Idle ? Idle : Complete;
+				next_state = ex_state_i == ex_Idle ? Idle : Complete;
 		endcase
 	end
 	
-	assign	done = state == Complete;
+	assign	done_o = state == Complete;
 	
 	// these outputs are constant during a read
-	assign	FRS_wren_n = 1'b1;
-	assign	FRS_rden_n = 1'b0;
-	assign	FRS_wrByte = 8'hFF;
+	assign	FRS_wren_n_o = 1'b1;
+	assign	FRS_rden_n_o = 1'b0;
+	assign	FRS_wrByte_o = 8'hFF;
 	
 	
 	// state machine sequetial logic
-	always @(posedge clock, negedge reset_n)
+	always @(posedge clock_i, negedge reset_n_i)
 	begin
 		// reset logic
-		if (!reset_n)
+		if (!reset_n_i)
 		begin
 			nBytesRead <= 6'h3f;
-			FRS_addr <= 16'h0001;
-			SPI_TX_byte <= 8'hFF;
-			SPI_TX_valid <= 1'b0;
+			FRS_addr_o <= 16'h0001;
+			SPI_TX_byte_o <= 8'hFF;
+			SPI_TX_valid_o <= 1'b0;
 			destall <= 1'b1;
 		end else case (state)
 			
@@ -443,45 +443,45 @@ module	fsm_transRead
 			Idle:
 			begin
 				nBytesRead <= 6'h3f;
-				FRS_addr <= 16'h0001;
-				SPI_TX_byte <= 8'hFF;
-				SPI_TX_valid <= 1'b0;
+				FRS_addr_o <= 16'h0001;
+				SPI_TX_byte_o <= 8'hFF;
+				SPI_TX_valid_o <= 1'b0;
 				destall <= 1'b1;
 			end
 			
 			// initialize regs
 			Setup:
 			begin
-				FRS_addr <= FRS_baseAddr;
+				FRS_addr_o <= FRS_baseAddr_i;
 				destall <= 1'b0;
-				SPI_TX_valid <= 1'b0;
+				SPI_TX_valid_o <= 1'b0;
 				nBytesRead <= 6'h3f;
 			end
 			
 			// send byte from frs to SPI serializer
 			Read1:
-				SPI_TX_byte <= FRS_rdByte;
+				SPI_TX_byte_o <= FRS_rdByte_i;
 			
 			// send TX_valid, update address, increment bytes read counter
 			TX_send:
 			begin
-				SPI_TX_valid <= 1'b1;
-				FRS_addr <= FRS_addr + 16'd1;
+				SPI_TX_valid_o <= 1'b1;
+				FRS_addr_o <= FRS_addr_o + 16'd1;
 				nBytesRead <= nBytesRead + 6'd1;
 			end
 			
-			// deassert SPI_TX_valid
+			// deassert SPI_TX_valid_o
 			UpdateAddr:
-				SPI_TX_valid <= 1'b0;
+				SPI_TX_valid_o <= 1'b0;
 			
 		endcase
 	end
 	
 	reg	prev_destall;
-	always @(posedge clock)
+	always @(posedge clock_i)
 		prev_destall <= destall;
 	
-	assign	addrUpdate = state == UpdateAddr || state == Setup;
+	assign	addrUpdate_o = state == UpdateAddr || state == Setup;
 		
 endmodule
 	
@@ -493,26 +493,26 @@ endmodule
 // allow additional stalling
 module	fsm_stall
 (
-	input			clock,
-	input			reset_n,
-	input		[1:0]	ex_state,	// state from TPM_SPI_CTRL
-	input		[23:0]	CMD_addr,	// transaction address
-	output	reg	[15:0]	FRS_baseAddr,	// base address to frs
-	output			done		// complete signal
+	input			clock_i,
+	input			reset_n_i,
+	input		[1:0]	ex_state_i,	// state from TPM_SPI_CTRL
+	input		[23:0]	CMD_addr_i,	// transaction address
+	output	reg	[15:0]	FRS_baseAddr_o,	// base address to frs
+	output			done_o		// complete signal
 );
 	
 	localparam
 		Idle		= 0,	// wait for external state to be stall
-		Configure	= 1,	// configure FRS_baseAddr (other work may be added later if more stall time is added)
+		Configure	= 1,	// configure FRS_baseAddr_o (other work may be added later if more stall time is added)
 		Complete	= 2,	// stall complete
 		ex_Idle		= 0,
 		ex_Stall	= 2;
 	reg	[1:0]	state, next_state;
 	
 	// state machine register
-	always @(posedge clock, negedge reset_n)
+	always @(posedge clock_i, negedge reset_n_i)
 	begin
-		if (!reset_n)
+		if (!reset_n_i)
 			state <= Idle;
 		else
 			state <= next_state;
@@ -522,32 +522,32 @@ module	fsm_stall
 	always @*
 	begin
 		// go to idle if external state is idle
-		if (ex_state == ex_Idle)
+		if (ex_state_i == ex_Idle)
 			next_state = Idle;
 		else case (state)
 			
 			// go to Configure if external state is Stall
 			Idle:
-				next_state = ex_state == ex_Stall ? Configure : Idle;
+				next_state = ex_state_i == ex_Stall ? Configure : Idle;
 			// go to Complete
 			Configure:
 				next_state = Complete;
 			// go to Idle once external state is Idle
 			Complete:
-				next_state = ex_state == ex_Idle ? Idle : Complete;
+				next_state = ex_state_i == ex_Idle ? Idle : Complete;
 			
 		endcase
 	end
 
-	assign done = state == Complete;
+	assign done_o = state == Complete;
 	
-	// configure FRS_baseAddr
-	always @(posedge clock, negedge reset_n)
+	// configure FRS_baseAddr_o
+	always @(posedge clock_i, negedge reset_n_i)
 	begin
-		if (!reset_n)
-			FRS_baseAddr <= 16'h0001;
+		if (!reset_n_i)
+			FRS_baseAddr_o <= 16'h0001;
 		else if (state == Configure)
-			FRS_baseAddr <= CMD_addr[15:0];
+			FRS_baseAddr_o <= CMD_addr_i[15:0];
 	end
 	
 endmodule
@@ -555,60 +555,60 @@ endmodule
 // substate module for ObtainHeader
 module	fsm_obtainHeader
 (
-	input			clock,
-	input			reset_n,
-	input		[1:0]	ex_state,	// state from TPM_SPI_CTRL
-	input		[7:0]	RX_byte,	// SPI_RX_byte
-	input			RX_valid,	// SPI_RX_valid
-	output	reg	[31:0]	commandHeader,	// resulting command header
-	output			done		// complete signal
+	input			clock_i,
+	input			reset_n_i,
+	input		[1:0]	ex_state_i,	// state from TPM_SPI_CTRL
+	input		[7:0]	RX_byte_i,	// SPI_RX_byte_i
+	input			RX_valid_i,	// SPI_RX_valid_i
+	output	reg	[31:0]	commandHeader_o,	// resulting command header
+	output			done_o		// complete signal
 );
 	
 	localparam
 		Idle		= 0,	// wait for external state to be ObtainHeader
-		WaitRX		= 1,	// wait for RX_valid
-		ReadByte	= 2,	// read RX_byte
+		WaitRX		= 1,	// wait for RX_valid_i
+		ReadByte	= 2,	// read RX_byte_i
 		Shift		= 3,	// counter to keep track of read bytes
-		Complete	= 4,	// done
+		Complete	= 4,	// done_o
 		ex_Idle		= 0,
 		ex_ObtainHeader	= 1;
 	reg	[2:0]	state, next_state;
 	
 	// state machine register
-	always @(posedge clock, negedge reset_n)
+	always @(posedge clock_i, negedge reset_n_i)
 	begin
-		if (!reset_n)
+		if (!reset_n_i)
 			state <= Idle;
 		else
 			state <= next_state;
 	end
 	
 	wire	header_complete;
-	assign	done = state == Complete;
+	assign	done_o = state == Complete;
 	
 	// state machine transfer combinational logic
 	always @*
 	begin
 		// go to Idle when external state is Idle
-		if (ex_state == ex_Idle)
+		if (ex_state_i == ex_Idle)
 			next_state = Idle;
 		else case (state)
 			
 			// go to WaitRX once external state is ObtainHeader
 			Idle:
-				next_state = ex_state == ex_ObtainHeader ? WaitRX : Idle;
-			// go to ReadByte once RX_valid is received
+				next_state = ex_state_i == ex_ObtainHeader ? WaitRX : Idle;
+			// go to ReadByte once RX_valid_i is received
 			WaitRX:
-				next_state = RX_valid ? ReadByte : WaitRX;
-			// stay in ReadByte while RX_valid is held, then go to Complete if header_complete is true, else go to Shift
+				next_state = RX_valid_i ? ReadByte : WaitRX;
+			// stay in ReadByte while RX_valid_i is held, then go to Complete if header_complete is true, else go to Shift
 			ReadByte:
-				next_state = RX_valid ? ReadByte : header_complete ? Complete : Shift;
+				next_state = RX_valid_i ? ReadByte : header_complete ? Complete : Shift;
 			// Go to WaitRX
 			Shift:
 				next_state = WaitRX;
 			// go to Idle once external state is Idle
 			Complete:
-				next_state = ex_state == ex_Idle ? Idle : Complete;
+				next_state = ex_state_i == ex_Idle ? Idle : Complete;
 		endcase
 	end
 	
@@ -617,30 +617,30 @@ module	fsm_obtainHeader
 	assign	header_complete = shift_tracker[0];
 	
 	// state machine sequential logic
-	always @(posedge clock, negedge reset_n)
+	always @(posedge clock_i, negedge reset_n_i)
 	begin
 		// reset logic
-		if (!reset_n)
+		if (!reset_n_i)
 		begin
-			commandHeader <= 32'h0;
+			commandHeader_o <= 32'h0;
 			shift_tracker <= 4'h8;
 		end else case (state)
 			
 			// reset logic
 			Idle:
 			begin
-				commandHeader <= 32'h0;
+				commandHeader_o <= 32'h0;
 				shift_tracker <= 4'h8;
 			end
 			
-			// read byte into commandHeader
+			// read byte into commandHeader_o
 			ReadByte:
-				commandHeader[7:0] <= RX_byte;
+				commandHeader_o[7:0] <= RX_byte_i;
 			
-			// update shift tracker, shift commandHeader
+			// update shift tracker, shift commandHeader_o
 			Shift:
 			begin
-				commandHeader <= commandHeader << 8;
+				commandHeader_o <= commandHeader_o << 8;
 				shift_tracker <= shift_tracker >> 1;
 			end
 		

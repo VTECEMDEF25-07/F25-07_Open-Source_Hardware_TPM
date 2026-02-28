@@ -26,6 +26,7 @@
 ## DEVICE  "5CSEMA5F31C6"
 ##
 
+# TODO: Remove this file from Repository and add to .gitignore before release.
 
 #**************************************************************
 # Time Information

@@ -15277,14 +15277,14 @@ endmodule
 
 module	PLL_100
 (
-	input		refclk, rst,
-	output	reg	outclk_0
+	input		refclk_i, rst_i,
+	output	reg	outclk_0_o
 );
 
 	initial
 	begin : pll_clock_100
-		outclk_0 = 1'b0;
-		forever outclk_0 = #5 ~outclk_0;
+		outclk_0_o = 1'b0;
+		forever outclk_0_o = #5 ~outclk_0_o;
 	end
 
 endmodule
