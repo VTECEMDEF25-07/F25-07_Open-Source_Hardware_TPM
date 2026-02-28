@@ -33,6 +33,12 @@ qdb/
 *.map.rpt
 *.flow.rpt
 
+#Quartus project files
+*.qpf
+*.qsf
+*.sdc 
+# ^ Timing constraints this might be important to keep, review before ignoring
+
 # Programming files (usually regenerated)
 *.sof
 *.pof
