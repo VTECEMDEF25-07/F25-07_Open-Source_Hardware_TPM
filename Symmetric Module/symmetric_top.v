@@ -76,7 +76,8 @@ module symm_top
     reg [11:0] validation_rc_r; //Validation register that tells us the status of the TPM regarding errors. TPM errors are determined by the TPM 2.0 Specifications
     wire block_mode_w;
     reg [127:0] byte_mask_w;
-    reg [127:0] cipher_stream_block_w;
+    wire [127:0] cipher_stream_block_w;
+    integer byte_idx;
 
     assign block_mode_w    =
         (mode_i == SYM_MODE_CFB) ||
@@ -85,12 +86,22 @@ module symm_top
         (mode_i == SYM_MODE_CBC) ||
         (mode_i == SYM_MODE_ECB);
 
+    always @(*) begin
+        if (data_bytes_i == 5'd0)
+            byte_mask_w = 128'h00000000000000000000000000000000;
+        else if (data_bytes_i >= 5'd16)
+            byte_mask_w = 128'hFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
+        else
+            byte_mask_w = 128'hFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF >>
+                        ((5'd16 - data_bytes_i) * 8);
+        end
+
 // Command/session validation:
     always @(*) begin
         request_valid_r          = 1'b0; // Initialize the register that determines whether the command is valid or not to zero
         validation_rc_r          = TPM_RC_SUCCESS; // Assume initial success of the TPM's functionality?
 
-        if (!(command_code_i == TPM_CC_ENCRYPT_DECRYPT_2)) && !(session_protect_i))) begin
+        if ((command_code_i != TPM_CC_ENCRYPT_DECRYPT_2) && !session_protect_i) begin
             validation_rc_r = TPM_RC_COMMAND_CODE; // The TPM can't NOT take the primitive path while also not being session-based. There are two options. Either primitive or session based. One should be selected.
         end
 
@@ -99,22 +110,21 @@ module symm_top
         else if (session_protect_i) begin
             if (!session_valid_i) // If the session is invalid, then:
                 validation_rc_r = TPM_RC_HANDLE; // ... send the following error handle
-        else if (!(session_encrypt_i || session_decrypt_i)) // If the session toggles neither an encryption or decryption, then:
-            validation_rc_r = TPM_RC_ATTRIBUTES; // ... send the following error handle
-        else if ((data_bytes_i == 5'd0) || (data_bytes_i > 5'd16)) // The size must be within the specified size, otherwise:
-            validation_rc_r = TPM_RC_SIZE; //... send the following error handle
+            else if (!(session_encrypt_i ^ session_decrypt_i)) // If the session toggles neither an encryption or decryption, then:
+                validation_rc_r = TPM_RC_ATTRIBUTES; // ... send the following error handle
+            else if ((data_bytes_i == 5'd0) || (data_bytes_i > 5'd16)) // The size must be within the specified size, otherwise:
+                validation_rc_r = TPM_RC_SIZE; //... send the following error handle
             // TPM session rule: if block cipher is selected, mode must be CFB.
-         else if (!session_use_xor_i && (mode_i != SYM_MODE_CFB))
-            validation_rc_r = TPM_RC_MODE; // ... otherwise, send a mode error
+            else if (!session_use_xor_i && (mode_i != SYM_MODE_CFB))
+                validation_rc_r = TPM_RC_MODE; // ... otherwise, send a mode error
             else
                 request_valid_r = 1'b1; // If none of the above error conditions are true, set the valid command request to TRUE
-            end
+        end
         // Primitive TPM2_EncryptDecrypt2 Path Validation:
         else begin
             if (!key_valid_i) // key_valid_i is set to a value that is pre-determined
                 validation_rc_r = TPM_RC_KEY; // If the key is invalid, then send the following error handle
-            else if (!((mode_i == SYM_MODE_CBC) || (mode_i == SYM_MODE_CFB) || (mode_i == SYM_MODE_CTR)) 
-            || (mode_i == SYM_MODE_NULL))
+            else if (!block_mode_w)
                 validation_rc_r = TPM_RC_MODE; // If the mode is none of the option cipher blocks, or the NULL path, then send the following error handle.
             else if ((data_bytes_i == 5'd0) || (data_bytes_i > 5'd16))
                 validation_rc_r = TPM_RC_SIZE;
@@ -130,7 +140,7 @@ module symm_top
     aes AES_IMPLEMENT (
         .block_i(iv_i),
         .key_i(key_i),
-      //  .block_o(cipher_stream_block_w)
+        .block_o(cipher_stream_block_w)
     );
    
     // Sequential control + execution datapath
@@ -157,15 +167,15 @@ module symm_top
 
                     if (start_i) begin
                         if (!request_valid_r) begin
-                        tpm_rc_o <= validation_rc_r;
-                        state_r  <= ST_DONE;
-                    end
-                    else begin
-                        tpm_rc_o <= validation_rc_r;
-                        state_r  <= ST_EXECUTE;
+                            tpm_rc_o <= validation_rc_r;
+                            state_r  <= ST_DONE;
+                        end
+                        else begin
+                            tpm_rc_o <= validation_rc_r;
+                            state_r  <= ST_EXECUTE;
+                        end
                     end
                 end
-            end
 
                 ST_EXECUTE: begin
                     wait_o <= 1'b1;
@@ -173,7 +183,7 @@ module symm_top
                     session_path_o <= session_protect_i;
 
                     if (session_protect_i && session_use_xor_i) begin // Session XOR obfuscation path.
-                        data_out_o <= data_in_i ^ (session_mask_i & byte_mask_r);
+                        data_out_o <= data_in_i ^ (session_mask_i & byte_mask_w);
                         iv_out_o   <= iv_i;
                     end
                     else begin

@@ -10,5 +10,6 @@ module aes
     output [127:0] block_o
 );
 
+    assign block_o = block_i ^ key_i[127:0];
 
 endmodule
