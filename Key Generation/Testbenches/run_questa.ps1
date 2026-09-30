@@ -24,16 +24,19 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'vlib failed' }
     $sources = @(
         (Join-Path $repoRoot 'Key Generation/keygen_dispatch_adapter.v'),
+        (Join-Path $repoRoot 'Key Generation/aes_key_assembler.v'),
         (Join-Path $repoRoot 'Execution Engine/execution_engine.v'),
         (Join-Path $PSScriptRoot 'tb_execution_keygen_plumbing.sv'),
-        (Join-Path $PSScriptRoot 'tb_unavailable_keygen_backend.sv')
+        (Join-Path $PSScriptRoot 'tb_unavailable_keygen_backend.sv'),
+        (Join-Path $PSScriptRoot 'tb_aes_key_assembler.sv')
     )
     & $vlog -sv -work 'work' @sources
     if ($LASTEXITCODE -ne 0) { throw 'vlog failed' }
-    foreach ($testName in @('tb_execution_keygen_plumbing', 'tb_unavailable_keygen_backend')) {
+    foreach ($testName in @('tb_execution_keygen_plumbing', 'tb_unavailable_keygen_backend', 'tb_aes_key_assembler')) {
         $doFile = Join-Path $runRoot ($testName + '.do')
         $logFile = Join-Path $runRoot ($testName + '.log')
-        $waveFile = Join-Path $runRoot ($testName + '.wlf')
+        # Do not retain waveforms containing key material, even synthetic unit vectors.
+        $waveFile = 'NUL'
         # Real macro gives onbreak/onerror handlers effect; log check also catches $fatal exits.
         @('onbreak {quit -code 1}', 'onerror {quit -code 1}', 'run -all', 'quit -code 0') |
             Set-Content -LiteralPath $doFile
