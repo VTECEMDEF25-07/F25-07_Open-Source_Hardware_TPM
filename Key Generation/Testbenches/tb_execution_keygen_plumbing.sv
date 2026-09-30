@@ -202,7 +202,7 @@ end endtask
 task create(input integer id); begin
  command_code=32'h153; command_tag=16'h8002; command_size=64; command_length=64;
  keygen_descriptor_valid=1; keygen_session_validated=1; keygen_id=id; keygen_alg=1;
- keygen_bits=256; keygen_mode=0; keygen_context=32'h12340000+id;
+ keygen_bits=(id==2) ? 128 : 256; keygen_mode=0; keygen_context=32'h12340000+id;
  keygen_destination=32'h80000000+id; keygen_exponent=0; auth_necessary=1;
  command_ready=1; tick(1);
 end endtask
@@ -250,11 +250,13 @@ initial begin
  $display("PASS snapshot, delayed prerequisites, backpressure, busy, full-width error, held enable/status");
 
  command_ready=0; tick(1); prerequisites;
- create(2); request; kg_req_ready=1; tick(1); kg_req_ready=0;
+ create(2); request;
+ if(kg_req_bits!==128) $fatal(1,"AES128 external descriptor gate/snapshot failed");
+ kg_req_ready=1; tick(1); kg_req_ready=0;
  mock_result(2,0,0,32'h55); response(0);
  if(keygen_object!==32'h55 || request_count!=2 || accept_count!=2) $fatal(1,"repeated command/mocked object failed");
  tick(3); if(!response_valid || keygen_object!==32'h55) $fatal(1,"mock result not retained");
- $display("PASS second command without reset and isolated mocked success");
+ $display("PASS second AES128 command without reset and isolated mocked success");
 
  reset; prerequisites; create(3); request; command_cancel=1; kg_req_ready=1; tick(1);
  command_cancel=0; response(32'h101); if(request_count!=0) $fatal(1,"cancel-edge launch");

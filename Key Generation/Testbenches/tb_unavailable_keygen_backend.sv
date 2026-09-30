@@ -75,7 +75,10 @@ rsp_object=0;
  terminal_ready=1; @(negedge clock); terminal_ready=0;
  repeat(5) @(negedge clock);
  if(busy || req_valid || terminal_valid) $fatal(1,"held start retriggered unavailable backend");
- $display("PASS default-unavailable backend never launches or reports success"); $finish;
+ start=0; @(negedge clock); descriptor_bits=128; start=1; @(negedge clock);
+ if(!terminal_valid || terminal_code!==32'h143 || terminal_object!==0 || req_valid || rsp_ready)
+  $fatal(1,"AES128 default backend did not remain unavailable");
+ $display("PASS default-unavailable AES128/256 backend never launches or reports success"); $finish;
 end
 initial begin #2000; $fatal(1,"timeout"); end
 endmodule
