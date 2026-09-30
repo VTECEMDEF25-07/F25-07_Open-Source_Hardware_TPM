@@ -25,14 +25,17 @@ try {
     $sources = @(
         (Join-Path $repoRoot 'Key Generation/keygen_dispatch_adapter.v'),
         (Join-Path $repoRoot 'Key Generation/aes_key_assembler.v'),
+        (Join-Path $repoRoot 'Key Generation/keygen_aes_backend.v'),
         (Join-Path $repoRoot 'Execution Engine/execution_engine.v'),
         (Join-Path $PSScriptRoot 'tb_execution_keygen_plumbing.sv'),
         (Join-Path $PSScriptRoot 'tb_unavailable_keygen_backend.sv'),
-        (Join-Path $PSScriptRoot 'tb_aes_key_assembler.sv')
+        (Join-Path $PSScriptRoot 'tb_aes_key_assembler.sv'),
+        (Join-Path $PSScriptRoot 'tb_keygen_aes_backend.sv'),
+        (Join-Path $PSScriptRoot 'tb_adapter_aes_backend.sv')
     )
     & $vlog -sv -work 'work' @sources
     if ($LASTEXITCODE -ne 0) { throw 'vlog failed' }
-    foreach ($testName in @('tb_execution_keygen_plumbing', 'tb_unavailable_keygen_backend', 'tb_aes_key_assembler')) {
+    foreach ($testName in @('tb_execution_keygen_plumbing', 'tb_unavailable_keygen_backend', 'tb_aes_key_assembler', 'tb_keygen_aes_backend', 'tb_adapter_aes_backend')) {
         $doFile = Join-Path $runRoot ($testName + '.do')
         $logFile = Join-Path $runRoot ($testName + '.log')
         # Do not retain waveforms containing key material, even synthetic unit vectors.
