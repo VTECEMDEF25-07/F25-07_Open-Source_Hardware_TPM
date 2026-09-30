@@ -110,8 +110,8 @@ module	tpm_top
 		.session0_valid(sessionValid0), .session1_valid(sessionValid1), .session2_valid(sessionValid2), 
 		.authorization_size(authSize), .session_loaded(1'b1), 
 		.max_session_amount(16'd3), .auth_session(1'b1), .auth_necessary(1'b1), 
-		.authHandle(handle0), .pcrSelect(), .auth_done(1'b1), 
-		.auth_success(1'b1), .param_decrypt_success(1'b1), .param_decrypt_fail(1'b0), 
+		.authHandle(handle0), .pcrSelect(), .auth_done(1'b1), .auth_response_code(12'h101),
+		.auth_success(1'b0), .param_decrypt_success(1'b1), .param_decrypt_fail(1'b0),
 		.param_unmarshall_success(1'b1), .param_unmarshall_fail(1'b0), 
 		.execution_startup_done(1'b1), .execution_response_code(32'd0), 
 		
@@ -136,7 +136,18 @@ module	tpm_top
 		.orderlyInput(orderlyInput), .initialized(initialized), 
 		.testsRun(testsRun), .authHierarchy(authHierarchy), 
 		
-		.response_valid(responseReady), .response_code(ee_responseCode)
+		// Creation boundary disabled until real validation, authorization and backend exist.
+        .response_ready(1'b1), .command_cancel(1'b0),
+        .keygen_descriptor_valid(1'b0), .keygen_session_validated(1'b0),
+        .keygen_id(32'd0), .keygen_alg(2'd0), .keygen_bits(12'd0), .keygen_mode(2'd0),
+        .keygen_context(32'd0), .keygen_destination(32'd0), .keygen_exponent(32'd0),
+        .kg_req_ready(1'b0), .kg_cancel_ready(1'b0), .kg_rsp_valid(1'b0),
+        .kg_rsp_id(32'd0), .kg_rsp_fail(1'b1), .kg_rsp_code(32'h00000143), .kg_rsp_object(32'd0),
+        .command_accept(), .command_busy(), .keygen_busy(), .keygen_object(),
+        .kg_req_valid(), .kg_req_id(), .kg_req_alg(), .kg_req_bits(), .kg_req_mode(),
+        .kg_req_context(), .kg_req_destination(), .kg_req_exponent(),
+        .kg_cancel_valid(), .kg_cancel_id(), .kg_rsp_ready(),
+        .response_valid(responseReady), .response_code(ee_responseCode)
 	);
 	
 //TODO: Needed?
