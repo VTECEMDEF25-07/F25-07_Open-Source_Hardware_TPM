@@ -1,4 +1,4 @@
-module execution_engine(
+module execution_engine #(parameter KEYGEN_EXTERNAL_BACKEND = 0)(
 		clock,
 		reset_n,
 		command_ready,
@@ -83,8 +83,77 @@ module execution_engine(
 		response_code,
 		response_length,
 		current_state,
-		command_start
+		command_start,
+		command_accept,
+		command_busy,
+		response_ready,
+		command_cancel,
+		keygen_descriptor_valid,
+		keygen_session_validated,
+		keygen_id,
+		keygen_alg,
+		keygen_bits,
+		keygen_mode,
+		keygen_context,
+		keygen_destination,
+		keygen_exponent,
+		keygen_busy,
+		keygen_object,
+		kg_req_valid,
+		kg_req_ready,
+		kg_req_id,
+		kg_req_alg,
+		kg_req_bits,
+		kg_req_mode,
+		kg_req_context,
+		kg_req_destination,
+		kg_req_exponent,
+		kg_cancel_valid,
+		kg_cancel_ready,
+		kg_cancel_id,
+		kg_rsp_valid,
+		kg_rsp_ready,
+		kg_rsp_id,
+		kg_rsp_fail,
+		kg_rsp_code,
+		kg_rsp_object
 	);
+
+
+	// AI-authored bounded keygen interface. Disabled by default; see Key Generation/PLUMBING.md.
+	output command_accept;
+    output command_busy;
+    input  response_ready;
+	input  command_cancel;
+	input  keygen_descriptor_valid;
+	input  keygen_session_validated;
+	input [31:0] keygen_id;
+	input [1:0] keygen_alg;
+	input [11:0] keygen_bits;
+	input [1:0] keygen_mode;
+	input [31:0] keygen_context;
+	input [31:0] keygen_destination;
+	input [31:0] keygen_exponent;
+	output  keygen_busy;
+	output reg [31:0] keygen_object;
+	output  kg_req_valid;
+	input  kg_req_ready;
+	output [31:0] kg_req_id;
+	output [1:0] kg_req_alg;
+	output [11:0] kg_req_bits;
+	output [1:0] kg_req_mode;
+	output [31:0] kg_req_context;
+	output [31:0] kg_req_destination;
+	output [31:0] kg_req_exponent;
+	output  kg_cancel_valid;
+	input  kg_cancel_ready;
+	output [31:0] kg_cancel_id;
+	input  kg_rsp_valid;
+	output  kg_rsp_ready;
+	input [31:0] kg_rsp_id;
+	input  kg_rsp_fail;
+	input [31:0] kg_rsp_code;
+	input [31:0] kg_rsp_object;
 
 	// Inputs
 	input         clock;					// Input clock signal
@@ -149,7 +218,7 @@ module execution_engine(
 	//startup error signal
 	input execution_startup_done;
 	//execution response code
-	input execution_response_code;
+	input [31:0] execution_response_code;
 	
 	// NV memory submodule inputs
 	input nv_phEnableNV_in;
@@ -412,10 +481,159 @@ module execution_engine(
 	// ============================================================================
 	// INTERNAL REGISTERS
 	// ============================================================================
+
+	reg command_armed, execution_started, startup_success;
+    assign command_accept = reset_n && current_state == STATE_IDLE && command_ready && command_armed;
+    assign command_busy = reset_n && current_state != STATE_IDLE;
+	reg [15:0]  cmd_command_tag;
+	reg [31:0]  cmd_command_size;
+	reg [31:0]  cmd_command_code;
+	reg [15:0]  cmd_command_length;
+	reg [31:0]  cmd_handle_0;
+	reg [31:0]  cmd_handle_1;
+	reg [31:0]  cmd_handle_2;
+	reg [31:0]  cmd_session0_handle;
+	reg [31:0]  cmd_session1_handle;
+	reg [31:0]  cmd_session2_handle;
+	reg [7:0]  cmd_session0_attributes;
+	reg [7:0]  cmd_session1_attributes;
+	reg [7:0]  cmd_session2_attributes;
+	reg [15:0]  cmd_session0_hmac_size;
+	reg [15:0]  cmd_session1_hmac_size;
+	reg [15:0]  cmd_session2_hmac_size;
+	reg  cmd_session0_valid;
+	reg  cmd_session1_valid;
+	reg  cmd_session2_valid;
+	reg [31:0]  cmd_authorization_size;
+	reg  cmd_session_loaded;
+	reg [15:0]  cmd_max_session_amount;
+	reg  cmd_auth_session;
+	reg  cmd_auth_necessary;
+	reg [31:0]  cmd_authHandle;
+	reg [7:0]  cmd_pcrSelect;
+	reg  cmd_keygen_descriptor_valid;
+	reg  cmd_keygen_session_validated;
+	reg [31:0]  cmd_keygen_id;
+	reg [1:0]  cmd_keygen_alg;
+	reg [11:0]  cmd_keygen_bits;
+	reg [1:0]  cmd_keygen_mode;
+	reg [31:0]  cmd_keygen_context;
+	reg [31:0]  cmd_keygen_destination;
+	reg [31:0]  cmd_keygen_exponent;
+	wire is_creation = cmd_command_code[15:0] == TPM_CC_CREATE || cmd_command_code[15:0] == TPM_CC_CREATE_PRIMARY || cmd_command_code[15:0] == TPM_CC_CREATE_LOADED;
+    wire kg_terminal_valid;
+    wire [31:0] kg_terminal_code, kg_terminal_object;
+    keygen_dispatch_adapter #(.EXTERNAL_BACKEND(KEYGEN_EXTERNAL_BACKEND)) keygen_dispatch (
+        .clock(clock), .reset_n(reset_n), .start(current_state == STATE_EXECUTE && is_creation),
+        .descriptor_valid(cmd_keygen_descriptor_valid), .session_validated(cmd_keygen_session_validated),
+        .command_code(cmd_command_code), .descriptor_id(cmd_keygen_id), .descriptor_alg(cmd_keygen_alg),
+        .descriptor_bits(cmd_keygen_bits), .descriptor_mode(cmd_keygen_mode),
+        .descriptor_context(cmd_keygen_context), .descriptor_destination(cmd_keygen_destination),
+        .descriptor_exponent(cmd_keygen_exponent), .cancel(command_cancel), .busy(keygen_busy),
+        .terminal_valid(kg_terminal_valid), .terminal_ready(current_state == STATE_EXECUTE && is_creation),
+        .terminal_code(kg_terminal_code), .terminal_object(kg_terminal_object),
+        .req_valid(kg_req_valid), .req_ready(kg_req_ready), .req_id(kg_req_id), .req_alg(kg_req_alg),
+        .req_bits(kg_req_bits), .req_mode(kg_req_mode), .req_context(kg_req_context),
+        .req_destination(kg_req_destination), .req_exponent(kg_req_exponent),
+        .cancel_valid(kg_cancel_valid), .cancel_ready(kg_cancel_ready), .cancel_id(kg_cancel_id),
+        .rsp_valid(kg_rsp_valid), .rsp_ready(kg_rsp_ready), .rsp_id(kg_rsp_id),
+        .rsp_fail(kg_rsp_fail), .rsp_code(kg_rsp_code), .rsp_object(kg_rsp_object)
+    );
+    // Descriptor/session approval must refer to this accepted command and context.
+    always @(posedge clock or negedge reset_n) begin
+        if (!reset_n) begin
+            command_armed <= 1'b0; execution_started <= 1'b0; startup_success <= 1'b0;
+            keygen_object <= 0;
+            cmd_command_tag <= 0;
+            cmd_command_size <= 0;
+            cmd_command_code <= 0;
+            cmd_command_length <= 0;
+            cmd_handle_0 <= 0;
+            cmd_handle_1 <= 0;
+            cmd_handle_2 <= 0;
+            cmd_session0_handle <= 0;
+            cmd_session1_handle <= 0;
+            cmd_session2_handle <= 0;
+            cmd_session0_attributes <= 0;
+            cmd_session1_attributes <= 0;
+            cmd_session2_attributes <= 0;
+            cmd_session0_hmac_size <= 0;
+            cmd_session1_hmac_size <= 0;
+            cmd_session2_hmac_size <= 0;
+            cmd_session0_valid <= 0;
+            cmd_session1_valid <= 0;
+            cmd_session2_valid <= 0;
+            cmd_authorization_size <= 0;
+            cmd_session_loaded <= 0;
+            cmd_max_session_amount <= 0;
+            cmd_auth_session <= 0;
+            cmd_auth_necessary <= 0;
+            cmd_authHandle <= 0;
+            cmd_pcrSelect <= 0;
+            cmd_keygen_descriptor_valid <= 0;
+            cmd_keygen_session_validated <= 0;
+            cmd_keygen_id <= 0;
+            cmd_keygen_alg <= 0;
+            cmd_keygen_bits <= 0;
+            cmd_keygen_mode <= 0;
+            cmd_keygen_context <= 0;
+            cmd_keygen_destination <= 0;
+            cmd_keygen_exponent <= 0;
+        end else begin
+            if (!command_ready) command_armed <= 1'b1;
+            if (current_state == STATE_IDLE && command_ready && command_armed) begin
+                command_armed <= 1'b0; execution_started <= 1'b0; startup_success <= 1'b0;
+                keygen_object <= 0;
+                cmd_command_tag <= command_tag;
+                cmd_command_size <= command_size;
+                cmd_command_code <= command_code;
+                cmd_command_length <= command_length;
+                cmd_handle_0 <= handle_0;
+                cmd_handle_1 <= handle_1;
+                cmd_handle_2 <= handle_2;
+                cmd_session0_handle <= session0_handle;
+                cmd_session1_handle <= session1_handle;
+                cmd_session2_handle <= session2_handle;
+                cmd_session0_attributes <= session0_attributes;
+                cmd_session1_attributes <= session1_attributes;
+                cmd_session2_attributes <= session2_attributes;
+                cmd_session0_hmac_size <= session0_hmac_size;
+                cmd_session1_hmac_size <= session1_hmac_size;
+                cmd_session2_hmac_size <= session2_hmac_size;
+                cmd_session0_valid <= session0_valid;
+                cmd_session1_valid <= session1_valid;
+                cmd_session2_valid <= session2_valid;
+                cmd_authorization_size <= authorization_size;
+                cmd_session_loaded <= session_loaded;
+                cmd_max_session_amount <= max_session_amount;
+                cmd_auth_session <= auth_session;
+                cmd_auth_necessary <= auth_necessary;
+                cmd_authHandle <= authHandle;
+                cmd_pcrSelect <= pcrSelect;
+                cmd_keygen_descriptor_valid <= keygen_descriptor_valid;
+                cmd_keygen_session_validated <= keygen_session_validated;
+                cmd_keygen_id <= keygen_id;
+                cmd_keygen_alg <= keygen_alg;
+                cmd_keygen_bits <= keygen_bits;
+                cmd_keygen_mode <= keygen_mode;
+                cmd_keygen_context <= keygen_context;
+                cmd_keygen_destination <= keygen_destination;
+                cmd_keygen_exponent <= keygen_exponent;
+            end
+            if (current_state == STATE_EXECUTE && !is_creation) begin
+                execution_started <= 1'b1;
+                if (command_done && execution_response_code == 0 && execution_startup_done)
+                    startup_success <= 1'b1;
+            end
+            if (current_state == STATE_EXECUTE && is_creation && kg_terminal_valid)
+                keygen_object <= kg_terminal_object;
+        end
+    end
+
 	reg [3:0]  state;
 	reg 		  session_present;
 	reg 		  response_valid;
-	reg [11:0] s_response_code;
+	reg [31:0] s_response_code;
 	reg [15:0] response_length;
 	reg [3:0]  current_state;
 	reg [2:0]  handle_index;
@@ -530,31 +748,31 @@ module execution_engine(
 	wire command_valid;
 
 	assign current_handle =
-   		(handle_index == 3'b000) ? handle_0 :
-                (handle_index == 3'b001) ? handle_1 :
-                                           handle_2;
+		(handle_index == 3'b000) ? cmd_handle_0 :
+                (handle_index == 3'b001) ? cmd_handle_1 :
+                                           cmd_handle_2;
 
 	assign handle_type       = current_handle[31:24];
 	assign handle_index_bits = current_handle[23:0];
 	assign current_session_handle =
-    (session_index == 2'd0) ? session0_handle :
-    (session_index == 2'd1) ? session1_handle :
-                              session2_handle;
+    (session_index == 2'd0) ? cmd_session0_handle :
+    (session_index == 2'd1) ? cmd_session1_handle :
+                              cmd_session2_handle;
 
 	assign current_session_attributes =
-    (session_index == 2'd0) ? session0_attributes :
-    (session_index == 2'd1) ? session1_attributes :
-                              session2_attributes;
+    (session_index == 2'd0) ? cmd_session0_attributes :
+    (session_index == 2'd1) ? cmd_session1_attributes :
+                              cmd_session2_attributes;
 
 	assign current_session_hmac_size =
-    (session_index == 2'd0) ? session0_hmac_size :
-    (session_index == 2'd1) ? session1_hmac_size :
-                              session2_hmac_size;
+    (session_index == 2'd0) ? cmd_session0_hmac_size :
+    (session_index == 2'd1) ? cmd_session1_hmac_size :
+                              cmd_session2_hmac_size;
 
 	assign current_session_valid =
-		(session_index == 2'd0) ? session0_valid :
-		(session_index == 2'd1) ? session1_valid :
-											session2_valid;
+		(session_index == 2'd0) ? cmd_session0_valid :
+		(session_index == 2'd1) ? cmd_session1_valid :
+											cmd_session2_valid;
 	assign session_handle_type = current_session_handle[31:24];
 	// ============================================================================
 	// SEQUENTIAL LOGIC BLOCK - STATE TRANSITIONS ONLY
@@ -586,7 +804,7 @@ module execution_engine(
 				response_code <= 32'd0;
 			end
 			else begin
-				response_code <= {20'h0, s_response_code};
+				response_code <= s_response_code;
 				current_state <= state;
 				mode_check_error <= s_mode_check_error;
 				header_valid_error <= s_header_valid_error;
@@ -683,22 +901,22 @@ module execution_engine(
 	assign nv_read = (commandIndex == TPM_CC_NV_DEFINE_SPACE || commandIndex == TPM_CC_NV_READ);
 					
 		// Reference: TCG TPM2.0 Specification Rev. 1.59, Part 2: Structures, Section 8.9.2 TPMA_CC (Command Code Attributes): Structure Definition
-		assign commandIndex = command_code[15:0];			// Indicates the command being selected
+		assign commandIndex = cmd_command_code[15:0];			// Indicates the command being selected
 		
-		assign nv = command_code[22];							// SET(1): indicates that the command may write to NV
+		assign nv = cmd_command_code[22];							// SET(1): indicates that the command may write to NV
 																		// CLEAR(0): indicates that the command does not write to NV
 																		
-		assign extensive = command_code[23];				// SET(1): This command could flush any number of loaded contexts
+		assign extensive = cmd_command_code[23];				// SET(1): This command could flush any number of loaded contexts
 																		// CLEAR(0): no additional changes other than indicated by the flushed attribute
 																		
-		assign flushed = command_code[24];					// SET(1): The context associated with any transient handle in the command will be flushed when this command completes.
+		assign flushed = cmd_command_code[24];					// SET(1): The context associated with any transient handle in the command will be flushed when this command completes.
 																		// CLEAR(0): No context is flushed as a side effect of this command.
 																		
-		assign cHandles = command_code[27:25];				// indicates the number of the handles in the handle area for this command
+		assign cHandles = cmd_command_code[27:25];				// indicates the number of the handles in the handle area for this command
 		
-		assign rHandle = command_code[28];					// SET(1): indicates the presence of the handle area in the response
+		assign rHandle = cmd_command_code[28];					// SET(1): indicates the presence of the handle area in the response
 		
-		assign v = command_code[29];							// SET(1): indicates that the command is vendor-specific
+		assign v = cmd_command_code[29];							// SET(1): indicates that the command is vendor-specific
 																		// CLEAR(0): indicates that the command is defined in a version of this specification
 		assign command_valid = (commandIndex == TPM_CC_NV_UNDEFINE_SPACE_SPECIAL ||
 					commandIndex == TPM_CC_EVICT_CONTROL ||
@@ -991,25 +1209,25 @@ module execution_engine(
 			s_current_session_attributes = current_session_attributes;
 			s_current_session_hmac_size = current_session_hmac_size;
 			s_current_session_valid = current_session_valid;
-			if(command_tag == TPM_ST_SESSIONS) begin
+			if(cmd_command_tag == TPM_ST_SESSIONS) begin
 			// Map flattened inputs into a common structure for session processing.
 				if (session_index == 2'd0) begin
-					s_current_session_handle     = session0_handle;
-					s_current_session_attributes = session0_attributes;
-					s_current_session_hmac_size  = session0_hmac_size;
-					s_current_session_valid      = session0_valid;
+					s_current_session_handle     = cmd_session0_handle;
+					s_current_session_attributes = cmd_session0_attributes;
+					s_current_session_hmac_size  = cmd_session0_hmac_size;
+					s_current_session_valid      = cmd_session0_valid;
 				end
 				else if (session_index == 2'd1) begin
-					s_current_session_handle     = session1_handle;
-					s_current_session_attributes = session1_attributes;
-					s_current_session_hmac_size  = session1_hmac_size;
-					s_current_session_valid      = session1_valid;
+					s_current_session_handle     = cmd_session1_handle;
+					s_current_session_attributes = cmd_session1_attributes;
+					s_current_session_hmac_size  = cmd_session1_hmac_size;
+					s_current_session_valid      = cmd_session1_valid;
 				end
 				else begin
-					s_current_session_handle     = session2_handle;
-					s_current_session_attributes = session2_attributes;
-					s_current_session_hmac_size  = session2_hmac_size;
-					s_current_session_valid      = session2_valid;
+					s_current_session_handle     = cmd_session2_handle;
+					s_current_session_attributes = cmd_session2_attributes;
+					s_current_session_hmac_size  = cmd_session2_hmac_size;
+					s_current_session_valid      = cmd_session2_valid;
 				end
 
 				// ----------------------------------------------------------------
@@ -1035,7 +1253,7 @@ module execution_engine(
 			s_audit_count = audit_count;
 			s_decrypt_count = decrypt_count;
 			s_encrypt_count = encrypt_count;
-			state = STATE_IDLE;   
+			state = current_state;
 			s_session_index = 3'b000;
 			case(current_state)
 				// ====================================================================
@@ -1046,7 +1264,7 @@ module execution_engine(
 					s_audit_count = 2'b0;
 					s_decrypt_count = 2'b0;
 					s_encrypt_count = 2'b0;
-					if(command_ready) begin
+					if(command_ready && command_armed) begin
 						state = STATE_HEADER_VALID;
 					end
 				end
@@ -1055,9 +1273,9 @@ module execution_engine(
 				// STAGE 2: HEADER VALIDATION - TPM 2.0 Part 3, Section 5.2
 				// ====================================================================
 				STATE_HEADER_VALID: begin
-					if((command_tag != TPM_ST_NO_SESSIONS && command_tag != TPM_ST_SESSIONS) || 
-						 command_size != command_length ||
-						 !command_valid) begin
+					if((cmd_command_tag != TPM_ST_NO_SESSIONS && cmd_command_tag != TPM_ST_SESSIONS) ||
+						 cmd_command_size != cmd_command_length ||
+						 (!command_valid || cmd_command_code[31:16] !== 16'd0)) begin
 						state = STATE_POST_PROCESS;
 					end
 					else begin
@@ -1072,7 +1290,7 @@ module execution_engine(
 					// IMPLEMENTED: Basic mode checks
 					if(op_state == FAILURE_MODE_STATE) begin
 						// In Failure mode, only TPM2_GetTestResult or TPM2_GetCapability allowed with no sessions
-						if(commandIndex != TPM_CC_GET_TEST_RESULT || commandIndex != TPM_CC_GET_CAPABILITY || command_tag != TPM_ST_NO_SESSIONS) begin
+						if((commandIndex != TPM_CC_GET_TEST_RESULT && commandIndex != TPM_CC_GET_CAPABILITY) || cmd_command_tag != TPM_ST_NO_SESSIONS) begin
 							state = STATE_POST_PROCESS;
 						end
 						else begin
@@ -1097,184 +1315,61 @@ module execution_engine(
 				// STAGE 4: HANDLE VALIDATION - TPM 2.0 Part 3, Section 5.4
 				// ====================================================================
 				STATE_HANDLE_VALID: begin
-					 	if (handle_error) begin
-							state = STATE_POST_PROCESS;
-						end
-						else if (handle_index < handle_count) begin
-							  //////////////////////////////////////////////////////////////////////////////////////////////////////////////
-							  //cant currently check if handles are loaded in the appropriate spots add submodule
-							  /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-							  state = STATE_HANDLE_VALID;
-						 end
-						 else begin
-					 		if (handle_error) begin
+                    if (is_creation) begin
+                        // No production template/session validator is implemented here.
+                        if (cmd_command_code === 32'h153 && cmd_keygen_descriptor_valid === 1'b1 && cmd_keygen_session_validated === 1'b1)
+                            state = STATE_AUTH_CHECK;
+                        else state = STATE_POST_PROCESS;
+                    end else if (s_handle_error || handle_error) state = STATE_POST_PROCESS;
+                    else if (handle_index >= handle_count) state = STATE_SESSION_VALID;
+				end
 
-								state = STATE_POST_PROCESS;
-							end
-							else begin
-						 	state = STATE_SESSION_VALID;
-							end
-						 end
-					end
-
-				// ====================================================================
-				// STAGE 5: SESSION VALIDATION - TPM 2.0 Part 3, Section 5.5
 				// ====================================================================
 				STATE_SESSION_VALID: begin
-					// ----------------------------------------------------------------
-					// This stage validates the structure and content of each session
-					// in the command. Each session provides authorization or performs
-					// special actions like encryption, decryption, or auditing.
-					// Up to 3 sessions can be present. Each has a handle, attributes,
-					// and an HMAC value. This logic loops over all valid sessions,
-					// checks for valid types, ensures constraints, and flags errors.
-					// ----------------------------------------------------------------
-					
-					state = STATE_SESSION_VALID;
-					
-					if (session_error)
-						state = STATE_POST_PROCESS;
-					
-					if((command_tag == TPM_ST_NO_SESSIONS && command_code_tag == TPM_ST_SESSIONS) || (command_tag == TPM_ST_SESSIONS && command_code_tag == TPM_ST_NO_SESSIONS)) begin
-						s_session_error = 1'b1;
-					end
-					else if(command_tag == TPM_ST_SESSIONS && command_code_tag == TPM_ST_SESSIONS) begin
-						// Step 1: Validate the session handle's type.
-						// The top 8 bits of the handle indicate its type.
-						// Valid session types include HMAC (0x01), Policy (0x02), and Password (0x03).
-						if(session_handle_type != 8'h01 && session_handle_type != 8'h02 && session_handle_type != 8'h03) begin
-							s_session_error = 1'b1;
-						end
-
-						// Step 2: Ensure each role (audit/decrypt/encrypt) is only used once.
-						// Bits 7, 6, and 5 in the session attributes represent audit, decrypt,
-						// and encrypt flags respectively. Multiple sessions cannot share roles.
-		
-						// Step 3: Validate that empty sessions (no HMAC) are used only if
-						// they are performing other roles (audit/decrypt/encrypt).
-						if (current_session_hmac_size == 16'b0 && (!audit || !decrypt || !encrypt)) begin
-							s_session_error = 1'b1; // An empty session must be doing something
-						end
-						else if(max_session_amount == session_index && authorization_size > 32'd0) s_session_error = 1'b1;
-						
-						else if(!session_loaded) s_session_error = 1'b1;
-						
-						else if(!auth_session && auth_necessary) s_session_error = 1'b1;
-						else if(!session_error &&  session_index < 2'd3 && current_session_valid) begin
-						s_session_index = session_index + 1'b1;
-									
-						if (s_audit) begin // Audit bit
-						s_audit_count = audit_count + 1'b1;
-							if (s_audit_count > 2'd1) s_session_error = 1'b1;
-						end
-
-						if (s_decrypt) begin // Decrypt bit
-							s_decrypt_count = decrypt_count + 1'b1;
-							if (s_decrypt_count > 2'd1) s_session_error = 1'b1;
-						end
-
-						if (s_encrypt) begin // Encrypt bit
-							s_encrypt_count = encrypt_count + 1'b1;
-							if (s_encrypt_count > 2'd1) s_session_error = 1'b1;
-						end
-					end
-						// Final step after checking all sessions
-						// If we validated more than 3, that's an error
-						if (session_index == 2'd3)begin
-							s_session_error = 1'b1;
-							s_session_index = 3'b000;
-						end
-						if(s_session_error) begin
-													// If we encountered any error, prepare a failure response
-							s_session_index = 3'b000;
-							state = STATE_POST_PROCESS;
-						end else if (session_index == max_session_amount) begin
-							s_session_index = 3'b000;
-							state = STATE_AUTH_CHECK;
-						end else state = STATE_SESSION_VALID;
-
-						end
+                    // Legacy session parser is not trusted: fail closed until separately repaired.
+                    if (cmd_command_tag == TPM_ST_NO_SESSIONS && command_code_tag == TPM_ST_NO_SESSIONS)
+                        state = STATE_AUTH_CHECK;
+                    else state = STATE_POST_PROCESS;
 				end
-				// ====================================================================
-				// STAGE 6: AUTHORIZATION CHECKS - TPM 2.0 Part 3, Section 5.6
+
 				// ====================================================================
 				STATE_AUTH_CHECK: begin
-					// Check for error from authorization subsystem
-					if(auth_check_error == 1'b1) begin
-						state = STATE_POST_PROCESS;
-					end
-					else begin
-						state = STATE_PARAM_DECRYPT;
-					end
+                    if (cmd_auth_necessary === 1'b0 && !is_creation) state = STATE_PARAM_DECRYPT;
+                    else if (auth_done) begin
+                        if (!(auth_success === 1'b1 && auth_response_code === 12'd0)) state = STATE_POST_PROCESS;
+                        else state = STATE_PARAM_DECRYPT;
+                    end
 				end
-				// ====================================================================
-				// STAGE 7: PARAMETER DECRYPTION - TPM 2.0 Part 3, Section 5.7
+
 				// ====================================================================
 				STATE_PARAM_DECRYPT: begin
-					// To be implemented with a submodule
-					// For now, always proceed to parameter unmarshaling
-					state = STATE_PARAM_UNMARSH;
+                    if (param_decrypt_fail) state = STATE_POST_PROCESS;
+                    else if (param_decrypt_success === 1'b1 && param_decrypt_fail === 1'b0) state = STATE_PARAM_UNMARSH;
 				end
-				
-				// ====================================================================
-				// STAGE 8: PARAMETER UNMARSHALING - TPM 2.0 Part 3, Section 5.8
+
 				// ====================================================================
 				STATE_PARAM_UNMARSH: begin
-				
-					////////////////////////////////////
-					//To be implemented with a submodule
-					/////////////////////////////////////
-					
-					// TODO: IMPLEMENT PARAMETER UNMARSHALING: RAM operation
-					// 1. Calculate parameter start offset (after header + handles + auth area)
-					// 2. For each parameter in command schema:
-					//    - Parse parameter based on type (TPM2B, TPM_ALG_ID, TPM_HANDLE, etc.)
-					//    - Validate parameter value ranges and constraints
-					//    - Check algorithm selections are supported
-					//    - Verify reserved fields are zero
-					// 3. Handle TPM2B structures with size prefixes
-					// 4. Return appropriate error codes (TPM_RC_SIZE, TPM_RC_VALUE, TPM_RC_SCHEME, etc.)
-					
-					// For now, always proceed to execution
-					state = STATE_EXECUTE;
+                    if (param_unmarshall_fail) state = STATE_POST_PROCESS;
+                    else if (param_unmarshall_success === 1'b1 && param_unmarshall_fail === 1'b0) state = STATE_EXECUTE;
 				end
-				
-				// ====================================================================
-				// STAGE 9: COMMAND EXECUTION - TPM 2.0 Part 3, Section 5.9
+
 				// ====================================================================
 				STATE_EXECUTE: begin
-					// TODO: IMPLEMENT COMMAND EXECUTION:
-					// 1. Execute command-specific logic based on command_code
-					// 2. For TPM_CC_STARTUP: Set initialized state
-					// 3. For TPM_CC_GET_TEST_RESULT: Return self-test results
-					// 4. For cryptographic commands: Perform operations via crypto engine
-					// 5. Update TPM state (objects, NV, PCRs, sessions) as required
-					// 6. Handle multi-cycle operations with proper state management
-					// 7. Return TPM_RC_FAILURE on execution errors
-					
-					// For now, always proceed to post-processing
-					if(command_done) begin
-						state = STATE_POST_PROCESS;
-					end
+                    if (is_creation) begin
+                        if (kg_terminal_valid) state = STATE_POST_PROCESS;
+                    end else if (command_done) state = STATE_POST_PROCESS;
 				end
-				
+
 				// ====================================================================
-				// STAGE 10: POST-PROCESSING - TPM 2.0 Part 3, Section 5.10
-				// ====================================================================
-				STATE_POST_PROCESS: begin
-					// TODO: IMPLEMENT POST-PROCESSING:
-					// 1. Build response buffer with response header and parameters
-					// 2. Update session nonces and compute response HMACs if sessions present
-					// 3. Encrypt response parameters if sessions have encrypt attribute
-					// 4. Update audit log if command auditing enabled
-					// 5. Calculate final response_length
-					// 6. Format proper response structure
-					state = STATE_IDLE;
-				end
+                STATE_POST_PROCESS: begin
+                    if (response_ready) state = STATE_IDLE;
+                end
 				default: begin
 						state = STATE_IDLE;
 				end
 		endcase
+        if (command_cancel && current_state != STATE_IDLE && current_state != STATE_POST_PROCESS &&
+            !(current_state == STATE_EXECUTE && is_creation)) state = STATE_POST_PROCESS;
 	end
 	// ============================================================================
 	// COMBINATIONAL LOGIC BLOCK - ALL OUTPUTS AND NEXT STATE
@@ -1293,13 +1388,13 @@ module execution_engine(
 		
 		// Default output values
 		response_valid =   1'b0;
-		s_response_code = response_code[11:0];
+		s_response_code = response_code;
 		response_length = 16'h0;
 		command_start   = 1'b0;
 		session_present = 1'b0;
 		authHierarchy = 32'h00000000;
 
-		if(state == STATE_HANDLE_VALID) begin			// Check that the TPM shall successfully unmarshal the number of handles required by the command and validate that the value of the handle is consistent with the command syntax
+		if(current_state == STATE_HANDLE_VALID && !is_creation) begin			// Check that the TPM shall successfully unmarshal the number of handles required by the command and validate that the value of the handle is consistent with the command syntax
 			s_current_handle = current_handle;
 			s_handle_type = handle_type;
 			s_handle_index_bits = handle_index_bits;
@@ -1372,7 +1467,7 @@ module execution_engine(
 					end
 				end
 				// Check if the handle references a PCR, then the value is within the range of PCR supported by the TPM
-				else if(handle_type == TPM_HT_PCR && pcrSelect > PCR_SELECT_MAX) begin
+				else if(handle_type == TPM_HT_PCR && cmd_pcrSelect > PCR_SELECT_MAX) begin
 					s_handle_error = 1'b1;
 					s_response_code = TPM_RC_VALUE;
 				end else begin
@@ -1388,12 +1483,14 @@ module execution_engine(
 			// ====================================================================
 			STATE_IDLE: begin
 					response_valid =   1'b0;
-					s_response_code =   12'b0;
+					if (command_ready && command_armed) s_response_code = 32'b0;
 					response_length = 16'h0;
 					s_handle_error = 1'b0;
+                    s_header_valid_error = 0; s_mode_check_error = 0; s_auth_check_error = 0;
+                    s_param_decrypt_error = 0; s_param_unmarshall_error = 0;
 					s_handle_index = 3'b000;
 				if(command_ready) begin
-					session_present = (command_tag == TPM_ST_SESSIONS);
+					session_present = (cmd_command_tag == TPM_ST_SESSIONS);
 				end
 			end
 			
@@ -1402,15 +1499,15 @@ module execution_engine(
 			// ===================================================================
 			STATE_HEADER_VALID: begin
 				// IMPLEMENTED: Basic header validation
-				if(command_tag != TPM_ST_NO_SESSIONS && command_tag != TPM_ST_SESSIONS) begin
+				if(cmd_command_tag != TPM_ST_NO_SESSIONS && cmd_command_tag != TPM_ST_SESSIONS) begin
 					s_header_valid_error = 1'b1;
 					s_response_code = TPM_RC_BAD_TAG;
 				end
-				else if(command_size != command_length) begin
+				else if(cmd_command_size != cmd_command_length) begin
 					s_header_valid_error = 1'b1;
 					s_response_code = TPM_RC_COMMAND_SIZE;
 				end
-				else if(!command_valid) begin
+				else if((!command_valid || cmd_command_code[31:16] !== 16'd0)) begin
 					s_header_valid_error = 1'b1;
 					s_response_code = TPM_RC_COMMAND_CODE;
 				end
@@ -1424,7 +1521,7 @@ module execution_engine(
 				// IMPLEMENTED: Basic mode checks
 				if(op_state == FAILURE_MODE_STATE) begin
 					// In Failure mode, only TPM2_GetTestResult or TPM2_GetCapability allowed with no sessions
-					if(commandIndex != TPM_CC_GET_TEST_RESULT || commandIndex != TPM_CC_GET_CAPABILITY || command_tag != TPM_ST_NO_SESSIONS) begin
+					if((commandIndex != TPM_CC_GET_TEST_RESULT && commandIndex != TPM_CC_GET_CAPABILITY) || cmd_command_tag != TPM_ST_NO_SESSIONS) begin
 						s_mode_check_error = 1'b1;
 						s_response_code = TPM_RC_FAILURE;
 					end
@@ -1441,61 +1538,27 @@ module execution_engine(
 			// ====================================================================
 			// STAGE 4: HANDLE VALIDATION - TPM 2.0 Part 3, Section 5.4
 			// ====================================================================
-			STATE_HANDLE_VALID: begin
-    				
-			end
-			// ====================================================================
-			// STAGE 5: SESSION VALIDATION - TPM 2.0 Part 3, Section 5.5
-			// ====================================================================
-			STATE_SESSION_VALID: begin
-				//s_session_index = session_index;
-				if(s_session_index == max_session_amount || s_session_error)begin
-				if(command_tag == TPM_ST_NO_SESSIONS) begin
-					if(command_code_tag == TPM_ST_SESSIONS) begin
-						s_response_code = TPM_RC_AUTH_CONTEXT;
-					end
-				end
-				else if(command_tag == TPM_ST_SESSIONS) begin
-					if(command_code_tag == TPM_ST_NO_SESSIONS) begin
-						s_response_code = TPM_RC_AUTH_MISSING;
-					end
-					else if(command_code_tag == TPM_ST_SESSIONS) begin
-						if (session_handle_type != TPM_HT_HMAC_SESSION &&
-    						    session_handle_type != TPM_HT_POLICY_SESSION &&
-    						    current_session_handle != TPM_RS_PW) begin
-							s_response_code = TPM_RC_HANDLE;
-						end
-						else begin
-							if(!session_loaded) begin
-								s_response_code = TPM_RC_REFERENCE_S0 + session_index;
-							end
-							else if(max_session_amount == session_index && authorization_size > 32'd0) begin
-								s_response_code = TPM_RC_AUTHSIZE;
-							end
-							else if(s_audit_count > 2'd1 || s_decrypt_count > 2'd1 || s_encrypt_count > 2'd1 || (!auth_session && !audit && !decrypt && !encrypt)) begin
-								s_response_code = TPM_RC_ATTRIBUTES;
-							end
-							else if(!auth_session && auth_necessary) begin
-								s_response_code = TPM_RC_AUTH_MISSING;
-							end
-						end
-					end
-				end
-				end
-			end
-			
-			// ====================================================================
-			// STAGE 6: AUTHORIZATION CHECKS - TPM 2.0 Part 3, Section 5.6
-			// ====================================================================
+            STATE_HANDLE_VALID: begin
+                if (is_creation && !(cmd_command_code === 32'h153 && cmd_keygen_descriptor_valid === 1'b1 && cmd_keygen_session_validated === 1'b1)) begin
+                    s_handle_error = 1;
+                    s_response_code = 32'h00000143;
+                end
+            end
+            STATE_SESSION_VALID: begin
+                if (!(cmd_command_tag == TPM_ST_NO_SESSIONS && command_code_tag == TPM_ST_NO_SESSIONS))
+                    s_response_code = 32'h00000124;
+            end
 			STATE_AUTH_CHECK: begin
 				// Check to see if authorization subsystem has finished before updating authorization dependent information
-				if(auth_done) begin
+				if(auth_done && (is_creation || cmd_auth_necessary !== 1'b0)) begin
 					// Response code will come from authorization subsystem
-					s_response_code = auth_response_code;
+					if (auth_success === 1'b1 && auth_response_code === 12'd0) s_response_code = 0;
+                    else if (auth_response_code != 0) s_response_code = {20'd0,auth_response_code};
+                    else s_response_code = 32'h101;
 					
 					// If authorization successful tell other modules the authorization hierarchy, if it fails tell them the null hierarchy
-					if(auth_success) begin
-						authHierarchy = authHandle;
+					if(auth_success === 1'b1 && auth_response_code === 12'd0) begin
+						authHierarchy = cmd_authHandle;
 					end
 					else begin
 						authHierarchy = TPM_RH_NULL;
@@ -1510,7 +1573,7 @@ module execution_engine(
 			STATE_PARAM_DECRYPT: begin
 				//Do not do yet implement some sort of signal
 				// For now, always proceed to parameter unmarshaling
-				if(param_decrypt_success == 1'b1)begin
+				if(param_decrypt_success == 1'b1 && !param_decrypt_fail)begin
 					
 				end
 				else if(param_decrypt_fail == 1'b1)begin
@@ -1533,7 +1596,7 @@ module execution_engine(
 				//    - Verify reserved fields are zero
 				// 3. Handle TPM2B structures with size prefixes
 				// 4. Return appropriate error codes (TPM_RC_SIZE, TPM_RC_VALUE, TPM_RC_SCHEME, etc.)
-				if(param_unmarshall_success == 1'b1)begin
+				if(param_unmarshall_success == 1'b1 && !param_unmarshall_fail)begin
 					
 				end
 				else if(param_unmarshall_fail == 1'b1)begin
@@ -1547,16 +1610,14 @@ module execution_engine(
 			// ====================================================================
 			// STAGE 9: COMMAND EXECUTION - TPM 2.0 Part 3, Section 5.9
 			// ====================================================================
-			STATE_EXECUTE: begin
-				//start command processing
-				s_execution_startup_done = execution_startup_done;
-				s_response_code = execution_response_code;
-				command_start = 1'b1;
-			end
-			
-			// ====================================================================
-			// STAGE 10: POST-PROCESSING - TPM 2.0 Part 3, Section 5.10
-			// ====================================================================
+            STATE_EXECUTE: begin
+                if (is_creation) begin
+                    if (kg_terminal_valid) s_response_code = kg_terminal_code;
+                end else begin
+                    command_start = !execution_started && !command_cancel;
+                    if (command_done) s_response_code = execution_response_code;
+                end
+            end
 			STATE_POST_PROCESS: begin
 				// TODO: IMPLEMENT POST-PROCESSING:
 				// 1. Build response buffer with response header and parameters
@@ -1566,17 +1627,19 @@ module execution_engine(
 				// 5. Calculate final response_length
 				// 6. Format proper response structure
 				
-				//Check whether the initiliazed signal can be sent based on if previous errors were set
-				if(commandIndex == TPM_CC_STARTUP || op_state != OPERATIONAL_STATE || !s_session_error || !s_handle_error || !s_header_valid_error || 
-						   !s_mode_check_error ||!s_auth_check_error || !s_param_decrypt_error || !s_param_unmarshall_error || !s_execution_startup_done)begin
-					s_initialized = 1'b1;
-				end
+				// Only validated, successful completed Startup initializes the engine.
+                if (commandIndex == TPM_CC_STARTUP && startup_success && response_code == 0 &&
+                    !session_error && !handle_error && !header_valid_error && !mode_check_error &&
+                    !auth_check_error && !param_decrypt_error && !param_unmarshall_error)
+                    s_initialized = 1'b1;
 				response_valid = 1'b1;
 				response_length = 16'h0A; // Minimum response size for success
 			end
 			default: begin
 			end
 		endcase
+        if (command_cancel && current_state != STATE_IDLE && current_state != STATE_POST_PROCESS &&
+            !(current_state == STATE_EXECUTE && is_creation)) s_response_code = 32'h00000101;
 	end
 endmodule
 
