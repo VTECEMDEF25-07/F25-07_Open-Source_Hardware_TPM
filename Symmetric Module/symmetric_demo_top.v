@@ -9,7 +9,6 @@ module symmetric_demo_top
     input  [1:0]  KEY,
     input  [9:0]  SW,
     output [9:0]  LEDR,
-    output [6:0]  HEX5,
     output [6:0]  HEX4,
     output [6:0]  HEX3,
     output [6:0]  HEX2,
@@ -57,7 +56,7 @@ module symmetric_demo_top
     reg [127:0] session_mask_r;
 
     wire [15:0] data_word_w;
-    assign data_word_w = {SW[9:0], 6'b000000};
+    assign data_word_w = {6'b000000, SW[9:0]};
 
     always @(*) begin
         command_code_r    = TPM_CC_ENCRYPT_DECRYPT_2;
@@ -193,8 +192,7 @@ module symmetric_demo_top
     hex7seg H2(.hex_digit_i({1'b0,rc_latched_r[11:8]}), .hex_display_o(HEX2));
     hex7seg H3(.hex_digit_i({2'b00,SW[1:0]}), .hex_display_o(HEX3));
     hex7seg H4(.hex_digit_i(data_latched_r[3:0]), .hex_display_o(HEX4));
-    hex7seg H5(.hex_digit_i({done_latched_r,~KEY[1],primitive_latched_r,session_latched_r}), .hex_display_o(HEX5));
-
+    
 endmodule
 
 module hex7seg
@@ -226,4 +224,3 @@ module hex7seg
     end
 
 endmodule
-
