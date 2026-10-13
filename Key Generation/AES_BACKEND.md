@@ -1,3 +1,9 @@
+# Review disposition: superseded staged-store prototype
+
+October 13, 2026: do not merge this backend as the new core. Source naming is refreshed and Verilog compilation is separate from approved SV tests, but store commit/abort/cancel/health semantics remain historical. The selected core instead uses reset-only abort and complete-result ownership handoff. Preserve this prototype's transaction-risk evidence; replace its integration contract in a separate progressive MR.
+
+---
+
 # AES backend controller
 
 AI-authored implementation and tests, pending human review. `keygen_aes_backend.v`
@@ -9,30 +15,30 @@ to AES. Review after outline, plumbing and assembly drafts.
 
 ## Actual ports and protocol
 
-One shared `clock`; asynchronous low `reset_n`, synchronized release required
+One shared `clock_i`; asynchronous low `reset_n_i`, synchronized release required
 outside this module. Transfers occur on rising edges. No request queue.
 
 | Port group (direction at backend) | Width | Meaning |
 | --- | --- | --- |
-| `req_valid` in, `req_ready` out | 1 each | One accepted request; sample low valid after reset/between requests to rearm. Ready requires reconciled available store and no sticky health fault. |
-| `req_id`, `req_context`, `req_destination`, `req_exponent` in | 32 each | Capture at acceptance. Upstream owns authorized, pinned context/destination and token uniqueness/recovery. AES exponent must be zero; unknown descriptor fields reject. |
-| `req_alg`, `req_mode`, `req_bits` in | 2, 2, 12 | Only AES alg1, fresh-child mode0, bits128/256. No primary derivation or RSA. |
-| `cancel_valid` in, `cancel_ready` out, `cancel_id` in | 1, 1, 32 | Matching cancellation accepted before store finish acceptance. Wrong ID/unknown active control is a protocol fault. After finish acceptance, ready stays low: cancellation too late. |
-| `rsp_valid` out, `rsp_ready` in | 1 each | Hold immutable result until acknowledgment except reset. |
-| `rsp_id`, `rsp_code`, `rsp_object` out; `rsp_fail` out | 32 each, 1 | Captured ID; code0 on success, 0x143 unsupported descriptor, 0x101 transaction failure. Object is known nonzero store reference on success, zero on failure. Unknown request ID sanitizes response ID to zero. Codes are a proposed TPM mapping. |
-| `busy`, `health_fault`, `health_status` out | 1, 1, 8 | Busy through cleanup/response. Sticky independent health: bit0 RNG/worker RNG failure; bit1 store_error; bit2 protocol/unexpected worker/finalization acknowledgment failure. Other bits zero. Reset clears health; recovery must precede store availability. |
-| `rng_data`, `rng_valid`, `rng_error` in; `rng_ready` out | 32, 1, 1, 1 | Teammate cryptographic RNG stream, accepted only by active selected assembler. Quality/seeding/health/CDC/arbitration remain RNG-owner obligations. |
-| `store_available`, `store_error` in | 1 each | Availability gates new admission after reconciliation; may go low during a healthy busy transaction. Active failure uses store_error/final status. Error/unknown error latches health even outside a transaction. |
-| `store_begin_valid` out, `store_begin_ready` in | 1 each | Reserve/open one staging transaction before worker launch. Stable under backpressure except abort/reset/fault. |
-| `store_begin_id`, `store_begin_context`, `store_begin_destination` out | 32 each | Captured token/context/destination. |
-| `store_begin_alg`, `store_begin_key_bits` out | 2, 12 | AES1 and actual128/256-bit manifest. |
-| `store_data_valid` out, `store_data_ready` in | 1 each | Protected staged stream, not CPU/debug/CRB plaintext. Stable under backpressure; fault/cancel/reset suppresses transfer and zeroes payload. |
-| `store_data_id`, `store_data_word` out | 32 each | Captured ID and secret word. |
-| `store_data_component`, `store_data_index`, `store_data_bits`, `store_data_last` out | 4, 7, 12, 1 | AES component1, zero-based most-significant-word-first index, actual bits, last beat. Invalid data/metadata zero. Four/eight words; see AES_KEY_ASSEMBLY.md for byte interpretation. |
-| `store_finish_valid` out, `store_finish_ready` in | 1 each | Finalize transaction after worker local clearing. Held until accepted. Cancellation/fault can convert pending commit into abort. |
-| `store_finish_id`, `store_finish_abort` out | 32, 1 | Same token; 1 rollback, 0 commit. No repeated finish after acceptance. |
-| `store_rsp_valid` in, `store_rsp_ready` out | 1 each | Finalization acknowledgment only after accepted finish. Unsolicited responses are drained and quarantine health; cannot acknowledge a later finish. |
-| `store_rsp_id`, `store_rsp_object`, `store_rsp_status` in | 32, 32, 8 | Matching token, known nonzero object for commit / zero for abort; status0 means definite requested action completed. Other/unknown status, wrong token or invalid object is failure with quarantine, not proof of rollback. |
+| `req_valid_i` in, `req_ready_o` out | 1 each | One accepted request; sample low valid after reset/between requests to rearm. Ready requires reconciled available store and no sticky health fault. |
+| `req_id_i`, `req_context_i`, `req_destination_i`, `req_exponent_i` in | 32 each | Capture at acceptance. Upstream owns authorized, pinned context/destination and token uniqueness/recovery. AES exponent must be zero; unknown descriptor fields reject. |
+| `req_alg_i`, `req_mode_i`, `req_bits_i` in | 2, 2, 12 | Only AES alg1, fresh-child mode0, bits128/256. No primary derivation or RSA. |
+| `cancel_valid_i` in, `cancel_ready_o` out, `cancel_id_i` in | 1, 1, 32 | Matching cancellation accepted before store finish acceptance. Wrong ID/unknown active control is a protocol fault. After finish acceptance, ready stays low: cancellation too late. |
+| `rsp_valid_o` out, `rsp_ready_i` in | 1 each | Hold immutable result until acknowledgment except reset. |
+| `rsp_id_reg_o`, `rsp_code_reg_o`, `rsp_object_reg_o` out; `rsp_fail_reg_o` out | 32 each, 1 | Captured ID; code0 on success, 0x143 unsupported descriptor, 0x101 transaction failure. Object is known nonzero store reference on success, zero on failure. Unknown request ID sanitizes response ID to zero. Codes are a proposed TPM mapping. |
+| `busy_o`, `health_fault_reg_o`, `health_status_reg_o` out | 1, 1, 8 | Busy through cleanup/response. Sticky independent health: bit0 RNG/worker RNG failure; bit1 store_error; bit2 protocol/unexpected worker/finalization acknowledgment failure. Other bits zero. Reset clears health; recovery must precede store availability. |
+| `rng_data_i`, `rng_valid_i`, `rng_error_i` in; `rng_ready_o` out | 32, 1, 1, 1 | Teammate cryptographic RNG stream, accepted only by active selected assembler. Quality/seeding/health/CDC/arbitration remain RNG-owner obligations. |
+| `store_available_i`, `store_error_i` in | 1 each | Availability gates new admission after reconciliation; may go low during a healthy busy transaction. Active failure uses store_error/final status. Error/unknown error latches health even outside a transaction. |
+| `store_begin_valid_o` out, `store_begin_ready_i` in | 1 each | Reserve/open one staging transaction before worker launch. Stable under backpressure except abort/reset/fault. |
+| `store_begin_id_o`, `store_begin_context_o`, `store_begin_destination_o` out | 32 each | Captured token/context/destination. |
+| `store_begin_alg_o`, `store_begin_key_bits_o` out | 2, 12 | AES1 and actual128/256-bit manifest. |
+| `store_data_valid_o` out, `store_data_ready_i` in | 1 each | Protected staged stream, not CPU/debug/CRB plaintext. Stable under backpressure; fault/cancel/reset suppresses transfer and zeroes payload. |
+| `store_data_id_o`, `store_data_word_o` out | 32 each | Captured ID and secret word. |
+| `store_data_component_o`, `store_data_index_o`, `store_data_bits_o`, `store_data_last_o` out | 4, 7, 12, 1 | AES component1, zero-based most-significant-word-first index, actual bits, last beat. Invalid data/metadata zero. Four/eight words; see AES_KEY_ASSEMBLY.md for byte interpretation. |
+| `store_finish_valid_o` out, `store_finish_ready_i` in | 1 each | Finalize transaction after worker local clearing. Held until accepted. Cancellation/fault can convert pending commit into abort. |
+| `store_finish_id_o`, `store_finish_abort_o` out | 32, 1 | Same token; 1 rollback, 0 commit. No repeated finish after acceptance. |
+| `store_rsp_valid_i` in, `store_rsp_ready_o` out | 1 each | Finalization acknowledgment only after accepted finish. Unsolicited responses are drained and quarantine health; cannot acknowledge a later finish. |
+| `store_rsp_id_i`, `store_rsp_object_i`, `store_rsp_status_i` in | 32, 32, 8 | Matching token, known nonzero object for commit / zero for abort; status0 means definite requested action completed. Other/unknown status, wrong token or invalid object is failure with quarantine, not proof of rollback. |
 
 ## Transaction and failure behavior
 
@@ -63,7 +69,7 @@ RNG/store/protocol fault dominates cancel and normal transfers. No timeout is
 fabricated: a peer that never accepts begin/finalize or never acknowledges cleanup
 can hold busy indefinitely. Coordinated reset/recovery is required. Reset clears
 worker/control state and validity, not durable objects; the store must clear
-uncommitted staging and reconcile any accepted commit before `store_available=1`.
+uncommitted staging and reconcile any accepted commit before `store_available_i=1`.
 Token ownership must exclude stale acknowledgments across reset. CDC, reset release,
 storage durability, physical clearing and side-channel assurance are unverified.
 

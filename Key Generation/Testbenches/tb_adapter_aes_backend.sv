@@ -25,20 +25,20 @@ module tb_adapter_aes_backend;
     reg store_rsp_valid=0;wire store_rsp_ready;
     reg [31:0] store_rsp_id=5,store_rsp_object=32'h80000042;
     reg [7:0] store_rsp_status=0;
-    keygen_aes_backend backend(.*);
+    keygen_aes_backend backend(.clock_i(clock), .reset_n_i(reset_n), .req_valid_i(req_valid), .req_ready_o(req_ready), .req_id_i(req_id), .req_context_i(req_context), .req_destination_i(req_destination), .req_exponent_i(req_exponent), .req_alg_i(req_alg), .req_mode_i(req_mode), .req_bits_i(req_bits), .cancel_valid_i(cancel_valid), .cancel_ready_o(cancel_ready), .cancel_id_i(cancel_id), .rsp_valid_o(rsp_valid), .rsp_ready_i(rsp_ready), .rsp_id_reg_o(rsp_id), .rsp_code_reg_o(rsp_code), .rsp_object_reg_o(rsp_object), .rsp_fail_reg_o(rsp_fail), .busy_o(busy), .health_fault_reg_o(health_fault), .health_status_reg_o(health_status), .rng_data_i(rng_data), .rng_valid_i(rng_valid), .rng_error_i(rng_error), .rng_ready_o(rng_ready), .store_available_i(store_available), .store_error_i(store_error), .store_begin_valid_o(store_begin_valid), .store_begin_ready_i(store_begin_ready), .store_begin_id_o(store_begin_id), .store_begin_context_o(store_begin_context), .store_begin_destination_o(store_begin_destination), .store_begin_alg_o(store_begin_alg), .store_begin_key_bits_o(store_begin_key_bits), .store_data_valid_o(store_data_valid), .store_data_ready_i(store_data_ready), .store_data_id_o(store_data_id), .store_data_word_o(store_data_word), .store_data_component_o(store_data_component), .store_data_index_o(store_data_index), .store_data_bits_o(store_data_bits), .store_data_last_o(store_data_last), .store_finish_valid_o(store_finish_valid), .store_finish_ready_i(store_finish_ready), .store_finish_id_o(store_finish_id), .store_finish_abort_o(store_finish_abort), .store_rsp_valid_i(store_rsp_valid), .store_rsp_ready_o(store_rsp_ready), .store_rsp_id_i(store_rsp_id), .store_rsp_object_i(store_rsp_object), .store_rsp_status_i(store_rsp_status));
     keygen_dispatch_adapter #(.EXTERNAL_BACKEND(1)) adapter(
-        .clock(clock),.reset_n(reset_n),.start(start),.descriptor_valid(1'b1),
-        .session_validated(1'b1),.command_code(32'h153),.descriptor_id(32'd5),
-        .descriptor_alg(2'd1),.descriptor_bits(bits),.descriptor_mode(2'd0),
-        .descriptor_context(32'd9),.descriptor_destination(32'd10),.descriptor_exponent(32'd0),
-        .cancel(cancel),.busy(adapter_busy),.terminal_valid(terminal_valid),
-        .terminal_ready(terminal_ready),.terminal_code(terminal_code),.terminal_object(terminal_object),
-        .req_valid(req_valid),.req_ready(req_ready),.req_id(req_id),.req_alg(req_alg),
-        .req_bits(req_bits),.req_mode(req_mode),.req_context(req_context),
-        .req_destination(req_destination),.req_exponent(req_exponent),
-        .cancel_valid(cancel_valid),.cancel_ready(cancel_ready),.cancel_id(cancel_id),
-        .rsp_valid(rsp_valid),.rsp_ready(rsp_ready),.rsp_id(rsp_id),.rsp_fail(rsp_fail),
-        .rsp_code(rsp_code),.rsp_object(rsp_object)
+        .clock_i(clock),.reset_n_i(reset_n),.start_i(start),.descriptor_valid_i(1'b1),
+        .session_validated_i(1'b1),.command_code_i(32'h153),.descriptor_id_i(32'd5),
+        .descriptor_alg_i(2'd1),.descriptor_bits_i(bits),.descriptor_mode_i(2'd0),
+        .descriptor_context_i(32'd9),.descriptor_destination_i(32'd10),.descriptor_exponent_i(32'd0),
+        .cancel_i(cancel),.busy_o(adapter_busy),.terminal_valid_o(terminal_valid),
+        .terminal_ready_i(terminal_ready),.terminal_code_reg_o(terminal_code),.terminal_object_reg_o(terminal_object),
+        .req_valid_o(req_valid),.req_ready_i(req_ready),.req_id_reg_o(req_id),.req_alg_reg_o(req_alg),
+        .req_bits_reg_o(req_bits),.req_mode_reg_o(req_mode),.req_context_reg_o(req_context),
+        .req_destination_reg_o(req_destination),.req_exponent_reg_o(req_exponent),
+        .cancel_valid_o(cancel_valid),.cancel_ready_i(cancel_ready),.cancel_id_o(cancel_id),
+        .rsp_valid_i(rsp_valid),.rsp_ready_o(rsp_ready),.rsp_id_i(rsp_id),.rsp_fail_i(rsp_fail),
+        .rsp_code_i(rsp_code),.rsp_object_i(rsp_object)
     );
     task tick;begin @(posedge clock);#1;end endtask
     integer n,j;
