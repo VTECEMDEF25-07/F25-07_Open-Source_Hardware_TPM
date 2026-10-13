@@ -21,6 +21,7 @@ module keygen_rsa_softcore #(
     reg [WATCHDOG_BITS-1:0] watchdog_reg;
     reg [31:0] command_watchdog_reg;
     reg command_pending_reg;
+    reg child_clear_reg;
     wire command_stalled=command_valid_o && !command_ready_i;
     wire response_stalled=command_pending_reg && !(response_valid_i && response_ready_o);
     wire command_timeout=(command_stalled || response_stalled) &&
@@ -28,7 +29,8 @@ module keygen_rsa_softcore #(
     wire child_ready, child_trap, instruction_progress, service_wait;
     wire instruction_timeout = &watchdog_reg && !instruction_progress && !service_wait;
     wire [31:0] report;
-    wire child_reset_n=reset_n_i && state_reg!=CLEAR;
+    // A registered clear drives child and memory primitive reset; no FSM decode.
+    wire child_reset_n=reset_n_i && !child_clear_reg;
     wire execute_en=state_reg==RUN;
     assign work_ready_o=reset_n_i && state_reg==IDLE && child_ready;
     assign completion_valid_o=reset_n_i && state_reg==DONE;
@@ -60,7 +62,7 @@ module keygen_rsa_softcore #(
     end
     always @(posedge clock_i) begin
         if (!reset_n_i) begin
-            state_reg<=INIT; status_reg<=0; clear_count_reg<=0; watchdog_reg<=0;
+            state_reg<=INIT; status_reg<=0; clear_count_reg<=0; watchdog_reg<=0; child_clear_reg<=0;
         end else case(state_reg)
             INIT: if(child_ready) state_reg<=IDLE;
             IDLE: if(work_valid_i && work_ready_o) begin state_reg<=RUN; watchdog_reg<=0; end
@@ -71,16 +73,16 @@ module keygen_rsa_softcore #(
                     if(child_trap) status_reg<=8'd6;
                     else if(instruction_timeout || command_timeout) status_reg<=8'd7;
                     else status_reg<=report[7:0];
-                    state_reg<=CLEAR; clear_count_reg<=0;
+                    state_reg<=CLEAR; clear_count_reg<=0; child_clear_reg<=1;
                 end
             end
             CLEAR: begin
                 clear_count_reg<=clear_count_reg+1'b1;
-                if(clear_count_reg==2'd2) state_reg<=SCRUB;
+                if(clear_count_reg==2'd2) begin state_reg<=SCRUB; child_clear_reg<=0; end
             end
             SCRUB: if(child_ready) state_reg<=DONE;
             DONE: if(completion_ready_i) state_reg<=IDLE;
-            default: state_reg<=INIT;
+            default: begin state_reg<=INIT; child_clear_reg<=0; end
         endcase
     end
 endmodule
