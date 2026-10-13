@@ -96,8 +96,9 @@ python demo/de25_revd/compile_build.py '<class workspace>/AI/tmp/keygen-build-RE
 ```
 
 Repeat compilation for `rtl_altera`, `softcore_generic` and `softcore_altera`.
-Keep at most two builds active on this development machine, subject to available
-memory. These commands never program the board. Compilation must be followed
+Run one full Quartus build at a time on this development machine: concurrent
+fits exhausted available memory during validation. These commands never program
+the board. Compilation must be followed
 by review of final resource use, 50 MHz setup/hold, reset/clock crossings and all
 unconstrained paths. `timing_accepted` remains false until that review.
 
@@ -118,6 +119,19 @@ with the same manifest. `corpus` checks all 20 fixed seeds and a median of at
 most 30 seconds; every generation has a 180-second deadline. `soak` runs mixed
 operations for at least 30 minutes and logs temperature/fan samples and errors.
 Review thermal telemetry as well as the mathematical PASS results.
+
+Independently summarize completed corpus reports with:
+
+```powershell
+python scripts/summarize_hardware.py '<corpus.json>'
+python -m unittest discover -s scripts -p test_summarize_hardware.py
+```
+
+Multiple report arguments produce a comparison without changing the reports.
+The auditor recomputes timing statistics, requires the complete fixed seed set,
+and rejects unhealthy or absent cooling samples. It returns nonzero for an
+incomplete or failed gate. A passing corpus audit covers only those sampled
+operations; it does not replace simulation, timing, replay or soak acceptance.
 
 Reset through the gray SPI lead affects key generation, not cooling. The
 demonstration uses predictable test streams and deliberately exports test keys
