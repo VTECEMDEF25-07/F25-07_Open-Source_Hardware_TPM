@@ -4,17 +4,18 @@ module altera_s10_user_rst_clkgate(output reg ninit_done=1);
 endmodule
 module keygen_demo_system #(parameter RSA_SOFTCORE=0,ROM_FILE="",parameter [255:0] BUILD_FINGERPRINT=0)(
     input clock_i,reset_n_i,spi_clock_i,spi_cs_n_i,spi_mosi_i,
-    input [31:0] temperatures_i,fan_status_i,output spi_miso_o,interrupt_n_o);
+    input [95:0] fan_diagnostic_i,input [31:0] temperatures_i,fan_status_i,output spi_miso_o,interrupt_n_o);
     assign spi_miso_o=reset_n_i;
     assign interrupt_n_o=reset_n_i;
 endmodule
 module BOARD_MANAGEMENT(input clk_50,reset_n,input Auto_Fan_Speed,input [15:0] Set_Fan_Speed,
     input BUSY_GO_HI,inout I2C_SCL,I2C_SDA,output [15:0] FPGA_Temperature,Board_Temperature,Fan_Speed,
-    output FAN_FAILSAFE,output [7:0] ALARM,output I2C_READY,TEMP_VALID);
+    output [95:0] FAN_DIAGNOSTIC,output FAN_FAILSAFE,output [7:0] ALARM,output I2C_READY,TEMP_VALID);
     assign FPGA_Temperature=reset_n?16'd42:16'd0;
     assign Board_Temperature=reset_n?16'd32:16'd0;
     assign Fan_Speed=reset_n?16'd4000:16'd0;
     assign FAN_FAILSAFE=!reset_n;
+    assign FAN_DIAGNOSTIC=96'h123456789abcdef001234567;
     assign ALARM=0;
     assign I2C_READY=reset_n;
     assign TEMP_VALID=reset_n;

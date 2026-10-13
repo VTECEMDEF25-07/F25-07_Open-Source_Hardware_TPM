@@ -146,7 +146,7 @@ set_false_path -to [get_ports {fan_i2c_scl fan_i2c_sda}]
             verify_inputs(inputs)
             config_files = [build / name for name in ("keygen_de25.qsf", "keygen_de25.qpf", "keygen_de25.sdc", "rsa_control.hex")]
             manifest = {"variant": variant, "device": "A5ED013BB32AE4SCS", "clock_hz": 50000000,
-                        "test_mode": True, "firmware_sha256": digest(inputs[firmware]),
+                        "test_mode": True, "fan_diagnostics_version": 1, "diagnostic_mode": False, "firmware_sha256": digest(inputs[firmware]),
                         "quartus_executable": str(Path(args.quartus).resolve()), "quartus_version": tool_version,
                         "pin_reference_sha256": digest(pin_bytes),
                         "build_fingerprint": fingerprint, "fingerprint_inputs": fingerprint_inputs,

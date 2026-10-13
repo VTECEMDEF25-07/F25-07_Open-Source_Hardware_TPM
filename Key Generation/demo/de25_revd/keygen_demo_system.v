@@ -6,7 +6,7 @@ module keygen_demo_system #(
     input clock_i, input reset_n_i,
     input spi_clock_i, input spi_cs_n_i, input spi_mosi_i,
     output spi_miso_o, output interrupt_n_o,
-    input [31:0] temperatures_i, input [31:0] fan_status_i
+    input [31:0] temperatures_i, input [31:0] fan_status_i, input [95:0] fan_diagnostic_i
 );
     localparam SCRUB=0, IDLE=1, SOURCE_START=2, CORE_START=3, RUN=4;
     reg [2:0] state_reg;
@@ -92,6 +92,9 @@ module keygen_demo_system #(
             14: read_data = {16'b0,fan_status_i[15:0]};
             15: read_data = {16'b0,fan_status_i[31:16]};
             16,17,18,19,20,21,22,23: read_data = seed_reg[255-(read_address-16)*32 -: 32];
+            32: read_data=fan_diagnostic_i[31:0];
+            33: read_data=fan_diagnostic_i[63:32];
+            34: read_data=fan_diagnostic_i[95:64];
             24,25,26,27,28,29,30,31: read_data = BUILD_FINGERPRINT[255-(read_address-24)*32 -: 32];
             63: read_data = scratch_reg;
             default: read_data = 0;

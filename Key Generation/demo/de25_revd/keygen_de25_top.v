@@ -12,12 +12,13 @@ module keygen_de25_top #(
     wire [15:0] fpga_temperature, board_temperature, fan_speed;
     wire [7:0] fan_alarm;
     wire fan_ready, temperature_valid, fan_fail_safe;
-    reg [63:0] telemetry_meta_reg, telemetry_sync_reg;
+    wire [95:0] fan_diagnostic;
+    reg [159:0] telemetry_meta_reg, telemetry_sync_reg;
     // Read-only diagnostic synchronization; fan protection remains in vendor logic.
     always @(posedge clock_i or negedge board_release_reg[1]) begin
         if (!board_release_reg[1]) begin telemetry_meta_reg<=0;telemetry_sync_reg<=0;end
         else begin
-            telemetry_meta_reg <= {5'b0,fan_fail_safe,temperature_valid,fan_ready,fan_alarm,fan_speed,fpga_temperature,board_temperature};
+            telemetry_meta_reg <= {fan_diagnostic,5'b0,fan_fail_safe,(temperature_valid && !fan_fail_safe),(fan_ready && !fan_fail_safe),fan_alarm,fan_speed,fpga_temperature,board_temperature};
             telemetry_sync_reg <= telemetry_meta_reg;
         end
     end
@@ -38,12 +39,12 @@ module keygen_de25_top #(
     keygen_demo_system #(.RSA_SOFTCORE(RSA_SOFTCORE),.ROM_FILE(ROM_FILE),.BUILD_FINGERPRINT(BUILD_FINGERPRINT)) system (
         .clock_i(clock_i),.reset_n_i(spi_release_reg[1]),.spi_clock_i(spi_clock_i),
         .spi_cs_n_i(spi_cs_n_i),.spi_mosi_i(spi_mosi_i),.spi_miso_o(spi_miso_o),.interrupt_n_o(interrupt_n_o),
-        .temperatures_i(telemetry_sync_reg[31:0]),.fan_status_i(telemetry_sync_reg[63:32])
+        .temperatures_i(telemetry_sync_reg[31:0]),.fan_status_i(telemetry_sync_reg[63:32]),.fan_diagnostic_i(telemetry_sync_reg[159:64])
     );
     BOARD_MANAGEMENT fan_control (
         .clk_50(clock_i),.reset_n(board_release_reg[1]),.I2C_SCL(fan_i2c_scl),.I2C_SDA(fan_i2c_sda),
         .FPGA_Temperature(fpga_temperature),.Board_Temperature(board_temperature),.Fan_Speed(fan_speed),
-        .FAN_FAILSAFE(fan_fail_safe),.ALARM(fan_alarm),.I2C_READY(fan_ready),.TEMP_VALID(temperature_valid),
+        .FAN_DIAGNOSTIC(fan_diagnostic),.FAN_FAILSAFE(fan_fail_safe),.ALARM(fan_alarm),.I2C_READY(fan_ready),.TEMP_VALID(temperature_valid),
         .Auto_Fan_Speed(1'b1),.Set_Fan_Speed(16'd4000),.BUSY_GO_HI(1'b0)
     );
 endmodule

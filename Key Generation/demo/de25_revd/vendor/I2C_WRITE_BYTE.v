@@ -78,7 +78,7 @@ else
 					                if ( BYTE ==0 ) begin BYTE <=1  ; A <= {POINTER ,1'b1 }; end 
 								  else if ( BYTE ==1 ) begin BYTE <=2  ; A <= {WDATA8[7:0] ,1'b1 }; end 
 							  end
-					   NO_ACK <=SDAI ; 
+					   NO_ACK <=NO_ACK | SDAI ;
 				 end
 				 else ST <= 2;
 		    end
@@ -110,7 +110,7 @@ else
             if (!GO) ST  <=31;
           end			
 		  31: begin  //
-		      END_OK<=0;
+		      END_OK<=0;NO_ACK<=0;
 				ST    <=1;	
 			end	
 	  endcase 
