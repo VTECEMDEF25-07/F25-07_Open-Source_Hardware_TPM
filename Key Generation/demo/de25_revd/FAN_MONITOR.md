@@ -29,3 +29,19 @@ Reason bits describe the last completed frame except live bits6/8. Read repeated
 `simulate_fan.py` exercises the real management engines with decoded-register injection, including pair ordering, bounded no-start/stuck-BUSY, preflight failures, missing ACK, wrong IDs, both OPEN flags, nPVLD, negative sentinel, staleness and recovery. `simulate_fan_bus.py` independently exercises real serial open-drain ACK/data using a TMP442/MAX6650 test slave; it never forces internal DUT data. Top-reset and real-core SPI regressions cover the additive diagnostic interface.
 
 Primary source: [TI TMP441/TMP442 datasheet, SBOS425A](https://www.ti.com/lit/gpn/tmp442), electrical conversion times and sections Temperature Registers, Configuration1/2, One-Shot Conversion. Local original: `AI/tmp/de25-docs/DE25_RevD_extracted/Datasheet/Temp Sensor/TMP442ADCNT.pdf`. The datasheet requires adjacent high/low reads, defines BUSY as conversion activity, and states that one-shot writes during an existing conversion are ignored. No cryptographic RTL or host acceptance rule is relaxed by these changes.
+# Read-only hardware observation
+
+After the lead programs and verifies the diagnostic bitstream, run:
+
+```powershell
+python fan_monitor.py --manifest '<diagnostic/build_manifest.json>' --report '<fresh-report.json>'
+python -m unittest discover -s tests -p test_fan_monitor.py
+```
+
+The monitor requires diagnostic register version 1 and the exact loaded build
+fingerprint. A FAN1 manifest cannot authorize a KG01 image, or vice versa. It
+reads temperature, fan speed and raw fault diagnostics once per second. The
+last ten samples must all be healthy for its diagnostic PASS. Source hashes
+are recorded and rechecked; an existing report is never overwritten. This
+checks cooling only and cannot establish key-generation or soak acceptance.
+
