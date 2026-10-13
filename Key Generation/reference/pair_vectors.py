@@ -8,8 +8,9 @@ from pathlib import Path
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("output", type=Path)
+    parser.add_argument("--corpus",type=Path,default=Path(__file__).with_name("expected_keys.json"))
     args = parser.parse_args()
-    keys = json.loads(Path(__file__).with_name("expected_keys.json").read_text())["results"]
+    keys = json.loads(args.corpus.read_text())["results"]
     lower = math.isqrt(1 << 2047) + 1
     good = [{k: int(v, 16) for k, v in entry["key"].items()} for entry in keys[:3]]
     cases = [(key["p"], key["q"], 0) for key in good]
@@ -33,11 +34,11 @@ def main():
         if expected_status == 2:
             if not (p >= lower and q >= lower and abs(p-q) > 1 << 924 and 0 < d <= 1 << 1024):
                 raise ValueError("invalid low-d fixture")
-        # Layout: p1024, q1024, expected public n2048, internal d2048, status4.
+        # Layout: p1024, q1024, expected public n2048, internal lambda2048/d2048, status4.
         value = p
-        for width, field in ((1024, q), (2048, n if expected_status == 0 else 0), (2048, d), (4, expected_status)):
+        for width, field in ((1024, q), (2048, n if expected_status == 0 else 0), (2048, lam), (2048, d), (4, expected_status)):
             value = (value << width) | field
-        lines.append(f"{value:01537x}")
+        lines.append(f"{value:02049x}")
     args.output.write_text("\n".join(lines) + "\n")
     print(f"PASS pair vectors count={len(lines)}")
 

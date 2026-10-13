@@ -1,42 +1,54 @@
 # Shared RSA pair arithmetic
 
-`keygen_pair_check` accepts two already-tested prime candidates and checks the RSA pair relationships needed by both controllers. It captures p/q at `start_valid_i && start_ready_o`. It does **not** repeat primality testing; that remains the caller's responsibility.
+`keygen_pair_check` captures two already-tested 1024-bit prime candidates on `start_valid_i && start_ready_o`, validates their RSA relationships, and holds a public 2048-bit modulus/status until accepted. Primality remains the caller's responsibility. Ports are unchanged by the RAM-based implementation.
 
-Read the RTL in this order: port/result qualification, product datapath, state transitions, then `SCRUB`. The testbench first compares Python-generated mathematical fixtures, then interrupts every major arithmetic phase.
+## Interface and cleanup
 
-## Interface and ownership
+Only status 0 exposes n. Other statuses are 1 for invalid bounds/parity/separation or exponent incompatibility, 2 for a canonical private exponent that is too small, and 3 for arithmetic inconsistency. Status 2 requires restarting both prime searches. There is no private-exponent output. The caller retains and ultimately scrubs its own p/q copies.
 
-Inputs p/q are 1024 bits. The public modulus result is 2048 bits. A single result/status remains stable until `result_valid_o && result_ready_i`. No further request is accepted while busy or holding a result. Reset asynchronously clears working registers and invalidates results; callers must provide the system's synchronized reset release.
+Reset immediately invalidates outputs and clears captured-input/public-output staging and scalar registers. It then sweeps all 512 private RAM words and performs a separate read of the last zeroed word to clear the RAM output latch. Ready returns after 514 rising edges. Success and failure use the same sweep before result-valid; only a successful public modulus remains in staging. The multiplier's actual pipeline reset is held throughout cleanup. RAM contents are never asynchronously reset.
 
-| Status | Meaning | Controller response |
-| --- | --- | --- |
-| 0 | Pair relationships valid | Retain original p/q externally for protected handoff; use returned n. |
-| 1 | Bounds/parity/separation or exponent incompatibility | Reject the pair; do not claim success. |
-| 2 | Canonical d is too small | Discard both primes and restart the pair search. |
-| 3 | Arithmetic consistency fault | Fail the operation and perform subsystem cleanup. |
+## Resource allocation and layout
 
-Only valid status 0 exposes n; n is zero during computation, after reset/acceptance and for failures. There is no d output port. `d_reg` is observed hierarchically by the testbench before scrub, then cleared. The caller's p/q copies remain the caller's cleanup responsibility.
+The pair service uses one 512x32 RAM (2 KiB; one M20K) and the shared generic/Altera wrapper contract, plus a 32x32 multiplier. This explicitly increases the accelerator's private RAM allocation from 16 KiB to **18 KiB**, using nine M20Ks total for math and pair scratch out of the board's 358. CPU-local RAM and public transport storage are separate allocations. The extra 2 KiB replaces thousands of private register bits and parallel wide arithmetic units.
 
-## Datapath and states
+| Word addresses | Contents |
+| --- | --- |
+| 0–31, 32–63 | Captured p, q |
+| 64–95, 96–127 | Binary GCD working operands |
+| 128–191 | Public product n |
+| 192–255 | First phi, then lambda |
+| 256–319 | Restoring-division remainder |
+| 320–384 | Numerator, then canonical d with an overflow word |
+| 385–511 | Reserved; still scrubbed |
 
-- Bounds check requires odd p/q at least `ceil(sqrt(2)*2^1023)` and separation greater than `2^924`.
-- Schoolbook multiplication visits 32-by-32 limbs through `keygen_mult32`, accumulating each 64-bit product plus a 32-bit destination word and carry. No 1024-bit multiplier is inferred.
-- Compute phi from `n-p-q+1`; binary shift/subtract GCD computes `gcd(p-1,q-1)` and restores shared powers of two one shift per clock.
-- A 2048-step restoring divider calculates lambda=phi/gcd and verifies zero remainder. Its emitted quotient bits simultaneously compute lambda modulo 65537.
-- A zero residue indicates exponent incompatibility. Otherwise a bounded modular-add search finds k in 1..65536 with `k*lambda = -1 mod65537`. This takes at most 65,536 clocks (about 1.31 ms at a hypothetical 50 MHz; achieved FPGA timing is unverified).
-- Seventeen shift/add steps form the 2065-bit numerator `1+k*lambda`. A restoring divide by 65537 yields canonical d with remainder zero. The quotient must fit 2048 bits and satisfy `2^1024 < d < lambda`. Exact division establishes `65537*d = 1+k*lambda` without a redundant wide multiply.
-- Scrub clears captured factors, lambda, d, GCD/division operands, carries and counters. Three scrub clocks also drain the multiplier's two registered stages with zero operands before result-valid appears. Only a successful public modulus survives until acceptance.
+Inputs are captured atomically in the 2048-bit staging register before serial RAM writes, so callers may change p/q immediately after the handshake. Staging is then cleared and reused for final n. The internal limb ALU reads private RAM synchronously and performs compare, subtraction and shifts over 32-bit words. No private operand is available through CPU control descriptors.
 
-Wide add/subtract/compare operations remain in this first implementation; place-and-route must establish achievable frequency. This module has not yet been synthesized or fitted. It depends on the resource-wrapper MR (`keygen_mult32`, generic or actual Altera implementation), not an IP Catalog-generated block.
+## Arithmetic sequence
 
-## Validation
+1. Require odd p/q at least `ceil(sqrt(2)*2^1023)` and absolute separation strictly greater than `2^924`.
+2. Form n and phi=(p-1)*(q-1) with schoolbook limb multiplication. Verify exactly 2048 modulus bits.
+3. Find gcd(p-1,q-1) with binary GCD and restore common powers of two. All shifts and subtractions use the shared 32-bit ALU.
+4. Restore-divide phi by the GCD over 2048 quotient bits, check zero remainder/nonzero lambda, and compute lambda modulo 65537 from emitted quotient bits.
+5. Reject zero residue. Search k=1..65536 for k*lambda congruent to -1 modulo 65537. A scalar limb multiply forms 1+k*lambda.
+6. Exactly divide this numerator by 65537 using a 17-bit remainder. Verify zero remainder, no quotient overflow, and `2^1024 < d < lambda`. Exact division establishes `65537*d = 1+k*lambda`.
+7. Assemble only successful public n, then scrub before releasing the result.
 
-`reference/pair_vectors.py` independently uses Python integers, `math.lcm` and modular inverse to generate eight fixtures: three real RSA-2048 prime pairs, a mathematically constructed low-d case, an exponent-incompatible pair, and parity/separation/range rejections. The low-d fixture uses lambda=60*g congruent to -1 modulo 65537, so d=(lambda+1)/65537 is genuinely small; no production state/threshold is weakened. These special arithmetic fixtures need not be prime because primality is explicitly a caller prerequisite.
+The implementation is variable-time and does not claim physical side-channel resistance.
+
+## Reproducible validation
+
+`reference/pair_vectors.py` uses independent Python integers, `math.lcm`, and modular inverse. Its eight fixtures cover three full RSA prime pairs, genuinely small d, exponent incompatibility, and parity/separation/range rejection. The low-d fixture deliberately need not be prime: this unit checks pair arithmetic after caller-side primality. The testbench compares both private lambda and d in monitored RAM before scrub, compares public n/status, verifies every RAM read against accepted writes, checks all 512 words were overwritten with zero, and checks the actual RAM output latch and multiplier/scalar registers after cleanup. It also stalls results, changes accepted inputs, resets twelve busy phases, and resets a held result.
 
 ```powershell
-& 'Key Generation/scripts/simulate_pair_check.ps1' -BuildDirectory '<absolute class AI/tmp scratch directory>'
+& 'Key Generation/scripts/simulate_pair_check.ps1' -BuildDirectory '<absolute scratch directory>' -Corpus '<absolute expected_keys.json>'
+& 'Key Generation/scripts/fit_pair_check.ps1' -BuildDirectory '<absolute fit scratch directory>'
 ```
 
-When wrappers are in another reviewed worktree, pass `-IpDirectory` pointing to its `Key Generation/IP`. Source compiles in Verilog-2001 mode; only the testbench uses SystemVerilog. The runner compiles and simulates generic and Altera variants separately, using the installed real `220model.v`/`lpm_mult` for Altera, and rejects missing explicit PASS output.
+`-Backend generic` or `-Backend altera` selects one simulation; the default runs both. Actual Altera simulation compiles installed `220model.v` and `altera_mf.v`, without substituting generic models. `test_pair_verilator.sh ABSOLUTE_BUILD_DIRECTORY ABSOLUTE_CORPUS_JSON` is the faster generic runner under WSL/Linux. Source is Verilog-2001; only tests use SystemVerilog. The fitter smoke test uses virtual pins and is not a board image or I/O signoff.
 
-October 13 results: both variants passed all eight fixtures, canonical d comparisons, stable output stalls, private cleanup, reset in twelve busy phases and reset of a held result. Both completed at simulation time 5,205,500 ns. Source and test compilation had zero errors/warnings; simulation reported only the expected `+acc` optimization warning needed for private-register observation. This proves arithmetic simulation behavior, not FPGA fit, timing, whole-key ownership or production physical security.
+Initial Quartus 26.1 synthesis for A5ED013BB32AE4SCS estimates 5,339 ALMs and 2,639 registers, with one M20K and two DSP summary units. Final route/timing and completed functional regression evidence are recorded separately; synthesis alone is not a passing integration gate.
+
+The optimized generic regression passes all eight independent n/lambda/d fixtures, repeated jobs, stable result stalls, full-RAM/output-latch cleanup and twelve busy reset phases. Successful pair latencies are 2,692,927 / 2,721,097 / 2,699,119 cycles; the genuine low-d case takes 1,908,612 cycles. Evidence: AI/tmp/keygen-pair-limb-final/result.log. Actual Altera regression and routed timing remain separate gates.
+
+The strengthened cleanup suite also passes (AI/tmp/keygen-pair-limb-scrub/result.log), checking every private scalar/control field in addition to RAM, its output latch, and multiplier registers. No pair RTL changed between these two successful runs.
