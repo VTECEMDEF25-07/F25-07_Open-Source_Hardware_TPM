@@ -1,7 +1,14 @@
 `timescale 1ns/1ps
 // Scripted service peer validates CPU control flow only, not RSA arithmetic.
 module tb_rsa_firmware;
+`ifdef KEYGEN_BLOCKING_STATUS_TEST
+    localparam BLOCKING_STATUS=1;
+`else
+    localparam BLOCKING_STATUS=0;
+`endif
+    integer stall_cycles=3000,fetch_count=0,fetch_start;
     reg clock=0; always #10 clock=~clock;
+    always @(posedge clock) if(dut.instruction_progress) fetch_count=fetch_count+1;
     reg reset_n=0,work_valid=0,completion_ready=0,command_ready=0,response_valid=0;
     reg [7:0] response_status=0;
     wire work_ready,completion_valid,command_valid,response_ready;
@@ -17,7 +24,7 @@ module tb_rsa_firmware;
         end
     end
     reg [31:0] saved_instruction;
-    keygen_rsa_softcore #(.WATCHDOG_BITS(10),.COMMAND_TIMEOUT_CYCLES(1000)) dut(
+    keygen_rsa_softcore #(.WATCHDOG_BITS(10),.COMMAND_TIMEOUT_CYCLES(1000),.BLOCKING_STATUS(BLOCKING_STATUS)) dut(
         .clock_i(clock),.reset_n_i(reset_n),.work_valid_i(work_valid),.work_ready_o(work_ready),
         .completion_valid_o(completion_valid),.completion_ready_i(completion_ready),.completion_status_o(completion_status),
         .command_valid_o(command_valid),.command_ready_i(command_ready),.command_opcode_o(opcode),
@@ -39,7 +46,11 @@ module tb_rsa_firmware;
                 @(negedge clock);
             end
             command_ready=1; @(negedge clock); command_ready=0;
-            wait(response_ready); repeat(5) @(negedge clock);
+            wait(response_ready);
+            if(op=='h13) begin
+                repeat(100) @(negedge clock);
+                if(BLOCKING_STATUS && !dut.service_wait) $fatal(1,"MODEXP did not enter blocked STATUS wait");
+            end else repeat(5) @(negedge clock);
             response_status=response;response_valid=1;@(negedge clock);response_valid=0;
             command_count=command_count+1;
         end
@@ -88,6 +99,7 @@ module tb_rsa_firmware;
         end
     endtask
     initial begin
+        if($value$plusargs("STALL_CYCLES=%d",stall_cycles)) begin end
         repeat(4) @(negedge clock);reset_n=1;
         start_job();
         prime(0,1);prime(1,1);expect_command('h34,0,0,0,0,'h10);
@@ -98,7 +110,10 @@ module tb_rsa_firmware;
         // External response stall must not trip the instruction-progress watchdog.
         start_job();wait(command_valid);@(negedge clock);command_ready=1;
         @(negedge clock);command_ready=0;wait(response_ready);
-        repeat(3000) @(negedge clock);
+        repeat(100) @(negedge clock);fetch_start=fetch_count;
+        repeat(stall_cycles) @(negedge clock);
+        $display("MEASURE DRAW blocking=%0d cycles=%0d fetches=%0d",BLOCKING_STATUS,stall_cycles,fetch_count-fetch_start);
+        if(BLOCKING_STATUS && fetch_count!=fetch_start) $fatal(1,"blocked STATUS still executes CPU instructions");
         if(completion_valid) $fatal(1,"watchdog treated service wait as failure");
         reset_n=0;repeat(4) @(negedge clock);reset_n=1;
         wait(work_ready);if(completion_valid || command_valid) $fatal(1,"abort produced stale completion");

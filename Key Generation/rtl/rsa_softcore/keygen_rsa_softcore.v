@@ -2,7 +2,7 @@
 // Accelerator P/Q/N remain owned by the outer protected-result controller.
 module keygen_rsa_softcore #(
     parameter ROM_FILE="rsa_control.hex", parameter WATCHDOG_BITS=20,
-    parameter COMMAND_TIMEOUT_CYCLES=50000000
+    parameter COMMAND_TIMEOUT_CYCLES=50000000, parameter BLOCKING_STATUS=1
 )(
     input wire clock_i, input wire reset_n_i,
     input wire work_valid_i, output wire work_ready_o,
@@ -25,16 +25,17 @@ module keygen_rsa_softcore #(
     wire response_stalled=command_pending_reg && !(response_valid_i && response_ready_o);
     wire command_timeout=(command_stalled || response_stalled) &&
                          command_watchdog_reg>=COMMAND_TIMEOUT_CYCLES-1;
-    wire child_ready, child_trap, instruction_progress;
+    wire child_ready, child_trap, instruction_progress, service_wait;
+    wire instruction_timeout = &watchdog_reg && !instruction_progress && !service_wait;
     wire [31:0] report;
     wire child_reset_n=reset_n_i && state_reg!=CLEAR;
     wire execute_en=state_reg==RUN;
     assign work_ready_o=reset_n_i && state_reg==IDLE && child_ready;
     assign completion_valid_o=reset_n_i && state_reg==DONE;
     assign completion_status_o=completion_valid_o ? status_reg : 8'd0;
-    keygen_softcore_control #(.ROM_FILE(ROM_FILE)) control(
+    keygen_softcore_control #(.ROM_FILE(ROM_FILE),.BLOCKING_STATUS(BLOCKING_STATUS)) control(
         .clock_i(clock_i),.reset_n_i(child_reset_n),.execute_en_i(execute_en),
-        .ready_o(child_ready),.trap_o(child_trap),.instruction_progress_o(instruction_progress),
+        .ready_o(child_ready),.trap_o(child_trap),.instruction_progress_o(instruction_progress),.service_wait_o(service_wait),
         .command_valid_o(command_valid_o),.command_ready_i(command_ready_i),
         .command_opcode_o(command_opcode_o),.command_arg0_o(command_arg0_o),
         .command_arg1_o(command_arg1_o),.command_arg2_o(command_arg2_o),.command_arg3_o(command_arg3_o),
@@ -64,11 +65,11 @@ module keygen_rsa_softcore #(
             INIT: if(child_ready) state_reg<=IDLE;
             IDLE: if(work_valid_i && work_ready_o) begin state_reg<=RUN; watchdog_reg<=0; end
             RUN: begin
-                if(instruction_progress) watchdog_reg<=0;
+                if(instruction_progress || service_wait) watchdog_reg<=0;
                 else watchdog_reg<=watchdog_reg+1'b1;
-                if(child_trap || &watchdog_reg || command_timeout || report[31:24]==8'ha5) begin
+                if(child_trap || instruction_timeout || command_timeout || report[31:24]==8'ha5) begin
                     if(child_trap) status_reg<=8'd6;
-                    else if(&watchdog_reg || command_timeout) status_reg<=8'd7;
+                    else if(instruction_timeout || command_timeout) status_reg<=8'd7;
                     else status_reg<=report[7:0];
                     state_reg<=CLEAR; clear_count_reg<=0;
                 end

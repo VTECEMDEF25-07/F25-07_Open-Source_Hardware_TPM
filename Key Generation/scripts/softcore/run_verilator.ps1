@@ -1,4 +1,4 @@
-param([Parameter(Mandatory=$true)][string]$Toolchain,[ValidateSet('Firmware','Memory')][string]$Test='Firmware',[string]$Python='C:/Python314/python.exe',[string]$Distro='Ubuntu-24.04',[switch]$Exhaustion)
+param([Parameter(Mandatory=$true)][string]$Toolchain,[ValidateSet('Firmware','Memory')][string]$Test='Firmware',[string]$Python='C:/Python314/python.exe',[string]$Distro='Ubuntu-24.04',[switch]$Exhaustion,[switch]$BlockingStatus)
 $ErrorActionPreference='Stop'
 $taskRoot=(Resolve-Path "$PSScriptRoot/../..").Path
 $taskBuild=Join-Path $taskRoot 'build/softcore'
@@ -16,7 +16,8 @@ $taskTop=if($Test -eq 'Memory'){'tb_softcore_memory'}else{'tb_rsa_firmware'}
 $taskObject="$taskAlias/build/softcore/obj_$taskTop"
 $taskSources=@('IP/keygen_ram32_generic.v','IP/keygen_ram32.v','IP/third_party/picorv32/picorv32.v','rtl/rsa_softcore/keygen_softcore_control.v','rtl/rsa_softcore/keygen_rsa_softcore.v',"testbench/softcore/$taskTop.sv") | ForEach-Object {"$taskAlias/$_"}
 $taskSimulationArgs=if($Exhaustion){'+EXHAUSTION'}else{''}
-$taskCommand="cd $taskAlias/build/softcore && verilator --binary --timing -j 2 -Wno-fatal -MAKEFLAGS CURDIR=$taskObject --top-module $taskTop --Mdir $taskObject $($taskSources -join ' ') > $taskTop-build.log 2>&1 && $taskObject/V$taskTop $taskSimulationArgs > $taskTop-run.log 2>&1"
+$taskDefines=if($BlockingStatus){'+define+KEYGEN_BLOCKING_STATUS_TEST'}else{''}
+$taskCommand="cd $taskAlias/build/softcore && verilator --binary --timing -j 2 -Wno-fatal -MAKEFLAGS CURDIR=$taskObject --top-module $taskTop $taskDefines --Mdir $taskObject $($taskSources -join ' ') > $taskTop-build.log 2>&1 && $taskObject/V$taskTop $taskSimulationArgs > $taskTop-run.log 2>&1"
 & wsl -d $Distro --exec bash -lc $taskCommand
 $taskExit=$LASTEXITCODE
 Get-Content "$taskBuild/$taskTop-build.log" -Tail 5

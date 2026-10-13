@@ -86,3 +86,13 @@ Stable Verilator5.052 was also built locally from official tag v5.052 (source co
 RAM initialization now performs 4096 zero writes, a synchronous read of the cleared final word, and one wait edge before readiness. This clears the wrapper/vendor RAM output latch as well as its array. The added two-cycle tail runs after external reset and every job's cleanup. No CPU interface or firmware change is required.
 
 The memory-instruction test creates a nonzero RAM output, aborts the active job with reset, requires a zero latch before readiness, and then runs two complete jobs. Both normal completion and reset recovery must clear the stale latch. This fix is independent of the optional blocking-STATUS performance experiment.
+
+## Blocking service-status reads
+
+`BLOCKING_STATUS=1` is the default. Firmware STATUS reads wait at the CPU native bus while a descriptor is outstanding, then return the completed status. No firmware image change is required. `BLOCKING_STATUS=0` retains polling for differential tests. Other MMIO accesses, idle STATUS reads, and completed STATUS reads retain their previous behavior.
+
+The wait exemption is restricted to a valid non-instruction read of STATUS, with no write strobes or completed acknowledgment, while BUSY is set and DONE is clear. Only that exact wait pauses the instruction-progress watchdog. The independent descriptor deadline still bounds command acceptance and accepted internal-service response waits; accepted DRAW responses may stall indefinitely. CPU traps retain priority, and an unrelated instruction-fetch stall still faults.
+
+With unchanged installed Altera RAM models, Questa2024.3 passed all119 scripted descriptors in both modes, including stuck internal response, command-ready timeout, legal long DRAW, independent fetch timeout, trap, delayed MODEXP completion, reset and cleanup. During a1000000-cycle DRAW wait, polling executed222223 instruction fetches; blocking executed0. Measured vsim process wall time was29.3619318s polling versus11.5525146s blocking (2.54x for this microbenchmark, including simulator optimization/load). This is not a full-core speedup or area measurement. Evidence: build/softcore/benchmark_Altera.json and benchmark_AlteraBlocking.json, with corresponding RSA transcripts. Both modes also passed the stale RAM latch/reset-recovery memory test.
+
+Generic Verilator blocking-mode testing passes the production p/q retry limits across61592 scripted descriptors. Final whole-core acceptance and FPGA fit must use the enabled implementation; historical full-key measurements above predate this change.

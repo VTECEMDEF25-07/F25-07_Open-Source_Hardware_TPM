@@ -1,10 +1,11 @@
 // RV32I CPU substrate. Descriptor-only MMIO; no secret operand window.
 // ROM_FILE selects the feasibility self-test or compiled RSA control firmware.
 module keygen_softcore_control #(
-    parameter ROM_FILE = "softcore_boot.hex"
+    parameter ROM_FILE = "softcore_boot.hex",
+    parameter BLOCKING_STATUS = 1
 ) (
     input wire clock_i, input wire reset_n_i, input wire execute_en_i,
-    output wire ready_o, output wire trap_o, output wire instruction_progress_o,
+    output wire ready_o, output wire trap_o, output wire instruction_progress_o, output wire service_wait_o,
     output wire command_valid_o, input wire command_ready_i,
     output wire [7:0] command_opcode_o,
     output wire [31:0] command_arg0_o, command_arg1_o, command_arg2_o, command_arg3_o,
@@ -56,6 +57,11 @@ module keygen_softcore_control #(
     initial $readmemh(ROM_FILE, rom_reg);
     assign ready_o = reset_n_i && scrub_done_reg;
     assign instruction_progress_o = cpu_reset_n && memory_valid && memory_ready_reg && memory_instruction;
+    // Exact native bus wait indication, not merely an outstanding descriptor.
+    // It cannot hide a CPU fetch failure or an invalid/non-STATUS transaction.
+    assign service_wait_o = BLOCKING_STATUS && cpu_reset_n && memory_valid &&
+        !memory_instruction && !write_access && !memory_ready_reg &&
+        memory_address[31:2]==30'h10000001 && busy_reg && !done_reg;
     assign trap_o = cpu_trap || bus_fault_reg;
     assign command_valid_o = cpu_reset_n && command_valid_reg;
     assign command_opcode_o = command_valid_o ? command_opcode_reg : 8'd0;
@@ -144,7 +150,10 @@ module keygen_softcore_control #(
                             default: bus_fault_reg <= 1;
                         endcase
                     end else case (memory_address[4:2])
-                        3'd1: memory_read_reg <= {16'd0, response_status_reg, 6'd0, done_reg, busy_reg};
+                        3'd1: begin
+                            if(service_wait_o) memory_ready_reg <= 0;
+                            else memory_read_reg <= {16'd0, response_status_reg, 6'd0, done_reg, busy_reg};
+                        end
                         3'd7: memory_read_reg <= report_reg;
                         default: bus_fault_reg <= 1;
                     endcase
