@@ -17,6 +17,8 @@ class FakeAdapter:
         self.reg={0:0x4b473031,1:4,3:1,6:1000,7:0,13:0x002a0020,14:4000,15:0x0300}
         self.words=[];self.metas=[];self.corrupt_data=False;self.corrupt_meta=False;self.error=False
         self.acked=False
+    def reset_board_core(self):
+        self.__init__()
     def transfer(self,data):
         assert len(data)==7
         return bytes(7)
@@ -44,8 +46,8 @@ class FakeAdapter:
                 self.reg[3]=0x208 if self.error else 12
             if address==2 and value==2:self.reg[3]=1;self.acked=True
             return 0
-        if address==9:return self.words[self.reg[8]]
-        if address==10:return self.metas[self.reg[8]]
+        if address==9:return self.words[self.reg[8]] if self.words else 0
+        if address==10:return self.metas[self.reg[8]] if self.metas else 0
         return self.reg.get(address,0)
 
 class HostTests(unittest.TestCase):
@@ -77,5 +79,29 @@ class HostTests(unittest.TestCase):
     def test_wrong_image(self):
         adapter=FakeAdapter();adapter.reg[1]=0
         with self.assertRaisesRegex(RuntimeError,'test-image'):host.identify(adapter)
+
+    def test_soak_mixes_profiles_and_checkpoints(self):
+        results=[];checkpoints=[]
+        times=[0,0,10,10,20,20,30,30,30]
+        with patch.object(host.time,'monotonic',side_effect=times),patch.object(host,'run_key',return_value={'result':'PASS'}) as run:
+            summary=host.soak(FakeAdapter(),[FIXTURE],results,lambda:checkpoints.append(1),duration=25)
+        self.assertEqual([call.args[1] for call in run.call_args_list],[0,1,2])
+        self.assertEqual(summary['soak_jobs'],3);self.assertEqual(len(checkpoints),3)
+    def test_soak_failure_does_not_claim_pass(self):
+        with patch.object(host.time,'monotonic',side_effect=[0,0]),patch.object(host,'run_key',side_effect=RuntimeError('bad result')):
+            with self.assertRaisesRegex(RuntimeError,'bad result'):host.soak(FakeAdapter(),[FIXTURE],[],duration=25)
+    def test_reset_suite_boundaries_and_replay(self):
+        adapter=FakeAdapter();results=[]
+        def configure(adapter,profile,fixture,request_id,controls):
+            adapter.reg[3]=4 if controls==4 else 12 if profile==0 and controls==0 else 2
+            adapter.reg[12]=8
+        with patch.object(host,'configure_request',side_effect=configure),patch.object(host.time,'sleep'),patch.object(host,'run_key',side_effect=lambda a,p,f,r:{'profile':p,'result':'PASS'}):
+            host.reset_replay(adapter,FIXTURE,results)
+        self.assertEqual(len(results),8)
+        self.assertEqual([x['profile'] for x in results if 'profile' in x],[0,1,2])
+    def test_reset_stale_data_rejected(self):
+        adapter=FakeAdapter()
+        with patch.object(adapter,'reset_board_core',side_effect=lambda:adapter.reg.update({3:13})):
+            with self.assertRaisesRegex(RuntimeError,'stale status'):host.reset_and_check(adapter)
 
 if __name__=='__main__':unittest.main()

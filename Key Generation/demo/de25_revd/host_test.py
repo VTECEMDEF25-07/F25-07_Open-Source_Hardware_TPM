@@ -176,7 +176,11 @@ def run_key(adapter, profile, fixture, request_id):
     started = time.monotonic()
     adapter.register(2,1)
     samples = []
-    status = poll(adapter,8,samples)
+    try:
+        status = poll(adapter,8,samples)
+    except Exception as error:
+        error.fan_samples=samples
+        raise
     elapsed = time.monotonic()-started
     try:
         if status>>8 & 15:
@@ -223,14 +227,85 @@ def run_key(adapter, profile, fixture, request_id):
                 raise RuntimeError("RSA deterministic corpus mismatch")
         return {"profile":profile,"seed_id":fixture["id"],"request_id":request_id,"result":"PASS",
                 "core_cycles":cycles,"core_seconds":cycles/50000000,"spi_completion_seconds":elapsed,"fan_samples":samples}
+    except Exception as error:
+        error.fan_samples=samples
+        raise
     finally:
         adapter.register(2,2)
         poll(adapter,1)
 
 
+
+def configure_request(adapter, profile, fixture, request_id, controls=0):
+    poll(adapter,1)
+    adapter.register(11,controls)
+    seed=bytes.fromhex(fixture["seed_hex"])
+    for index in range(8):
+        adapter.register(16+index,int.from_bytes(seed[index*4:index*4+4],"big"))
+    adapter.register(4,profile)
+    adapter.register(5,request_id)
+    adapter.register(2,1)
+
+
+def reset_and_check(adapter):
+    adapter.reset_board_core()
+    poll(adapter,1)
+    status=adapter.register(3)
+    if status & 0xE or adapter.register(9) or adapter.register(10):
+        raise RuntimeError("reset exposed stale status/result")
+    if any(adapter.register(address) for address in (4,5,8,11,63,*range(16,24))):
+        raise RuntimeError("reset did not clear demo configuration")
+
+
+def reset_replay(adapter, fixture, results, checkpoint=lambda:None):
+    # These are observable boundaries, not an assertion about hidden RSA subphases.
+    for name,profile,controls,mask in (
+        ("generation_stall",2,1,2),
+        ("rsa_active",2,0,2),
+        ("result_stall",0,2,2),
+        ("ownership_stall",1,4,4),
+        ("held_success",0,0,8),
+    ):
+        reset_and_check(adapter)
+        configure_request(adapter,profile,fixture,0xA000+len(results),controls)
+        poll(adapter,mask)
+        if name=="rsa_active":
+            time.sleep(.05)
+            if not adapter.register(3)&2:raise RuntimeError("RSA was not busy at reset boundary")
+        if name=="result_stall":
+            deadline=time.monotonic()+TIMEOUT
+            while not adapter.register(12)&8:
+                if time.monotonic()>=deadline:raise TimeoutError("result stall not reached")
+                time.sleep(.01)
+        reset_and_check(adapter)
+        results.append({"reset_boundary":name,"result":"PASS","fan":telemetry(adapter)})
+        checkpoint()
+    # Replay each profile after interruption; run_key checks every word against its oracle.
+    for profile in (0,1,2):
+        result=run_key(adapter,profile,fixture,0xB000+profile)
+        result["reset_replay"]=True
+        results.append(result)
+        checkpoint()
+
+
+def soak(adapter, seeds, results, checkpoint=lambda:None, duration=1800):
+    if duration<=0:raise ValueError("soak duration must be positive")
+    started=time.monotonic()
+    index=0
+    while time.monotonic()-started < duration:
+        profile=index%3
+        fixture=seeds[(index//3)%len(seeds)]
+        result=run_key(adapter,profile,fixture,index+1)
+        result["soak_elapsed_seconds"]=time.monotonic()-started
+        results.append(result)
+        checkpoint()
+        index+=1
+    return {"soak_seconds":time.monotonic()-started,"soak_jobs":index}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--action",choices=("transport","aes","rsa","corpus"),required=True)
+    parser.add_argument("--action",choices=("transport","aes","rsa","corpus","soak","reset-replay"),required=True)
     parser.add_argument("--seed",type=int,choices=range(1,21),default=1)
     parser.add_argument("--frequency",type=int,choices=(100000,500000,1000000),default=1000000)
     parser.add_argument("--reset",action="store_true",help="pulse gray core reset; fan control stays active")
@@ -239,19 +314,28 @@ def main():
     reference = Path(__file__).resolve().parents[2]/"reference"
     sys.path.insert(0,str(reference))
     seeds = json.loads((reference/"seeds.json").read_text())["seeds"]
-    report = {"adapter_serial":SERIAL,"frequency_hz":args.frequency,"action":args.action,"results":[]}
+    args.report.parent.mkdir(parents=True,exist_ok=True)
+    report = {"adapter_serial":SERIAL,"frequency_hz":args.frequency,"action":args.action,"result":"RUNNING","results":[]}
+    def checkpoint():
+        args.report.write_text(json.dumps(report,indent=2)+"\n")
     try:
         with SpiAdapter(args.frequency) as adapter:
             if args.reset:
                 adapter.reset_board_core()
             report.update(identify(adapter))
             report.update(transport_test(adapter))
+            checkpoint()
+            if args.action=="soak":
+                report.update(soak(adapter,seeds,report["results"],checkpoint))
+            elif args.action=="reset-replay":
+                reset_replay(adapter,seeds[args.seed-1],report["results"],checkpoint)
             profiles = (0,1) if args.action=="aes" else (2,) if args.action in ("rsa","corpus") else ()
             chosen = seeds if args.action=="corpus" else [seeds[args.seed-1]]
             for profile in profiles:
                 for fixture in chosen:
                     result = run_key(adapter,profile,fixture,fixture["id"])
                     report["results"].append(result)
+                    checkpoint()
                     print(f"PASS profile={profile} seed={fixture['id']} cycles={result['core_cycles']}",flush=True)
             if args.action=="corpus":
                 report["median_core_seconds"] = statistics.median(x["core_seconds"] for x in report["results"])
@@ -260,6 +344,7 @@ def main():
         report["result"]="PASS"
     except Exception as error:
         report["result"]="FAIL";report["error"]=str(error)
+        report["failure_fan_samples"]=getattr(error,"fan_samples",[])
     args.report.parent.mkdir(parents=True,exist_ok=True)
     args.report.write_text(json.dumps(report,indent=2)+"\n")
     print(report["result"]+": "+str(args.report))

@@ -77,5 +77,11 @@ RSA results must match the frozen deterministic corpus and pass the independent 
 ## Initial evidence
 
 - Questa SPI/receiver/telemetry model suite: PASS, 29.414 ms simulated; source compiled as Verilog-2001 with zero compiler warnings/errors. The simulator's `+acc` optimization warning is expected.
-- Offline Python host suite: eight tests PASS, including RSA mathematical validation, corrupt AES/metadata rejection, error acknowledgement, timeout and image identity.
+- Offline Python host suite: twelve tests PASS, including RSA mathematical validation, corrupt AES/metadata rejection, error acknowledgement, timeout and image identity.
 - No board programming or electrical testing is performed by these preparation steps. Fitted-resource, timing and physical evidence must be attached after the corresponding runs finish.
+
+### Soak and reset/replay
+
+`--action soak` runs mixed AES-128, AES-256 and RSA jobs for at least 30 minutes, cycling the twenty fixture seeds. Each job retains the 180-second bound; a job already in flight may finish after the 30-minute mark. Every completed job checkpoints the report, and failures preserve earlier results and collected fan samples. A PASS means all completed jobs verified; inspect sensor readiness, alarms and trends separately before accepting thermal behavior.
+
+`--action reset-replay` tests reset during a generation stall, during an actively running RSA request (observable busy state after 50 ms), while AES result delivery is stalled, while ownership is stalled, and while success is held. It checks that result/status/configuration are cleared, then regenerates and verifies all three profiles. This is a board boundary/reset test; exact RSA candidate, witness and pair-check phase reset coverage remains in the RTL integration tests. The offline suite checks soak sequencing/checkpointing/failure and reset-suite orchestration without opening hardware.
