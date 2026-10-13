@@ -8,6 +8,8 @@ IGNORED = [
     'Key Generation/demo/de25/output_files/keygen.sof',
     'Key Generation/firmware/generated/image.bin', 'Key Generation/firmware/start.o',
     'Key Generation/testbench/work/_info', 'Key Generation/reference/__pycache__/a.pyc',
+    'Key Generation/demo/de25/dni/sandboxes/generated.sopcinfo',
+    'Key Generation/demo/de25/tmp-clearbox/generated.tdf',
 ]
 TRACKABLE = [
     'Key Generation/demo/de25/keygen.qpf', 'Key Generation/demo/de25/keygen.qsf',

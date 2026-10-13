@@ -5,6 +5,8 @@ output_files/
 greybox_tmp/
 qdb/
 ip_user_files/
+dni/
+tmp-clearbox/
 *.qdb
 *.ddb
 *.qdf
