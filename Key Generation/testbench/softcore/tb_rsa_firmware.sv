@@ -17,7 +17,7 @@ module tb_rsa_firmware;
         end
     end
     reg [31:0] saved_instruction;
-    keygen_rsa_softcore #(.WATCHDOG_BITS(10)) dut(
+    keygen_rsa_softcore #(.WATCHDOG_BITS(10),.COMMAND_TIMEOUT_CYCLES(1000)) dut(
         .clock_i(clock),.reset_n_i(reset_n),.work_valid_i(work_valid),.work_ready_o(work_ready),
         .completion_valid_o(completion_valid),.completion_ready_i(completion_ready),.completion_status_o(completion_status),
         .command_valid_o(command_valid),.command_ready_i(command_ready),.command_opcode_o(opcode),
@@ -96,15 +96,27 @@ module tb_rsa_firmware;
         start_job();expect_command('h30,0,32,1,0,1);check_completion(2);
         start_job();expect_command('h30,0,32,1,0,0);expect_command('h31,0,32,64,0,1);check_completion(4);
         // External response stall must not trip the instruction-progress watchdog.
-        start_job();wait(command_valid);repeat(3000) @(negedge clock);
+        start_job();wait(command_valid);@(negedge clock);command_ready=1;
+        @(negedge clock);command_ready=0;wait(response_ready);
+        repeat(3000) @(negedge clock);
         if(completion_valid) $fatal(1,"watchdog treated service wait as failure");
         reset_n=0;repeat(4) @(negedge clock);reset_n=1;
         wait(work_ready);if(completion_valid || command_valid) $fatal(1,"abort produced stale completion");
+        // A stuck internal command link is bounded, including DRAW acceptance.
+        start_job();wait(command_valid);check_completion(7);
+        // Polling instructions must not hide a stuck accepted arithmetic service.
+        start_job();expect_command('h30,0,32,1,0,0);
+        wait(command_valid);@(negedge clock);
+        if(opcode!='h31) $fatal(1,"expected PREPARE_PRIME");
+        command_ready=1;@(negedge clock);command_ready=0;
+        wait(response_ready);check_completion(7);
         // Real illegal instruction causes CPU trap.
         saved_instruction=dut.control.rom_reg[0];dut.control.rom_reg[0]=32'hffffffff;
         start_job();check_completion(6);dut.control.rom_reg[0]=saved_instruction;
         // Stall instruction fetch, then require watchdog recovery and cleanup.
-        start_job();wait(command_valid);force dut.control.memory_valid=0;
+        start_job();wait(command_valid);@(negedge clock);command_ready=1;
+        @(negedge clock);command_ready=0;wait(response_ready);
+        force dut.control.memory_valid=0;
         wait(completion_valid);release dut.control.memory_valid;check_completion(7);
         start_job();expect_command('h30,0,32,1,0,1);check_completion(2);
         // Optional real-loop boundary tests; no reduced firmware retry limits.

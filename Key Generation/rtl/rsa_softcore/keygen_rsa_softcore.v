@@ -1,7 +1,8 @@
 // One RSA firmware job at a time; completion follows local CPU/RAM cleanup.
 // Accelerator P/Q/N remain owned by the outer protected-result controller.
 module keygen_rsa_softcore #(
-    parameter ROM_FILE="rsa_control.hex", parameter WATCHDOG_BITS=20
+    parameter ROM_FILE="rsa_control.hex", parameter WATCHDOG_BITS=20,
+    parameter COMMAND_TIMEOUT_CYCLES=50000000
 )(
     input wire clock_i, input wire reset_n_i,
     input wire work_valid_i, output wire work_ready_o,
@@ -18,6 +19,12 @@ module keygen_rsa_softcore #(
     reg [7:0] status_reg;
     reg [1:0] clear_count_reg;
     reg [WATCHDOG_BITS-1:0] watchdog_reg;
+    reg [31:0] command_watchdog_reg;
+    reg command_pending_reg;
+    wire command_stalled=command_valid_o && !command_ready_i;
+    wire response_stalled=command_pending_reg && !(response_valid_i && response_ready_o);
+    wire command_timeout=(command_stalled || response_stalled) &&
+                         command_watchdog_reg>=COMMAND_TIMEOUT_CYCLES-1;
     wire child_ready, child_trap, instruction_progress;
     wire [31:0] report;
     wire child_reset_n=reset_n_i && state_reg!=CLEAR;
@@ -33,6 +40,23 @@ module keygen_rsa_softcore #(
         .command_arg1_o(command_arg1_o),.command_arg2_o(command_arg2_o),.command_arg3_o(command_arg3_o),
         .response_valid_i(response_valid_i),.response_ready_o(response_ready_o),
         .response_status_i(response_status_i),.report_o(report));
+    // Link acceptance is internal and bounded even for DRAW. Once DRAW is
+    // accepted, its external generation source may stall without a deadline.
+    // Other descriptors must finish even while the CPU keeps polling STATUS.
+    always @(posedge clock_i) begin
+        if(!reset_n_i || state_reg!=RUN) begin
+            command_watchdog_reg<=0;
+            command_pending_reg<=0;
+        end else begin
+            if(command_valid_o && command_ready_i)
+                command_pending_reg<=command_opcode_o!=8'h30;
+            else if(response_valid_i && response_ready_o)
+                command_pending_reg<=0;
+            if(command_stalled || response_stalled)
+                command_watchdog_reg<=command_watchdog_reg+1'b1;
+            else command_watchdog_reg<=0;
+        end
+    end
     always @(posedge clock_i) begin
         if (!reset_n_i) begin
             state_reg<=INIT; status_reg<=0; clear_count_reg<=0; watchdog_reg<=0;
@@ -42,9 +66,9 @@ module keygen_rsa_softcore #(
             RUN: begin
                 if(instruction_progress) watchdog_reg<=0;
                 else watchdog_reg<=watchdog_reg+1'b1;
-                if(child_trap || &watchdog_reg || report[31:24]==8'ha5) begin
+                if(child_trap || &watchdog_reg || command_timeout || report[31:24]==8'ha5) begin
                     if(child_trap) status_reg<=8'd6;
-                    else if(&watchdog_reg) status_reg<=8'd7;
+                    else if(&watchdog_reg || command_timeout) status_reg<=8'd7;
                     else status_reg<=report[7:0];
                     state_reg<=CLEAR; clear_count_reg<=0;
                 end
