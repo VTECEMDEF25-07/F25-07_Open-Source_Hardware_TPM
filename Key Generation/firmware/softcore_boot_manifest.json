@@ -1,0 +1,9 @@
+{
+  "source_sha256": "ecfb7a9155246949c925775dc1c953faa93350aa5ed33c179aee14033a6855ba",
+  "image_sha256": "dd54af8329fedac7cdfc9fb59d6087d1c8d70a0d22ab55636aeb953f496527e1",
+  "instruction_count": 24,
+  "rom_bytes": 32768,
+  "ram_bytes": 16384,
+  "isa": "RV32I",
+  "purpose": "self-test only; not RSA firmware"
+}
