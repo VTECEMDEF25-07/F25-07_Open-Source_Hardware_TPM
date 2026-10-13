@@ -1,0 +1,115 @@
+`timescale 1ns/1ps
+// Real portable core + real SHA source + SPI + receiver. No keygen_core model.
+module tb_keygen_demo_real;
+`ifdef TEST_SOFTCORE
+    localparam SOFTCORE=1;
+`else
+    localparam SOFTCORE=0;
+`endif
+    reg clock_i=0;always #10 clock_i=~clock_i;
+    reg reset_n_i=0,spi_clock_i=0,spi_cs_n_i=1,spi_mosi_i=0;
+    wire spi_miso_o,interrupt_n_o;
+    reg [63:0] response;
+    reg [31:0] value,meta,held_word;
+    reg [31:0] expected [0:7];
+    string expected_path;
+    integer i,polls;
+    keygen_demo_system #(.RSA_SOFTCORE(SOFTCORE)) dut (
+        .temperatures_i(32'h002a0020),.fan_status_i(32'h07000fa0),.*
+    );
+    task frame(input [63:0] command,output [63:0] answer);
+        integer b;
+        begin
+            answer=0;spi_cs_n_i=0;#200;
+            for(b=63;b>=0;b=b-1)begin
+                spi_mosi_i=command[b];#250;spi_clock_i=1;
+                #100;answer={answer[62:0],spi_miso_o};#400;spi_clock_i=0;#250;
+            end
+            spi_cs_n_i=1;#200;
+        end
+    endtask
+    task write_reg(input [7:0] address,input [31:0] data);
+        begin frame({8'd2,address,16'd0,data},response);if(response[63:32]!==32'ha5000000)$fatal(1,"write framing");end
+    endtask
+    task read_reg(input [7:0] address,output [31:0] data);
+        begin frame({8'd1,address,48'd0},response);if(response[63:32]!==32'ha5000000)$fatal(1,"read framing");data=response[31:0];end
+    endtask
+    task await_status(input [31:0] mask);
+        begin
+            polls=0;read_reg(3,value);
+            while((value&mask)==0 && polls<200)begin read_reg(3,value);polls=polls+1;end
+            if((value&mask)==0)$fatal(1,"status timeout mask=%h got=%h",mask,value);
+        end
+    endtask
+    task start_key(input [1:0] profile,input [3:0] controls);
+        begin
+            await_status(1);write_reg(23,1);write_reg(4,{30'b0,profile});
+            write_reg(5,32'h12345678);write_reg(11,{28'b0,controls});write_reg(2,1);
+        end
+    endtask
+    task check_aes(input integer count);
+        begin
+            for(i=0;i<count;i=i+1)begin
+                write_reg(8,i);read_reg(9,value);read_reg(10,meta);
+                if(value!==expected[i])$fatal(1,"independent AES oracle word%0d got%h expected%h",i,value,expected[i]);
+                if(meta!== (32'h80000001|(i<<3)|((i==count-1)?32'hc00:0)))$fatal(1,"AES metadata %h",meta);
+            end
+        end
+    endtask
+    task acknowledge;
+        begin
+            write_reg(2,2);await_status(1);
+            read_reg(9,value);read_reg(10,meta);
+            if(value!==0 || meta!==0)$fatal(1,"ack exposed old result");
+            for(i=0;i<129;i=i+1)if(dut.receiver_data_reg[i]!==0 || dut.receiver_meta_reg[i]!==0)$fatal(1,"receiver not scrubbed");
+        end
+    endtask
+    task gray_reset;
+        begin
+            reset_n_i=0;#200;reset_n_i=1;await_status(1);
+            read_reg(9,value);read_reg(10,meta);if(value!==0 || meta!==0)$fatal(1,"reset exposed old result");
+            read_reg(23,value);if(value!==0)$fatal(1,"reset seed not cleared");
+        end
+    endtask
+    task successful(input integer count);
+        begin
+            await_status(8);if(value[11:8]!==0 || !value[2] || interrupt_n_o!==0)$fatal(1,"success status %h",value);
+            check_aes(count);acknowledge();
+        end
+    endtask
+    initial begin
+        if(!$value$plusargs("EXPECTED=%s",expected_path))$fatal(1,"missing independent expected data");
+        $readmemh(expected_path,expected);
+        #100;reset_n_i=1;await_status(1);
+        read_reg(0,value);if(value!==32'h4b473031)$fatal(1,"ID");
+        read_reg(1,value);if(value!==(4+SOFTCORE))$fatal(1,"controller config");
+        read_reg(15,value);if(value!==32'h700)$fatal(1,"fan failsafe bit10 mapping");
+        start_key(0,1);await_status(2);
+        repeat(3)read_reg(3,value);
+        if(value[3:2]!==0)$fatal(1,"generation stall bypassed");
+        write_reg(11,0);successful(4);
+        start_key(1,6);polls=0;read_reg(12,value);
+        while(!value[3] && polls<200)begin read_reg(12,value);polls=polls+1;end
+        if(!value[3])$fatal(1,"result stall not reached");
+        held_word=dut.core_result_data;
+        repeat(3)begin read_reg(3,value);if(!dut.core_result_valid || dut.core_result_data!==held_word || value[3:2]!==0)$fatal(1,"result hold unstable");end
+        // Shadow writes and a second START must not alter the captured key request.
+        write_reg(4,0);write_reg(23,20);write_reg(5,32'hbad);write_reg(2,1);
+        write_reg(11,4);await_status(4);if(value[3])$fatal(1,"ownership bypassed");
+        check_aes(8);write_reg(11,0);await_status(8);
+        if(dut.core_status_id!==32'h12345678)$fatal(1,"captured request ID changed");
+        successful(8);
+        start_key(0,1);await_status(2);write_reg(11,9);await_status(8);
+        if(value[11:8]!==2 || value[2])$fatal(1,"AES source failure %h",value);
+        acknowledge();start_key(0,0);successful(4);
+        start_key(1,2);await_status(2);gray_reset();start_key(0,0);successful(4);
+        // Exercise actual RTL or firmware RSA request/abort path without an expensive key search.
+        start_key(2,1);await_status(2);repeat(3)read_reg(3,value);gray_reset();
+        start_key(2,1);await_status(2);write_reg(11,9);await_status(8);
+        if(value[11:8]!==2 || value[2])$fatal(1,"RSA source failure %h",value);
+        acknowledge();start_key(1,0);successful(8);
+        $display("PASS REAL_SPI_CORE controller=%0d: hashlib AES128/AES256, source/result/ownership stalls, capture, error, reset and RSA abort/recovery",SOFTCORE);
+        $finish;
+    end
+    initial begin #200000000;$fatal(1,"global timeout");end
+endmodule
