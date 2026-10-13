@@ -28,12 +28,17 @@ try {
         (Join-Path $PSScriptRoot 'tb_execution_keygen_plumbing.sv'),
         (Join-Path $PSScriptRoot 'tb_unavailable_keygen_backend.sv')
     )
-    & $vlog -sv -work 'work' @sources
+    # Verilog source is compiled separately; SV is approved only for testbenches.
+    $rtlSources = @($sources | Where-Object { $_.EndsWith('.v') })
+    $testSources = @($sources | Where-Object { $_.EndsWith('.sv') })
+    & $vlog -vlog01compat -work 'work' @rtlSources
+    if ($LASTEXITCODE -ne 0) { throw 'Verilog source compilation failed' }
+    & $vlog -sv -work 'work' @testSources
     if ($LASTEXITCODE -ne 0) { throw 'vlog failed' }
     foreach ($testName in @('tb_execution_keygen_plumbing', 'tb_unavailable_keygen_backend')) {
         $doFile = Join-Path $runRoot ($testName + '.do')
         $logFile = Join-Path $runRoot ($testName + '.log')
-        $waveFile = Join-Path $runRoot ($testName + '.wlf')
+        $waveFile = 'NUL'
         # Real macro gives onbreak/onerror handlers effect; log check also catches $fatal exits.
         @('onbreak {quit -code 1}', 'onerror {quit -code 1}', 'run -all', 'quit -code 0') |
             Set-Content -LiteralPath $doFile

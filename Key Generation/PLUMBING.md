@@ -1,3 +1,9 @@
+# Review disposition: legacy execution integration
+
+Updated October 13, 2026: hold this chunk from merge. Naming and language-mode checks are refreshed, but the existing Create/cancel adapter is a historical contract, not the selected reset-only standalone core. Review reusable captured-request/wait/error fixes separately from speculative TPM integration. SystemVerilog is permitted for tests; source compiles in Verilog-2001 mode.
+
+---
+
 # Execution-to-keygen plumbing (stacked draft)
 
 Depends on [outline PR #1](https://github.com/VTECEMDEF25-07/F25-07_Open-Source_Hardware_TPM/pull/1), branch `aaron/key-generation`, commit `37ce16f514bf282c5cc413316752a6e37f7f1e2d`. This child targets that branch, not main. Neither PR is approved or merged. Aaron reviews the outline first, then this implementation. Retarget/rebase only after parent approval/merge, in later authorized work.
@@ -12,7 +18,7 @@ Default `KEYGEN_EXTERNAL_BACKEND=0` returns `0x00000143` (unsupported), never ba
 
 ## Actual new Execution Engine ports
 
-Directions are relative to `execution_engine`. All signals share its `clock` and active-low `reset_n` (async assertion; synchronized release is the integrator's responsibility). Existing command inputs remain named as before. All command/session metadata and new descriptor/proof fields are captured on `command_accept` at a rising edge. Completion/policy inputs remain live and must belong to the active transaction.
+Directions are relative to `execution_engine`. All signals share its `clock_i` and active-low `reset_n_i` (async assertion; synchronized release is the integrator's responsibility). Existing command inputs remain named as before. All command/session metadata and new descriptor/proof fields are captured on `command_accept` at a rising edge. Completion/policy inputs remain live and must belong to the active transaction.
 
 | Ports | Direction / width | Contract |
 | --- | --- | --- |
@@ -31,7 +37,7 @@ Directions are relative to `execution_engine`. All signals share its `clock` and
 | `kg_rsp_id`, `kg_rsp_code`, `kg_rsp_object` | I32 each | Matching token, full-width result code, protected-object reference on success |
 | `kg_rsp_fail` | I1 | Explicit failure. Failure with code zero maps to `0x101`; known zero plus matching ID and known zero code required for success. |
 
-The adapter's source declaration lists its complete internal interface: `start`, descriptor fields, `cancel`, `busy`, held `terminal_valid/ready/code/object`, and corresponding `req_*`, `cancel_*`, `rsp_*` ports. No executable dummy `keygen_top` is added. A future module receives `kg_req_*`, drives ready and result fields, and accepts `kg_cancel_*`; it must implement the contract before external mode is enabled.
+The adapter's source declaration lists its complete internal interface: `start_i`, descriptor fields, `cancel_i`, `busy_o`, held `terminal_valid_o/ready/code/object`, and corresponding `req_*`, `cancel_*`, `rsp_*` ports. No executable dummy `keygen_top` is added. A future module receives `kg_req_*`, drives ready and result fields, and accepts `kg_cancel_*`; it must implement the contract before external mode is enabled.
 
 ## Sequencing and failure rules
 
@@ -64,9 +70,9 @@ Run from repository root in PowerShell:
 # Optional: -QuestaBin 'path/to/questa/win64'
 ```
 
-The example relative path assumes repository root; elsewhere invoke the runner by its absolute path. It creates a unique work library/logs under class `AI/tmp/keygen-plumbing/`, restores TEMP/TMP/location, and fails on compiler/simulator/log fatal errors. Unit sources compile and both self-checking simulations pass with Questa Intel Starter 2024.3: delayed prerequisites, snapshot mutation, backend backpressure/prolonged busy, held enable/repeated command, full-width error persistence, mocked success/object retention, cancel before/after acceptance and simultaneous result, reset/no replay, unsupported primary/unknown proof, malformed/spoofed Startup, legacy session rejection, and default unavailable backend. A simulated success is isolated mock behavior, not an implemented key generator.
+The example relative path assumes repository root; elsewhere invoke the runner by its absolute path. It creates a unique work library/logs under class `AI/tmp/keygen-plumbing/`, restores TEMP/TMP/location, and fails on compiler/simulator/log fatal errors. Unit sources compile and both self-checking simulations pass with Questa Intel Starter 2024.3: delayed prerequisites, snapshot mutation, backend backpressure/prolonged busy_o, held enable/repeated command, full-width error persistence, mocked success/object retention, cancel_i before/after acceptance and simultaneous result, reset/no replay, unsupported primary/unknown proof, malformed/spoofed Startup, legacy session rejection, and default unavailable backend. A simulated success is isolated mock behavior, not an implemented key generator.
 
-Separate independent AI tester probes cover wrong token, explicit fail with zero code, unknown failure signal, immutable result, default-disabled execution and external-mode snapshot/cancel. Tester reproduced the durable runner and reviewed final source/diff. Findings corrected: pending cancel pulse loss, unknown response failure qualifying as success, reset-held command replay, inconsistent authorization hierarchy success, and the default-backend bench's low-start reset precondition.
+Separate independent AI tester probes cover wrong token, explicit fail with zero code, unknown failure signal, immutable result, default-disabled execution and external-mode snapshot/cancel_i. Tester reproduced the durable runner and reviewed final source/diff. Findings corrected: pending cancel_i pulse loss, unknown response failure qualifying as success, reset-held command replay, inconsistent authorization hierarchy success, and the default-backend bench's low-start_i reset precondition.
 
 Existing top and eight inherited benches compile with zero errors/four existing numeric-literal warnings. Top zero-time elaboration has zero errors/19 inherited connection/width warnings; it is only a connection smoke check. Legacy benches are not passing functional regressions: omitted new ports require migration and manual stimuli need assertions. No synthesis, static timing, CDC proof, hardware, TPM interoperability or cryptographic validation is claimed.
 

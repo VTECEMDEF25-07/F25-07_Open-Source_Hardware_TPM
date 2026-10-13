@@ -15,139 +15,139 @@
 
 module	tpm_top
 (
-	input		CLOCK_50,	// 50 MHz sysclock
-	input		CLOCK_100,	// 100 MHz clock (used for sampling SPI_CLOCK)
-	input		RESET_n,	// async reset
+	input		clock_50_i,	// 50 MHz sysclock
+	input		clock_100_i,	// 100 MHz clock (used for sampling SPI_CLOCK)
+	input		reset_n_i,	// async reset
 	
-	input		SPI_CLOCK,	// SPI clock
-	input		SPI_CS_n,	// SPI chip select
-	input		SPI_RST_n,	// SPI async reset
-	input		SPI_MOSI,	// SPI mosi
-	output		SPI_MISO,	// SPI miso
-	output		SPI_PIRQ_n	// SPI interrupt request
+	input		spi_clock_i,	// SPI clock
+	input		spi_cs_n_i,	// SPI chip select
+	input		spi_rst_n_i,	// SPI async reset
+	input		spi_mosi_i,	// SPI mosi
+	output		spi_miso_o,	// SPI miso
+	output		spi_pirq_n_o	// SPI interrupt request
 );
 
 	// this module is simply instantiations and their connections
 
 	wire		rst_n;
-	assign	rst_n = SPI_RST_n & RESET_n;
+	assign	rst_n = spi_rst_n_i & reset_n_i;
 	
-	wire	[31:0]	commandCode;
-	wire	[31:0]	responseCode;
-	wire	[31:0]	commandSize;
-	wire	[15:0]	commandTag, expectedTag;
-	wire	[39:0]	commandParam;
+	wire	[31:0]	command_code;
+	wire	[31:0]	response_code;
+	wire	[31:0]	command_size;
+	wire	[15:0]	command_tag, expected_tag;
+	wire	[39:0]	command_param;
 	wire	[7:0]	locality;
-	wire		execStart, responseReady;
+	wire		exec_start, response_ready;
 	
 	wire	[31:0]	handle0, handle1, handle2;
-	wire	[31:0]	sessionHandle0, sessionHandle1, sessionHandle2;
-	wire	[15:0]	sessionNonceSize0, sessionNonceSize1, sessionNonceSize2;
-	wire	[7:0]	sessionAttributes0, sessionAttributes1, sessionAttributes2;
-	wire	[15:0]	sessionHmacSize0, sessionHmacSize1, sessionHmacSize2;
-	wire	[31:0]	authSize;
-	wire		sessionValid0, sessionValid1, sessionValid2;
+	wire	[31:0]	session_handle0, session_handle1, session_handle2;
+	wire	[15:0]	session_nonce_size0, session_nonce_size1, session_nonce_size2;
+	wire	[7:0]	session_attributes0, session_attributes1, session_attributes2;
+	wire	[15:0]	session_hmac_size0, session_hmac_size1, session_hmac_size2;
+	wire	[31:0]	auth_size;
+	wire		session_valid0, session_valid1, session_valid2;
 	
 	wire	[2:0]	op_state, startup_type;
-	wire		phEnable, phEnableNV;
-	wire		shEnable, ehEnable;
-	wire	[15:0]	shutdownSave;
-	wire	[15:0]	testsRun, testsPassed, untested;
-	wire	[15:0]	orderlyInput;
-	wire		nv_phEnableNV, nv_shEnable, nv_ehEnable;
-	wire	[31:0]	ee_responseCode, authHierarchy;
+	wire		ph_en, ph_en_nv;
+	wire		sh_en, eh_en;
+	wire	[15:0]	shutdown_save;
+	wire	[15:0]	tests_run, tests_passed, untested;
+	wire	[15:0]	orderly_input;
+	wire		nv_ph_en_nv, nv_sh_en, nv_eh_en;
+	wire	[31:0]	ee_response_code, auth_hierarchy;
 	wire		initialized;
 	
 	tpm_io io
 	(
-		.clock50(CLOCK_50), .clock100(CLOCK_100),
+		.clock50(clock_50_i), .clock100(clock_100_i),
 		.reset_n(rst_n),
-		.SPI_clk(SPI_CLOCK), .SPI_cs_n(SPI_CS_n),
-		.SPI_mosi(SPI_MOSI), .SPI_miso(SPI_MISO),
-		.SPI_pirq_n(SPI_PIRQ_n),
+		.SPI_clk(spi_clock_i), .SPI_cs_n(spi_cs_n_i),
+		.SPI_mosi(spi_mosi_i), .SPI_miso(spi_miso_o),
+		.SPI_pirq_n(spi_pirq_n_o),
 		
-		.execStart(execStart), .responseReady(responseReady),
-		.commandCode(commandCode), .responseCode(responseCode),
-		.commandParam(commandParam), .commandTag(commandTag),
-		.locality(locality), .commandSize(commandSize),
+		.execStart(exec_start), .responseReady(response_ready),
+		.commandCode(command_code), .responseCode(response_code),
+		.commandParam(command_param), .commandTag(command_tag),
+		.locality(locality), .commandSize(command_size),
 		
 		.handle0(handle0), .handle1(handle1), .handle2(handle2),
-		.sessionHandle0(sessionHandle0), .sessionHandle1(sessionHandle1), .sessionHandle2(sessionHandle2),
-		.sessionNonceSize0(sessionNonceSize0), .sessionNonceSize1(sessionNonceSize1), .sessionNonceSize2(sessionNonceSize2),
-		.sessionAttributes0(sessionAttributes0), .sessionAttributes1(sessionAttributes1), .sessionAttributes2(sessionAttributes2),
-		.sessionHmacSize0(sessionHmacSize0), .sessionHmacSize1(sessionHmacSize1), .sessionHmacSize2(sessionHmacSize2),
-		.authSize(authSize),
-		.sessionValid0(sessionValid0), .sessionValid1(sessionValid1), .sessionValid2(sessionValid2)
+		.sessionHandle0(session_handle0), .sessionHandle1(session_handle1), .sessionHandle2(session_handle2),
+		.sessionNonceSize0(session_nonce_size0), .sessionNonceSize1(session_nonce_size1), .sessionNonceSize2(session_nonce_size2),
+		.sessionAttributes0(session_attributes0), .sessionAttributes1(session_attributes1), .sessionAttributes2(session_attributes2),
+		.sessionHmacSize0(session_hmac_size0), .sessionHmacSize1(session_hmac_size1), .sessionHmacSize2(session_hmac_size2),
+		.authSize(auth_size),
+		.sessionValid0(session_valid0), .sessionValid1(session_valid1), .sessionValid2(session_valid2)
 	);
 	
 	management_module mm
 	(
-		.clock(CLOCK_50), .reset_n(rst_n),
-		.keyStart_n(~execStart), .tpm_cc(commandCode[15:0]),
-		.cmd_param({commandParam[39:8], commandParam[0]}), .orderlyInput(orderlyInput),
-		.initialized(1'b1), .authHierarchy(commandParam[39:8]),
-		.executionEng_rc(ee_responseCode), .locality(locality),
-		.testsRun(testsRun), .testsPassed(testsPassed),
-		.untested(untested), .nv_phEnableNV(nv_phEnableNV),
-		.nv_shEnable(nv_shEnable), .nv_ehEnable(nv_ehEnable),
+		.clock(clock_50_i), .reset_n(rst_n),
+		.keyStart_n(~exec_start), .tpm_cc(command_code[15:0]),
+		.cmd_param({command_param[39:8], command_param[0]}), .orderlyInput(orderly_input),
+		.initialized(1'b1), .authHierarchy(command_param[39:8]),
+		.executionEng_rc(ee_response_code), .locality(locality),
+		.testsRun(tests_run), .testsPassed(tests_passed),
+		.untested(untested), .nv_phEnableNV(nv_ph_en_nv),
+		.nv_shEnable(nv_sh_en), .nv_ehEnable(nv_eh_en),
 		.op_state(op_state), .startup_type(startup_type),
-		.tpm_rc(responseCode) , .phEnable(phEnable),
-		.phEnableNV(phEnableNV), .shEnable(shEnable),
-		.ehEnable(ehEnable), .shutdownSave(shutdownSave)
+		.tpm_rc(response_code) , .phEnable(ph_en),
+		.phEnableNV(ph_en_nv), .shEnable(sh_en),
+		.ehEnable(eh_en), .shutdownSave(shutdown_save)
 	);
 	
 	execution_engine ee
 	(
-		.clock(CLOCK_50), .reset_n(rst_n), 
-		.command_ready(execStart), .command_tag(commandTag), 
-		.command_size(commandSize), .command_code(commandCode), 
-		.command_length(commandSize[15:0]),
-		.handle_0(handle0), .handle_1(handle1), .handle_2(handle2), 
-		.session0_handle(sessionHandle0), .session1_handle(sessionHandle1), .session2_handle(sessionHandle2), 
-		.session0_attributes(sessionAttributes0), .session1_attributes(sessionAttributes1), .session2_attributes(sessionAttributes2), 
-		.session0_hmac_size(sessionHmacSize0), .session1_hmac_size(sessionHmacSize1), .session2_hmac_size(sessionHmacSize2), 
+		.clock_i(clock_50_i), .reset_n_i(rst_n), 
+		.command_ready_i(exec_start), .command_tag_i(command_tag), 
+		.command_size_i(command_size), .command_code_i(command_code), 
+		.command_length_i(command_size[15:0]),
+		.handle_0_i(handle0), .handle_1_i(handle1), .handle_2_i(handle2), 
+		.session0_handle_i(session_handle0), .session1_handle_i(session_handle1), .session2_handle_i(session_handle2), 
+		.session0_attributes_i(session_attributes0), .session1_attributes_i(session_attributes1), .session2_attributes_i(session_attributes2), 
+		.session0_hmac_size_i(session_hmac_size0), .session1_hmac_size_i(session_hmac_size1), .session2_hmac_size_i(session_hmac_size2), 
 		
-		.session0_valid(sessionValid0), .session1_valid(sessionValid1), .session2_valid(sessionValid2), 
-		.authorization_size(authSize), .session_loaded(1'b1), 
-		.max_session_amount(16'd3), .auth_session(1'b1), .auth_necessary(1'b1), 
-		.authHandle(handle0), .pcrSelect(), .auth_done(1'b1), .auth_response_code(12'h101),
-		.auth_success(1'b0), .param_decrypt_success(1'b1), .param_decrypt_fail(1'b0),
-		.param_unmarshall_success(1'b1), .param_unmarshall_fail(1'b0), 
-		.execution_startup_done(1'b1), .execution_response_code(32'd0), 
+		.session0_valid_i(session_valid0), .session1_valid_i(session_valid1), .session2_valid_i(session_valid2), 
+		.authorization_size_i(auth_size), .session_loaded_i(1'b1), 
+		.max_session_amount_i(16'd3), .auth_session_i(1'b1), .auth_necessary_i(1'b1), 
+		.auth_handle_i(handle0), .pcr_select_i(), .auth_done_i(1'b1), .auth_response_code_i(12'h101),
+		.auth_success_i(1'b0), .param_decrypt_success_i(1'b1), .param_decrypt_fail_i(1'b0),
+		.param_unmarshall_success_i(1'b1), .param_unmarshall_fail_i(1'b0), 
+		.execution_startup_done_i(1'b1), .execution_response_code_i(32'd0), 
 		
-		.nv_phEnableNV_in(1'b1), .nv_shEnable_in(1'b1), 
-		.nv_ehEnable_in(1'b1), .tpm_nv_index(32'd0), 
-		.nv_index_attributes(32'd0), .nv_object_present(1'b1), 
-		.nv_index_present(1'b1), .entity_hierarchy(32'd0), 
+		.nv_ph_en_nv_in_i(1'b1), .nv_sh_en_in_i(1'b1), 
+		.nv_eh_en_in_i(1'b1), .tpm_nv_index_i(32'd0), 
+		.nv_index_attributes_i(32'd0), .nv_object_present_i(1'b1), 
+		.nv_index_present_i(1'b1), .entity_hierarchy_i(32'd0), 
 		
-		.mem_orderly(16'd0), .ram_available(1'b1), 
-		.loaded_object_present(1'b1), .object_attributes(32'd0), 
+		.mem_orderly_i(16'd0), .ram_available_i(1'b1), 
+		.loaded_object_present_i(1'b1), .object_attributes_i(32'd0), 
 		
-		.st_testsRun(16'd0), .st_testsPassed(16'd0), 
-		.st_untested(16'd0),
+		.st_tests_run_i(16'd0), .st_tests_passed_i(16'd0), 
+		.st_untested_i(16'd0),
 		
-		.op_state(op_state), 
-		.startup_type(startup_type), .phEnable(phEnable), 
-		.phEnableNV(phEnableNV), .shEnable(shEnable), 
-		.ehEnable(ehEnable), .shutdownSave(shutdownSave), 
-		.command_done(1'b1), .testsPassed(testsPassed), 
-		.untested(untested), .nv_phEnableNV(nv_phEnableNV), 
-		.nv_shEnable(nv_shEnable), .nv_ehEnable(nv_ehEnable), 
-		.orderlyInput(orderlyInput), .initialized(initialized), 
-		.testsRun(testsRun), .authHierarchy(authHierarchy), 
+		.op_state_i(op_state), 
+		.startup_type_i(startup_type), .ph_en_i(ph_en), 
+		.ph_en_nv_i(ph_en_nv), .sh_en_i(sh_en), 
+		.eh_en_i(eh_en), .shutdown_save_i(shutdown_save), 
+		.command_done_i(1'b1), .tests_passed_o(tests_passed), 
+		.untested_o(untested), .nv_ph_en_nv_o(nv_ph_en_nv), 
+		.nv_sh_en_o(nv_sh_en), .nv_eh_en_o(nv_eh_en), 
+		.orderly_input_o(orderly_input), .initialized_reg_o(initialized), 
+		.tests_run_o(tests_run), .auth_hierarchy_o(auth_hierarchy), 
 		
 		// Creation boundary disabled until real validation, authorization and backend exist.
-        .response_ready(1'b1), .command_cancel(1'b0),
-        .keygen_descriptor_valid(1'b0), .keygen_session_validated(1'b0),
-        .keygen_id(32'd0), .keygen_alg(2'd0), .keygen_bits(12'd0), .keygen_mode(2'd0),
-        .keygen_context(32'd0), .keygen_destination(32'd0), .keygen_exponent(32'd0),
-        .kg_req_ready(1'b0), .kg_cancel_ready(1'b0), .kg_rsp_valid(1'b0),
-        .kg_rsp_id(32'd0), .kg_rsp_fail(1'b1), .kg_rsp_code(32'h00000143), .kg_rsp_object(32'd0),
-        .command_accept(), .command_busy(), .keygen_busy(), .keygen_object(),
-        .kg_req_valid(), .kg_req_id(), .kg_req_alg(), .kg_req_bits(), .kg_req_mode(),
-        .kg_req_context(), .kg_req_destination(), .kg_req_exponent(),
-        .kg_cancel_valid(), .kg_cancel_id(), .kg_rsp_ready(),
-        .response_valid(responseReady), .response_code(ee_responseCode)
+        .response_ready_i(1'b1), .command_cancel_i(1'b0),
+        .keygen_descriptor_valid_i(1'b0), .keygen_session_validated_i(1'b0),
+        .keygen_id_i(32'd0), .keygen_alg_i(2'd0), .keygen_bits_i(12'd0), .keygen_mode_i(2'd0),
+        .keygen_context_i(32'd0), .keygen_destination_i(32'd0), .keygen_exponent_i(32'd0),
+        .kg_req_ready_i(1'b0), .kg_cancel_ready_i(1'b0), .kg_rsp_valid_i(1'b0),
+        .kg_rsp_id_i(32'd0), .kg_rsp_fail_i(1'b1), .kg_rsp_code_i(32'h00000143), .kg_rsp_object_i(32'd0),
+        .command_accept_o(), .command_busy_o(), .keygen_busy_o(), .keygen_object_reg_o(),
+        .kg_req_valid_o(), .kg_req_id_o(), .kg_req_alg_o(), .kg_req_bits_o(), .kg_req_mode_o(),
+        .kg_req_context_o(), .kg_req_destination_o(), .kg_req_exponent_o(),
+        .kg_cancel_valid_o(), .kg_cancel_id_o(), .kg_rsp_ready_o(),
+        .response_valid_o(response_ready), .response_code_reg_o(ee_response_code)
 	);
 	
 //TODO: Needed?
