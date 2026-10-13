@@ -47,7 +47,7 @@ module keygen_dispatch_adapter #(
     reg armed_reg, cancel_sent_reg, cancel_pending_reg;
     wire supported = descriptor_valid_i && session_validated_i &&
         command_code_i == 32'h00000153 && descriptor_mode_i == 2'd0 &&
-        ((descriptor_alg_i == 2'd1 && descriptor_bits_i == 12'd256 && descriptor_exponent_i == 0) ||
+        ((descriptor_alg_i == 2'd1 && (descriptor_bits_i == 12'd128 || descriptor_bits_i == 12'd256) && descriptor_exponent_i == 0) ||
          (descriptor_alg_i == 2'd2 && descriptor_bits_i == 12'd2048 && descriptor_exponent_i == 32'd65537));
 
     assign busy_o = reset_n_i && state_reg != IDLE;
