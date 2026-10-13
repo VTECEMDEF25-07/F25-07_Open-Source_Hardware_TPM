@@ -116,8 +116,15 @@ class SpiAdapter:
     def __enter__(self):
         return self
 
-    def __exit__(self, *_):
-        self.close()
+    def __exit__(self, exception_type, exception, traceback):
+        try:
+            self.close()
+        except Exception as cleanup:
+            if exception is None:
+                raise
+            errors=getattr(exception,"cleanup_errors",[])
+            errors.append("adapter close: " + str(cleanup))
+            exception.cleanup_errors=errors
 
 
 def telemetry(adapter):
@@ -183,6 +190,25 @@ def transport_test(adapter):
     return {"transport": "PASS", "partial_frame_abort": "PASS"}
 
 
+def recover_operation(adapter, primary, force_reset):
+    """Recover the demo without replacing the failure that triggered recovery."""
+    primary.cleanup_errors = []
+    if not force_reset:
+        try:
+            adapter.register(2,2)
+            poll(adapter,1)
+            primary.recovery = {"action":"acknowledge", "success":True}
+            return
+        except Exception as cleanup:
+            primary.cleanup_errors.append("acknowledge: " + str(cleanup))
+    try:
+        reset_and_check(adapter)
+        primary.recovery = {"action":"reset", "success":True}
+    except Exception as cleanup:
+        primary.cleanup_errors.append("reset: " + str(cleanup))
+        primary.recovery = {"action":"reset", "success":False}
+
+
 def run_key(adapter, profile, fixture, request_id, source_schedule=None):
     from keygen_reference import Sha256Words
     from key_checker import check_key
@@ -196,17 +222,10 @@ def run_key(adapter, profile, fixture, request_id, source_schedule=None):
     adapter.register(2,1)
     samples = []
     transitions = []
+    status = None
     try:
         status = poll(adapter,8,samples,source_schedule,transitions)
-    except Exception as error:
-        error.fan_samples=samples
-        error.source_transitions=transitions
-        raise
-    finally:
-        if source_schedule:
-            adapter.register(11,0)
-    elapsed = time.monotonic()-started
-    try:
+        elapsed = time.monotonic()-started
         if status>>8 & 15:
             raise RuntimeError(f"core returned status {(status>>8)&15}")
         if not status&4:
@@ -249,15 +268,24 @@ def run_key(adapter, profile, fixture, request_id, source_schedule=None):
                             if item["seed_id"]==fixture["id"])
             if any(value != int(expected[name],16) for name,value in (("n",n),("e",e),("p",p),("q",q),("d",d))):
                 raise RuntimeError("RSA deterministic corpus mismatch")
-        return {"profile":profile,"seed_id":fixture["id"],"request_id":request_id,"result":"PASS",
+        result = {"profile":profile,"seed_id":fixture["id"],"request_id":request_id,"result":"PASS",
                 "core_cycles":cycles,"core_seconds":cycles/50000000,"spi_completion_seconds":elapsed,"fan_samples":samples,
                 "source_transitions":transitions}
     except Exception as error:
         error.fan_samples=samples
+        error.source_transitions=transitions
+        # A missing completion cannot be acknowledged: abort through gray reset.
+        recover_operation(adapter,error,force_reset=status is None)
         raise
-    finally:
+    try:
         adapter.register(2,2)
         poll(adapter,1)
+    except Exception as error:
+        error.fan_samples=samples
+        error.source_transitions=transitions
+        recover_operation(adapter,error,force_reset=True)
+        raise
+    return result
 
 
 
@@ -282,6 +310,16 @@ def reset_and_check(adapter):
         raise RuntimeError("reset did not clear demo configuration")
 
 
+def wait_running(adapter):
+    """Busy also covers pre-admission setup; require the observable RUN state."""
+    deadline=time.monotonic()+TIMEOUT
+    while time.monotonic()<deadline:
+        if adapter.register(12)&7 == 4:
+            return
+        time.sleep(.01)
+    raise TimeoutError("demo did not enter RUN before reset boundary")
+
+
 def reset_replay(adapter, fixture, results, checkpoint=lambda:None):
     # These are observable boundaries, not an assertion about hidden RSA subphases.
     for name,profile,controls,mask in (
@@ -294,6 +332,8 @@ def reset_replay(adapter, fixture, results, checkpoint=lambda:None):
         reset_and_check(adapter)
         configure_request(adapter,profile,fixture,0xA000+len(results),controls)
         poll(adapter,mask)
+        if name in ("generation_stall","rsa_active"):
+            wait_running(adapter)
         if name=="rsa_active":
             time.sleep(.05)
             if not adapter.register(3)&2:raise RuntimeError("RSA was not busy at reset boundary")
@@ -383,6 +423,8 @@ def main():
         report["result"]="FAIL";report["error"]=str(error)
         report["failure_fan_samples"]=getattr(error,"fan_samples",[])
         report["failure_source_transitions"]=getattr(error,"source_transitions",[])
+        report["failure_cleanup_errors"]=getattr(error,"cleanup_errors",[])
+        report["failure_recovery"]=getattr(error,"recovery",None)
     args.report.parent.mkdir(parents=True,exist_ok=True)
     args.report.write_text(json.dumps(report,indent=2)+"\n")
     print(report["result"]+": "+str(args.report))

@@ -115,3 +115,11 @@ A routed top/SPI/vendor-fan diagnostic (`AI/tmp/keygen-top-constraints-v1`, tele
 
 The demo SHA source reset is driven by a registered request-lifetime bit, never a binary FSM decode. Both real-core SPI suites assert that source reset is released exactly while an accepted request is active and held through result/status handling until acknowledgment.
 Compiler console output is captured through a pipe and written once after the process exits; the manifest records the numeric exit code. This avoids inheriting a long-lived cloud-backed log handle. Use closed Quartus reports for live progress. A failed attempt remains preserved and requires a new, preferably locally pinned, snapshot directory.
+
+### Host failure recovery and reset boundaries
+
+Reset replay requires the public wrapper state to be RUN before recording either a generation-stall or active-RSA reset boundary. The busy bit alone is insufficient because it also covers source setup and request admission. A wrapper stuck before admission times out and fails the test.
+
+If generation polling fails or times out, the host pulses the gray core reset and verifies idle state plus cleared status, result and configuration; it does not try to acknowledge an operation that never completed. A completed but invalid key is acknowledged and cleared normally. If acknowledgment or readiness recovery fails, the host attempts the same checked reset. The original failure remains the report's primary error, with cleanup errors and recovery outcome recorded separately. A correct key followed by failed cleanup still fails the operation. Adapter-close failures cannot replace an earlier error. Fan control is outside the gray reset domain.
+
+The offline host suite now passes 22 tests, including stuck pre-admission rejection, timeout reset recovery, primary-error preservation when ACK/reset/adapter close fail, and rejection of successful key generation followed by failed cleanup. These tests do not open hardware.

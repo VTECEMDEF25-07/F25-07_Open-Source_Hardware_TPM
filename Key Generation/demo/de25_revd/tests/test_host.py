@@ -74,7 +74,7 @@ class HostTests(unittest.TestCase):
             raise TimeoutError('injected timeout')
         with patch.object(host,'poll',side_effect=fail):
             with self.assertRaises(TimeoutError):host.run_key(adapter,2,FIXTURE,1,source_schedule=[(0,1)])
-        self.assertEqual(adapter.reg[11],0)
+        self.assertEqual(adapter.register(11),0)
     def test_stall_schedule_releases_before_completion(self):
         adapter=FakeAdapter();adapter.reg[3]=2;transitions=[]
         counter=[0]
@@ -85,7 +85,7 @@ class HostTests(unittest.TestCase):
         with patch.object(host.time,'monotonic',side_effect=now),patch.object(host.time,'sleep'):
             host.poll(adapter,8,source_schedule=[(.02,1),(.10,0)],transitions=transitions)
         self.assertEqual([x['hold_generation'] for x in transitions],[True,False])
-        self.assertEqual(adapter.reg[11],0)
+        self.assertEqual(adapter.register(11),0)
     def test_transport(self):
         adapter=FakeAdapter();self.assertTrue(host.identify(adapter)['test_mode'])
         self.assertEqual(host.transport_test(adapter)['transport'],'PASS')
@@ -129,7 +129,7 @@ class HostTests(unittest.TestCase):
         adapter=FakeAdapter();results=[]
         def configure(adapter,profile,fixture,request_id,controls):
             adapter.reg[3]=4 if controls==4 else 12 if profile==0 and controls==0 else 2
-            adapter.reg[12]=8
+            adapter.reg[12]=12
         with patch.object(host,'configure_request',side_effect=configure),patch.object(host.time,'sleep'),patch.object(host,'run_key',side_effect=lambda a,p,f,r:{'profile':p,'result':'PASS'}):
             host.reset_replay(adapter,FIXTURE,results)
         self.assertEqual(len(results),8)
@@ -138,5 +138,65 @@ class HostTests(unittest.TestCase):
         adapter=FakeAdapter()
         with patch.object(adapter,'reset_board_core',side_effect=lambda:adapter.reg.update({3:13})):
             with self.assertRaisesRegex(RuntimeError,'stale status'):host.reset_and_check(adapter)
+
+    def test_reset_boundary_rejects_busy_before_admission(self):
+        adapter=FakeAdapter();adapter.reg.update({3:2,12:2});results=[]
+        with patch.object(host,'reset_and_check'),patch.object(host,'configure_request'),patch.object(host,'poll',return_value=2),patch.object(host.time,'monotonic',side_effect=[0,0,181]),patch.object(host.time,'sleep'):
+            with self.assertRaisesRegex(TimeoutError,'enter RUN'):
+                host.reset_replay(adapter,FIXTURE,results)
+        self.assertEqual(results,[])
+
+    def test_timeout_resets_stalled_operation(self):
+        adapter=FakeAdapter()
+        def stalled(a,mask,*args):
+            if mask==8:raise TimeoutError('primary generation timeout')
+            return 1
+        with patch.object(host,'poll',side_effect=stalled),patch.object(adapter,'reset_board_core',wraps=adapter.reset_board_core) as reset:
+            with self.assertRaisesRegex(TimeoutError,'primary generation timeout') as caught:
+                host.run_key(adapter,0,FIXTURE,1)
+        reset.assert_called_once()
+        self.assertEqual(caught.exception.recovery,{'action':'reset','success':True})
+        self.assertEqual(adapter.reg[3],1)
+
+    def test_primary_key_failure_survives_ack_failure(self):
+        adapter=FakeAdapter();adapter.corrupt_data=True;register=adapter.register
+        def fail_ack(address,value=None):
+            if address==2 and value==2:raise OSError('cleanup ACK failed')
+            return register(address,value)
+        with patch.object(adapter,'register',side_effect=fail_ack),patch.object(adapter,'reset_board_core',wraps=adapter.reset_board_core) as reset:
+            with self.assertRaisesRegex(RuntimeError,'AES fixture mismatch') as caught:
+                host.run_key(adapter,0,FIXTURE,1)
+        reset.assert_called_once()
+        self.assertEqual(caught.exception.cleanup_errors,['acknowledge: cleanup ACK failed'])
+        self.assertTrue(caught.exception.fan_samples)
+        self.assertEqual(caught.exception.recovery,{'action':'reset','success':True})
+
+    def test_successful_key_with_failed_ack_still_fails(self):
+        adapter=FakeAdapter();register=adapter.register
+        def fail_ack(address,value=None):
+            if address==2 and value==2:raise OSError('completion ACK failed')
+            return register(address,value)
+        with patch.object(adapter,'register',side_effect=fail_ack):
+            with self.assertRaisesRegex(OSError,'completion ACK failed') as caught:
+                host.run_key(adapter,0,FIXTURE,1)
+        self.assertEqual(caught.exception.recovery,{'action':'reset','success':True})
+
+    def test_timeout_survives_reset_failure(self):
+        adapter=FakeAdapter()
+        def stalled(a,mask,*args):
+            if mask==8:raise TimeoutError('primary timeout')
+            return 1
+        with patch.object(host,'poll',side_effect=stalled),patch.object(adapter,'reset_board_core',side_effect=OSError('reset unavailable')):
+            with self.assertRaisesRegex(TimeoutError,'primary timeout') as caught:
+                host.run_key(adapter,0,FIXTURE,1)
+        self.assertEqual(caught.exception.cleanup_errors,['reset: reset unavailable'])
+        self.assertEqual(caught.exception.recovery,{'action':'reset','success':False})
+
+    def test_adapter_close_does_not_mask_primary_failure(self):
+        adapter=object.__new__(host.SpiAdapter);primary=TimeoutError('original failure')
+        with patch.object(adapter,'close',side_effect=OSError('close failed')):
+            adapter.__exit__(TimeoutError,primary,None)
+        self.assertEqual(str(primary),'original failure')
+        self.assertEqual(primary.cleanup_errors,['adapter close: close failed'])
 
 if __name__=='__main__':unittest.main()
