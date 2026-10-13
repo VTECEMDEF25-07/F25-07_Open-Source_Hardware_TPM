@@ -24,11 +24,15 @@ module tb_softcore_boot;
             if (ready || command_valid || response_ready || report !== 0) $fatal(1,"reset interface invalidation");
             for (i=0;i<32;i=i+1) if (dut.cpu.cpuregs[i] !== 0) $fatal(1,"CPU register not cleared %0d",i);
             if (dut.cpu.reg_op1 !== 0 || dut.cpu.reg_op2 !== 0 || dut.cpu.reg_out !== 0 || dut.cpu.mem_rdata_q !== 0 || dut.cpu.mem_wdata !== 0 || dut.cpu.alu_out_q !== 0) $fatal(1,"CPU operand residue");
-            for (i=0;i<4096;i=i+1) dut.ram_reg[i]=32'hdeadbeef;
+`ifndef KEYGEN_ALTERA
+            for (i=0;i<4096;i=i+1) dut.data_ram.implementation.memory_reg[i]=32'hdeadbeef;
+`endif
             reset_n=1;
             repeat(4095) begin @(negedge clock); if(ready) $fatal(1,"early ready during scrub"); end
             @(negedge clock); if (!ready) $fatal(1,"scrub never completed");
-            for (i=0;i<4096;i=i+1) if(dut.ram_reg[i] !== 0) $fatal(1,"RAM not scrubbed %0d",i);
+`ifndef KEYGEN_ALTERA
+            for (i=0;i<4096;i=i+1) if(dut.data_ram.implementation.memory_reg[i] !== 0) $fatal(1,"RAM not scrubbed %0d",i);
+`endif
         end
     endtask
     initial begin

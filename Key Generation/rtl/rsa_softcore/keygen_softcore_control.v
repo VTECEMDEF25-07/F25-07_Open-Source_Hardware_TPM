@@ -1,5 +1,5 @@
-// RV32I feasibility controller. Descriptor-only MMIO; no secret operand window.
-// This module boots a self-test program, not RSA generation firmware.
+// RV32I CPU substrate. Descriptor-only MMIO; no secret operand window.
+// ROM_FILE selects the feasibility self-test or compiled RSA control firmware.
 module keygen_softcore_control #(
     parameter ROM_FILE = "softcore_boot.hex"
 ) (
@@ -13,10 +13,10 @@ module keygen_softcore_control #(
     output wire [31:0] report_o
 );
     reg [31:0] rom_reg [0:8191];
-    reg [31:0] ram_reg [0:4095];
     reg [11:0] scrub_index_reg;
     reg scrub_done_reg;
     reg memory_ready_reg;
+    reg ram_pending_reg;
     reg [31:0] memory_read_reg;
     reg bus_fault_reg;
     reg command_valid_reg, busy_reg, done_reg;
@@ -30,12 +30,25 @@ module keygen_softcore_control #(
     wire ram_select = memory_address >= 32'h10000000 && memory_address < 32'h10004000;
     wire mmio_select = memory_address >= 32'h40000000 && memory_address < 32'h40000020;
     wire write_access = |memory_strobe;
-    wire ram_write_en = reset_n_i && (!scrub_done_reg ||
-        (memory_valid && !memory_ready_reg && ram_select && write_access));
+    wire ram_access = cpu_reset_n && memory_valid && !memory_ready_reg && ram_select;
+    wire ram_read_request = ram_access && !ram_pending_reg &&
+        (!write_access || memory_strobe != 4'b1111);
+    wire ram_read_valid;
+    wire [31:0] ram_read_data;
+    wire [31:0] ram_byte_mask = {{8{memory_strobe[3]}},{8{memory_strobe[2]}},
+        {8{memory_strobe[1]}},{8{memory_strobe[0]}}};
+    wire ram_cpu_write = ram_access && write_access &&
+        ((memory_strobe == 4'b1111 && !ram_pending_reg) || (ram_pending_reg && ram_read_valid));
+    wire ram_write_en = reset_n_i && (!scrub_done_reg || ram_cpu_write);
     wire [11:0] ram_write_address = scrub_done_reg ? memory_address[13:2] : scrub_index_reg;
-    wire [31:0] ram_write_data = scrub_done_reg ? memory_write : 32'd0;
-    wire [3:0] ram_write_strobe = scrub_done_reg ? memory_strobe : 4'b1111;
-    integer byte_index;
+    wire [31:0] ram_merged_data = (ram_read_data & ~ram_byte_mask) | (memory_write & ram_byte_mask);
+    wire [31:0] ram_write_data = !scrub_done_reg ? 32'd0 :
+        (memory_strobe == 4'b1111 ? memory_write : ram_merged_data);
+    keygen_ram32 #(.ADDRESS_WIDTH(12)) data_ram (
+        .clock_i(clock_i), .reset_n_i(reset_n_i), .clock_en_i(1'b1),
+        .write_en_i(ram_write_en), .write_address_i(ram_write_address), .write_data_i(ram_write_data),
+        .read_en_i(ram_read_request), .read_address_i(memory_address[13:2]),
+        .read_valid_o(ram_read_valid), .read_data_o(ram_read_data));
     initial $readmemh(ROM_FILE, rom_reg);
     assign ready_o = reset_n_i && scrub_done_reg;
     assign instruction_progress_o = cpu_reset_n && memory_valid && memory_ready_reg && memory_instruction;
@@ -74,19 +87,9 @@ module keygen_softcore_control #(
             else scrub_index_reg <= scrub_index_reg + 1'b1;
         end
     end
-    // A single physical write port serves both scrub and CPU byte writes.
-    // Combining these here preserves block-RAM inference in Quartus.
-    always @(posedge clock_i) begin
-        if (ram_write_en) begin
-            for (byte_index = 0; byte_index < 4; byte_index = byte_index + 1)
-                if (ram_write_strobe[byte_index])
-                    ram_reg[ram_write_address][byte_index*8 +: 8] <= ram_write_data[byte_index*8 +: 8];
-        end
-    end
-
     always @(posedge clock_i) begin
         if (!cpu_reset_n) begin
-            memory_ready_reg <= 0; memory_read_reg <= 0; bus_fault_reg <= 0;
+            memory_ready_reg <= 0; memory_read_reg <= 0; bus_fault_reg <= 0; ram_pending_reg <= 0;
             command_valid_reg <= 0; command_opcode_reg <= 0;
             busy_reg <= 0; done_reg <= 0; response_status_reg <= 0;
             arg0_reg <= 0; arg1_reg <= 0; arg2_reg <= 0; arg3_reg <= 0; report_reg <= 0;
@@ -100,7 +103,19 @@ module keygen_softcore_control #(
             if (memory_valid && !memory_ready_reg) begin
                 memory_ready_reg <= 1;
                 if (rom_select && !write_access) memory_read_reg <= rom_reg[memory_address[14:2]];
-                else if (ram_select) memory_read_reg <= ram_reg[memory_address[13:2]];
+                else if (ram_select) begin
+                    if (write_access && memory_strobe == 4'b1111 && !ram_pending_reg) begin
+                        // Full-word write completes directly through the wrapper.
+                        memory_ready_reg <= 1;
+                    end else if (ram_pending_reg && ram_read_valid) begin
+                        memory_read_reg <= ram_read_data;
+                        memory_ready_reg <= 1;
+                        ram_pending_reg <= 0;
+                    end else begin
+                        memory_ready_reg <= 0;
+                        ram_pending_reg <= 1;
+                    end
+                end
                 else if (mmio_select && !memory_instruction) begin
                     if (write_access) begin
                         if (memory_strobe != 4'b1111) bus_fault_reg <= 1;

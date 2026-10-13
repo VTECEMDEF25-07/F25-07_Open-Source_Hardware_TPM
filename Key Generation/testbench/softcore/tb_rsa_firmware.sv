@@ -8,6 +8,14 @@ module tb_rsa_firmware;
     wire [7:0] completion_status,opcode;
     wire [31:0] arg0,arg1,arg2,arg3;
     integer command_count=0,i;
+    integer scrub_words=0;
+    always @(posedge clock) begin
+        if(!dut.child_reset_n) scrub_words=0;
+        else if(dut.control.ram_write_en && !dut.control.scrub_done_reg) begin
+            if(dut.control.ram_write_address!==scrub_words || dut.control.ram_write_data!==0) $fatal(1,"scrub address/data mismatch");
+            scrub_words=scrub_words+1;
+        end
+    end
     reg [31:0] saved_instruction;
     keygen_rsa_softcore #(.WATCHDOG_BITS(10)) dut(
         .clock_i(clock),.reset_n_i(reset_n),.work_valid_i(work_valid),.work_ready_o(work_ready),
@@ -15,7 +23,7 @@ module tb_rsa_firmware;
         .command_valid_o(command_valid),.command_ready_i(command_ready),.command_opcode_o(opcode),
         .command_arg0_o(arg0),.command_arg1_o(arg1),.command_arg2_o(arg2),.command_arg3_o(arg3),
         .response_valid_i(response_valid),.response_ready_o(response_ready),.response_status_i(response_status));
-    initial begin #100000000; $fatal(1,"TIMEOUT firmware controller"); end
+    initial begin #100000000; $fatal(1,"TIMEOUT firmware controller cmd=%0d state=%0d pc=%h memvalid=%b ready=%b ram_pending=%b completion=%b",command_count,dut.state_reg,dut.control.cpu.reg_pc,dut.control.memory_valid,dut.control.memory_ready_reg,dut.control.ram_pending_reg,completion_valid); end
     task start_job;
         begin
             wait(work_ready); @(negedge clock); work_valid=1;
@@ -66,8 +74,11 @@ module tb_rsa_firmware;
     task check_completion(input [7:0] expected);
         begin
             wait(completion_valid);@(negedge clock);
+            if(scrub_words!=4096) $fatal(1,"incomplete RAM scrub");
             if(completion_status!==expected) $fatal(1,"completion %d expected %d",completion_status,expected);
-            for(i=0;i<4096;i=i+1) if(dut.control.ram_reg[i]!==0) $fatal(1,"post-job RAM residue");
+`ifndef KEYGEN_ALTERA
+            for(i=0;i<4096;i=i+1) if(dut.control.data_ram.implementation.memory_reg[i]!==0) $fatal(1,"post-job RAM residue");
+`endif
             for(i=0;i<32;i=i+1) if(dut.control.cpu.cpuregs[i]!==0) $fatal(1,"post-job CPU residue");
             repeat(20) begin
                 @(negedge clock);

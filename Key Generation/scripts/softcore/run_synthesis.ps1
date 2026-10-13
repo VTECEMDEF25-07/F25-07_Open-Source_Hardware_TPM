@@ -1,4 +1,4 @@
-param([string]$QuartusBin = 'C:/altera_pro/26.1/quartus/bin64', [string]$Python = 'C:/Python314/python.exe')
+param([ValidateSet("Generic","Altera")][string]$Backend="Generic",[string]$QuartusBin = 'C:/altera_pro/26.1/quartus/bin64', [string]$Python = 'C:/Python314/python.exe')
 $ErrorActionPreference='Stop'
 $taskRoot=(Resolve-Path "$PSScriptRoot/../..").Path
 $taskBuild=Join-Path $taskRoot 'build/softcore'
@@ -11,7 +11,8 @@ $taskQsf=@(
 'set_global_assignment -name TOP_LEVEL_ENTITY keygen_softcore_control',
 'set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files'
 )
-foreach($taskSource in @('IP/third_party/picorv32/picorv32.v','rtl/rsa_softcore/keygen_softcore_control.v')) {
+if($Backend -eq 'Altera'){$taskQsf+='set_global_assignment -name VERILOG_MACRO KEYGEN_ALTERA'}
+foreach($taskSource in @('IP/keygen_ram32_generic.v','IP/keygen_ram32_altera.v','IP/keygen_ram32.v','IP/third_party/picorv32/picorv32.v','rtl/rsa_softcore/keygen_softcore_control.v')) {
     $taskPath=(Join-Path $taskRoot $taskSource).Replace('\','/')
     $taskQsf+='set_global_assignment -name VERILOG_FILE "'+$taskPath+'"'
 }

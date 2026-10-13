@@ -32,7 +32,7 @@ assert len(words)<=8192
 image="".join(f"{w:08x}\n" for w in words+[0x13]*(8192-len(words)))
 a.output.mkdir(parents=True,exist_ok=True)
 (a.output/"softcore_boot.hex").write_text(image,newline="\n")
-manifest={"source_sha256":hashlib.sha256(src.read_bytes()).hexdigest(),"image_sha256":hashlib.sha256(image.encode()).hexdigest(),"instruction_count":len(words),"rom_bytes":32768,"ram_bytes":16384,"isa":"RV32I","purpose":"self-test only; not RSA firmware"}
+manifest={"source_sha256":hashlib.sha256(src.read_text().encode()).hexdigest(),"image_sha256":hashlib.sha256(image.encode()).hexdigest(),"instruction_count":len(words),"rom_bytes":32768,"ram_bytes":16384,"isa":"RV32I","purpose":"self-test only; not RSA firmware"}
 expected=src.with_name("softcore_boot_manifest.json")
 if expected.exists() and json.loads(expected.read_text()) != manifest:
     raise RuntimeError("Firmware image differs from reviewed source/hash manifest")
