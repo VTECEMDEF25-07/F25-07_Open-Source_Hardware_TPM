@@ -1,0 +1,81 @@
+# DE25 RevD key-generation demonstration
+
+This is an explicit **test image**: a deterministic SHA-256 fixture stream feeds the portable core, and a stand-in protected receiver allows the host to inspect test keys. It must not be used with production seeds or keys. The core itself has no public private-key export port. Four images cover RTL/softcore control and generic/Altera arithmetic; each image contains both AES profiles and RSA-2048.
+
+## Layout and reset
+
+`keygen_de25_top.v` connects the board configuration-reset primitive, independent fan control, and the SPI demonstration. `keygen_demo_system.v` captures a request, starts the SHA source, then presents the request to the core. It collects up to 129 result words before acknowledging ownership. `keygen_demo_spi.v` handles the transport.
+
+KEY0 and configuration reset initialize both domains. The gray adapter lead resets only the demonstration and key-generation core: fan control continues running. The fan uses the existing vendor automatic temperature control; no SPI register can disable it or override its safety behavior. The `vendor/` files preserve the board-management implementation from the earlier verified board demonstration, including its configuration-reset wrapper and CLOCKMEM reset connection. These imported files retain their original names and style. `pin_reference.qsf` is the original board pin reference, not another top-level design.
+
+At reset, status acknowledgement, or result discard, the receiver clears one word per clock over all 129 positions. Results are unreadable until a complete key arrives; they immediately become unreadable when clearing begins. A new request is accepted only after clearing and core readiness. Gray reset also clears the fixture seed and generator state. Status acknowledgement resets the generator and captured context, but preserves host-written shadow configuration for convenient replay.
+
+## Verified wiring
+
+| Adapter wire | Signal | JP1 contact | FPGA pin |
+|---|---|---:|---|
+| Purple | Interrupt, active low | 2 | BE43 |
+| Green | MISO | 4 | BF40 |
+| Yellow | MOSI | 6 | BM31 |
+| Brown | Chip select, active low | 8 | BP31 |
+| Orange | Clock | 10 | BU28 |
+| Gray | Core reset, active low | 14 | BW28 |
+| Black | Ground | 12 | Ground |
+
+Blue on contact 16 remains unused; red and white remain disconnected. These are the corrected, physically verified assignments, not the earlier photo-based odd-number hypothesis. The 50 MHz clock is CH128. KEY0 is BW59. Board-management SCL/SDA are BF120/BH118.
+
+## SPI protocol
+
+Use mode 0, MSB first, at 100 kHz, 500 kHz, or 1 MHz. Keep chip select low for exactly eight bytes:
+
+`operation, address, 0, 0, data[31:24], data[23:16], data[15:8], data[7:0]`
+
+Operation 1 reads; operation 2 writes. MISO returns `A5, 0, 0, 0` followed by a 32-bit read snapshot. A write commits only after all eight bytes arrive with both reserved bytes zero. Raising chip select early aborts without mutation. Extra clocks after eight bytes are ignored until chip select rises. Unknown addresses read zero and ignore writes. START while busy or awaiting acknowledgement is ignored; it does not replace an operation. Profile, operation ID, and seed are captured together at an accepted START. Later writes affect only the next operation.
+
+| Address | Register | Meaning |
+|---:|---|---|
+| 0 | ID | `0x4B473031` |
+| 1 | Configuration | bit 0 softcore; bit 1 Altera backend; bit 2 test image |
+| 2 | Control, write | bit 0 START; bit 1 acknowledge held status |
+| 3 | Status | bit 0 ready; bit 1 busy; bit 2 complete receiver; bit 3 held status; bits 11:8 core status code |
+| 4 | Profile | 0 AES-128; 1 AES-256; 2 RSA-2048; other writes select invalid profile 3 |
+| 5 | Operation ID | Shadow 32-bit request identifier |
+| 6, 7 | Elapsed cycles | Low/high halves; 50 MHz cycles from accepted core request until held status |
+| 8 | Result address | 0 through 128; out-of-range writes ignored |
+| 9 | Result data | Selected 32-bit word; zero until complete or outside actual result length |
+| 10 | Result metadata | bit 31 valid; bit 11 whole-key last; bit 10 component last; bits 9:3 component word index; bits 2:0 component |
+| 11 | Test controls | bit 0 hold generation; bit 1 hold result; bit 2 hold ownership; bit 3 force source failure |
+| 12 | Public progress | bits 2:0 wrapper state (0 clear, 1 idle, 2 source start, 3 core start, 4 running); bit 3 result valid; bit 4 ownership ready; bit 5 owned; bit 6 receiver clearing |
+| 13 | Temperatures | Signed 16-bit FPGA degrees C in high half; board degrees C in low half |
+| 14 | Fan speed | Vendor-reported RPM in low 16 bits |
+| 15 | Fan status | bits 7:0 vendor ALARM; bit 8 I2C_READY; bit 9 TEMP_VALID |
+| 16–23 | Seed | Eight MSW-first words, 256 bits total |
+| 63 | Scratch | Read/write transport check |
+
+Fan telemetry is read-only, synchronized diagnostic information. Multi-field reads are not an atomic sensor snapshot; use repeated samples and validity flags. The vendor fan controller retains responsibility for protection. Register 12 intentionally exposes wrapper progress, not private arithmetic data or exact RSA subphases.
+
+AES exports component 1, four/eight words. RSA exports modulus component 2 (64 words), exponent component 3 (one word), p component 4 (32 words), and q component 5 (32 words). Each component is MSW first. Success is held until acknowledgement. Component metadata is checked by the host before mathematical verification. For simultaneous START and acknowledgement, acknowledgement wins; issue START separately after ready.
+
+## Build and review
+
+Run `prepare_build.py --build-root <project>/AI/tmp/keygen-board-build --core-root <canonical Key Generation directory>`. The canonical source tree and already-built `build/full/rsa_control.hex` must exist. No placeholder firmware is accepted. Add `--variant rtl_altera --compile` for one complete Quartus flow; select the other three variants similarly. Without `--compile`, this only prepares projects. Nothing programs the board.
+
+Each variant records original source paths and SHA-256 values, copies an immutable source snapshot and firmware into its build directory, and targets A5ED013BB32AE4SCS at 50 MHz. Altera arithmetic is selected with `KEYGEN_ALTERA`; the design instantiates primitives directly rather than depending on generated arithmetic IP-catalog projects. The board configuration reset uses its vendor primitive. Synthesis-generated debug/configuration fabric is tool infrastructure, not a separately authored key-generation IP dependency.
+
+A successful tool exit is not timing acceptance. Review fitted resources, 50 MHz setup/hold, generated fan clock, asynchronous input synchronizers, and every timing exception. `timing_accepted` remains false until that review. Build products stay under `AI/tmp/`.
+
+## Tests and host use
+
+`simulate_demo.ps1 -BuildDirectory <project>/AI/tmp/keygen-demo-sim` runs the transport/receiver bench. Its clearly marked **model core** checks framing, request capture, full 129-word reception, stalls, ownership, discard, clearing, reset, and fan-register wiring. It does not prove RSA mathematics. Production builds never include the model. Real AES/RSA integration has separate core tests.
+
+`python tests/test_host.py` performs offline host checks with a fake adapter, independent hashlib AES values and the frozen RSA corpus plus strong key checker. It never opens USB.
+
+The host client opens only C232HM serial `FTA6H280`. Use `python host_test.py --action transport --report <report.json>` first; then `--action aes`, `--action rsa --seed 1`, or `--action corpus`. `--reset` pulses gray core reset only. Reads and operations are bounded; each operation has a 180-second deadline. A failure records FAIL and exits nonzero. Timeout may leave a busy operation: explicitly reset the core before retrying.
+
+RSA results must match the frozen deterministic corpus and pass the independent key checker. AES must match the SHA fixture stream. The host records 50 MHz cycle counts, separate wall-clock completion latency, and roughly one-second fan telemetry samples. No private result values are saved to reports. The corpus acceptance checks the median of all twenty RSA core times against 30 seconds; a transport-only or single-key success does not establish that target.
+
+## Initial evidence
+
+- Questa SPI/receiver/telemetry model suite: PASS, 29.414 ms simulated; source compiled as Verilog-2001 with zero compiler warnings/errors. The simulator's `+acc` optimization warning is expected.
+- Offline Python host suite: eight tests PASS, including RSA mathematical validation, corrupt AES/metadata rejection, error acknowledgement, timeout and image identity.
+- No board programming or electrical testing is performed by these preparation steps. Fitted-resource, timing and physical evidence must be attached after the corresponding runs finish.
