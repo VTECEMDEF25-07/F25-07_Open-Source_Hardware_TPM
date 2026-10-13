@@ -6,7 +6,7 @@ root=a.source_root.resolve();here=Path(__file__).resolve().parents[1];build=a.bu
 subprocess.run([sys.executable,str(here/'scripts/generate_small_vectors.py'),str(build/'small_vectors.txt')],check=True)
 sources=list((root/'IP').glob('keygen_*.v'))+[root/'rtl/arithmetic/keygen_math.v',here/'tests/tb_keygen_math_small.sv']
 models=[a.altera_models/name for name in ['220model.v','altera_mf.v']]
-inputs=sources+models+[Path(__file__).resolve(),here/'scripts/generate_small_vectors.py',build/'small_vectors.txt']
+inputs=sources+models+[Path(__file__).resolve(),here/'scripts/generate_small_vectors.py',build/'small_vectors.txt',build/'small_vectors.hex']
 def hashes():return {str(p):hashlib.sha256(p.read_bytes()).hexdigest() for p in inputs}
 manifest=hashes();(build/'inputs.json').write_text(json.dumps(manifest,indent=2))
 def run(tool,args,name):

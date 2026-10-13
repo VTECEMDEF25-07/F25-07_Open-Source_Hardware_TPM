@@ -8,23 +8,34 @@ Read this command table, then the RAM/command boundary in `keygen_math.v`, the `
 
 ## Interface
 
-All words are unsigned little-endian limbs: address zero of an operand contains its least-significant 32 bits. Scratch has 4,096 words (16 KiB); a numeric operand has 1–MAX_LIMBS words. MAX_LIMBS defaults to 64; the RSA board integration selects 32 to reduce operand-cache muxes while retaining 1024-bit prime arithmetic and 2048-bit full products. Multiplication produces 2N words. Inputs use `cmd_valid_i/cmd_ready_o`, an 8-bit opcode and four 32-bit arguments. One command may be outstanding. `rsp_valid_o/rsp_ready_i` holds an 8-bit terminal status until accepted. No new command is accepted while responding.
+All words are unsigned little-endian limbs: address zero of an operand contains its least-significant 32 bits. Scratch has 4,096 words (16 KiB); a numeric operand has 1Ã¢â‚¬â€œMAX_LIMBS words. MAX_LIMBS defaults to 64; the RSA board integration selects 32 to reduce operand-cache muxes while retaining 1024-bit prime arithmetic and 2048-bit full products. Multiplication produces 2N words. Inputs use `cmd_valid_i/cmd_ready_o`, an 8-bit opcode and four 32-bit arguments. One command may be outstanding. `rsp_valid_o/rsp_ready_i` holds an 8-bit terminal status until accepted. No new command is accepted while responding.
 
 The private `mem_*` port is available only when `mem_ready_o=1`, which requires IDLE and no presented command. A read or write is accepted on that rising edge; read-valid/data appear just after it. `mem_read_valid_o` is one cycle long. The command interface takes priority over the private port. This private port must never be connected to CPU data reads or external transport in production.
 
 Reset immediately aborts the command and invalidates the cached modulus. It then writes zero to all 4,096 scratch locations and every internal operand array then performs a separate zero-word read to refresh the RAM output latch before raising command-ready (4,098 rising edges). Reset must remain connected to the subsystem's cleanup/abort policy. `ZERO` only clears the selected scratch range; it does not erase all cached arithmetic operands, and therefore cannot alone establish complete secret cleanup.
 
 | Opcode | Operation | Arguments 0, 1, 2, 3 |
+
 |---|---|---|
+
 | 01 | COPY | destination, source, ignored, N |
+
 | 02 | ZERO | destination, ignored, ignored, N |
+
 | 03 | COMPARE | ignored valid destination address, source A, source B, N |
+
 | 04 | ADD | destination, source A, source B, N |
+
 | 05 | SUB | destination, source A, source B, N |
+
 | 06 | SHIFT_RIGHT | destination, source, ignored, N; shift exactly one bit |
+
 | 10 | MUL | destination (2N words), source A, source B, N |
+
 | 11 | MOD_SETUP | modulus address, reserved workspace address, N, zero |
+
 | 12 | MONT_MUL | destination, source A, source B, zero; N from context |
+
 | 13 | MODEXP | destination, normal base, normal exponent, exponent word count |
 
 ADD and SUB wrap modulo `2**(32*N)`; they do not return carry or borrow. COMPARE returns unsigned relation. MONT_MUL returns `A*B*R^-1 mod modulus` for `R=2**(32*N)`. Both inputs must be below the modulus. MODEXP accepts a normal base below the modulus and a normal exponent (including zero), and returns a normal modular result. Exponent length is independent of modulus length.
@@ -37,12 +48,16 @@ Status 00 means success; 01 bad opcode; 02 out of bounds/invalid length; 03 rese
 
 The engine reuses a pipelined 32x32 multiplier. Schoolbook multiplication accumulates one product at a time. Montgomery multiplication uses the coarsely integrated operand scanning algorithm with an extra carry word and a final conditional subtraction. Modulus setup uses five low-word Newton iterations and repeated modular doubling for R-squared. Exponentiation converts to Montgomery representation, performs a left-to-right square/multiply sequence, and converts back. These operations have data-dependent duration and are not a side-channel hardening claim.
 
-`Math/scripts/generate_vectors.py` computes expected results using Python integer multiplication, modular inverse and `pow(base, exponent, modulus)`, independently of the RTL algorithm. The test includes 32–2048-bit Montgomery and full products, 1024-bit modular exponentiation, exponent zero/one, maximal/carry values, response backpressure, invalid commands/contexts, overlapping COPY, and reset during operation followed by reading every scrubbed RAM word.
+`Math/scripts/generate_vectors.py` computes expected results using Python integer multiplication, modular inverse and `pow(base, exponent, modulus)`, independently of the RTL algorithm. The test includes 32Ã¢â‚¬â€œ2048-bit Montgomery and full products, 1024-bit modular exponentiation, exponent zero/one, maximal/carry values, response backpressure, invalid commands/contexts, overlapping COPY, and reset during operation followed by reading every scrubbed RAM word.
 
 ```powershell
+
 & './Key Generation/Math/scripts/simulate_math.ps1' -BuildDirectory 'ABSOLUTE_SCRATCH_PATH' -Full -Small
+
 & './Key Generation/Math/scripts/simulate_math.ps1' -BuildDirectory 'OTHER_ABSOLUTE_SCRATCH_PATH' -Full -Small -Altera
+
 & './Key Generation/Math/scripts/fit_math.ps1' -BuildDirectory 'FIT_SCRATCH_PATH'
+
 ```
 
 Simulation uses the real installed vendor models when `-Altera` is set. See the IP README for the older model's disclosed AUTO RAM warning. The fit is a virtual-pin resource/timing smoke build, not board I/O timing signoff or a flash operation. Only one Questa session may run on the installed license, so coordinate simulation runs between workers.
@@ -69,7 +84,7 @@ The separate `tb_keygen_math_small.sv` drives the same MAX_LIMBS=32 engine and 3
 - All bases below those moduli and exponents 0 through 15 for normal modular exponentiation, plus composite 2047=23*89: base 2 passes its strong probable-prime arithmetic round, while base 3 fails. This is an arithmetic example, not a valid RSA candidate; the service trial division rejects its small factors.
 - Three additional two-limb carry, borrow and cross-limb shift checks, held responses, and all 4,096 scratch words plus actual RAM output latch after reset.
 
-The generic suite passed against frozen integrated RTL: `AI/tmp/keygen-math-small-generic/result.log` and its input hashes. Genuine-Altera source compilation passed; execution is queued behind the current full-key vendor run and is not yet claimed as passed.
+The generic suite passed against frozen integrated RTL: `AI/tmp/keygen-math-small-generic/result.log` and its input hashes. The genuine-Altera suite also passed all 10,771 cases with the same oracle in `AI/tmp/keygen-math-small-altera-preload/result.log` (57,840,800 ns simulated, zero errors, one disclosed clock-port warning). Vectors are preloaded with `$readmemh`; the earlier streaming-file attempt stopped at vector 4096 with an input-parse failure and is retained as failed evidence in `AI/tmp/keygen-math-small-altera`. No arithmetic mismatch was reported in that attempt. The same preloaded testbench passed all cases on the generic backend too (`AI/tmp/keygen-math-small-generic-preload/result.log`).
 
 Run the generic script under Linux/WSL, passing absolute paths. The vendor script runs under Windows with the installed Questa license:
 

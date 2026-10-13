@@ -57,7 +57,9 @@ module tb_keygen_math_small;
 
         end
     endtask
-    integer fd,scan,cases,c,kind,i;
+    localparam CASES=10771;
+    reg [175:0] vectors[0:CASES-1];
+    integer cases,c,kind,i;
     reg [31:0] modulus,a,b,expected_low,expected_high,value;
     reg [7:0] expected_status;
     initial begin
@@ -77,11 +79,11 @@ module tb_keygen_math_small;
         command(8'h06,384,128,0,2,0);
         read_word(384,value);if(value!==32'h80000000)$fatal(1,"SHR cross limb");
         read_word(385,value);if(value!==0)$fatal(1,"SHR high");
-        fd=$fopen("small_vectors.txt","r");if(!fd)$fatal(1,"missing small vectors");
-        scan=$fscanf(fd,"%d",cases);if(scan!=1)$fatal(1,"vector count");
+        $readmemh("small_vectors.hex",vectors);cases=CASES;
         for(c=0;c<cases;c++)begin
-            scan=$fscanf(fd,"%d %h %h %h %h %h %h",kind,modulus,a,b,expected_low,expected_high,expected_status);
-            if(scan!=7)$fatal(1,"malformed vector%0d",c);
+            if($isunknown(vectors[c]))$fatal(1,"missing vector%0d",c);
+            {modulus,a,b,expected_low,expected_high,expected_status}=vectors[c][167:0];
+            kind={24'd0,vectors[c][175:168]};
             write_word(0,modulus);write_word(128,a);write_word(256,b);
             write_word(384,32'hbadbad01);write_word(385,32'hbadbad02);
             if(kind<=1)command(8'h11,0,1024,1,0,0);
@@ -101,7 +103,7 @@ module tb_keygen_math_small;
             read_word(385,value);if(value!==expected_high)$fatal(1,"case%0d high got%h expected%h",c,value,expected_high);
             if(c%1000==0)$display("SMALL progress case=%0d/%0d",c,cases);
         end
-        $fclose(fd);
+
         // Reset destroys the last small-domain state including the output latch.
         reset_n_reg=0;@(negedge clock_reg);reset_n_reg=1;
         while(!cmd_ready)@(negedge clock_reg);
