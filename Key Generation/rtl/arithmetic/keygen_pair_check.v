@@ -54,7 +54,9 @@ module keygen_pair_check (
     wire [32:0] difference_word={1'b0,a_reg}-{1'b0,b_reg}-{32'b0,carry_bit_reg};
     wire [17:0] d_trial={d_remainder_reg,a_reg[31]};
     wire d_bit=d_trial>=18'd65537;
-    wire multiplier_reset_n=reset_n_i && state_reg!=CLEAR && state_reg!=CLEAR_READ && state_reg!=CLEAR_WAIT;
+    // A registered clear request avoids glitches from binary state decoding.
+    reg multiplier_clear_reg;
+    wire multiplier_reset_n=reset_n_i && !multiplier_clear_reg;
     wire [8:0] product_address=multiply_n_reg+{4'd0,row_reg}+{4'd0,column_reg};
 
     function [16:0] reduce_65537;
@@ -101,7 +103,7 @@ module keygen_pair_check (
     task finish;
         input [3:0] status;
         begin
-            status_reg<=status;clear_result_reg<=1;clear_address_reg<=0;state_reg<=CLEAR;
+            status_reg<=status;clear_result_reg<=1;clear_address_reg<=0;state_reg<=CLEAR;multiplier_clear_reg<=1;
             if(status!=VALID)n_reg<=0;
         end
     endtask
@@ -155,7 +157,7 @@ module keygen_pair_check (
     end
     always @(posedge clock_i or negedge reset_n_i) begin
         if(!reset_n_i)begin
-            state_reg<=CLEAR;clear_address_reg<=0;clear_result_reg<=0;n_reg<=0;status_reg<=0;
+            state_reg<=CLEAR;clear_address_reg<=0;clear_result_reg<=0;n_reg<=0;status_reg<=0;multiplier_clear_reg<=1;
             return_reg<=0;multiply_return_reg<=0;operation_reg<=0;constant_reg<=0;
             destination_reg<=0;source_a_reg<=0;source_b_reg<=0;multiply_a_reg<=0;multiply_b_reg<=0;multiply_n_reg<=0;
             index_reg<=0;length_reg<=0;b_length_reg<=0;row_reg<=0;column_reg<=0;word_bit_reg<=0;
@@ -178,7 +180,7 @@ module keygen_pair_check (
                 else clear_address_reg<=clear_address_reg+1'b1;
             end
             CLEAR_READ: state_reg<=CLEAR_WAIT;
-            CLEAR_WAIT: begin clear_address_reg<=0;state_reg<=clear_result_reg?RESULT:IDLE;end
+            CLEAR_WAIT: begin clear_address_reg<=0;multiplier_clear_reg<=0;state_reg<=clear_result_reg?RESULT:IDLE;end
             IDLE: if(start_valid_i)begin
                 n_reg<={q_i,p_i};parity_bad_reg<=!p_i[0]||!q_i[0];status_reg<=VALID;
                 index_reg<=0;state_reg<=LOAD_INPUT;

@@ -134,4 +134,10 @@ module tb_keygen_pair_check;
         $finish;
     end
     initial begin #2000000000; $fatal(1, "global timeout"); end
+    // Registered multiplier clear must preserve every old state-level cycle.
+    always @(negedge clock_i) begin
+        if(reset_n_i && dut.multiplier_reset_n !==
+           (dut.state_reg!=0 && dut.state_reg!=1 && dut.state_reg!=2))
+            $fatal(1,"Registered multiplier reset changed cleanup cycle behavior");
+    end
 endmodule
