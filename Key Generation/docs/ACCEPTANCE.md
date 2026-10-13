@@ -8,7 +8,7 @@ Every entry remains pending until reproducible evidence is recorded.
 | SYS-01 | AES128/256 exact4/8word results, gaps/stalls/repeated words | Standalone 51-operation simulation PASS; integrated generic lifecycle PASS both controllers. Board pending. |
 | SYS-02/03 | RSA2048 algorithm mapping and independent full-key checks | Algorithm sheet reviewed against reference; 20-key software corpus independently checked. Full directed generic RSA PASS both controllers; dedicated generic normal seed1 PASS with exact54,336 input words. |
 | SYS-04 | Four combinations simulate, fit and run | Two generic directed full-key configurations PASS. Vendor full-key simulation and board builds in progress. |
-| SYS-05/06 | Captured request, ownership, scrub before status | AES and full directed RSA simulations PASS; optimized integrated lifecycle PASS27 checks each controller, including admission-gap faults. Final all-backend coverage pending. |
+| SYS-05/06 | Captured request, ownership, scrub before status | AES and full directed RSA simulations PASS; reset-audited integrated lifecycle PASS28 checks each generic controller, including admission-gap faults. Final all-backend coverage pending. |
 | SYS-07 | Prime retention and n/e/p/q transfer | Exact129-word comparison PASS both generic directed RSA controllers. |
 | SYS-08 | Reset every phase, scrub and recovery | Pair12 busy phases, math scrub, CPU and integrated reset tests PASS; exhaustive integration phases and hardware pending. |
 | SYS-09/10 | Isolated32bit stream, failure and replay | SHA20seeds×4blocks/stalls/replay PASS; source failure/captured operation tests PASS. Full search replay with stalls pending. |
@@ -71,3 +71,30 @@ logic and an independent AES oracle; this remains simulation, not board evidence
 
 Repository hygiene: `scripts/check_repository_hygiene.py` passed seven ignored
 generated-path checks and ten trackable source/fixture/constraint checks.
+
+## Registered-reset acceptance snapshot
+
+The four contributed asynchronous FSM-decode reset drivers are registered; see
+`RESET_AUDIT.md`. Final generic lifecycle tests pass 28 checks on both controllers.
+The reset-audited directed RSA tests with legal external stalls also pass:
+136,232,057 dedicated / 136,243,488 soft-core cycles, exactly 384 generation words
+and 129 independently checked result words each. Manifests are retained under
+`build/full_{rtl,softcore}_directed_stalls_reset-audited/`. Directed candidates do
+not measure random-search performance.
+
+The registered pair multiplier reset passes the complete generic and genuine
+Altera suites with unchanged cycle counts, eight independent fixtures, twelve
+busy reset phases and complete storage/latch clearing. Vendor evidence is under
+class-workspace `AI/tmp/keygen-pair-registered-reset-altera/`; its direct captured
+final console and verified input hashes are authoritative because the separate
+native transcript developed SeaDrive NUL holes. The damaged transcript remains
+preserved and is not represented as complete evidence.
+
+Final soft-core genuine-Altera lifecycle passes all 28 checks; evidence is under
+`AI/tmp/keygen-lifecycle-vendor-softcore-reset-audited/`. Complete vendor RSA runs,
+normal-stream final searches, all four routed builds and physical acceptance
+remain separate gates. No final configuration has been accepted yet.
+
+Arithmetic small-domain coverage additionally passes 10,771 independent cases
+on both generic and genuine Altera resources, with identical preloaded vectors;
+see `../Math/README.md` for exact commands and evidence locations.
