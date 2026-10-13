@@ -33,11 +33,15 @@ are legal. Internal controller watchdogs are distinct from host deadlines.
 ## Integration evidence
 
 `python3 scripts/run_integration_verilator.py` and the same command with
-`--softcore` both passed **18 lifecycle checks** using real engine storage:
+`--softcore` both passed **27 lifecycle checks** using real engine storage:
 AES128/256, capture, source gaps, result stalls, ownership rejection, invalid
 profile, source failure, first-fault preservation, peer failure, invalid internal
 status mapping, partial RSA candidate reset, active modular-exponentiation reset,
-AES result reset, cleanup reset, held-status reset and reuse.
+AES result reset, cleanup reset, held-status reset and reuse. Additional cases
+cover source failure and peer loss after public admission but before internal
+AES/RSA dispatch, simultaneous fault priority and successful subsequent jobs.
+Peer unavailability before admission remains a legal wait. The dispatch fix
+suppresses the internal AES request on a fault, preventing an orphan worker job.
 
 `scripts/run_full_verilator.py` compares every RSA word and component/index
 against the independent corpus and requires exact source consumption. It fails

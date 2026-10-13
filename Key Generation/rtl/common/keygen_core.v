@@ -30,6 +30,7 @@ module keygen_core #(
     wire rsa_unowned=(state_reg==RSA_START || state_reg==RSA_RUN || state_reg==READ_REQUEST ||
         state_reg==READ_WAIT || state_reg==EMIT || state_reg==OWNERSHIP);
     wire rsa_fault=rsa_unowned && (generation_failed_i || !peers_ready_i);
+    wire aes_start_fault=(state_reg==AES_START) && (generation_failed_i || !peers_ready_i);
     wire engine_ready,work_ready,completion_valid,cmd_valid,cmd_ready,rsp_valid,rsp_ready;
     wire [7:0] completion_status,cmd_op,rsp_status;
     wire [31:0] cmd_arg0,cmd_arg1,cmd_arg2,cmd_arg3;
@@ -71,7 +72,7 @@ module keygen_core #(
     end
     keygen_aes_core aes (
         .clock_i(clock_i),.reset_n_i(running),.peers_ready_i(peers_ready_i),
-        .request_valid_i(state_reg==AES_START),.request_ready_o(aes_request_ready),
+        .request_valid_i(state_reg==AES_START && !aes_start_fault),.request_ready_o(aes_request_ready),
         .request_profile_i(profile_reg),.request_id_i(id_reg),
         .generation_valid_i(generation_valid_i && aes_selected),.generation_ready_o(aes_generation_ready),
         .generation_data_i(generation_data_i),.generation_failed_i(generation_failed_i),
@@ -117,7 +118,7 @@ module keygen_core #(
             state_reg<=BOOT;profile_reg<=0;status_reg<=0;id_reg<=0;data_reg<=0;
             component_reg<=0;index_reg<=0;discard_reg<=0;
         end else if(running) begin
-            if(rsa_fault) begin
+            if(rsa_fault || aes_start_fault) begin
                 status_reg<=generation_failed_i ? 4'd2 : 4'd8;
                 discard_reg<=1;data_reg<=0;state_reg<=RESET_ENGINE;
             end else case(state_reg)

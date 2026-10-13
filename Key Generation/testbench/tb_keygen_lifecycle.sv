@@ -119,6 +119,32 @@ module tb_keygen_lifecycle;
   wait(result_valid_o);reset_core();aes(0,1);
   request(3);wait(dut.state_reg==11);reset_core();
   request(3);wait(status_valid_o);reset_core();aes(0,1);
+  // Fault after public acceptance but before internal worker admission.
+  request(0);peers_ready_i=0;
+  repeat(4200)tick();
+  if(!status_valid_o || status_code_o!==8 || status_id_o!==active_id)
+   $fatal(1,"AES_START accepted request lost peer: state=%0d",dut.state_reg);
+  peers_ready_i=1;terminal(8);aes(0,1);
+  request(1);generation_failed_i=1;peers_ready_i=0;
+  repeat(4200)tick();
+  if(!status_valid_o || status_code_o!==2)$fatal(1,"AES_START simultaneous failure priority");
+  generation_failed_i=0;peers_ready_i=1;terminal(2);aes(1,1);
+  request(0);generation_failed_i=1;
+  repeat(4200)tick();
+  if(!status_valid_o || status_code_o!==2)$fatal(1,"AES_START generation failure");
+  generation_failed_i=0;terminal(2);aes(0,1);
+  request(2);peers_ready_i=0;
+  repeat(4200)tick();
+  if(!status_valid_o || status_code_o!==8)$fatal(1,"RSA_START peer fault");
+  peers_ready_i=1;terminal(8);
+  request(2);generation_failed_i=1;peers_ready_i=0;
+  repeat(4200)tick();
+  if(!status_valid_o || status_code_o!==2)$fatal(1,"RSA_START simultaneous fault priority");
+  generation_failed_i=0;peers_ready_i=1;terminal(2);
+  // Before admission, an unavailable peer is a legal wait, not a failed job.
+  peers_ready_i=0;repeat(100)tick();
+  if(request_ready_o || status_valid_o || result_discard_o)$fatal(1,"unadmitted outage");
+  peers_ready_i=1;tick();aes(0,1);
   $display("PASS CORE_LIFECYCLE softcore=%0d checks=%0d",SOFTCORE,tests);$finish;
  end
  initial begin #20000000;$fatal(1,"lifecycle timeout state=%0d",dut.state_reg);end
