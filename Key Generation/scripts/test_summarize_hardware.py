@@ -40,7 +40,9 @@ class CorpusAuditTests(unittest.TestCase):
     def test_invalid_or_inconsistent_runtime(self):
         for change in ({"core_seconds": float("nan")}, {"core_cycles": -1},
                        {"core_seconds": 21}, {"host_operation_seconds": 180.001},
-                       {"host_operation_seconds": float("inf")}):
+                       {"host_operation_seconds": float("inf")},
+                       {"host_operation_seconds": 1},
+                       {"core_cycles": 10_000_000_000, "core_seconds": 200}):
             report = fixture()
             report["results"][0].update(change)
             self.assertFalse(audit(report, "seed-hash")["corpus_gate_pass"])
@@ -53,7 +55,7 @@ class CorpusAuditTests(unittest.TestCase):
 
     def test_each_cooling_fault_blocks_gate(self):
         for change in ({"fan_fail_safe": True}, {"i2c_ready": False},
-                       {"alarm": 1}, {"fan_rpm": 0}):
+                       {"alarm": 1}, {"fan_rpm": 0}, {"fan_rpm": float("inf")}):
             report = fixture()
             report["results"][0]["fan_samples"][0].update(change)
             result = audit(report, "seed-hash")

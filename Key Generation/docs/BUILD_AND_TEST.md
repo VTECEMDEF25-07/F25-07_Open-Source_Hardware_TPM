@@ -132,6 +132,8 @@ The auditor recomputes timing statistics, requires the complete fixed seed set,
 and rejects unhealthy or absent cooling samples. It returns nonzero for an
 incomplete or failed gate. A passing corpus audit covers only those sampled
 operations; it does not replace simulation, timing, replay or soak acceptance.
+The corpus auditor checks report content; artifact/source hash binding still
+requires the build manifest review and the host's loaded-fingerprint check.
 
 Reset through the gray SPI lead affects key generation, not cooling. The
 demonstration uses predictable test streams and deliberately exports test keys

@@ -49,6 +49,8 @@ def audit(report, seed_hash):
             require(math.isclose(seconds, cycles / 50_000_000, rel_tol=0, abs_tol=1e-9),
                     prefix + "cycle/second mismatch")
             require(elapsed <= 180, prefix + "host deadline exceeded")
+            require(seconds <= 180, prefix + "core deadline exceeded")
+            require(elapsed + 1e-6 >= seconds, prefix + "host duration shorter than core duration")
             times.append(seconds)
             runtimes.append({"seed": row.get("seed_id"), "core_cycles": cycles,
                              "core_seconds": seconds, "host_seconds": elapsed})
@@ -57,7 +59,8 @@ def audit(report, seed_hash):
         for sample in samples:
             healthy = (sample.get("fan_fail_safe") is False and
                        sample.get("i2c_ready") is True and sample.get("alarm") == 0 and
-                       type(sample.get("fan_rpm")) in (int, float) and sample["fan_rpm"] > 0)
+                       type(sample.get("fan_rpm")) in (int, float) and
+                       math.isfinite(sample["fan_rpm"]) and sample["fan_rpm"] > 0)
             if not healthy:
                 thermal_faults += 1
             for name in ("fpga_c", "board_c"):
@@ -66,7 +69,7 @@ def audit(report, seed_hash):
                 require(valid_temperature, prefix + "invalid temperature sample")
                 if valid_temperature:
                     temperatures.append(value)
-            if type(sample.get("fan_rpm")) in (int, float):
+            if type(sample.get("fan_rpm")) in (int, float) and math.isfinite(sample["fan_rpm"]):
                 speeds.append(sample["fan_rpm"])
     median = statistics.median(times) if times else None
     require(median is not None and median <= 30, "median exceeds target or is unavailable")
@@ -78,7 +81,7 @@ def audit(report, seed_hash):
             "max_reported_temperature_c": max(temperatures) if temperatures else None,
             "fan_rpm_range": [min(speeds), max(speeds)] if speeds else None,
             "unhealthy_cooling_samples": thermal_faults, "runtimes": runtimes,
-            "scope": "Corpus correctness/timing and sampled cooling only; not release acceptance."}
+            "scope": "Host-reported corpus results/timing and sampled cooling only; not release acceptance or independent bitstream/source binding."}
 
 
 def main():
