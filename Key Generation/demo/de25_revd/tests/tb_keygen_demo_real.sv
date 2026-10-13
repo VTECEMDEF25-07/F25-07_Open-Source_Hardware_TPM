@@ -18,6 +18,10 @@ module tb_keygen_demo_real;
     keygen_demo_system #(.RSA_SOFTCORE(SOFTCORE),.BUILD_FINGERPRINT(FINGERPRINT)) dut (
         .temperatures_i(32'h002a0020),.fan_status_i(32'h07000fa0),.*
     );
+    always @(negedge clock_i) if(reset_n_i) begin
+        if(dut.source_reset_n !== (dut.state_reg!=0 && dut.state_reg!=1))
+            $fatal(1,"source reset lifetime differs from accepted request lifetime");
+    end
     task frame(input [63:0] command,output [63:0] answer);
         integer b;
         begin

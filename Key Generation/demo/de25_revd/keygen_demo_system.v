@@ -34,7 +34,9 @@ module keygen_demo_system #(
     wire [3:0] core_status;
     wire ownership_valid = receiver_complete_reg && !receiver_owned_reg && !test_control_reg[2];
     wire acknowledge = write_valid && write_address==2 && write_data[1] && core_status_valid;
-    wire source_reset_n = reset_n_i && state_reg!=SCRUB && state_reg!=IDLE;
+    reg source_run_reg;
+    // A single registered request drives async clear; binary state decode may glitch.
+    wire source_reset_n = reset_n_i && source_run_reg;
     wire busy = state_reg==SOURCE_START || state_reg==CORE_START || (state_reg==RUN && !core_status_valid);
 `ifdef KEYGEN_ALTERA
     localparam [31:0] CONFIG = 32'd6 + RSA_SOFTCORE;
@@ -101,6 +103,7 @@ module keygen_demo_system #(
             seed_reg<=0;captured_seed_reg<=0;scratch_reg<=0;test_control_reg<=0;result_address_reg<=0;
             result_count_reg<=0;scrub_index_reg<=0;receiver_complete_reg<=0;receiver_owned_reg<=0;
             receiver_scrub_reg<=1;discard_seen_reg<=0;status_ack_reg<=0;cycles_reg<=0;
+            source_run_reg<=0;
         end else begin
             status_ack_reg<=0;
             if (write_valid) begin
@@ -129,18 +132,19 @@ module keygen_demo_system #(
             end
             if (ownership_valid && core_ownership_ready) receiver_owned_reg<=1;
             if (acknowledge) begin
+                source_run_reg<=0;
                 status_ack_reg<=1;state_reg<=SCRUB;captured_seed_reg<=0;captured_id_reg<=0;captured_profile_reg<=0;
             end else case (state_reg)
-                SCRUB: if (!receiver_scrub_reg) state_reg<=IDLE;
+                SCRUB: begin source_run_reg<=0;if (!receiver_scrub_reg) state_reg<=IDLE;end
                 IDLE: if (write_valid && write_address==2 && write_data[0] && core_ready && !receiver_scrub_reg) begin
                     captured_seed_reg<=seed_reg;captured_id_reg<=id_reg;captured_profile_reg<=profile_reg;
                     receiver_complete_reg<=0;receiver_owned_reg<=0;discard_seen_reg<=0;result_count_reg<=0;
-                    cycles_reg<=0;state_reg<=SOURCE_START;
+                    cycles_reg<=0;state_reg<=SOURCE_START;source_run_reg<=1;
                 end
                 SOURCE_START: if (source_ready) state_reg<=CORE_START;
                 CORE_START: if (core_ready) begin cycles_reg<=0;state_reg<=RUN;end
                 RUN: if (!core_status_valid) cycles_reg<=cycles_reg+1'b1;
-                default: state_reg<=SCRUB;
+                default: begin state_reg<=SCRUB;source_run_reg<=0;end
             endcase
         end
     end

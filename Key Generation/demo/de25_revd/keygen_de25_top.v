@@ -14,8 +14,8 @@ module keygen_de25_top #(
     wire fan_ready, temperature_valid, fan_fail_safe;
     reg [63:0] telemetry_meta_reg, telemetry_sync_reg;
     // Read-only diagnostic synchronization; fan protection remains in vendor logic.
-    always @(posedge clock_i or negedge board_reset_n) begin
-        if (!board_reset_n) begin telemetry_meta_reg<=0;telemetry_sync_reg<=0;end
+    always @(posedge clock_i or negedge board_release_reg[1]) begin
+        if (!board_release_reg[1]) begin telemetry_meta_reg<=0;telemetry_sync_reg<=0;end
         else begin
             telemetry_meta_reg <= {5'b0,fan_fail_safe,temperature_valid,fan_ready,fan_alarm,fan_speed,fpga_temperature,board_temperature};
             telemetry_sync_reg <= telemetry_meta_reg;
@@ -23,7 +23,9 @@ module keygen_de25_top #(
     end
     wire board_reset_n = board_reset_n_i && !config_reset;
     reg [1:0] board_release_reg, spi_release_reg;
-    wire spi_reset_n = board_release_reg[1] && spi_reset_n_i;
+    // Both raw reset causes assert asynchronously; each chain releases locally.
+    // Do not feed one chain's clocked output into another chain's async clear.
+    wire spi_reset_n = board_reset_n && spi_reset_n_i;
     altera_s10_user_rst_clkgate config_reset_source (.ninit_done(config_reset));
     always @(posedge clock_i or negedge board_reset_n) begin
         if (!board_reset_n) board_release_reg<=0;

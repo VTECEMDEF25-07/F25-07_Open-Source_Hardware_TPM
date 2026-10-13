@@ -85,6 +85,12 @@ set_false_path -from [get_ports {spi_clock_i spi_cs_n_i spi_mosi_i}]
 set_false_path -from [get_ports {board_reset_n_i spi_reset_n_i}]
 # At <=1MHz, mode-0 MISO changes after a falling edge and settles before the next rise.
 set_max_delay 20.000 -to [get_ports {spi_miso_o interrupt_n_o}]
+# No external hold relative to the 50MHz clock: MISO changes only after the
+# synchronized SPI falling edge; external falling/rising edges are >=500ns
+# apart at1MHz. Synchronizer latency plus20ns output delay fits that interval.
+# IRQ is an asynchronous level sampled by the host. Constrain nonnegative
+# minimum output delay explicitly; this is not an invented synchronous SPI clock.
+set_min_delay 0.000 -to [get_ports {spi_miso_o interrupt_n_o}]
 # Vendor slow open-drain management bus; not a core datapath timing exception.
 set_false_path -from [get_ports {fan_i2c_scl fan_i2c_sda}]
 set_false_path -to [get_ports {fan_i2c_scl fan_i2c_sda}]
@@ -106,6 +112,10 @@ set_false_path -to [get_ports {fan_i2c_scl fan_i2c_sda}]
             ]
             if backend == "altera":
                 settings.append('set_global_assignment -name VERILOG_MACRO "KEYGEN_ALTERA=1"')
+            for chain in ("board_release_reg[*]", "spi_release_reg[*]",
+                          "system|transport|clock_sync_reg[*]", "system|transport|select_sync_reg[*]",
+                          "system|transport|mosi_sync_reg[*]"):
+                settings.append('set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to {'+chain+'}')
             snapshot = build / "sources"
             snapshot.mkdir(exist_ok=True)
             snapshot_paths = []
