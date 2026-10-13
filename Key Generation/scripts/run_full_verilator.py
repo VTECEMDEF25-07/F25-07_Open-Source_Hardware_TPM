@@ -1,0 +1,89 @@
+"""Linux/WSL full-key regression. All build products remain under this repository.
+
+Verilator emits C++; compile directly with g++ because GNU make rejects spaces
+in its current directory. No source copies or external workspace are needed.
+"""
+import argparse
+import json
+from pathlib import Path
+import re
+import shutil
+import subprocess
+import time
+
+p=argparse.ArgumentParser()
+p.add_argument('--softcore',action='store_true')
+p.add_argument('--directed',action='store_true',help='Known prime candidates and witness2; functional test, not search-performance evidence')
+p.add_argument('--stalls',action='store_true',help='Insert source gaps, result backpressure and ownership delay')
+p.add_argument('--seeds',nargs='+',type=int,default=[1])
+p.add_argument('--reuse-build',action='store_true')
+p.add_argument('--build-only',action='store_true')
+a=p.parse_args()
+root=Path(__file__).resolve().parents[1]
+build=root/'build'/(('full_softcore' if a.softcore else 'full_rtl')+('_directed' if a.directed else '')+('_stalls' if a.stalls else ''))
+obj=build/'obj'
+build.mkdir(parents=True,exist_ok=True)
+sources=[
+    'IP/keygen_mult32.v','IP/keygen_mult32_generic.v','IP/keygen_mult32_altera.v',
+    'IP/keygen_ram32.v','IP/keygen_ram32_generic.v','IP/keygen_ram32_altera.v',
+    'rtl/aes/keygen_aes_core.v','rtl/arithmetic/keygen_math.v','rtl/arithmetic/keygen_pair_check.v',
+    'rtl/rsa_rtl/keygen_rsa_services.v','rtl/rsa_rtl/keygen_rsa_controller.v',
+    'rtl/rsa_rtl/keygen_rsa_engine.v','rtl/common/keygen_core.v',
+    'demo/test_rng/keygen_test_source.v','testbench/tb_keygen_full.sv',
+]
+if a.softcore:
+    sources += ['IP/third_party/picorv32/picorv32.v','rtl/rsa_softcore/keygen_softcore_control.v',
+                'rtl/rsa_softcore/keygen_rsa_softcore.v']
+    shutil.copyfile(root/'build/full/rsa_control.hex',build/'rsa_control.hex')
+binary=obj/'Vtb_keygen_full'
+if not a.reuse_build:
+    command=['verilator','--cc','--exe','--main','--timing','--top-module','tb_keygen_full',
+             '--Mdir',str(obj),'-Wno-fatal','+1364-2001ext+v','+1800-2017ext+sv']
+    if a.softcore:command+=['+define+KEYGEN_SOFTCORE']
+    command += [str(root/s) for s in sources]
+    with (build/'elaborate.log').open('w') as log:
+        subprocess.run(command,cwd=build,stdout=log,stderr=subprocess.STDOUT,check=True)
+    vr=Path('/usr/share/verilator/include')
+    command=['g++','-O2','-std=c++20','-pthread','-I'+str(obj),'-I'+str(vr),'-I'+str(vr/'vltstd')]
+    command += [str(s) for s in sorted(obj.glob('*.cpp'))]
+    command += [str(vr/s) for s in ['verilated.cpp','verilated_timing.cpp','verilated_threads.cpp']]
+    command += ['-o',str(binary)]
+    with (build/'compile.log').open('w') as log:
+        subprocess.run(command,cwd=build,stdout=log,stderr=subprocess.STDOUT,check=True)
+    print('PASS full-top build',binary,flush=True)
+if a.build_only:raise SystemExit(0)
+corpus=json.loads((root/'reference/expected_keys.json').read_text())
+reports=[]
+for seed in a.seeds:
+    fixture=next(x for x in corpus['results'] if x['seed_id']==seed)
+    words=[]
+    for name,count in [('n',64),('e',1),('p',32),('q',32)]:
+        value=int(fixture['key'][name],16)
+        words += [(value>>(32*i))&0xffffffff for i in reversed(range(count))]
+    path=build/f'expected-{seed}.hex'
+    path.write_text(''.join(f'{w:08x}\n' for w in words))
+    command=[str(binary),f'+SEED={seed}',f'+EXPECTED={path}',f'+WORDS={fixture["words_consumed"]}']
+    if a.directed:
+        stimulus=[]
+        for prime in ('p','q'):
+            for value in [int(fixture['key'][prime],16)]+[2]*5:
+                stimulus += [(value>>(32*i))&0xffffffff for i in reversed(range(32))]
+        stimulus_path=build/f'stimulus-{seed}.hex'
+        stimulus_path.write_text(''.join(f'{w:08x}\n' for w in stimulus))
+        command=[str(binary),f'+SEED={seed}',f'+EXPECTED={path}','+WORDS=384',
+                 '+DIRECTED',f'+STIMULUS={stimulus_path}']
+    started=time.monotonic()
+    if a.stalls:command+=['+STALLS']
+    with (build/f'seed-{seed}.log').open('w') as log:
+        subprocess.run(command,cwd=build,stdout=log,stderr=subprocess.STDOUT,check=True,timeout=7200)
+    text=(build/f'seed-{seed}.log').read_text()
+    match=re.search(r'PASS FULL_RSA seed=(\d+) softcore=(\d+) words=(\d+) cycles=(\d+)',text)
+    if not match:raise RuntimeError('No complete-key PASS evidence')
+    report=dict(zip(['seed','softcore','words','cycles'],map(int,match.groups())))
+    report['simulator_seconds']=time.monotonic()-started
+    report['hardware_seconds_50mhz']=report['cycles']/50_000_000
+    report['directed_candidates_not_search_benchmark']=a.directed
+    report['external_stalls']=a.stalls
+    reports.append(report)
+    (build/'results.json').write_text(json.dumps(reports,indent=2)+'\n')
+    print(json.dumps(report),flush=True)

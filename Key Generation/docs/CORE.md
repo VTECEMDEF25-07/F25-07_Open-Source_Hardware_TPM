@@ -1,0 +1,53 @@
+# Portable AES/RSA core
+
+`rtl/common/keygen_core.v` is the integration boundary. It accepts one captured
+profile and operation ID, delegates AES key assembly or RSA generation, and
+delivers a protected result. `RSA_SOFTCORE=0` selects dedicated Verilog control;
+1 selects RV32I firmware. `KEYGEN_ALTERA` independently selects resource macros.
+There are no board pins, SPI registers or test-generation seeds in this module.
+
+Read `INTERFACE.md`, this document, then the top-level state machine. Use
+`AES.md` and `RSA_ENGINE.md` for the workers rather than reading all arithmetic
+before understanding the public handshakes.
+
+## One operation
+
+1. Synchronize reset release and wait for local memory scrubbing and ready peers.
+2. Capture the request. Later changes to profile or ID do not change this job.
+3. Generate and validate the key. RSA private operands stay inside the engine.
+4. Send result words with stable data and metadata under backpressure.
+5. Wait for a separate whole-result accept/reject decision.
+6. Clear local secret state, then hold terminal status until acknowledged.
+
+For RSA, output is n(64 words), e(1), p(32), q(32), all most significant first.
+For example, accepting the last q word does not yet transfer ownership. The
+receiver can still reject the complete staged key. Only acceptance transfers
+ownership; subsequent local reset cannot revoke what the receiver already owns.
+
+Generation failure or loss of peer readiness before ownership stops transfers,
+asserts discard and starts cleanup. The first recorded fault survives cleanup.
+Reset invalidates transfers immediately, emits no cancelled status and blocks
+new admission until cleanup finishes. External source/result/ownership stalls
+are legal. Internal controller watchdogs are distinct from host deadlines.
+
+## Integration evidence
+
+`python3 scripts/run_integration_verilator.py` and the same command with
+`--softcore` both passed **15 lifecycle checks** using real engine storage:
+AES128/256, capture, source gaps, result stalls, ownership rejection, invalid
+profile, source failure, first-fault preservation, peer failure, partial RSA
+candidate reset, AES result reset, cleanup reset, held-status reset and reuse.
+
+`scripts/run_full_verilator.py` compares every RSA word and component/index
+against the independent corpus and requires exact source consumption. It fails
+on error status, missing PASS, timeout or incomplete execution. `--directed`
+tests known candidate inputs, `--stalls` adds source gaps/result backpressure,
+and `--softcore` selects firmware. No option replaces vendor models: genuine
+Altera runs use `scripts/softcore/run_full_altera_questa.py` and the installed
+unmodified simulation library.
+
+The full-key directed tests passed both generic controller configurations.
+Normal twenty-seed search, all four final fits and hardware soak remain
+acceptance gates; see `ACCEPTANCE.md`. Fast lifecycle tests do not claim every
+RSA internal reset phase is covered; arithmetic/CPU tests and board recovery
+tests provide additional evidence.
