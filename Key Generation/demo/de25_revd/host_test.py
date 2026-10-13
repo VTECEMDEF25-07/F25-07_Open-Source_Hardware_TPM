@@ -212,18 +212,18 @@ def recover_operation(adapter, primary, force_reset):
 def run_key(adapter, profile, fixture, request_id, source_schedule=None):
     from keygen_reference import Sha256Words
     from key_checker import check_key
-    poll(adapter,1)
-    adapter.register(11,0)
-    seed = bytes.fromhex(fixture["seed_hex"])
-    for index in range(8):
-        adapter.register(16+index,int.from_bytes(seed[index*4:index*4+4],"big"))
-    adapter.register(4,profile);adapter.register(5,request_id)
-    started = time.monotonic()
-    adapter.register(2,1)
     samples = []
     transitions = []
     status = None
     try:
+        poll(adapter,1)
+        adapter.register(11,0)
+        seed = bytes.fromhex(fixture["seed_hex"])
+        for index in range(8):
+            adapter.register(16+index,int.from_bytes(seed[index*4:index*4+4],"big"))
+        adapter.register(4,profile);adapter.register(5,request_id)
+        started = time.monotonic()
+        adapter.register(2,1)
         status = poll(adapter,8,samples,source_schedule,transitions)
         elapsed = time.monotonic()-started
         if status>>8 & 15:
@@ -329,20 +329,24 @@ def reset_replay(adapter, fixture, results, checkpoint=lambda:None):
         ("ownership_stall",1,4,4),
         ("held_success",0,0,8),
     ):
-        reset_and_check(adapter)
-        configure_request(adapter,profile,fixture,0xA000+len(results),controls)
-        poll(adapter,mask)
-        if name in ("generation_stall","rsa_active"):
-            wait_running(adapter)
-        if name=="rsa_active":
-            time.sleep(.05)
-            if not adapter.register(3)&2:raise RuntimeError("RSA was not busy at reset boundary")
-        if name=="result_stall":
-            deadline=time.monotonic()+TIMEOUT
-            while not adapter.register(12)&8:
-                if time.monotonic()>=deadline:raise TimeoutError("result stall not reached")
-                time.sleep(.01)
-        reset_and_check(adapter)
+        try:
+            reset_and_check(adapter)
+            configure_request(adapter,profile,fixture,0xA000+len(results),controls)
+            poll(adapter,mask)
+            if name in ("generation_stall","rsa_active"):
+                wait_running(adapter)
+            if name=="rsa_active":
+                time.sleep(.05)
+                if not adapter.register(3)&2:raise RuntimeError("RSA was not busy at reset boundary")
+            if name=="result_stall":
+                deadline=time.monotonic()+TIMEOUT
+                while not adapter.register(12)&8:
+                    if time.monotonic()>=deadline:raise TimeoutError("result stall not reached")
+                    time.sleep(.01)
+            reset_and_check(adapter)
+        except Exception as error:
+            recover_operation(adapter,error,force_reset=True)
+            raise
         results.append({"reset_boundary":name,"result":"PASS","fan":telemetry(adapter)})
         checkpoint()
     # Replay each profile after interruption; run_key checks every word against its oracle.

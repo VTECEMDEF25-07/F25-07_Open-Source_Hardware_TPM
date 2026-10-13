@@ -199,4 +199,39 @@ class HostTests(unittest.TestCase):
         self.assertEqual(str(primary),'original failure')
         self.assertEqual(primary.cleanup_errors,['adapter close: close failed'])
 
+    def test_start_write_failure_recovers_ambiguous_admission(self):
+        adapter=FakeAdapter();register=adapter.register;primary=OSError('START response lost')
+        def fail_start(address,value=None):
+            result=register(address,value)
+            if address==2 and value==1:
+                adapter.reg[3]=2
+                raise primary
+            return result
+        with patch.object(adapter,'register',side_effect=fail_start),patch.object(adapter,'reset_board_core',wraps=adapter.reset_board_core) as reset:
+            with self.assertRaises(OSError) as caught:host.run_key(adapter,0,FIXTURE,1)
+        self.assertIs(caught.exception,primary)
+        reset.assert_called_once()
+        self.assertEqual(primary.recovery,{'action':'reset','success':True})
+        self.assertEqual(adapter.register(3),1)
+
+    def test_stuck_run_boundary_resets_before_propagating(self):
+        adapter=FakeAdapter();results=[]
+        def pre_admission(*args):adapter.reg.update({3:2,12:2,11:1})
+        with patch.object(host,'configure_request',side_effect=pre_admission),patch.object(host,'poll',side_effect=lambda a,mask,*args:mask),patch.object(host.time,'monotonic',side_effect=[0,0,181]),patch.object(host.time,'sleep'),patch.object(adapter,'reset_board_core',wraps=adapter.reset_board_core) as reset:
+            with self.assertRaisesRegex(TimeoutError,'enter RUN') as caught:
+                host.reset_replay(adapter,FIXTURE,results)
+        self.assertEqual(reset.call_count,2)
+        self.assertEqual(results,[])
+        self.assertEqual(adapter.register(3),1)
+        self.assertEqual(adapter.register(11),0)
+        self.assertEqual(caught.exception.recovery,{'action':'reset','success':True})
+
+    def test_boundary_failure_survives_recovery_failure(self):
+        primary=TimeoutError('boundary timeout');results=[]
+        with patch.object(host,'reset_and_check',side_effect=[None,OSError('reset unavailable')]),patch.object(host,'configure_request'),patch.object(host,'poll',return_value=2),patch.object(host,'wait_running',side_effect=primary):
+            with self.assertRaises(TimeoutError) as caught:host.reset_replay(FakeAdapter(),FIXTURE,results)
+        self.assertIs(caught.exception,primary)
+        self.assertEqual(primary.cleanup_errors,['reset: reset unavailable'])
+        self.assertEqual(results,[])
+
 if __name__=='__main__':unittest.main()
