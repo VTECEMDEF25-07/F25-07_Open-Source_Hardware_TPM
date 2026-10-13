@@ -4,8 +4,18 @@ import hashlib
 import json
 from pathlib import Path
 import re
-import shutil
 import subprocess
+
+
+def digest(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def verify_inputs(inputs):
+    """Reject a moving source tree; compilation uses only the captured bytes."""
+    for path, data in inputs.items():
+        if path.read_bytes() != data:
+            raise RuntimeError(f"source changed during snapshot: {path}")
 
 PINS = {
     "clock_i": ("CLOCK0_50", "CH128", "3.3-V LVCMOS"),
@@ -38,7 +48,20 @@ def main():
         raise FileNotFoundError("canonical keygen_core.v missing; pass --core-root")
     if not firmware.exists():
         raise FileNotFoundError("built firmware missing; pass --firmware; no placeholder ROM is permitted")
-    pin_reference = (here / "vendor/pin_reference.qsf").read_text()
+    variants = [f"{control}_{backend}" for control in ("rtl", "softcore")
+                for backend in ("generic", "altera")
+                if args.variant in ("all", f"{control}_{backend}")]
+    for variant in variants:
+        if (args.build_root / variant).exists():
+            raise FileExistsError(f"build already exists: {args.build_root / variant}; use a new build root")
+    version = subprocess.run([args.quartus, "--version"], check=True, capture_output=True,
+                             text=True, timeout=60)
+    tool_version = (version.stdout + version.stderr).strip()
+    if not tool_version:
+        raise RuntimeError("Quartus returned no tool version")
+    pin_path = here / "vendor/pin_reference.qsf"
+    pin_bytes = pin_path.read_bytes()
+    pin_reference = pin_bytes.decode()
     base = []
     for line in pin_reference.splitlines():
         if not line.startswith("set_global_assignment"):
@@ -49,6 +72,10 @@ def main():
     rtl = sorted((core / "rtl").rglob("*.v"))
     ip = sorted(p for p in (core / "IP").rglob("*.v") if "tests" not in p.parts)
     sources = rtl + ip + sorted(here.glob("*.v")) + sorted((here / "vendor").glob("*.v")) + [here.parent / "test_rng/keygen_test_source.v"]
+    inputs = {source: source.read_bytes() for source in sources}
+    inputs[firmware] = firmware.read_bytes()
+    inputs[pin_path] = pin_bytes
+    verify_inputs(inputs)
     sdc = """create_clock -name board_clock -period 20.000 [get_ports clock_i]
 create_generated_clock -name fan_clock -divide_by 128 -source [get_ports clock_i] [get_registers {*fan_control*CLOCKMEM_inst2*CK_1HZ}]
 derive_clock_uncertainty
@@ -68,7 +95,7 @@ set_false_path -to [get_ports {fan_i2c_scl fan_i2c_sda}]
             if args.variant not in ("all", variant):
                 continue
             build = (args.build_root / variant).resolve()
-            build.mkdir(parents=True, exist_ok=True)
+            build.mkdir(parents=True, exist_ok=False)
             settings = base + [
                 "set_global_assignment -name TOP_LEVEL_ENTITY keygen_de25_top",
                 "set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files",
@@ -84,7 +111,9 @@ set_false_path -to [get_ports {fan_i2c_scl fan_i2c_sda}]
             snapshot_paths = []
             for index, source in enumerate(sources):
                 copied = snapshot / (str(index).zfill(3)+"_"+source.name)
-                shutil.copyfile(source, copied)
+                copied.write_bytes(inputs[source])
+                if copied.read_bytes() != inputs[source]:
+                    raise RuntimeError(f"snapshot copy mismatch: {copied}")
                 snapshot_paths.append(copied)
             for source in snapshot_paths:
                 settings.append(f'set_global_assignment -name VERILOG_FILE "{source.as_posix()}"')
@@ -96,11 +125,16 @@ set_false_path -to [get_ports {fan_i2c_scl fan_i2c_sda}]
             (build / "keygen_de25.qsf").write_text("\n".join(settings)+"\n")
             (build / "keygen_de25.qpf").write_text('PROJECT_REVISION = "keygen_de25"\n')
             (build / "keygen_de25.sdc").write_text(sdc)
-            shutil.copyfile(firmware, build / "rsa_control.hex")
+            (build / "rsa_control.hex").write_bytes(inputs[firmware])
+            verify_inputs(inputs)
+            config_files = [build / name for name in ("keygen_de25.qsf", "keygen_de25.qpf", "keygen_de25.sdc", "rsa_control.hex")]
             manifest = {"variant": variant, "device": "A5ED013BB32AE4SCS", "clock_hz": 50000000,
-                        "test_mode": True, "firmware_sha256": hashlib.sha256(firmware.read_bytes()).hexdigest(),
-                        "source_sha256": {str(p): hashlib.sha256(p.read_bytes()).hexdigest() for p in sources},
-                        "snapshot_sha256": {str(p): hashlib.sha256(p.read_bytes()).hexdigest() for p in snapshot_paths},
+                        "test_mode": True, "firmware_sha256": digest(inputs[firmware]),
+                        "quartus_executable": str(Path(args.quartus).resolve()), "quartus_version": tool_version,
+                        "pin_reference_sha256": digest(pin_bytes),
+                        "config_sha256": {p.name: digest(p.read_bytes()) for p in config_files},
+                        "source_sha256": {str(p): digest(inputs[p]) for p in sources},
+                        "snapshot_sha256": {str(p): digest(p.read_bytes()) for p in snapshot_paths},
                         "status": "prepared", "timing_accepted": False}
             (build / "build_manifest.json").write_text(json.dumps(manifest, indent=2)+"\n")
             print(f"PREPARED {variant}: {build}", flush=True)
