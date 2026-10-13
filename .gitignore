@@ -1,148 +1,61 @@
-################################################################################
-# Chat GPT 4o Generated File
-#
-# This .gitignore file was generated with the assistance of an AI tool.
-# It is intended as a general-purpose ignore configuration for Intel Quartus
-# FPGA projects and associated simulation environments.
-#
-# Review and modify as necessary to fit the specific needs of your project.
-################################################################################
-
-
-################################################################################
-# Quartus Prime Build Files
-################################################################################
-
-# Main output directories
+# Generated Quartus files. Track .qpf/.qsf/.sdc/.qip/.tcl and hand-authored IP.
 db/
 incremental_db/
 output_files/
 greybox_tmp/
-simulation/modelsim/
-sim/
 qdb/
-
-# Quartus compilation reports
+ip_user_files/
+*.qdb
+*.ddb
+*.qdf
+*.qpg
+*.qws
+*.smsg
 *.rpt
 *.summary
-*.smsg
-*.qws
-*.sta.rpt
-*.fit.rpt
-*.asm.rpt
-*.map.rpt
-*.flow.rpt
-
-#Quartus project files
-*.qpf
-*.qsf
-*.sdc 
-# ^ Timing constraints this might be important to keep, review before ignoring
-
-# Programming files (usually regenerated)
 *.sof
 *.pof
 *.jic
 *.rbf
+*.ipcache
+*.qsys_edit
 
-# Database files
-*.ddb
-*.qdb
-*.qdf
-*.qpg
+# Disposable build directories. Do not ignore whole simulation/ or IP/ trees.
+build/
+out/
+.cache/
+work/
+modelsim.ini
+transcript
+*.wlf
+*.vcd
+*.vpd
+*.fst
+*.log
+*.jou
 
-# Temporary files
+# Firmware products; source and checked memory/test fixtures stay tracked.
+*.o
+*.a
+*.elf
+*.map
+*.d
+/Key Generation/firmware/generated/
+
+# Tool caches and local environments.
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+Desktop.ini
 *.bak
 *.tmp
 *.temp
-
-################################################################################
-# IP Generated Files
-################################################################################
-
-# Quartus IP cache
-ip_cores/
-ip_user_files/
-*.ipregen.rpt
-*.ipcache
-
-# Platform Designer / Qsys
-*.qsys_edit
-*.qsys_simdir/
-*.sopcinfo
-
-################################################################################
-# Simulation Files (ModelSim / Questa)
-################################################################################
-
-# ModelSim work libraries
-work/
-vsim.wlf
-transcript
-
-# Simulation generated files
-*.vcd
-*.wlf
-*.log
-
-# ModelSim directories
-modelsim.ini
-simulation/
-
-################################################################################
-# Waveform Files
-################################################################################
-
-*.vwf
-*.vpd
-
-################################################################################
-# Editor Files
-################################################################################
-
-# VSCode
-.vscode/
-
-# Windows
-Thumbs.db
-Desktop.ini
-
-# Mac
-.DS_Store
-
-################################################################################
-# Backup Files
-################################################################################
-
 *~
 *.orig
 *.rej
-
-################################################################################
-# Python Scripts (if using automation)
-################################################################################
-
-__pycache__/
-*.pyc
-
-################################################################################
-# Logs
-################################################################################
-
-*.log
-
-
-################################################################################
-# Keep Important Source Files
-################################################################################
-
-# DO NOT IGNORE:
-# *.v
-# *.sv
-# *.vhd
-# *.qsf
-# *.sdc
-# *.tcl
-# *.qip
-# *.bsf
-# testbenches/

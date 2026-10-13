@@ -35,7 +35,7 @@ TPM parsing, authorization, hierarchy seeds, object wrapping/handles, durable st
 
 ## Portability
 
-Common resource wrappers select generic, Altera or Xilinx implementations. Every vendor implementation must have a synthesizable generic equivalent and match its defined cycle-level interface. Board clocks, pins, SPI transport and vendor primitives stay in wrappers/backends.
+Common resource wrappers select generic or Altera implementations for this milestone. Xilinx-specific resources are deferred by agreement. Every vendor implementation must have a synthesizable generic equivalent and match its defined cycle-level interface. Board clocks, pins, SPI transport and vendor primitives stay in wrappers/backends.
 
 Directory proposal: `rtl/`, `IP/wrappers/`, `IP/generic/`, `IP/altera/`, `IP/xilinx/`, `firmware/`, `Testbenches/`, `reference/`, `demo/` and `scripts/`. Preserve existing organization until moves are intentional review chunks. [Coding and language rules](CODING_STANDARDS.md) apply to new/updated work.
 
@@ -65,3 +65,13 @@ The legacy branches are preserved. Their original tests demonstrate historical b
 Each request states behavior, dependencies, actual checks and untested limitations. Keep requests draft until review; do not merge automatically. AI contributions and independent verification are disclosed.
 
 The canonical living spec and plan stay in the class workspace `AI/KEY_GENERATION_SPEC.md` and `AI/KEYGEN_IMPLEMENTATION_PLAN.md`. This summary is self-contained for repository reviewers.
+
+## Approved implementation contracts
+
+The implementation now follows [interface v1](docs/INTERFACE.md) and the
+[acceptance ledger](docs/ACCEPTANCE.md). These close the earlier interface proposal.
+The ledger distinguishes planned gates from actual passed evidence.
+
+Build four configurations (two RSA controllers times two resource backends),
+separately fitted on DE25 at50MHz. Target medianRSA2048 latency<=30s over20fixed
+test seeds;180s host deadline. Preserve independent cooling in every board image.
