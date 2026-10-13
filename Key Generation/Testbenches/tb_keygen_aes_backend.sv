@@ -56,7 +56,7 @@ module tb_keygen_aes_backend;
             if(store_finish_valid && store_finish_ready) begin
                 if(!transaction || finalizing)$fatal(1,"invalid store finish");
                 if(!store_finish_abort && count!=manifest_words)$fatal(1,"partial key commit");
-                if(dut.worker.key_material!==0)$fatal(1,"finish before worker clearing");
+                if(dut.worker.key_material_reg!==0)$fatal(1,"finish before worker clearing");
                 finishes<=finishes+1; finalizing<=1; model_abort<=store_finish_abort;
             end
             if(store_rsp_valid && store_rsp_ready && finalizing) begin
@@ -111,7 +111,7 @@ module tb_keygen_aes_backend;
         if(!rsp_valid || rsp_fail!==fail_expected || rsp_id!==7 ||
            (fail_expected && (rsp_code==0 || rsp_object!=0)) ||
            (!fail_expected && (rsp_code!=0 || rsp_object!=object_ref)))$fatal(1,"backend terminal mismatch");
-        if(dut.worker.key_material!==0)$fatal(1,"terminal local material remains");
+        if(dut.worker.key_material_reg!==0)$fatal(1,"terminal local material remains");
     end endtask
     task cancel;begin cancel_valid=1;#1;if(!cancel_ready)$fatal(1,"cancel not accepted");tick;cancel_valid=0;end endtask
     task await_finish;integer n;begin
@@ -181,7 +181,7 @@ module tb_keygen_aes_backend;
         reset;launch(128);open_store;words(4);store_data_ready=1;tick;store_data_ready=0;
         reset_n=0;#1;if(store_data_valid||store_data_word!=0||rsp_valid||rng_ready)$fatal(1,"reset transfer");
         tick;reset_n=1;req_valid=1;store_available=0;repeat(2)tick;
-        if(staged!=0||dut.worker.key_material!=0||req_ready)$fatal(1,"reset clearing/reconciliation");
+        if(staged!=0||dut.worker.key_material_reg!=0||req_ready)$fatal(1,"reset clearing/reconciliation");
         store_available=1;repeat(2)tick;if(req_ready||busy)$fatal(1,"held request replayed across reset");
         reset;req_id=32'hxxxxxxxx;req_bits=128;req_valid=1;tick;
         if(!rsp_valid||rsp_id!==0||!rsp_fail||begins||rng_count)$fatal(1,"unknown metadata accepted");
@@ -194,7 +194,7 @@ module tb_keygen_aes_backend;
             if(j==2)finish(0);
             reset_n=0;#1;tick;reset_n=1;store_available=0;repeat(2)tick;
             if(rsp_valid||rng_ready||store_data_valid||store_finish_valid||staged!=0||
-               dut.worker.key_material!=0)$fatal(1,"reset phase invalidation failed");
+               dut.worker.key_material_reg!=0)$fatal(1,"reset phase invalidation failed");
             store_available=1;repeat(2)tick;
             if(req_ready||busy)$fatal(1,"reset replay across phase");
         end

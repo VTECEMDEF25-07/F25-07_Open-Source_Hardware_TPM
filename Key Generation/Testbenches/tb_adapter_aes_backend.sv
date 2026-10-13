@@ -57,7 +57,7 @@ module tb_adapter_aes_backend;
                 dn<=dn+1;
             end
             if(store_finish_valid&&store_finish_ready)
-                if(store_finish_abort||dn!=bits/32||backend.worker.key_material!==0)
+                if(store_finish_abort||dn!=bits/32||backend.worker.key_material_reg!==0)
                     $fatal(1,"adapter/backend early commit");
         end
     end
