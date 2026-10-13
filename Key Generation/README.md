@@ -13,7 +13,7 @@ Updated October 13, 2026. This is a documentation-only review chunk for the revi
 - Preserve generated RSA primes through protected handoff. Internal full-exponent/CRT preparation is deferred; required private-key validation is not.
 - Use reset-only abort for the first version; no separate core cancel interface is selected.
 - Consume an external fresh or isolated repeatable generation stream. Raw hierarchy seeds stay outside keygen. The detailed teammate contract is pending.
-- Use generic Verilog only, including HDL testbenches. SystemVerilog requires Aaron's explicit approval for a specific section before it is used.
+- Use generic Verilog for synthesizable source. SystemVerilog testbenches are explicitly permitted. Any synthesizable SV section requires Aaron's approval before use.
 
 ## Boundaries
 
@@ -53,7 +53,7 @@ The legacy branches are preserved. Their original tests demonstrate historical b
 ## Next progressive review chunks
 
 1. Agree exact request/generation/result/reset contracts.
-2. Generic resources and Verilog-only regression runner.
+2. Generic Verilog resources and a runner that compiles Verilog source separately from SV tests.
 3. Standalone AES worker under the new contract.
 4. Independently checked RSA arithmetic.
 5. Complete dedicated RTL RSA generation.
