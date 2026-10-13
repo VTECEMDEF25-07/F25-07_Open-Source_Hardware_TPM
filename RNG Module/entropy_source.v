@@ -21,8 +21,33 @@ module entropy_source (
     input  wire         rst_n,           // active-low reset (0 = reset)
     input  wire         enable,          // 1 = run the rings and collect bits
     output reg  [255:0] entropy_output,  // latest completed 256-bit block
-    output reg          entropy_valid    // pulses high for 1 cycle per new block
+    output reg          entropy_valid,   // pulses high for 1 cycle per new block
+ 
+    // Raw noise-source tap for SP 800-90B testing. raw_sample is the same
+    // bit that goes into the shift register; raw_sample_valid is high on
+    // exactly the cycles where that bit is collected. Leave unconnected in
+    // normal use.
+    output wire         raw_sample,
+    output wire         raw_sample_valid
 );
+ 
+    // -----------------------------------------------------------------------
+    // Warm-up after the rings start (reset or enable going 1).
+    // For the first couple of cycles the synchronizer still holds the value
+    // from when the rings were stopped, so those samples are always 0. They
+    // carry no entropy and would make every restart begin the same way, so
+    // they are thrown away. SP 800-90B tests the source exactly as it runs,
+    // which is why this happens here and not only in the test logic.
+    // -----------------------------------------------------------------------
+    localparam [3:0] WARMUP_CYCLES = 4'd8;
+    reg  [3:0] warmup_count;
+    wire       warm = (warmup_count == WARMUP_CYCLES);
+ 
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n)       warmup_count <= 4'd0;
+        else if (!enable) warmup_count <= 4'd0;          // rings stopped
+        else if (!warm)   warmup_count <= warmup_count + 4'd1;
+    end
  
     // -----------------------------------------------------------------------
     // Four ring oscillators with different odd lengths.
@@ -62,6 +87,11 @@ module entropy_source (
     // The clean, synchronized random bit used by everything below.
     wire sampled_bit = sample_sync[1];
  
+    // A bit is collected only once the rings are running and warmed up.
+    wire collect = enable && warm;
+    assign raw_sample       = sampled_bit;
+    assign raw_sample_valid = collect;
+ 
     // -----------------------------------------------------------------------
     // Storage for collecting bits.
     // sipo_shift_register: "serial in, parallel out" - bits enter one at a
@@ -86,7 +116,7 @@ module entropy_source (
             // when a block finishes (set below), which makes it a pulse.
             entropy_valid <= 1'b0;
  
-            if (enable) begin
+            if (collect) begin
                 // Shift the register left by one and put the new bit at the
                 // bottom. The oldest bit falls off the top.
                 sipo_shift_register <= {sipo_shift_register[254:0], sampled_bit};
@@ -103,8 +133,9 @@ module entropy_source (
                     sample_count <= sample_count + 8'b1;
                 end
             end
-            // If enable is 0, nothing changes: the count and partial block
-            // are kept, and collection resumes where it left off.
+            // If enable is 0 (or during warm-up), nothing changes: the count
+            // and partial block are kept, and collection resumes where it
+            // left off.
         end
     end
  
