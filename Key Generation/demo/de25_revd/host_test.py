@@ -127,7 +127,7 @@ def telemetry(adapter):
         return value-65536 if value & 32768 else value
     return {"fpga_c":signed16(temperatures>>16),"board_c":signed16(temperatures&65535),
             "fan_rpm":adapter.register(14),"alarm":flags&255,
-            "i2c_ready":bool(flags&256),"temperature_valid":bool(flags&512)}
+            "i2c_ready":bool(flags&256),"temperature_valid":bool(flags&512),"fan_fail_safe":bool(flags&1024)}
 
 
 def poll(adapter, mask, samples=None):

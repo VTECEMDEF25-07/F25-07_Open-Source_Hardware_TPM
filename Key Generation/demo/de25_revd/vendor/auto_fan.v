@@ -81,7 +81,7 @@ reg [7:0] auto_ktach;
 always@(posedge clk or negedge reset_n)
 begin
 	if (~reset_n)
-		auto_ktach <= `FAN_SPEED_4;
+		auto_ktach <= `FAN_SPEED_1;
 	else if ( invalid_temp ) auto_ktach <= `FAN_SPEED_1;
 	else if (TEMP_UP_FLAG)
 	begin

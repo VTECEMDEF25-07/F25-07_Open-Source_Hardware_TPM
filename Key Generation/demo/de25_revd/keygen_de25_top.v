@@ -10,13 +10,13 @@ module keygen_de25_top #(
     wire config_reset;
     wire [15:0] fpga_temperature, board_temperature, fan_speed;
     wire [7:0] fan_alarm;
-    wire fan_ready, temperature_valid;
+    wire fan_ready, temperature_valid, fan_fail_safe;
     reg [63:0] telemetry_meta_reg, telemetry_sync_reg;
     // Read-only diagnostic synchronization; fan protection remains in vendor logic.
     always @(posedge clock_i or negedge board_reset_n) begin
         if (!board_reset_n) begin telemetry_meta_reg<=0;telemetry_sync_reg<=0;end
         else begin
-            telemetry_meta_reg <= {6'b0,temperature_valid,fan_ready,fan_alarm,fan_speed,fpga_temperature,board_temperature};
+            telemetry_meta_reg <= {5'b0,fan_fail_safe,temperature_valid,fan_ready,fan_alarm,fan_speed,fpga_temperature,board_temperature};
             telemetry_sync_reg <= telemetry_meta_reg;
         end
     end
@@ -40,7 +40,7 @@ module keygen_de25_top #(
     BOARD_MANAGEMENT fan_control (
         .clk_50(clock_i),.reset_n(board_release_reg[1]),.I2C_SCL(fan_i2c_scl),.I2C_SDA(fan_i2c_sda),
         .FPGA_Temperature(fpga_temperature),.Board_Temperature(board_temperature),.Fan_Speed(fan_speed),
-        .ALARM(fan_alarm),.I2C_READY(fan_ready),.TEMP_VALID(temperature_valid),
+        .FAN_FAILSAFE(fan_fail_safe),.ALARM(fan_alarm),.I2C_READY(fan_ready),.TEMP_VALID(temperature_valid),
         .Auto_Fan_Speed(1'b1),.Set_Fan_Speed(16'd4000),.BUSY_GO_HI(1'b0)
     );
 endmodule
