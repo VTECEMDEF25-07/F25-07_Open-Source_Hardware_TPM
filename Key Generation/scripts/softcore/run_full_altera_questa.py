@@ -5,6 +5,10 @@ All source RTL is compiled as Verilog 2001, with SystemVerilog only for tests.
 """
 import argparse
 import json
+import os
+import queue
+import signal
+import threading
 from pathlib import Path
 import re
 import shutil
@@ -12,6 +16,76 @@ import subprocess
 import time
 from datetime import datetime, timezone
 from vendor_evidence import file_hash, input_hashes, save_json, validate_reuse
+
+
+def run_simulation(command, cwd, log_path, timeout):
+    """Capture in memory; keep SeaDrive files closed throughout the long run."""
+    options = {'creationflags': subprocess.CREATE_NEW_PROCESS_GROUP} if os.name == 'nt' else {'start_new_session': True}
+    process = subprocess.Popen(command, cwd=cwd, stdout=subprocess.PIPE,
+                               stderr=subprocess.STDOUT, bufsize=0, **options)
+    output = queue.Queue()
+    def reader():
+        try:
+            while True:
+                chunk = process.stdout.read(65536)
+                if not chunk:
+                    break
+                output.put(chunk)
+        finally:
+            output.put(None)
+    thread = threading.Thread(target=reader, daemon=True)
+    thread.start()
+    chunks = []
+    pending = b''
+    deadline = time.monotonic() + timeout
+    last_progress = 0.0
+    try:
+        while True:
+            remaining = deadline-time.monotonic()
+            if remaining <= 0:
+                raise subprocess.TimeoutExpired(command, timeout)
+            try:
+                chunk = output.get(timeout=min(1.0, remaining))
+            except queue.Empty:
+                continue
+            if chunk is None:
+                break
+            chunks.append(chunk)
+            pending += chunk
+            while b'\n' in pending:
+                line, pending = pending.split(b'\n', 1)
+                now = time.monotonic()
+                display = line.lstrip(b'# ')
+                if display.startswith(b'PASS ') or (display.startswith(b'PROGRESS ') and now-last_progress >= 10):
+                    print(line.decode('utf-8', errors='replace'), flush=True)
+                    last_progress = now
+        returncode = process.wait(timeout=max(0.001, deadline-time.monotonic()))
+        if returncode:
+            raise subprocess.CalledProcessError(returncode, command)
+    except BaseException:
+        if os.name == 'nt':
+            # Target only the process tree created by this invocation.
+            subprocess.run([str(Path(os.environ['SystemRoot'])/'System32/taskkill.exe'),
+                            '/PID', str(process.pid), '/T', '/F'],
+                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=10)
+        else:
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+        process.wait(timeout=10)
+        thread.join(timeout=10)
+        while not output.empty():
+            chunk = output.get_nowait()
+            if chunk is not None:
+                chunks.append(chunk)
+        raise
+    finally:
+        thread.join(timeout=10)
+        process.stdout.close()
+        temporary = log_path.with_name(log_path.name+'.partial')
+        temporary.write_bytes(b''.join(chunks))
+        temporary.replace(log_path)
 
 p=argparse.ArgumentParser()
 p.add_argument('--source-root',type=Path,help='Integrated Key Generation source root')
@@ -105,8 +179,7 @@ for seed in a.seeds:
     save_json(run_path,evidence)
     started=time.monotonic()
     try:
-        with (build/f'seed-{seed}.log').open('w') as log:
-            subprocess.run(command,cwd=build,stdout=log,stderr=subprocess.STDOUT,check=True,timeout=7200)
+        run_simulation(command, build, build/f'seed-{seed}.log', timeout=7200)
     except (subprocess.CalledProcessError,subprocess.TimeoutExpired) as failure:
         evidence['status']='FAILED_OR_INCOMPLETE';evidence['error']=str(failure);save_json(run_path,evidence);raise
     if input_hashes(root,sources,models,a.softcore)!=manifest['inputs']:
