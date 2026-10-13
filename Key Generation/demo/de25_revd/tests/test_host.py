@@ -2,10 +2,12 @@
 import hashlib
 import importlib.util
 import json
+import itertools
+import tempfile
 from pathlib import Path
 import sys
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 HERE=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(HERE.parents[1]/'reference'))
 spec=importlib.util.spec_from_file_location('host_test',HERE/'host_test.py')
@@ -68,7 +70,7 @@ class HostTests(unittest.TestCase):
         self.assertEqual(run.call_args_list[1].kwargs['source_schedule'][-1],(.30,0))
     def test_stall_failure_releases_source(self):
         adapter=FakeAdapter()
-        def fail(a,mask,samples=None,source_schedule=None,transitions=None):
+        def fail(a,mask,samples=None,source_schedule=None,transitions=None,**kwargs):
             if mask==1:return 1
             a.register(11,1)
             raise TimeoutError('injected timeout')
@@ -109,7 +111,7 @@ class HostTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError,'status 2'):host.run_key(adapter,0,FIXTURE,1)
         self.assertTrue(adapter.acked)
     def test_timeout(self):
-        with patch.object(host.time,'monotonic',side_effect=[0,0,181]),patch.object(host.time,'sleep'):
+        with patch.object(host.time,'monotonic',side_effect=itertools.chain([0,0,181],itertools.repeat(181))),patch.object(host.time,'sleep'):
             with self.assertRaises(TimeoutError):host.poll(FakeAdapter(),8)
     def test_wrong_image(self):
         adapter=FakeAdapter();adapter.reg[1]=0
@@ -141,14 +143,14 @@ class HostTests(unittest.TestCase):
 
     def test_reset_boundary_rejects_busy_before_admission(self):
         adapter=FakeAdapter();adapter.reg.update({3:2,12:2});results=[]
-        with patch.object(host,'reset_and_check'),patch.object(host,'configure_request'),patch.object(host,'poll',return_value=2),patch.object(host.time,'monotonic',side_effect=[0,0,181]),patch.object(host.time,'sleep'):
+        with patch.object(host,'reset_and_check'),patch.object(host,'configure_request'),patch.object(host,'poll',return_value=2),patch.object(host.time,'monotonic',side_effect=itertools.chain([0,0,181],itertools.repeat(181))),patch.object(host.time,'sleep'):
             with self.assertRaisesRegex(TimeoutError,'enter RUN'):
                 host.reset_replay(adapter,FIXTURE,results)
         self.assertEqual(results,[])
 
     def test_timeout_resets_stalled_operation(self):
         adapter=FakeAdapter()
-        def stalled(a,mask,*args):
+        def stalled(a,mask,*args,**kwargs):
             if mask==8:raise TimeoutError('primary generation timeout')
             return 1
         with patch.object(host,'poll',side_effect=stalled),patch.object(adapter,'reset_board_core',wraps=adapter.reset_board_core) as reset:
@@ -183,7 +185,7 @@ class HostTests(unittest.TestCase):
 
     def test_timeout_survives_reset_failure(self):
         adapter=FakeAdapter()
-        def stalled(a,mask,*args):
+        def stalled(a,mask,*args,**kwargs):
             if mask==8:raise TimeoutError('primary timeout')
             return 1
         with patch.object(host,'poll',side_effect=stalled),patch.object(adapter,'reset_board_core',side_effect=OSError('reset unavailable')):
@@ -217,7 +219,7 @@ class HostTests(unittest.TestCase):
     def test_stuck_run_boundary_resets_before_propagating(self):
         adapter=FakeAdapter();results=[]
         def pre_admission(*args):adapter.reg.update({3:2,12:2,11:1})
-        with patch.object(host,'configure_request',side_effect=pre_admission),patch.object(host,'poll',side_effect=lambda a,mask,*args:mask),patch.object(host.time,'monotonic',side_effect=[0,0,181]),patch.object(host.time,'sleep'),patch.object(adapter,'reset_board_core',wraps=adapter.reset_board_core) as reset:
+        with patch.object(host,'configure_request',side_effect=pre_admission),patch.object(host,'poll',side_effect=lambda a,mask,*args,**kwargs:mask),patch.object(host,'wait_running',side_effect=TimeoutError('demo did not enter RUN before reset boundary')),patch.object(host.time,'sleep'),patch.object(adapter,'reset_board_core',wraps=adapter.reset_board_core) as reset:
             with self.assertRaisesRegex(TimeoutError,'enter RUN') as caught:
                 host.reset_replay(adapter,FIXTURE,results)
         self.assertEqual(reset.call_count,2)
@@ -233,5 +235,84 @@ class HostTests(unittest.TestCase):
         self.assertIs(caught.exception,primary)
         self.assertEqual(primary.cleanup_errors,['reset: reset unavailable'])
         self.assertEqual(results,[])
+
+    def test_late_ready_status_is_timeout(self):
+        adapter=FakeAdapter();now=[0]
+        def late(address,value=None):
+            now[0]=181
+            return 8
+        with patch.object(adapter,'register',side_effect=late),patch.object(host.time,'monotonic',side_effect=lambda:now[0]):
+            with self.assertRaises(TimeoutError):host.poll(adapter,8,deadline=180)
+
+    def test_late_final_ack_cannot_turn_into_pass(self):
+        adapter=FakeAdapter();register=adapter.register;now=[0]
+        def late_ack(address,value=None):
+            value_out=register(address,value)
+            if address==2 and value==2:now[0]=181
+            return value_out
+        with patch.object(adapter,'register',side_effect=late_ack),patch.object(host.time,'monotonic',side_effect=lambda:now[0]):
+            with self.assertRaises(TimeoutError) as caught:host.run_key(adapter,0,FIXTURE,1)
+        self.assertEqual(caught.exception.recovery,{'action':'reset','success':True})
+
+    def test_verification_deadline_still_fails_valid_key(self):
+        adapter=FakeAdapter();now=[0]
+        def late_check(key):now[0]=181
+        with patch('key_checker.check_key',side_effect=late_check),patch.object(host.time,'monotonic',side_effect=lambda:now[0]):
+            with self.assertRaises(TimeoutError):host.run_key(adapter,2,FIXTURE,1)
+
+    def test_recovery_has_ten_second_budget_and_accumulates_errors(self):
+        adapter=FakeAdapter();now=[0];primary=TimeoutError('original');primary.cleanup_errors=['earlier transport error']
+        def slow_ack(address,value=None):now[0]=11;return 0
+        with patch.object(adapter,'register',side_effect=slow_ack),patch.object(adapter,'reset_board_core') as reset,patch.object(host.time,'monotonic',side_effect=lambda:now[0]):
+            host.recover_operation(adapter,primary,force_reset=False)
+        reset.assert_not_called()
+        self.assertEqual(primary.cleanup_errors[0],'earlier transport error')
+        self.assertEqual(primary.recovery,{'action':'reset','success':False})
+        self.assertEqual(primary.recovery_seconds,11)
+
+    def test_transfer_preserves_read_error_when_cs_release_fails(self):
+        adapter=object.__new__(host.SpiAdapter);primary=TimeoutError('USB read timeout')
+        with patch.object(adapter,'pins',side_effect=[None,OSError('release failed')]),patch.object(adapter,'write'),patch.object(adapter,'read',side_effect=primary):
+            with self.assertRaises(TimeoutError) as caught:adapter.transfer(b'x')
+        self.assertIs(caught.exception,primary)
+        self.assertEqual(primary.cleanup_errors,['chip-select release: release failed'])
+
+    def test_initialization_preserves_error_when_close_fails(self):
+        dll=Mock()
+        def count(pointer):pointer._obj.value=1;return 0
+        def detail(index,flags,kind,identifier,location,serial,description,handle):
+            kind._obj.value=8;serial.value=host.SERIAL.encode();description.value=b'C232HM';return 0
+        def opened(serial,mode,handle):handle._obj.value=123;return 0
+        dll.FT_CreateDeviceInfoList.side_effect=count;dll.FT_GetDeviceInfoDetail.side_effect=detail;dll.FT_OpenEx.side_effect=opened
+        dll.FT_ResetDevice.return_value=7
+        with patch.object(host.c,'WinDLL',return_value=dll),patch.object(host.SpiAdapter,'close',side_effect=OSError('initialization close failed')):
+            with self.assertRaisesRegex(RuntimeError,'reset adapter') as caught:host.SpiAdapter()
+        self.assertEqual(caught.exception.cleanup_errors,['adapter initialization close: initialization close failed'])
+
+    def test_provenance_rejects_changed_reference(self):
+        scratch=(HERE.parents[4]/'AI/tmp').resolve()
+        with tempfile.TemporaryDirectory(dir=scratch) as directory:
+            root=Path(directory).resolve();root.relative_to(scratch)
+            for name in ('host_test.py','key_checker.py','keygen_reference.py','seeds.json','expected_keys.json'):
+                (root/name).write_text('original')
+            with patch.object(host,'__file__',str(root/'host_test.py')):
+                fingerprints=host.provenance_inputs(root)
+                self.assertEqual(len(fingerprints),5)
+                host.verify_provenance(root,fingerprints)
+                (root/'expected_keys.json').write_text('changed')
+                with self.assertRaisesRegex(RuntimeError,'inputs changed'):host.verify_provenance(root,fingerprints)
+
+    def test_driver_close_failure_is_reported_without_masking_write_error(self):
+        for fail_write in (False,True):
+            adapter=object.__new__(host.SpiAdapter);adapter.handle=host.c.c_void_p(123);adapter.dll=Mock();adapter.dll.FT_Close.return_value=7
+            primary=OSError('tri-state write failed')
+            with patch.object(adapter,'write',side_effect=primary if fail_write else None):
+                if fail_write:
+                    with self.assertRaises(OSError) as caught:adapter.close()
+                    self.assertIs(caught.exception,primary)
+                    self.assertEqual(primary.cleanup_errors,['driver close: close adapter: FT_STATUS=7'])
+                else:
+                    with self.assertRaisesRegex(RuntimeError,'close adapter'):adapter.close()
+            self.assertFalse(adapter.handle.value)
 
 if __name__=='__main__':unittest.main()

@@ -2,6 +2,9 @@
 import argparse
 import ctypes as c
 import json
+import hashlib
+import platform
+from datetime import datetime, timezone
 from pathlib import Path
 import statistics
 import sys
@@ -9,6 +12,7 @@ import time
 
 SERIAL = "FTA6H280"
 TIMEOUT = 180.0
+RECOVERY_TIMEOUT = 10.0
 
 
 class SpiAdapter:
@@ -40,8 +44,8 @@ class SpiAdapter:
                 matches.append(description.value.decode())
         if len(matches) != 1:
             raise RuntimeError(f"exactly one C232HM adapter with serial {SERIAL} required")
-        self.ok(self.dll.FT_OpenEx(c.cast(c.c_char_p(SERIAL.encode()),h),1,c.byref(self.handle)), "open named adapter")
         try:
+            self.ok(self.dll.FT_OpenEx(c.cast(c.c_char_p(SERIAL.encode()),h),1,c.byref(self.handle)), "open named adapter")
             self.ok(self.dll.FT_ResetDevice(self.handle), "reset adapter")
             self.ok(self.dll.FT_SetTimeouts(self.handle,200,200), "timeouts")
             self.ok(self.dll.FT_SetLatencyTimer(self.handle,2), "latency")
@@ -55,8 +59,11 @@ class SpiAdapter:
             divisor = 30000000 // frequency - 1
             self.write(bytes([0x8A,0x97,0x8D,0x85,0x86,divisor&255,divisor>>8]))
             self.pins(0x18)
-        except Exception:
-            self.close()
+        except Exception as primary:
+            try:
+                self.close()
+            except Exception as cleanup:
+                append_cleanup(primary,"adapter initialization close",cleanup)
             raise
 
     @staticmethod
@@ -91,12 +98,21 @@ class SpiAdapter:
     def transfer(self, payload):
         if not 1 <= len(payload) <= 8:
             raise ValueError("frame must contain one through eight bytes")
-        self.pins(0x10)
+        primary = None
         try:
+            self.pins(0x10)
             self.write(bytes([0x31,len(payload)-1,0])+payload+bytes([0x87]))
             return self.read(len(payload))
+        except Exception as error:
+            primary=error
+            raise
         finally:
-            self.pins(0x18)
+            try:
+                self.pins(0x18)
+            except Exception as cleanup:
+                if primary is None:
+                    raise
+                append_cleanup(primary,"chip-select release",cleanup)
 
     def register(self, address, data=None):
         payload = bytes([1 if data is None else 2,address,0,0])+(0 if data is None else data).to_bytes(4,"big")
@@ -107,11 +123,21 @@ class SpiAdapter:
 
     def close(self):
         if self.handle.value:
+            primary=None
             try:
                 self.write(bytes([0x80,0,0]))
+            except Exception as error:
+                primary=error
+                raise
             finally:
-                self.dll.FT_Close(self.handle)
-                self.handle = c.c_void_p()
+                try:
+                    self.ok(self.dll.FT_Close(self.handle),"close adapter")
+                except Exception as cleanup:
+                    if primary is None:
+                        raise
+                    append_cleanup(primary,"driver close",cleanup)
+                finally:
+                    self.handle = c.c_void_p()
 
     def __enter__(self):
         return self
@@ -122,9 +148,19 @@ class SpiAdapter:
         except Exception as cleanup:
             if exception is None:
                 raise
-            errors=getattr(exception,"cleanup_errors",[])
-            errors.append("adapter close: " + str(cleanup))
-            exception.cleanup_errors=errors
+            append_cleanup(exception,"adapter close",cleanup)
+
+
+def append_cleanup(primary, action, cleanup):
+    errors=getattr(primary,"cleanup_errors",[])
+    errors.append(action + ": " + str(cleanup))
+    errors.extend(action + " -> " + item for item in getattr(cleanup,"cleanup_errors",[]))
+    primary.cleanup_errors=errors
+
+
+def check_deadline(deadline):
+    if deadline is not None and time.monotonic() >= deadline:
+        raise TimeoutError("host operation deadline exceeded")
 
 
 def telemetry(adapter):
@@ -137,22 +173,26 @@ def telemetry(adapter):
             "i2c_ready":bool(flags&256),"temperature_valid":bool(flags&512),"fan_fail_safe":bool(flags&1024)}
 
 
-def poll(adapter, mask, samples=None, source_schedule=None, transitions=None):
-    deadline = time.monotonic()+TIMEOUT
+def poll(adapter, mask, samples=None, source_schedule=None, transitions=None, deadline=None):
+    if deadline is None:
+        deadline = time.monotonic()+TIMEOUT
     started = deadline-TIMEOUT
     pending = list(source_schedule or [])
     next_sample = 0.0
     while time.monotonic() < deadline:
         status = adapter.register(3)
+        check_deadline(deadline)
         while pending and time.monotonic()-started >= pending[0][0]:
             scheduled, hold = pending.pop(0)
             if not status & 2:
                 raise RuntimeError("source-stall schedule reached outside busy generation")
             adapter.register(11,hold)
+            check_deadline(deadline)
             transitions.append({"scheduled_seconds":scheduled,"observed_seconds":time.monotonic()-started,"hold_generation":bool(hold)})
         if samples is not None and time.monotonic() >= next_sample:
             samples.append(telemetry(adapter))
             next_sample = time.monotonic()+1
+        check_deadline(deadline)
         if status & mask:
             if pending:
                 raise RuntimeError("generation completed before source-stall replay schedule finished")
@@ -191,22 +231,30 @@ def transport_test(adapter):
 
 
 def recover_operation(adapter, primary, force_reset):
-    """Recover the demo without replacing the failure that triggered recovery."""
-    primary.cleanup_errors = []
-    if not force_reset:
-        try:
-            adapter.register(2,2)
-            poll(adapter,1)
-            primary.recovery = {"action":"acknowledge", "success":True}
-            return
-        except Exception as cleanup:
-            primary.cleanup_errors.append("acknowledge: " + str(cleanup))
+    """Use a ten-second recovery deadline without replacing the failure cause."""
+    started=time.monotonic()
+    deadline=started+RECOVERY_TIMEOUT
+    if not hasattr(primary,"cleanup_errors"):
+        primary.cleanup_errors=[]
     try:
-        reset_and_check(adapter)
-        primary.recovery = {"action":"reset", "success":True}
-    except Exception as cleanup:
-        primary.cleanup_errors.append("reset: " + str(cleanup))
-        primary.recovery = {"action":"reset", "success":False}
+        if not force_reset:
+            try:
+                adapter.register(2,2)
+                check_deadline(deadline)
+                poll(adapter,1,deadline=deadline)
+                primary.recovery = {"action":"acknowledge", "success":True}
+                return
+            except Exception as cleanup:
+                append_cleanup(primary,"acknowledge",cleanup)
+        try:
+            check_deadline(deadline)
+            reset_and_check(adapter,deadline=deadline)
+            primary.recovery = {"action":"reset", "success":True}
+        except Exception as cleanup:
+            append_cleanup(primary,"reset",cleanup)
+            primary.recovery = {"action":"reset", "success":False}
+    finally:
+        primary.recovery_seconds=time.monotonic()-started
 
 
 def run_key(adapter, profile, fixture, request_id, source_schedule=None):
@@ -215,28 +263,35 @@ def run_key(adapter, profile, fixture, request_id, source_schedule=None):
     samples = []
     transitions = []
     status = None
+    deadline = None
+    def access(address,data=None):
+        check_deadline(deadline)
+        value=adapter.register(address,data)
+        check_deadline(deadline)
+        return value
     try:
         poll(adapter,1)
-        adapter.register(11,0)
+        access(11,0)
         seed = bytes.fromhex(fixture["seed_hex"])
         for index in range(8):
-            adapter.register(16+index,int.from_bytes(seed[index*4:index*4+4],"big"))
-        adapter.register(4,profile);adapter.register(5,request_id)
+            access(16+index,int.from_bytes(seed[index*4:index*4+4],"big"))
+        access(4,profile);access(5,request_id)
         started = time.monotonic()
-        adapter.register(2,1)
-        status = poll(adapter,8,samples,source_schedule,transitions)
+        deadline = started+TIMEOUT
+        access(2,1)
+        status = poll(adapter,8,samples,source_schedule,transitions,deadline=deadline)
         elapsed = time.monotonic()-started
         if status>>8 & 15:
             raise RuntimeError(f"core returned status {(status>>8)&15}")
         if not status&4:
             raise RuntimeError("success without complete receiver ownership")
-        cycles = (adapter.register(7)<<32)|adapter.register(6)
+        cycles = (access(7)<<32)|access(6)
         count = 4 if profile==0 else 8 if profile==1 else 129
         words = []
         components = {}
         for index in range(count):
-            adapter.register(8,index)
-            word, meta = adapter.register(9),adapter.register(10)
+            access(8,index)
+            word, meta = access(9),access(10)
             component, word_index = meta&7,(meta>>3)&127
             if not meta>>31 or bool(meta&0x800) != (index==count-1):
                 raise RuntimeError("invalid result boundary")
@@ -268,6 +323,7 @@ def run_key(adapter, profile, fixture, request_id, source_schedule=None):
                             if item["seed_id"]==fixture["id"])
             if any(value != int(expected[name],16) for name,value in (("n",n),("e",e),("p",p),("q",q),("d",d))):
                 raise RuntimeError("RSA deterministic corpus mismatch")
+        check_deadline(deadline)
         result = {"profile":profile,"seed_id":fixture["id"],"request_id":request_id,"result":"PASS",
                 "core_cycles":cycles,"core_seconds":cycles/50000000,"spi_completion_seconds":elapsed,"fan_samples":samples,
                 "source_transitions":transitions}
@@ -278,8 +334,11 @@ def run_key(adapter, profile, fixture, request_id, source_schedule=None):
         recover_operation(adapter,error,force_reset=status is None)
         raise
     try:
-        adapter.register(2,2)
-        poll(adapter,1)
+        access(2,2)
+        poll(adapter,1,deadline=deadline)
+        check_deadline(deadline)
+        result["host_operation_seconds"]=time.monotonic()-started
+        check_deadline(deadline)
     except Exception as error:
         error.fan_samples=samples
         error.source_transitions=transitions
@@ -300,13 +359,21 @@ def configure_request(adapter, profile, fixture, request_id, controls=0):
     adapter.register(2,1)
 
 
-def reset_and_check(adapter):
+def reset_and_check(adapter, deadline=None):
+    if deadline is None:
+        deadline=time.monotonic()+TIMEOUT
     adapter.reset_board_core()
-    poll(adapter,1)
-    status=adapter.register(3)
-    if status & 0xE or adapter.register(9) or adapter.register(10):
+    check_deadline(deadline)
+    poll(adapter,1,deadline=deadline)
+    def read(address):
+        check_deadline(deadline)
+        value=adapter.register(address)
+        check_deadline(deadline)
+        return value
+    status=read(3)
+    if status & 0xE or read(9) or read(10):
         raise RuntimeError("reset exposed stale status/result")
-    if any(adapter.register(address) for address in (4,5,8,11,63,*range(16,24))):
+    if any(read(address) for address in (4,5,8,11,63,*range(16,24))):
         raise RuntimeError("reset did not clear demo configuration")
 
 
@@ -380,6 +447,17 @@ def stall_replay(adapter, fixture, results, checkpoint=lambda:None):
         checkpoint()
 
 
+def provenance_inputs(reference):
+    paths=[Path(__file__).resolve()]+[reference/name for name in
+           ("key_checker.py","keygen_reference.py","seeds.json","expected_keys.json")]
+    return {str(path):hashlib.sha256(path.read_bytes()).hexdigest() for path in paths}
+
+
+def verify_provenance(reference, expected):
+    if provenance_inputs(reference)!=expected:
+        raise RuntimeError("host or reference inputs changed during hardware test")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--action",choices=("transport","aes","rsa","corpus","soak","reset-replay","stall-replay"),required=True)
@@ -394,7 +472,8 @@ def main():
     seeds = json.loads((reference/"seeds.json").read_text())["seeds"]
     manifest = json.loads(args.manifest.read_text())
     args.report.parent.mkdir(parents=True,exist_ok=True)
-    report = {"adapter_serial":SERIAL,"frequency_hz":args.frequency,"action":args.action,"result":"RUNNING","results":[]}
+    provenance=provenance_inputs(reference)
+    report = {"started_utc":datetime.now(timezone.utc).isoformat(),"python_version":platform.python_version(),"inputs_sha256":provenance,"adapter_serial":SERIAL,"frequency_hz":args.frequency,"action":args.action,"result":"RUNNING","results":[]}
     def checkpoint():
         args.report.write_text(json.dumps(report,indent=2)+"\n")
     try:
@@ -422,6 +501,7 @@ def main():
                 report["median_core_seconds"] = statistics.median(x["core_seconds"] for x in report["results"])
                 if report["median_core_seconds"]>30:
                     raise RuntimeError("twenty-seed median exceeds 30-second acceptance target")
+        verify_provenance(reference,provenance)
         report["result"]="PASS"
     except Exception as error:
         report["result"]="FAIL";report["error"]=str(error)
@@ -429,6 +509,7 @@ def main():
         report["failure_source_transitions"]=getattr(error,"source_transitions",[])
         report["failure_cleanup_errors"]=getattr(error,"cleanup_errors",[])
         report["failure_recovery"]=getattr(error,"recovery",None)
+        report["failure_recovery_seconds"]=getattr(error,"recovery_seconds",None)
     args.report.parent.mkdir(parents=True,exist_ok=True)
     args.report.write_text(json.dumps(report,indent=2)+"\n")
     print(report["result"]+": "+str(args.report))

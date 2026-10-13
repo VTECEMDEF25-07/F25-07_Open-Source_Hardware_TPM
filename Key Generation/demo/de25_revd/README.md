@@ -125,3 +125,13 @@ If generation polling fails or times out, the host pulses the gray core reset an
 The offline host suite now passes 22 tests, including stuck pre-admission rejection, timeout reset recovery, primary-error preservation when ACK/reset/adapter close fail, and rejection of successful key generation followed by failed cleanup. These tests do not open hardware.
 
 Admission writes, including START, use the same recovery guard: a USB failure may mean the board accepted the write even though the host did not receive confirmation, so the host performs checked reset before propagating the original error. Reset-replay setup and boundary polling are also guarded; a failed RUN/result/ownership boundary resets the held operation while the adapter remains open. The expanded offline suite passes 25 tests, including ambiguous START acceptance and boundary timeout with both successful and failed recovery.
+
+### Frozen host acceptance bounds and provenance
+
+The 180-second job deadline starts immediately before the START write attempt and covers completion, result retrieval, independent key checking, and final acknowledgment/readiness. Late status or cleanup cannot produce PASS. USB calls have their own bounded transport timeout; a call crossing the job deadline is rejected when it returns. Reports retain both completion latency and total successful host-operation time.
+
+After failure, recovery has a separate 10-second deadline, checked between bounded USB calls, and reports its actual elapsed time and outcome. Recovery never converts failure into success. Transport CS release, initialization cleanup, adapter close and driver-close failures preserve the initiating error and accumulate secondary diagnostics.
+
+Every hardware report records UTC start, Python version, and SHA-256 hashes of this host script, the independent key checker, generation reference, seed list and expected-key corpus. Those files must remain unchanged through completion before PASS can be recorded. These hashes supplement the loaded image's build fingerprint.
+
+The frozen offline suite passes 33 tests. Added cases reject late ready status, late verification/ACK, exhausted recovery budget, changed reference inputs, and transport/driver cleanup failures without masking the primary cause.
