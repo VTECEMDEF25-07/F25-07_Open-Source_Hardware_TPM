@@ -46,3 +46,9 @@ The engine reuses a pipelined 32x32 multiplier. Schoolbook multiplication accumu
 ```
 
 Simulation uses the real installed vendor models when `-Altera` is set. See the IP README for the older model's disclosed AUTO RAM warning. The fit is a virtual-pin resource/timing smoke build, not board I/O timing signoff or a flash operation. Only one Questa session may run on the installed license, so coordinate simulation runs between workers.
+
+## Validated baseline
+
+The generic 64-limb baseline passed 54 independent bigint cases in Questa, including 2048-bit Montgomery/products and two fully random 1024-bit exponents. The board-sized MAX_LIMBS=32 configuration passed 48 cases in compiled Verilator, including two different random 1024-bit exponents (13,177,407 and 12,891,195 cycles), the final collision-free RAM output-latch refresh, invalid-base rejection before writes, and all 4,096 reset-scrub reads. These cycle counts are arithmetic measurements, not complete RSA key-generation timing guarantees.
+
+`simulate_math_verilator.sh ABSOLUTE_SCRATCH_DIRECTORY` provides the faster generic full-width run under WSL/Linux. It invokes g++ directly on Verilator's generated C++ because GNU Make rejects the spaces in this class-directory path. Generated files and logs stay in the supplied scratch directory. The runner prints Verilator width diagnostics into `build.log`; it does not present a warning-free lint signoff. Real vendor simulation and actual-device fitter results are separate gates.
