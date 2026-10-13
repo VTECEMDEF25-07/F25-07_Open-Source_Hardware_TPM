@@ -72,3 +72,9 @@ Generic full-core integration passed directed RSA-2048 seed 1: 384 input words, 
 ## Internal descriptor watchdog
 
 The later wrapper fix adds `COMMAND_TIMEOUT_CYCLES=50000000` without changing the ROM image. Tests use 1000 cycles only for this timeout parameter, not the production prime retry limits. They hold DRAW acceptance indefinitely and require status7, accept PREPARE_PRIME but withhold its response while firmware actively polls and require status7, and accept DRAW then stall more than both test watchdog intervals without failure. An independent instruction-fetch stall during accepted DRAW still requires status7. Every terminal path retains CPU/register/RAM cleanup before completion. Earlier complete-key cycle counts above were measured before this watchdog addition; final complete-key and fit checks must use the updated wrapper.
+
+## Vendor-run provenance
+
+The actual-model Questa runner accepts `--label <unique-name>`. A fresh build records project RTL/testbench hashes, source firmware and ROM-image hashes, expected-key corpus hash, unchanged vendor-model hashes, simulator version, language/backend configuration, runner hashes, and exact compiler commands in `build-manifest.json`. Each run records generated stimulus/reference hashes, the exact simulation command, linked build-manifest hash, status and final log hash. It refuses to overwrite existing build/run manifests; select a new label for new evidence.
+
+`--reuse-build` rejects changed source, model, runner, firmware, simulator or configuration fingerprints. Matching reuse plus all six stale-input rejection classes were checked. Historical baseline directories predate this provenance support and must not be relabeled as final acceptance runs.
