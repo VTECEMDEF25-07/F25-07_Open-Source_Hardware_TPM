@@ -49,14 +49,14 @@ module keygen_math #(parameter MAX_LIMBS = 64) (
     reg [31:0] mult_left_reg, mult_right_reg;
     wire mult_valid;
     wire [63:0] product;
-    wire [63:0] accumulated_product = product + temporary_reg[index_reg] + carry_reg;
-    wire [63:0] school_product = product + temporary_reg[outer_reg+index_reg] + carry_reg;
-    wire [32:0] doubled_word = {a_reg[index_reg],1'b0} + carry_reg;
-    wire [32:0] sum_word = {1'b0,a_reg[index_reg]} + b_reg[index_reg] + carry_reg;
-    wire [32:0] difference_word = {1'b0,a_reg[index_reg]} - b_reg[index_reg] - borrow_reg;
-    wire [32:0] reduction_word = {1'b0,a_reg[index_reg]} - modulus_reg[index_reg] - borrow_reg;
-    wire [32:0] mont_reduction_word = {1'b0,temporary_reg[index_reg]} - modulus_reg[index_reg] - borrow_reg;
-    wire [32:0] top_sum = {1'b0,temporary_reg[length_reg]} + carry_reg;
+    wire [63:0] accumulated_product = product + {32'b0,temporary_reg[index_reg]} + {32'b0,carry_reg};
+    wire [63:0] school_product = product + {32'b0,temporary_reg[outer_reg+index_reg]} + {32'b0,carry_reg};
+    wire [32:0] doubled_word = {a_reg[index_reg],1'b0} + {1'b0,carry_reg};
+    wire [32:0] sum_word = {1'b0,a_reg[index_reg]} + {1'b0,b_reg[index_reg]} + {1'b0,carry_reg};
+    wire [32:0] difference_word = {1'b0,a_reg[index_reg]} - {1'b0,b_reg[index_reg]} - {32'b0,borrow_reg};
+    wire [32:0] reduction_word = {1'b0,a_reg[index_reg]} - {1'b0,modulus_reg[index_reg]} - {32'b0,borrow_reg};
+    wire [32:0] mont_reduction_word = {1'b0,temporary_reg[index_reg]} - {1'b0,modulus_reg[index_reg]} - {32'b0,borrow_reg};
+    wire [32:0] top_sum = {1'b0,temporary_reg[length_reg]} + {1'b0,carry_reg};
     reg ram_write_en, ram_read_en;
     reg [11:0] ram_write_address, ram_read_address;
     reg [31:0] ram_write_data;
@@ -235,7 +235,7 @@ module keygen_math #(parameter MAX_LIMBS = 64) (
                     end else index_reg <= index_reg+1'b1;
                 end
                 SIMPLE: begin
-                    if (op_reg == ADD) begin a_reg[index_reg] <= sum_word[31:0]; carry_reg <= sum_word[32]; end
+                    if (op_reg == ADD) begin a_reg[index_reg] <= sum_word[31:0]; carry_reg <= {31'b0,sum_word[32]}; end
                     else if (op_reg == SUB) begin a_reg[index_reg] <= difference_word[31:0]; borrow_reg <= difference_word[32]; end
                     else a_reg[index_reg] <= {index_reg == length_reg-1 ? 1'b0 : a_reg[index_reg+1][0], a_reg[index_reg][31:1]};
                     if (index_reg == length_reg-1) begin index_reg <= 0; state_reg <= WRITE; end
@@ -302,7 +302,7 @@ module keygen_math #(parameter MAX_LIMBS = 64) (
                     index_reg <= 0; carry_reg <= 0; state_reg <= R2_DOUBLE;
                 end
                 R2_DOUBLE: begin
-                    a_reg[index_reg] <= doubled_word[31:0]; carry_reg <= doubled_word[32];
+                    a_reg[index_reg] <= doubled_word[31:0]; carry_reg <= {31'b0,doubled_word[32]};
                     if (index_reg == length_reg-1) begin compare_index_reg <= length_reg-1; state_reg <= R2_COMPARE; end
                     else index_reg <= index_reg+1'b1;
                 end
@@ -332,7 +332,7 @@ module keygen_math #(parameter MAX_LIMBS = 64) (
                     mult_mode_reg <= MULT_MONT_AB; state_reg <= MULT_START;
                 end
                 MONT_CARRY: begin
-                    temporary_reg[length_reg] <= top_sum[31:0]; temporary_reg[length_reg+1'b1] <= top_sum[32];
+                    temporary_reg[length_reg] <= top_sum[31:0]; temporary_reg[length_reg+1'b1] <= {31'b0,top_sum[32]};
                     state_reg <= MONT_FACTOR;
                 end
                 MONT_FACTOR: begin
@@ -345,7 +345,7 @@ module keygen_math #(parameter MAX_LIMBS = 64) (
                 end
                 MONT_SHIFT: begin
                     temporary_reg[length_reg-1'b1] <= top_sum[31:0];
-                    temporary_reg[length_reg] <= temporary_reg[length_reg+1'b1] + top_sum[32];
+                    temporary_reg[length_reg] <= temporary_reg[length_reg+1'b1] + {31'b0,top_sum[32]};
                     index_reg <= 0; carry_reg <= 0;
                     if (outer_reg == length_reg-1) begin compare_index_reg <= length_reg-1; state_reg <= MONT_COMPARE; end
                     else begin outer_reg <= outer_reg+1'b1; state_reg <= MONT_AB; end
