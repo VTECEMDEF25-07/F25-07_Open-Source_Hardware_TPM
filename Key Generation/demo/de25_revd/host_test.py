@@ -130,27 +130,46 @@ def telemetry(adapter):
             "i2c_ready":bool(flags&256),"temperature_valid":bool(flags&512),"fan_fail_safe":bool(flags&1024)}
 
 
-def poll(adapter, mask, samples=None):
+def poll(adapter, mask, samples=None, source_schedule=None, transitions=None):
     deadline = time.monotonic()+TIMEOUT
+    started = deadline-TIMEOUT
+    pending = list(source_schedule or [])
     next_sample = 0.0
     while time.monotonic() < deadline:
         status = adapter.register(3)
+        while pending and time.monotonic()-started >= pending[0][0]:
+            scheduled, hold = pending.pop(0)
+            if not status & 2:
+                raise RuntimeError("source-stall schedule reached outside busy generation")
+            adapter.register(11,hold)
+            transitions.append({"scheduled_seconds":scheduled,"observed_seconds":time.monotonic()-started,"hold_generation":bool(hold)})
         if samples is not None and time.monotonic() >= next_sample:
             samples.append(telemetry(adapter))
             next_sample = time.monotonic()+1
         if status & mask:
+            if pending:
+                raise RuntimeError("generation completed before source-stall replay schedule finished")
             return status
         time.sleep(.01)
     raise TimeoutError(f"core did not reach status mask {mask:#x} within {TIMEOUT}s")
 
 
-def identify(adapter):
+def identify(adapter, manifest=None):
     if adapter.register(0) != 0x4B473031:
         raise RuntimeError("unexpected build identity")
     config = adapter.register(1)
     if not config & 4 or config & ~7:
         raise RuntimeError("explicit test-image configuration required")
-    return {"control": "softcore" if config&1 else "rtl", "backend": "altera" if config&2 else "generic", "test_mode": True}
+    control = "softcore" if config&1 else "rtl"
+    backend = "altera" if config&2 else "generic"
+    fingerprint = "".join(f"{adapter.register(address):08x}" for address in range(24,32))
+    if manifest is not None:
+        expected = manifest.get("build_fingerprint", "")
+        if len(expected) != 64 or expected == "0"*64 or fingerprint != expected:
+            raise RuntimeError("loaded image build fingerprint does not match selected manifest")
+        if manifest.get("variant") != f"{control}_{backend}":
+            raise RuntimeError("loaded image configuration does not match selected manifest")
+    return {"control": control, "backend": backend, "test_mode": True, "build_fingerprint": fingerprint}
 
 
 def transport_test(adapter):
@@ -164,7 +183,7 @@ def transport_test(adapter):
     return {"transport": "PASS", "partial_frame_abort": "PASS"}
 
 
-def run_key(adapter, profile, fixture, request_id):
+def run_key(adapter, profile, fixture, request_id, source_schedule=None):
     from keygen_reference import Sha256Words
     from key_checker import check_key
     poll(adapter,1)
@@ -176,11 +195,16 @@ def run_key(adapter, profile, fixture, request_id):
     started = time.monotonic()
     adapter.register(2,1)
     samples = []
+    transitions = []
     try:
-        status = poll(adapter,8,samples)
+        status = poll(adapter,8,samples,source_schedule,transitions)
     except Exception as error:
         error.fan_samples=samples
+        error.source_transitions=transitions
         raise
+    finally:
+        if source_schedule:
+            adapter.register(11,0)
     elapsed = time.monotonic()-started
     try:
         if status>>8 & 15:
@@ -226,7 +250,8 @@ def run_key(adapter, profile, fixture, request_id):
             if any(value != int(expected[name],16) for name,value in (("n",n),("e",e),("p",p),("q",q),("d",d))):
                 raise RuntimeError("RSA deterministic corpus mismatch")
         return {"profile":profile,"seed_id":fixture["id"],"request_id":request_id,"result":"PASS",
-                "core_cycles":cycles,"core_seconds":cycles/50000000,"spi_completion_seconds":elapsed,"fan_samples":samples}
+                "core_cycles":cycles,"core_seconds":cycles/50000000,"spi_completion_seconds":elapsed,"fan_samples":samples,
+                "source_transitions":transitions}
     except Exception as error:
         error.fan_samples=samples
         raise
@@ -303,17 +328,27 @@ def soak(adapter, seeds, results, checkpoint=lambda:None, duration=1800):
     return {"soak_seconds":time.monotonic()-started,"soak_jobs":index}
 
 
+def stall_replay(adapter, fixture, results, checkpoint=lambda:None):
+    for replay, schedule in (("baseline", None), ("generation_stalls", [(0.02,1),(0.12,0),(0.20,1),(0.30,0)])):
+        result = run_key(adapter,2,fixture,fixture["id"],source_schedule=schedule)
+        result["replay"] = replay
+        results.append(result)
+        checkpoint()
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--action",choices=("transport","aes","rsa","corpus","soak","reset-replay"),required=True)
+    parser.add_argument("--action",choices=("transport","aes","rsa","corpus","soak","reset-replay","stall-replay"),required=True)
     parser.add_argument("--seed",type=int,choices=range(1,21),default=1)
     parser.add_argument("--frequency",type=int,choices=(100000,500000,1000000),default=1000000)
     parser.add_argument("--reset",action="store_true",help="pulse gray core reset; fan control stays active")
     parser.add_argument("--report",type=Path,required=True)
+    parser.add_argument("--manifest",type=Path,required=True,help="selected build evidence; loaded fingerprint must match")
     args = parser.parse_args()
     reference = Path(__file__).resolve().parents[2]/"reference"
     sys.path.insert(0,str(reference))
     seeds = json.loads((reference/"seeds.json").read_text())["seeds"]
+    manifest = json.loads(args.manifest.read_text())
     args.report.parent.mkdir(parents=True,exist_ok=True)
     report = {"adapter_serial":SERIAL,"frequency_hz":args.frequency,"action":args.action,"result":"RUNNING","results":[]}
     def checkpoint():
@@ -322,13 +357,15 @@ def main():
         with SpiAdapter(args.frequency) as adapter:
             if args.reset:
                 adapter.reset_board_core()
-            report.update(identify(adapter))
+            report.update(identify(adapter,manifest))
             report.update(transport_test(adapter))
             checkpoint()
             if args.action=="soak":
                 report.update(soak(adapter,seeds,report["results"],checkpoint))
             elif args.action=="reset-replay":
                 reset_replay(adapter,seeds[args.seed-1],report["results"],checkpoint)
+            elif args.action=="stall-replay":
+                stall_replay(adapter,seeds[args.seed-1],report["results"],checkpoint)
             profiles = (0,1) if args.action=="aes" else (2,) if args.action in ("rsa","corpus") else ()
             chosen = seeds if args.action=="corpus" else [seeds[args.seed-1]]
             for profile in profiles:
@@ -345,6 +382,7 @@ def main():
     except Exception as error:
         report["result"]="FAIL";report["error"]=str(error)
         report["failure_fan_samples"]=getattr(error,"fan_samples",[])
+        report["failure_source_transitions"]=getattr(error,"source_transitions",[])
     args.report.parent.mkdir(parents=True,exist_ok=True)
     args.report.write_text(json.dumps(report,indent=2)+"\n")
     print(report["result"]+": "+str(args.report))

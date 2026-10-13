@@ -51,6 +51,41 @@ class FakeAdapter:
         return self.reg.get(address,0)
 
 class HostTests(unittest.TestCase):
+    def test_build_fingerprint(self):
+        adapter=FakeAdapter();fingerprint='0123456789abcdef'*4
+        for index in range(8):adapter.reg[24+index]=int(fingerprint[index*8:index*8+8],16)
+        manifest={'variant':'rtl_generic','build_fingerprint':fingerprint}
+        self.assertEqual(host.identify(adapter,manifest)['build_fingerprint'],fingerprint)
+        adapter.reg[31]^=1
+        with self.assertRaisesRegex(RuntimeError,'fingerprint'):host.identify(adapter,manifest)
+    def test_stall_replay_checks_both_completions(self):
+        results=[]
+        with patch.object(host,'run_key',return_value={'result':'PASS'}) as run:
+            host.stall_replay(FakeAdapter(),FIXTURE,results)
+        self.assertEqual(len(results),2)
+        self.assertEqual([c.args[1:3] for c in run.call_args_list],[(2,FIXTURE),(2,FIXTURE)])
+        self.assertIsNone(run.call_args_list[0].kwargs['source_schedule'])
+        self.assertEqual(run.call_args_list[1].kwargs['source_schedule'][-1],(.30,0))
+    def test_stall_failure_releases_source(self):
+        adapter=FakeAdapter()
+        def fail(a,mask,samples=None,source_schedule=None,transitions=None):
+            if mask==1:return 1
+            a.register(11,1)
+            raise TimeoutError('injected timeout')
+        with patch.object(host,'poll',side_effect=fail):
+            with self.assertRaises(TimeoutError):host.run_key(adapter,2,FIXTURE,1,source_schedule=[(0,1)])
+        self.assertEqual(adapter.reg[11],0)
+    def test_stall_schedule_releases_before_completion(self):
+        adapter=FakeAdapter();adapter.reg[3]=2;transitions=[]
+        counter=[0]
+        def now():
+            counter[0]+=.01
+            if counter[0]>.3:adapter.reg[3]=12
+            return counter[0]
+        with patch.object(host.time,'monotonic',side_effect=now),patch.object(host.time,'sleep'):
+            host.poll(adapter,8,source_schedule=[(.02,1),(.10,0)],transitions=transitions)
+        self.assertEqual([x['hold_generation'] for x in transitions],[True,False])
+        self.assertEqual(adapter.reg[11],0)
     def test_transport(self):
         adapter=FakeAdapter();self.assertTrue(host.identify(adapter)['test_mode'])
         self.assertEqual(host.transport_test(adapter)['transport'],'PASS')

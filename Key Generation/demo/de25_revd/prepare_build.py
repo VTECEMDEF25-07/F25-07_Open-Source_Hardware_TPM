@@ -122,6 +122,13 @@ set_false_path -to [get_ports {fan_i2c_scl fan_i2c_sda}]
                     raise ValueError(f"pin reference mismatch: {port}")
                 settings += [f"set_location_assignment PIN_{pin} -to {port}",
                              f'set_instance_assignment -name IO_STANDARD "{standard}" -to {port}']
+            fingerprint_inputs = {"format": "KEYGEN-BUILD-v1", "variant": variant,
+                                  "sources": {p.name: digest(p.read_bytes()) for p in snapshot_paths},
+                                  "firmware": digest(inputs[firmware]), "pin_reference": digest(pin_bytes),
+                                  "quartus_version": tool_version, "sdc": sdc,
+                                  "settings_before_fingerprint": [line.replace(build.as_posix(), ".") for line in settings]}
+            fingerprint = digest(json.dumps(fingerprint_inputs, sort_keys=True, separators=(",", ":")).encode())
+            settings.append(f'set_parameter -name BUILD_FINGERPRINT "256\'h{fingerprint}"')
             (build / "keygen_de25.qsf").write_text("\n".join(settings)+"\n")
             (build / "keygen_de25.qpf").write_text('PROJECT_REVISION = "keygen_de25"\n')
             (build / "keygen_de25.sdc").write_text(sdc)
@@ -132,6 +139,7 @@ set_false_path -to [get_ports {fan_i2c_scl fan_i2c_sda}]
                         "test_mode": True, "firmware_sha256": digest(inputs[firmware]),
                         "quartus_executable": str(Path(args.quartus).resolve()), "quartus_version": tool_version,
                         "pin_reference_sha256": digest(pin_bytes),
+                        "build_fingerprint": fingerprint, "fingerprint_inputs": fingerprint_inputs,
                         "config_sha256": {p.name: digest(p.read_bytes()) for p in config_files},
                         "source_sha256": {str(p): digest(inputs[p]) for p in sources},
                         "snapshot_sha256": {str(p): digest(p.read_bytes()) for p in snapshot_paths},

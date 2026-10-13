@@ -14,7 +14,8 @@ module tb_keygen_demo_real;
     reg [31:0] expected [0:7];
     string expected_path;
     integer i,polls;
-    keygen_demo_system #(.RSA_SOFTCORE(SOFTCORE)) dut (
+    localparam [255:0] FINGERPRINT={4{64'h0123456789abcdef}};
+    keygen_demo_system #(.RSA_SOFTCORE(SOFTCORE),.BUILD_FINGERPRINT(FINGERPRINT)) dut (
         .temperatures_i(32'h002a0020),.fan_status_i(32'h07000fa0),.*
     );
     task frame(input [63:0] command,output [63:0] answer);
@@ -84,6 +85,9 @@ module tb_keygen_demo_real;
         read_reg(0,value);if(value!==32'h4b473031)$fatal(1,"ID");
         read_reg(1,value);if(value!==(4+SOFTCORE))$fatal(1,"controller config");
         read_reg(15,value);if(value!==32'h700)$fatal(1,"fan failsafe bit10 mapping");
+        for(i=0;i<8;i=i+1)begin
+            read_reg(24+i,value);if(value!==FINGERPRINT[255-i*32 -:32])$fatal(1,"build fingerprint word");
+        end
         start_key(0,1);await_status(2);
         repeat(3)read_reg(3,value);
         if(value[3:2]!==0)$fatal(1,"generation stall bypassed");

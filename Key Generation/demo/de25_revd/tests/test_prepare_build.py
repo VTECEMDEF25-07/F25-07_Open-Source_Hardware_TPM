@@ -11,6 +11,9 @@ SCRIPT = Path(__file__).resolve().parents[1] / "prepare_build.py"
 spec = importlib.util.spec_from_file_location("prepare_build", SCRIPT)
 build = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(build)
+compile_spec = importlib.util.spec_from_file_location("compile_build", SCRIPT.with_name("compile_build.py"))
+compile_build = importlib.util.module_from_spec(compile_spec)
+compile_spec.loader.exec_module(compile_build)
 TMP = next(p / "AI/tmp" for p in SCRIPT.parents if (p / "AI/tmp").is_dir())
 
 
@@ -43,6 +46,16 @@ class EvidenceTests(unittest.TestCase):
             original_manifest = manifest_path.read_bytes()
             manifest = json.loads(original_manifest)
             self.assertEqual(manifest["quartus_version"], "Quartus test version")
+            compile_build.verify(project, manifest)
+            settings = project / "keygen_de25.sdc"
+            original_settings = settings.read_bytes()
+            settings.write_bytes(original_settings+b"# changed\n")
+            with self.assertRaisesRegex(RuntimeError, "configuration changed"):
+                compile_build.verify(project, manifest)
+            settings.write_bytes(original_settings)
+            expected_fingerprint = build.digest(json.dumps(manifest["fingerprint_inputs"], sort_keys=True, separators=(",", ":")).encode())
+            self.assertEqual(manifest["build_fingerprint"], expected_fingerprint)
+            self.assertIn("256'h"+expected_fingerprint, (project / "keygen_de25.qsf").read_text())
             for name, expected in manifest["config_sha256"].items():
                 self.assertEqual(build.digest((project / name).read_bytes()), expected)
             for name, expected in manifest["snapshot_sha256"].items():
@@ -54,6 +67,11 @@ class EvidenceTests(unittest.TestCase):
                     build.main()
                 tool.assert_not_called()
             self.assertEqual(manifest_path.read_bytes(), original_manifest)
+            second_argv = [str(root / "out2") if x == str(root / "out") else x for x in argv]
+            with patch("sys.argv", second_argv), patch.object(build.subprocess, "run", return_value=version):
+                build.main()
+            second = json.loads((root / "out2/rtl_generic/build_manifest.json").read_text())
+            self.assertEqual(second["build_fingerprint"], expected_fingerprint)
             manifest_path.unlink()
             with patch("sys.argv", argv), patch.object(build.subprocess, "run") as tool:
                 with self.assertRaises(FileExistsError):

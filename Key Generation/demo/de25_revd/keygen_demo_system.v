@@ -1,6 +1,7 @@
 // Test-only SPI register bank and protected-receiver stand-in. Never a production export interface.
 module keygen_demo_system #(
-    parameter RSA_SOFTCORE = 0, parameter ROM_FILE = "rsa_control.hex"
+    parameter RSA_SOFTCORE = 0, parameter ROM_FILE = "rsa_control.hex",
+    parameter [255:0] BUILD_FINGERPRINT = 256'b0
 ) (
     input clock_i, input reset_n_i,
     input spi_clock_i, input spi_cs_n_i, input spi_mosi_i,
@@ -89,6 +90,7 @@ module keygen_demo_system #(
             14: read_data = {16'b0,fan_status_i[15:0]};
             15: read_data = {16'b0,fan_status_i[31:16]};
             16,17,18,19,20,21,22,23: read_data = seed_reg[255-(read_address-16)*32 -: 32];
+            24,25,26,27,28,29,30,31: read_data = BUILD_FINGERPRINT[255-(read_address-24)*32 -: 32];
             63: read_data = scratch_reg;
             default: read_data = 0;
         endcase
