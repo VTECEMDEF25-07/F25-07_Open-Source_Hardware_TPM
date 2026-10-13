@@ -3,8 +3,8 @@
 module keygen_softcore_control #(
     parameter ROM_FILE = "softcore_boot.hex"
 ) (
-    input wire clock_i, input wire reset_n_i,
-    output wire ready_o, output wire trap_o,
+    input wire clock_i, input wire reset_n_i, input wire execute_en_i,
+    output wire ready_o, output wire trap_o, output wire instruction_progress_o,
     output wire command_valid_o, input wire command_ready_i,
     output wire [7:0] command_opcode_o,
     output wire [31:0] command_arg0_o, command_arg1_o, command_arg2_o, command_arg3_o,
@@ -22,7 +22,7 @@ module keygen_softcore_control #(
     reg command_valid_reg, busy_reg, done_reg;
     reg [7:0] command_opcode_reg, response_status_reg;
     reg [31:0] arg0_reg, arg1_reg, arg2_reg, arg3_reg, report_reg;
-    wire cpu_reset_n = reset_n_i && scrub_done_reg;
+    wire cpu_reset_n = reset_n_i && scrub_done_reg && execute_en_i;
     wire memory_valid, memory_instruction, cpu_trap;
     wire [31:0] memory_address, memory_write;
     wire [3:0] memory_strobe;
@@ -37,7 +37,8 @@ module keygen_softcore_control #(
     wire [3:0] ram_write_strobe = scrub_done_reg ? memory_strobe : 4'b1111;
     integer byte_index;
     initial $readmemh(ROM_FILE, rom_reg);
-    assign ready_o = cpu_reset_n;
+    assign ready_o = reset_n_i && scrub_done_reg;
+    assign instruction_progress_o = cpu_reset_n && memory_valid && memory_ready_reg && memory_instruction;
     assign trap_o = cpu_trap || bus_fault_reg;
     assign command_valid_o = cpu_reset_n && command_valid_reg;
     assign command_opcode_o = command_valid_o ? command_opcode_reg : 8'd0;

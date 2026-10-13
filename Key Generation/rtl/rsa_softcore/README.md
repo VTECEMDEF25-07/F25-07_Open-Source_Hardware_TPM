@@ -1,5 +1,7 @@
 # Softcore feasibility slice
 
+The later real RSA sequencing controller is documented in [RSA_CONTROL.md](RSA_CONTROL.md). This page retains the independently reproducible initial boot milestone.
+
 This revision proves that a portable Verilog RV32I CPU boots and controls a descriptor handshake. It is **not RSA firmware** and does not generate a key. The accelerator is represented by a testbench handshake peer, explicitly implementing only test opcode 0. No production success is returned by a fake RSA engine.
 
 ## Read in this order

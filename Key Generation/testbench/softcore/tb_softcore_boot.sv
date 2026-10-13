@@ -7,7 +7,7 @@ module tb_softcore_boot;
     wire [7:0] opcode;
     wire [31:0] arg0,arg1,arg2,arg3,report;
     integer i,run_number;
-    keygen_softcore_control dut(.clock_i(clock),.reset_n_i(reset_n),
+    keygen_softcore_control dut(.clock_i(clock),.reset_n_i(reset_n),.execute_en_i(1'b1),.instruction_progress_o(),
         .ready_o(ready),.trap_o(trap),.command_valid_o(command_valid),
         .command_ready_i(command_ready),.command_opcode_o(opcode),
         .command_arg0_o(arg0),.command_arg1_o(arg1),.command_arg2_o(arg2),.command_arg3_o(arg3),
