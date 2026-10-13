@@ -114,7 +114,7 @@ python demo/de25_revd/host_test.py --action transport --frequency 100000 --manif
 ```
 
 Use separate report paths for every action. Repeat transport at 500 kHz and
-1 MHz, then run `aes`, `corpus`, `stall-replay`, `reset-replay` and `soak` actions
+1 MHz, then run `aes`, `corpus`, `stall-replay`, `reset-replay`, `fault-replay` and `soak` actions
 with the same manifest. `corpus` checks all 20 fixed seeds and a median of at
 most 30 seconds; every generation has a 180-second deadline. `soak` runs mixed
 operations for at least 30 minutes and logs temperature/fan samples and errors.

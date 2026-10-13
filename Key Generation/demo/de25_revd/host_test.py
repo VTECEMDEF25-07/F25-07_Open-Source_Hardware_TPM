@@ -356,15 +356,19 @@ def run_key(adapter, profile, fixture, request_id, source_schedule=None):
 
 
 
-def configure_request(adapter, profile, fixture, request_id, controls=0):
-    poll(adapter,1)
-    adapter.register(11,controls)
+def configure_request(adapter, profile, fixture, request_id, controls=0, deadline=None):
+    def access(address, value):
+        check_deadline(deadline)
+        adapter.register(address, value)
+        check_deadline(deadline)
+    poll(adapter,1,deadline=deadline)
+    access(11,controls)
     seed=bytes.fromhex(fixture["seed_hex"])
     for index in range(8):
-        adapter.register(16+index,int.from_bytes(seed[index*4:index*4+4],"big"))
-    adapter.register(4,profile)
-    adapter.register(5,request_id)
-    adapter.register(2,1)
+        access(16+index,int.from_bytes(seed[index*4:index*4+4],"big"))
+    access(4,profile)
+    access(5,request_id)
+    access(2,1)
 
 
 def reset_and_check(adapter, deadline=None):
@@ -385,11 +389,15 @@ def reset_and_check(adapter, deadline=None):
         raise RuntimeError("reset did not clear demo configuration")
 
 
-def wait_running(adapter):
+def wait_running(adapter, deadline=None):
     """Busy also covers pre-admission setup; require the observable RUN state."""
-    deadline=time.monotonic()+TIMEOUT
+    if deadline is None:
+        deadline=time.monotonic()+TIMEOUT
     while time.monotonic()<deadline:
-        if adapter.register(12)&7 == 4:
+        progress = adapter.register(12)
+        if time.monotonic() >= deadline:
+            break
+        if progress&7 == 4:
             return
         time.sleep(.01)
     raise TimeoutError("demo did not enter RUN before reset boundary")
@@ -432,6 +440,67 @@ def reset_replay(adapter, fixture, results, checkpoint=lambda:None):
         checkpoint()
 
 
+def fault_replay(adapter, fixture, results, checkpoint=lambda:None):
+    """Inject source failure before ownership, then prove cleanup and reuse."""
+    reset_and_check(adapter)
+    for name, profile, controls, progress_mask in (
+        ("generation_stall", 2, 1, 0),
+        ("rsa_active", 2, 0, 0),
+        ("result_stall", 0, 2, 8),
+        ("ownership_stall", 1, 4, 16),
+    ):
+        started = time.monotonic()
+        deadline = started + TIMEOUT
+        samples = []
+        def access(address, value=None):
+            check_deadline(deadline)
+            result = adapter.register(address, value)
+            check_deadline(deadline)
+            return result
+        try:
+            configure_request(adapter, profile, fixture, 0xC000 + len(results), controls, deadline)
+            wait_running(adapter, deadline)
+            while progress_mask and not access(12) & progress_mask:
+                time.sleep(.01)
+            if name == "rsa_active":
+                time.sleep(.05)
+            if not access(3) & 2:
+                raise RuntimeError("operation was not active at source-fault boundary")
+            access(11, controls | 8)
+            status = poll(adapter, 8, samples, deadline=deadline)
+            if (status >> 8) & 15 != 2:
+                raise RuntimeError("injected source failure did not return status 2")
+            if status & 4 or access(12) & 32:
+                raise RuntimeError("failed operation retained receiver ownership")
+            for index in range(129):
+                access(8, index)
+                if access(9) or access(10):
+                    raise RuntimeError("failed operation exposed stale result data or metadata")
+            access(11, 0)
+            if access(3) != status:
+                raise RuntimeError("source-failure status was not held until acknowledgment")
+            access(2, 2)
+            poll(adapter, 1, deadline=deadline)
+            if access(3) != 1 or access(9) or access(10):
+                raise RuntimeError("source-failure acknowledgment left stale state")
+            check_deadline(deadline)
+            results.append({"fault_boundary": name, "profile": profile, "result": "PASS",
+                            "expected_status": 2, "observed_status": 2,
+                            "no_stale_result": True, "fan_samples": samples,
+                            "host_operation_seconds": time.monotonic() - started})
+            checkpoint()
+        except Exception as error:
+            error.fan_samples = samples
+            recover_operation(adapter, error, force_reset=True)
+            raise
+    # No reset between acknowledged errors and these independently checked keys.
+    for profile in (0, 1, 2):
+        result = run_key(adapter, profile, fixture, 0xD000 + profile)
+        result["fault_replay"] = True
+        results.append(result)
+        checkpoint()
+
+
 def soak(adapter, seeds, results, checkpoint=lambda:None, duration=1800):
     if duration<=0:raise ValueError("soak duration must be positive")
     started=time.monotonic()
@@ -468,7 +537,7 @@ def verify_provenance(reference, expected):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--action",choices=("transport","aes","rsa","corpus","soak","reset-replay","stall-replay"),required=True)
+    parser.add_argument("--action",choices=("transport","aes","rsa","corpus","soak","reset-replay","stall-replay","fault-replay"),required=True)
     parser.add_argument("--seed",type=int,choices=range(1,21),default=1)
     parser.add_argument("--frequency",type=int,choices=(100000,500000,1000000),default=1000000)
     parser.add_argument("--reset",action="store_true",help="pulse gray core reset; fan control stays active")
@@ -497,6 +566,8 @@ def main():
                 reset_replay(adapter,seeds[args.seed-1],report["results"],checkpoint)
             elif args.action=="stall-replay":
                 stall_replay(adapter,seeds[args.seed-1],report["results"],checkpoint)
+            elif args.action=="fault-replay":
+                fault_replay(adapter,seeds[args.seed-1],report["results"],checkpoint)
             profiles = (0,1) if args.action=="aes" else (2,) if args.action in ("rsa","corpus") else ()
             chosen = seeds if args.action=="corpus" else [seeds[args.seed-1]]
             for profile in profiles:

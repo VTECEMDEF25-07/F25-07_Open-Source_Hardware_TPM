@@ -90,6 +90,10 @@ RSA results must match the frozen deterministic corpus and pass the independent 
 
 ### Fan safety corrections
 
+`--action fault-replay` injects a generation-source failure during a source stall, active RSA, stalled AES result transfer and stalled whole-result acceptance. Each operation must hold error status 2 until acknowledged, discard receiver ownership and expose zero result data and metadata. The tester then generates and independently verifies AES-128, AES-256 and RSA-2048 without another reset. Each phase has a 180-second deadline; unexpected errors trigger checked recovery and remain failures. This complements reset testing by checking the normal fault-cleanup path.
+
+### Fan safety corrections
+
 The inherited vendor code left `invalid_temp` undriven. The demonstration now reads TMP442 low bytes 0x10/0x11/0x12 and rejects nPVLD, remote OPEN, incorrect manufacturer/device IDs (expected 0x55/0x42), missing read/pointer acknowledgements, and an unproven conversion. Each frame uses bounded shutdown/readback, one-shot, BUSY-to-idle, and adjacent high/low sampling; see FAN_MONITOR.md. It conservatively rejects negative temperatures for this room-temperature demo, including the shorted-diode -64 C sentinel. Configuration register 0x0B uses 0x06 (4 conversions/second) without setting reserved bits.
 
 `keygen_fan_guard.v` starts in failsafe, immediately rejects a failed frame, and expires after 1,953,125 management clocks (five seconds at 50 MHz / 128). A complete healthy frame restores normal operation. Preflight and conversion waits each expire after 800,000 management clocks (2.048 seconds at the actual divided clock), so a stuck ADC cannot prevent the next safety command. The pointer writer now stops and reports a NACK instead of retrying a missing sensor forever; this keeps sensor loss from blocking later fan commands. Each update writes the MAX6650 mode as well as speed: invalid data selects full-on via configuration bits 5:4 = 00; healthy data selects the existing closed-loop configuration. The hardware full-on GPIO assignment and alarm configuration remain unchanged. The AutoFan reset target is also its maximum speed.

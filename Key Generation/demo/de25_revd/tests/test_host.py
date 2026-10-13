@@ -53,7 +53,57 @@ class FakeAdapter:
         if address==10:return self.metas[self.reg[8]] if self.metas else 0
         return self.reg.get(address,0)
 
+class FaultAdapter(FakeAdapter):
+    def __init__(self, wrong_status=False, stale=False, owned=False, stale_ack=False):
+        super().__init__()
+        self.wrong_status=wrong_status;self.stale=stale;self.owned=owned
+        self.stale_ack=stale_ack
+        self.resets=0
+    def reset_board_core(self):
+        self.resets+=1
+        self.reg={0:0x4b473031,1:4,3:1,6:1000,7:0,13:0x002a0020,14:4000,15:0x0300}
+        self.words=[];self.metas=[]
+    def register(self,address,value=None):
+        result=super().register(address,value)
+        if address==2 and value==1:
+            self.reg[3]=2
+            self.reg[12]=4|(8 if self.reg[11]&2 else 0)|(16 if self.reg[11]&4 else 0)
+        if address==11 and value is not None and value&8:
+            self.reg[3]=(0x408 if self.wrong_status else 0x208)
+            self.reg[12]=4|(32 if self.owned else 0)
+            self.words=[1] if self.stale else [];self.metas=[]
+        if address==2 and value==2 and self.stale_ack:
+            self.reg[3]=0x201
+        return result
+
+
 class HostTests(unittest.TestCase):
+    def test_source_fault_boundaries_and_reuse_without_reset(self):
+        adapter=FaultAdapter();results=[]
+        with patch.object(host,'run_key',return_value={'result':'PASS'}) as replay:
+            host.fault_replay(adapter,FIXTURE,results)
+        self.assertEqual(adapter.resets,1)
+        self.assertEqual([r['fault_boundary'] for r in results[:4]],
+                         ['generation_stall','rsa_active','result_stall','ownership_stall'])
+        self.assertEqual([call.args[1] for call in replay.call_args_list],[0,1,2])
+        self.assertTrue(all(r['observed_status']==2 and r['no_stale_result'] for r in results[:4]))
+    def test_source_fault_rejects_wrong_status_stale_data_and_owned_result(self):
+        for options,message in (({'wrong_status':True},'status 2'),
+                                ({'stale':True},'stale result'),({'owned':True},'ownership'),
+                                ({'stale_ack':True},'stale state')):
+            adapter=FaultAdapter(**options)
+            with patch.object(host,'run_key') as replay:
+                with self.assertRaisesRegex(RuntimeError,message) as caught:
+                    host.fault_replay(adapter,FIXTURE,[])
+            replay.assert_not_called()
+            self.assertEqual(adapter.resets,2)
+            self.assertTrue(caught.exception.recovery['success'])
+    def test_source_fault_failure_keeps_primary_if_recovery_fails(self):
+        adapter=FaultAdapter(wrong_status=True)
+        with patch.object(host,'recover_operation',side_effect=lambda a,e,force_reset:host.append_cleanup(e,'reset',OSError('recovery failed'))):
+            with self.assertRaisesRegex(RuntimeError,'status 2') as caught:
+                host.fault_replay(adapter,FIXTURE,[])
+        self.assertEqual(caught.exception.cleanup_errors,['reset: recovery failed'])
     def test_diagnostics_only_for_declared_version(self):
         adapter=FakeAdapter()
         self.assertNotIn('fan_fault_reasons',host.telemetry(adapter))
