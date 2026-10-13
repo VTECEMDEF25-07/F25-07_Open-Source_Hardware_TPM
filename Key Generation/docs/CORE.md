@@ -33,7 +33,7 @@ are legal. Internal controller watchdogs are distinct from host deadlines.
 ## Integration evidence
 
 `python3 scripts/run_integration_verilator.py` and the same command with
-`--softcore` both passed **27 lifecycle checks** using real engine storage:
+`--softcore` both passed **28 lifecycle checks** using real engine storage:
 AES128/256, capture, source gaps, result stalls, ownership rejection, invalid
 profile, source failure, first-fault preservation, peer failure, invalid internal
 status mapping, partial RSA candidate reset, active modular-exponentiation reset,
@@ -62,3 +62,15 @@ Normal twenty-seed search, all four final fits and hardware soak remain
 acceptance gates; see `ACCEPTANCE.md`. Fast lifecycle tests do not claim every
 RSA internal reset phase is covered; arithmetic/CPU tests and board recovery
 tests provide additional evidence.
+
+## Registered reset control
+
+The engine cleanup reset is driven by a registered request, not a combinational
+comparison of the binary state register. It asserts on entry to RESET_ENGINE
+and releases on entry to SCRUB, preserving the original cleanup schedule.
+This avoids relying on FPGA state-machine recoding for glitch-free reset and
+keeps the same behavior in generic Verilog and ASIC synthesis.
+
+The lifecycle test injects a between-edge state-decode transient and requires
+the engine reset to remain released. Both generic controllers pass this added
+case; full vendor and routed acceptance must use the final reset-audited source.
