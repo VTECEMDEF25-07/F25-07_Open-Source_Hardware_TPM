@@ -69,7 +69,7 @@ tests, including nonzero stale data, reset, cleanup and repeated jobs. The real
 SPI protocol test passes both generic controller configurations with actual core
 logic and an independent AES oracle; this remains simulation, not board evidence.
 
-Repository hygiene: `scripts/check_repository_hygiene.py` passed seven ignored
+Repository hygiene: `scripts/check_repository_hygiene.py` passed nine ignored
 generated-path checks and ten trackable source/fixture/constraint checks.
 
 ## Registered-reset acceptance snapshot
@@ -90,11 +90,38 @@ final console and verified input hashes are authoritative because the separate
 native transcript developed SeaDrive NUL holes. The damaged transcript remains
 preserved and is not represented as complete evidence.
 
-Final soft-core genuine-Altera lifecycle passes all 28 checks; evidence is under
+Both genuine-Altera lifecycle configurations pass all 28 checks; evidence is
+under `AI/tmp/keygen-lifecycle-vendor-reset-audited/` and
 `AI/tmp/keygen-lifecycle-vendor-softcore-reset-audited/`. Complete vendor RSA runs,
-normal-stream final searches, all four routed builds and physical acceptance
-remain separate gates. No final configuration has been accepted yet.
+all four routed builds and physical acceptance remain separate gates.
+No final configuration has been accepted yet.
 
 Arithmetic small-domain coverage additionally passes 10,771 independent cases
 on both generic and genuine Altera resources, with identical preloaded vectors;
 see `../Math/README.md` for exact commands and evidence locations.
+
+## Initial physical validation, October 13
+
+Reset-audited generic normal-stream seed 1 passes both controllers with the same
+54,336 accepted words and independently checked key. Dedicated RTL takes
+1,396,666,983 cycles; soft-core takes 1,397,148,558 cycles. The fingerprinted
+reports are in `build/full_{rtl,softcore}_reset-audited/`. These are individual
+simulation samples, not the required 20-seed hardware median.
+
+The first soft-core/Altera board image routed at 25,842 ALMs (55%), 20 RAM blocks
+and four DSP summary units. Worst board-clock setup slack is +1.491 ns; all
+reported setup, hold, recovery, removal and pulse-width checks pass. Source
+snapshots, post-tool configuration changes, timing exceptions and the remaining
+nonzero DRC classes were reviewed. Evidence is retained in class-workspace
+`AI/tmp/keygen-board-acceptance-v2/softcore_altera/` and the independent
+`AI/tmp/keygen-reset-constraint-audit/FINAL_SOFTCORE_STA_REVIEW.md`.
+
+That image was programmed and its exact 256-bit fingerprint verified. SPI
+transport passes at 100 kHz, 500 kHz and 1 MHz. Both AES profiles pass, and the
+first RSA seed passes independent validation at 1,397,148,551 board cycles
+(27.94297102 seconds). Physical reports are in
+`AI/tmp/keygen-hardware-final/softcore_altera/`. Despite that directory's name,
+these are intermediate results: cooling remains in full-speed fallback and its
+sensor sampling is being corrected. The 20-seed corpus is still running; replay,
+reset, soak and other configurations remain pending. A corrected board image
+must repeat acceptance. No thermal-health or final-completion claim is made.
