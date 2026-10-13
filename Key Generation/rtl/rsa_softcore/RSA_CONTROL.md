@@ -78,3 +78,11 @@ The later wrapper fix adds `COMMAND_TIMEOUT_CYCLES=50000000` without changing th
 The actual-model Questa runner accepts `--label <unique-name>`. A fresh build records project RTL/testbench hashes, source firmware and ROM-image hashes, expected-key corpus hash, unchanged vendor-model hashes, simulator version, language/backend configuration, runner hashes, and exact compiler commands in `build-manifest.json`. Each run records generated stimulus/reference hashes, the exact simulation command, linked build-manifest hash, status and final log hash. It refuses to overwrite existing build/run manifests; select a new label for new evidence.
 
 `--reuse-build` rejects changed source, model, runner, firmware, simulator or configuration fingerprints. Matching reuse plus all six stale-input rejection classes were checked. Historical baseline directories predate this provenance support and must not be relabeled as final acceptance runs.
+
+Stable Verilator5.052 was also built locally from official tag v5.052 (source commit ea338be98e1e838d3518809ce8899f85a009963c). It still rejects the unchanged lpm_mult sum-port tristate semantics, including constant, named-wire and unused-port connection probes. The complete local build, license notices and compatibility logs remain in class-root AI/tmp/keygen-verilator. This failed compatibility experiment supplies no full-key acceptance evidence; use the actual-model Questa runner.
+
+## CPU RAM output-latch cleanup
+
+RAM initialization now performs 4096 zero writes, a synchronous read of the cleared final word, and one wait edge before readiness. This clears the wrapper/vendor RAM output latch as well as its array. The added two-cycle tail runs after external reset and every job's cleanup. No CPU interface or firmware change is required.
+
+The memory-instruction test creates a nonzero RAM output, aborts the active job with reset, requires a zero latch before readiness, and then runs two complete jobs. Both normal completion and reset recovery must clear the stale latch. This fix is independent of the optional blocking-STATUS performance experiment.

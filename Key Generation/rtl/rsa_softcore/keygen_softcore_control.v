@@ -15,6 +15,7 @@ module keygen_softcore_control #(
     reg [31:0] rom_reg [0:8191];
     reg [11:0] scrub_index_reg;
     reg scrub_done_reg;
+    reg [1:0] scrub_phase_reg;
     reg memory_ready_reg;
     reg ram_pending_reg;
     reg [31:0] memory_read_reg;
@@ -31,15 +32,18 @@ module keygen_softcore_control #(
     wire mmio_select = memory_address >= 32'h40000000 && memory_address < 32'h40000020;
     wire write_access = |memory_strobe;
     wire ram_access = cpu_reset_n && memory_valid && !memory_ready_reg && ram_select;
-    wire ram_read_request = ram_access && !ram_pending_reg &&
+    wire ram_cpu_read_request = ram_access && !ram_pending_reg &&
         (!write_access || memory_strobe != 4'b1111);
+    wire ram_scrub_read = reset_n_i && !scrub_done_reg && scrub_phase_reg==2'd1;
+    wire ram_read_request = ram_cpu_read_request || ram_scrub_read;
+    wire [11:0] ram_read_address = scrub_done_reg ? memory_address[13:2] : 12'd4095;
     wire ram_read_valid;
     wire [31:0] ram_read_data;
     wire [31:0] ram_byte_mask = {{8{memory_strobe[3]}},{8{memory_strobe[2]}},
         {8{memory_strobe[1]}},{8{memory_strobe[0]}}};
     wire ram_cpu_write = ram_access && write_access &&
         ((memory_strobe == 4'b1111 && !ram_pending_reg) || (ram_pending_reg && ram_read_valid));
-    wire ram_write_en = reset_n_i && (!scrub_done_reg || ram_cpu_write);
+    wire ram_write_en = reset_n_i && ((!scrub_done_reg && scrub_phase_reg==0) || ram_cpu_write);
     wire [11:0] ram_write_address = scrub_done_reg ? memory_address[13:2] : scrub_index_reg;
     wire [31:0] ram_merged_data = (ram_read_data & ~ram_byte_mask) | (memory_write & ram_byte_mask);
     wire [31:0] ram_write_data = !scrub_done_reg ? 32'd0 :
@@ -47,7 +51,7 @@ module keygen_softcore_control #(
     keygen_ram32 #(.ADDRESS_WIDTH(12)) data_ram (
         .clock_i(clock_i), .reset_n_i(reset_n_i), .clock_en_i(1'b1),
         .write_en_i(ram_write_en), .write_address_i(ram_write_address), .write_data_i(ram_write_data),
-        .read_en_i(ram_read_request), .read_address_i(memory_address[13:2]),
+        .read_en_i(ram_read_request), .read_address_i(ram_read_address),
         .read_valid_o(ram_read_valid), .read_data_o(ram_read_data));
     initial $readmemh(ROM_FILE, rom_reg);
     assign ready_o = reset_n_i && scrub_done_reg;
@@ -81,10 +85,17 @@ module keygen_softcore_control #(
     always @(posedge clock_i) begin
         if (!reset_n_i) begin
             scrub_index_reg <= 0;
-            scrub_done_reg <= 0;
+            scrub_done_reg <= 0; scrub_phase_reg <= 0;
         end else if (!scrub_done_reg) begin
-            if (scrub_index_reg == 12'd4095) scrub_done_reg <= 1;
-            else scrub_index_reg <= scrub_index_reg + 1'b1;
+            // After sweeping RAM, refresh its synchronous output latch from a
+            // known-zero location before releasing the CPU or reporting ready.
+            case(scrub_phase_reg)
+                2'd0: if (scrub_index_reg == 12'd4095) scrub_phase_reg <= 1;
+                      else scrub_index_reg <= scrub_index_reg + 1'b1;
+                2'd1: scrub_phase_reg <= 2;
+                2'd2: scrub_done_reg <= 1;
+                default: begin scrub_phase_reg <= 0; scrub_index_reg <= 0; end
+            endcase
         end
     end
     always @(posedge clock_i) begin
