@@ -122,6 +122,10 @@ first RSA seed passes independent validation at 1,397,148,551 board cycles
 (27.94297102 seconds). Physical reports are in
 `AI/tmp/keygen-hardware-final/softcore_altera/`. Despite that directory's name,
 these are intermediate results: cooling remains in full-speed fallback and its
-sensor sampling is being corrected. The 20-seed corpus is still running; replay,
-reset, soak and other configurations remain pending. A corrected board image
+sensor sampling is being corrected. All 20 corpus keys now pass independent
+checking: median 26.40469044 seconds, maximum 101.45542472 seconds, with every
+host operation below 180 seconds. The separate corpus auditor correctly rejects
+overall acceptance because all 757 cooling samples report fallback/invalid
+health. Report SHA256: `1b76d8f935c792d6e8c1d1dd573d1e63048ba2ff6fc843f287bb48c85e783bef`.
+Replay, reset, soak and other configurations remain pending. A corrected board image
 must repeat acceptance. No thermal-health or final-completion claim is made.
