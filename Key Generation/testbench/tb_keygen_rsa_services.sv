@@ -13,6 +13,7 @@ reg[31:0]memory[0:4095];
 localparam[1023:0]P=1024'hf71ccdb1c7544608b1eea2307f4dd112e1ea90ffa89a11a67aa87aced1a654a64b04a412eb1e4ed1cb0fc7b7e2271e94917e2f93f6f9058138975ee5515196e2a6717fdff1e2a6c8fa5e8daa16ee856f4d278b7a55744bab2b1fdeaf4d4ae93540527c08717acb9839a1cffee7dd6163cc2181697fed4e6ffbdf34c1f735bf3b;
 localparam[1023:0]COMPOSITE=1024'hb504f333f9de6484597d89b3754abe9f1d6f60ba893ba84ced17ac85833399154afc83043ab8a2c3a8b1fe6fdc83db390f74a85e439c7b4a780487363dfa2768d2202e8742af1f4e53059c6011bc337bcab1bc911688458a460abc722f7c4e33c6d5a8a38bb7e9dccb2a634331f3c84df52f120f836e582eeaa4a0899040ca4d;
 reg[1023:0]m;integer a,j,tests=0;
+localparam[1023:0]P_MANY_TWOS=1024'he67e32dc59b08879cea8f8efd6af2b127f5ee41c57a1bf564ab13a17c37f82cdab5938fab4b8581f7e7ce6bbbe9fc13743fb96b92ad76dc5b952b1798238e78a372409326feea71798251d438bcb0fb638bf51d72bf4c99857104a786efb0167ea79fa9b63c05e506c31d1762ff2fd3f859d70305f7b2a1d35a481cdaf8c7e01;
 keygen_rsa_services dut(.*);
 always @(posedge clock_i) begin
  mem_read_valid_i<=mem_read_en_o&&mem_ready_i;
@@ -80,6 +81,29 @@ initial begin
  wait(pair_start_valid_o);#1;if(pair_p_o!==P||pair_q_o!==(P-2))$fatal(1,"pair operands");
  tick();@(negedge clock_i);pair_status_i=2;pair_result_valid_i=1;
  tick();@(negedge clock_i);pair_result_valid_i=0;response(8'h10);
+ // Seed-5 q has nine factors of two in W-1: exactly eight squares allowed.
+ put(0,P_MANY_TWOS);command(8'h31,0,32,64,0);response(0);
+ if(dut.twos_reg!==9)$fatal(1,"factor count for repeated squares");
+ put(96,P_MANY_TWOS-2);command(8'h32,96,0,0,0);response(0);
+ put(128,2);command(8'h33,1,0,0,0);response(8'h10);
+ for(j=0;j<7;j++)begin command(8'h33,0,0,0,0);response(8'h10);end
+ command(8'h33,0,0,0,0);response(8'h11);
+ put(128,2);command(8'h33,1,0,0,0);response(8'h10);
+ for(j=0;j<7;j++)begin command(8'h33,0,0,0,0);response(8'h10);end
+ put(128,P_MANY_TWOS-1);command(8'h33,0,0,0,0);response(0);
+ put(128,1);command(8'h33,0,0,0,0);response(8'h11);
+ // Exact separation is rejected; two greater is legal for odd candidates.
+ put(160,P_MANY_TWOS-(1024'd1<<924));command(8'h31,0,32,64,1);response(8'h11);
+ put(160,P_MANY_TWOS-(1024'd1<<924)-2);command(8'h31,0,32,64,1);response(0);
+ // Failure coincident with the last word must suppress that memory write.
+ memory[0]=32'hfacecafe;command(8'h30,0,32,0,0);
+ for(j=0;j<31;j++)begin
+  @(negedge clock_i);generation_valid_i=1;generation_data_i=j;tick();
+ end
+ @(negedge clock_i);generation_failed_i=1;generation_data_i=32'hbadbad;#1;
+ if(generation_ready_o)$fatal(1,"failure did not suppress final handshake");
+ tick();@(negedge clock_i);generation_valid_i=0;response(2);generation_failed_i=0;
+ if(memory[0]!==32'hfacecafe)$fatal(1,"failed last word written");
  // Reset wipes cached candidate, witness, factor and predicate state.
  @(negedge clock_i);reset_n_i=0;#1;
  if(dut.candidate_reg!==0||dut.minus_one_reg!==0||dut.odd_part_reg!==0||dut.value_reg!==0||dut.peer_reg!==0)$fatal(1,"secret reset");

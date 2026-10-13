@@ -65,8 +65,9 @@ Outer cleanup runs before terminal failure becomes visible to the caller.
 - `scripts/test_rsa_services.ps1`: separate Verilog source/SV test compilation
   and bounded services tests in Questa.
 - On Linux/WSL, `python3 scripts/run_integration_verilator.py --suite services`:
-  **25 checks passed**, including malformed descriptors, draw order, filtering,
-  witness rejection, q separation, held responses and cached-state reset.
+  **49 checks passed**, including malformed descriptors, draw order, filtering,
+  witness rejection, exact q separation, held responses, eight-square limits,
+  failure coincident with the last input word and cached-state reset.
 - `scripts/run_full_verilator.py --directed --seeds 1`: complete dedicated
   generic RSA passed, including all five rounds per prime, pair arithmetic,
   exact 129-word n/e/p/q output, ownership and cleanup. Add `--softcore` for the
