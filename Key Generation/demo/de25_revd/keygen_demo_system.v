@@ -35,6 +35,9 @@ module keygen_demo_system #(
     wire ownership_valid = receiver_complete_reg && !receiver_owned_reg && !test_control_reg[2];
     wire acknowledge = write_valid && write_address==2 && write_data[1] && core_status_valid;
     reg source_run_reg;
+    reg source_offer_reg;
+    wire source_offer = source_offer_reg || !test_control_reg[0];
+    wire generation_valid = source_valid && source_offer;
     // A single registered request drives async clear; binary state decode may glitch.
     wire source_reset_n = reset_n_i && source_run_reg;
     wire busy = state_reg==SOURCE_START || state_reg==CORE_START || (state_reg==RUN && !core_status_valid);
@@ -43,7 +46,14 @@ module keygen_demo_system #(
 `else
     localparam [31:0] CONFIG = 32'd4 + RSA_SOFTCORE;
 `endif
-    assign source_word_ready = core_generation_ready && !test_control_reg[0];
+    assign source_word_ready = core_generation_ready && source_offer;
+    // Once offered, the source owns this word until the core accepts it. A host
+    // pause only suppresses the next offer; it cannot retract an existing one.
+    // The SHA source itself holds data while word_ready is low.
+    always @(posedge clock_i or negedge source_reset_n) begin
+        if (!source_reset_n) source_offer_reg<=0;
+        else if (generation_valid) source_offer_reg<=!core_generation_ready;
+    end
     assign core_result_ready = !receiver_scrub_reg && !receiver_complete_reg &&
         !test_control_reg[1] && result_count_reg < 129;
     assign interrupt_n_o = !(reset_n_i && core_status_valid);
@@ -61,7 +71,7 @@ module keygen_demo_system #(
         .clock_i(clock_i),.reset_n_i(reset_n_i),.peers_ready_i(!receiver_scrub_reg),
         .request_valid_i(state_reg==CORE_START),.request_ready_o(core_ready),
         .request_profile_i(captured_profile_reg),.request_id_i(captured_id_reg),
-        .generation_valid_i(source_valid && !test_control_reg[0]),.generation_ready_o(core_generation_ready),
+        .generation_valid_i(generation_valid),.generation_ready_o(core_generation_ready),
         .generation_data_i(source_data),.generation_failed_i(source_failed || test_control_reg[3]),
         .result_valid_o(core_result_valid),.result_ready_i(core_result_ready),.result_data_o(core_result_data),
         .result_component_o(core_component),.result_index_o(core_index),

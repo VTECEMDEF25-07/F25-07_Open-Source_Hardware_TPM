@@ -22,6 +22,22 @@ module tb_keygen_demo_real;
         if(dut.source_reset_n !== (dut.state_reg!=0 && dut.state_reg!=1))
             $fatal(1,"source reset lifetime differs from accepted request lifetime");
     end
+    reg generation_stalled_reg=0;
+    reg [31:0] generation_word_reg;
+    always @(posedge clock_i) begin
+        if (!reset_n_i || !dut.source_reset_n) generation_stalled_reg<=0;
+        else begin
+            // The final result handshake puts both core and receiver into
+            // ownership on the same edge; only an explicit fault can cancel it.
+            if (dut.ownership_valid && !dut.core_ownership_ready && !dut.core_discard &&
+                !dut.source_failed && !dut.test_control_reg[3] && !dut.receiver_scrub_reg)
+                $fatal(1,"ownership offer stalled without a cancellation fault");
+            if (generation_stalled_reg && (!dut.generation_valid || dut.source_data!==generation_word_reg))
+                $fatal(1,"source offer withdrawn/changed before acceptance");
+            generation_stalled_reg<=dut.generation_valid && !dut.core_generation_ready;
+            generation_word_reg<=dut.source_data;
+        end
+    end
     task frame(input [63:0] command,output [63:0] answer);
         integer b;
         begin
@@ -115,7 +131,9 @@ module tb_keygen_demo_real;
         acknowledge();start_key(0,0);successful(4);
         start_key(1,2);await_status(2);gray_reset();start_key(0,0);successful(4);
         // Exercise actual RTL or firmware RSA request/abort path without an expensive key search.
-        start_key(2,1);await_status(2);repeat(3)read_reg(3,value);gray_reset();
+        start_key(2,0);await_status(2);
+        repeat(4)begin write_reg(11,1);read_reg(3,value);write_reg(11,0);end
+        gray_reset();
         start_key(2,1);await_status(2);write_reg(11,9);await_status(8);
         if(value[11:8]!==2 || value[2])$fatal(1,"RSA source failure %h",value);
         acknowledge();start_key(1,0);successful(8);

@@ -52,6 +52,8 @@ Operation 1 reads; operation 2 writes. MISO returns `A5, 0, 0, 0` followed by a 
 | 16–23 | Seed | Eight MSW-first words, 256 bits total |
 | 63 | Scratch | Read/write transport check |
 
+Generation hold applies between words: an already offered word remains valid and stable until accepted, even if the host sets hold meanwhile. The same offer gate controls core valid and source ready; no hidden word is consumed. Reset/acknowledgement ends the stream and clears its offer state.
+
 Fan telemetry is read-only, synchronized diagnostic information. I2C_READY describes the last completed frame; TEMP_VALID holds complete-sample health. Both ready/valid are masked while the live failsafe is asserted. The failsafe bit is the persistent indication of invalid or stale data and takes precedence over a previously healthy frame. Multi-field reads are not an atomic sensor snapshot; use repeated samples and validity flags. The vendor fan controller retains responsibility for protection. Register 12 intentionally exposes wrapper progress, not private arithmetic data or exact RSA subphases.
 
 AES exports component 1, four/eight words. RSA exports modulus component 2 (64 words), exponent component 3 (one word), p component 4 (32 words), and q component 5 (32 words). Each component is MSW first. Success is held until acknowledgement. Component metadata is checked by the host before mathematical verification. For simultaneous START and acknowledgement, acknowledgement wins; issue START separately after ready.
