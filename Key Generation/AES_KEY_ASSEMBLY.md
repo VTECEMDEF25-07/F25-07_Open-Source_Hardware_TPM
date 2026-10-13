@@ -1,3 +1,9 @@
+# Review disposition: reusable legacy AES worker
+
+October 13, 2026: this is the preferred first code-reading chunk, after the architecture overview. Names now follow the supplied conventions, source compiles separately as Verilog, and SV tests remain approved. Its historical cancel/rearm/per-word handoff semantics are unchanged. Before merging into the new core, redesign reset-only behavior and explicit whole-result ownership acknowledgment; ordering remains to be accepted. Passing these regressions proves the old behavior only.
+
+---
+
 # AES-128 and AES-256 key assembly
 
 AI-authored RTL and tests, pending Aaron's review. `aes_key_assembler.v` implements
@@ -7,18 +13,18 @@ Both AES sizes are user-confirmed scope; detailed interfaces remain team proposa
 
 ## Actual worker boundary
 
-All transfers occur on rising `clock` edges in one clock domain. `reset_n` is
+All transfers occur on rising `clock_i` edges in one clock domain. `reset_n_i` is
 asynchronously asserted low; the integration must synchronize its release.
 
 | Signals | Direction | Contract |
 | --- | --- | --- |
-| `work_valid`, `work_ready` | in, out | Accept once when both high. Sample low valid after reset to arm; a held high cannot retrigger. A low during busy can rearm the next request. |
-| `work_id[31:0]`, `work_key_bits[11:0]`, `work_public_exponent[31:0]` | in | Capture at acceptance. Bits must be 128 or 256; exponent must be zero. Unknown ID/exponent and invalid/unknown size fail without accepting RNG. |
-| `work_cancel`, `busy` | in, out | Level cancellation of current work; busy includes held terminal status. No separate cancel acknowledgment: terminal status acknowledges cleanup. |
-| `rng_data[31:0]`, `rng_valid`, `rng_error`, `rng_ready` | in, in, in, out | Consume valid/ready beats outside reset/error/cancel. Exactly four words for AES-128 or eight for AES-256. Ready stays low during output and terminal phases. |
-| `out_valid`, `out_ready`, `out_word[31:0]` | out, in, out | Protected internal stream; stable word under backpressure. Invalid output payload is zero. Never route raw keys to CPU/debug/CRB response. |
-| `out_id[31:0]`, `out_component[3:0]`, `out_index[6:0]`, `out_bits[11:0]`, `out_last` | out | Captured ID, component 1, zero-based word index, actual size, last word. Metadata is zero while invalid. |
-| `done_valid`, `done_ready`, `done_id[31:0]`, `done_status[7:0]` | out, in, out, out | Held immutable terminal until acknowledgment or reset. Unknown request ID sanitizes terminal ID to zero. |
+| `work_valid_i`, `work_ready_o` | in, out | Accept once when both high. Sample low valid after reset to arm; a held high cannot retrigger. A low during busy can rearm the next request. |
+| `work_id_i[31:0]`, `work_key_bits_i[11:0]`, `work_public_exponent_i[31:0]` | in | Capture at acceptance. Bits must be 128 or 256; exponent must be zero. Unknown ID/exponent and invalid/unknown size fail without accepting RNG. |
+| `work_cancel_i`, `busy_o` | in, out | Level cancellation of current work; busy includes held terminal status. No separate cancel acknowledgment: terminal status acknowledges cleanup. |
+| `rng_data_i[31:0]`, `rng_valid_i`, `rng_error_i`, `rng_ready_o` | in, in, in, out | Consume valid/ready beats outside reset/error/cancel. Exactly four words for AES-128 or eight for AES-256. Ready stays low during output and terminal phases. |
+| `out_valid_o`, `out_ready_i`, `out_word_o[31:0]` | out, in, out | Protected internal stream; stable word under backpressure. Invalid output payload is zero. Never route raw keys to CPU/debug/CRB response. |
+| `out_id_o[31:0]`, `out_component_o[3:0]`, `out_index_o[6:0]`, `out_bits_o[11:0]`, `out_last_o` | out | Captured ID, component 1, zero-based word index, actual size, last word. Metadata is zero while invalid. |
+| `done_valid_o`, `done_ready_i`, `done_id_reg_o[31:0]`, `done_status_reg_o[7:0]` | out, in, out, out | Held immutable terminal until acknowledgment or reset. Unknown request ID sanitizes terminal ID to zero. |
 
 Status codes: 0 = successful stream handoff; 1 = unsupported size;
 2 = RNG failure; 3 = cancellation; 4 = bad metadata. These are internal worker

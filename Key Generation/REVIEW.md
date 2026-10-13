@@ -1,3 +1,9 @@
+# Review status after architecture reset
+
+October 13, 2026: the review below concerns the historical September outline. Its cancel/staged-store contracts are superseded by the current README. This historical review is not approval of the new interfaces or algorithms. The revised architecture and Verilog-only rules require Aaron's review.
+
+---
+
 # Outline validation record
 
 Date: 2026-09-30. Scope: documentation-only proposal in `Key Generation/README.md` on `aaron/key-generation`, based on main `91759b2c98ccf0f0a1bf29012d9f5ec64d669b57`.
