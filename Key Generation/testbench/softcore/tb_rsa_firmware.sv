@@ -7,7 +7,7 @@ module tb_rsa_firmware;
     wire work_ready,completion_valid,command_valid,response_ready;
     wire [7:0] completion_status,opcode;
     wire [31:0] arg0,arg1,arg2,arg3;
-    integer command_count=0,i;
+    integer command_count=0,i,retry;
     integer scrub_words=0;
     always @(posedge clock) begin
         if(!dut.child_reset_n) scrub_words=0;
@@ -23,7 +23,7 @@ module tb_rsa_firmware;
         .command_valid_o(command_valid),.command_ready_i(command_ready),.command_opcode_o(opcode),
         .command_arg0_o(arg0),.command_arg1_o(arg1),.command_arg2_o(arg2),.command_arg3_o(arg3),
         .response_valid_i(response_valid),.response_ready_o(response_ready),.response_status_i(response_status));
-    initial begin #100000000; $fatal(1,"TIMEOUT firmware controller cmd=%0d state=%0d pc=%h memvalid=%b ready=%b ram_pending=%b completion=%b",command_count,dut.state_reg,dut.control.cpu.reg_pc,dut.control.memory_valid,dut.control.memory_ready_reg,dut.control.ram_pending_reg,completion_valid); end
+    initial begin #1000000000; $fatal(1,"TIMEOUT firmware controller cmd=%0d state=%0d pc=%h memvalid=%b ready=%b ram_pending=%b completion=%b",command_count,dut.state_reg,dut.control.cpu.reg_pc,dut.control.memory_valid,dut.control.memory_ready_reg,dut.control.ram_pending_reg,completion_valid); end
     task start_job;
         begin
             wait(work_ready); @(negedge clock); work_valid=1;
@@ -107,6 +107,28 @@ module tb_rsa_firmware;
         start_job();wait(command_valid);force dut.control.memory_valid=0;
         wait(completion_valid);release dut.control.memory_valid;check_completion(7);
         start_job();expect_command('h30,0,32,1,0,1);check_completion(2);
+        // Optional real-loop boundary tests; no reduced firmware retry limits.
+        if($test$plusargs("EXHAUSTION")) begin
+            start_job();
+            expect_command('h30,0,32,1,0,0);expect_command('h31,0,32,64,0,'h10);
+            // A Miller-Rabin composite consumes one of p's 10240 attempts.
+            expect_command('h30,0,32,1,0,0);expect_command('h31,0,32,64,0,0);
+            expect_command('h11,0,512,32,0,0);
+            expect_command('h30,96,32,0,0,0);expect_command('h32,96,0,0,0,0);
+            expect_command('h13,128,96,64,32,0);expect_command('h33,1,0,0,0,'h11);
+            for(retry=1;retry<10240;retry=retry+1) begin
+                expect_command('h30,0,32,1,0,0);expect_command('h31,0,32,64,0,'h12);
+            end
+            check_completion(3);
+            start_job();prime(0,0);
+            // Separation rejection must not consume q's 20480 attempt budget.
+            expect_command('h30,0,32,1,0,0);expect_command('h31,0,32,64,1,'h11);
+            for(retry=0;retry<20480;retry=retry+1) begin
+                expect_command('h30,0,32,1,0,0);expect_command('h31,0,32,64,1,'h12);
+            end
+            check_completion(3);
+            $display("PASS full retry limits: p=10240 q=20480, range/separation excluded, MR composites counted");
+        end
         $display("PASS RSA firmware control: %0d descriptors, reject/retry/square/low-d restart, faults, watchdog, reset, post-job CPU/RAM scrub",command_count);
         $finish;
     end

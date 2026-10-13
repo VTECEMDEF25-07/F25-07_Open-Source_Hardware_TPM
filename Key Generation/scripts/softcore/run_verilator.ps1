@@ -1,4 +1,4 @@
-param([Parameter(Mandatory=$true)][string]$Toolchain,[ValidateSet('Firmware','Memory')][string]$Test='Firmware',[string]$Python='C:/Python314/python.exe',[string]$Distro='Ubuntu-24.04')
+param([Parameter(Mandatory=$true)][string]$Toolchain,[ValidateSet('Firmware','Memory')][string]$Test='Firmware',[string]$Python='C:/Python314/python.exe',[string]$Distro='Ubuntu-24.04',[switch]$Exhaustion)
 $ErrorActionPreference='Stop'
 $taskRoot=(Resolve-Path "$PSScriptRoot/../..").Path
 $taskBuild=Join-Path $taskRoot 'build/softcore'
@@ -15,7 +15,8 @@ if($LASTEXITCODE -ne 0){throw 'Alias verification failed'}
 $taskTop=if($Test -eq 'Memory'){'tb_softcore_memory'}else{'tb_rsa_firmware'}
 $taskObject="$taskAlias/build/softcore/obj_$taskTop"
 $taskSources=@('IP/keygen_ram32_generic.v','IP/keygen_ram32.v','IP/third_party/picorv32/picorv32.v','rtl/rsa_softcore/keygen_softcore_control.v','rtl/rsa_softcore/keygen_rsa_softcore.v',"testbench/softcore/$taskTop.sv") | ForEach-Object {"$taskAlias/$_"}
-$taskCommand="cd $taskAlias/build/softcore && verilator --binary --timing -j 2 -Wno-fatal -MAKEFLAGS CURDIR=$taskObject --top-module $taskTop --Mdir $taskObject $($taskSources -join ' ') > $taskTop-build.log 2>&1 && $taskObject/V$taskTop > $taskTop-run.log 2>&1"
+$taskSimulationArgs=if($Exhaustion){'+EXHAUSTION'}else{''}
+$taskCommand="cd $taskAlias/build/softcore && verilator --binary --timing -j 2 -Wno-fatal -MAKEFLAGS CURDIR=$taskObject --top-module $taskTop --Mdir $taskObject $($taskSources -join ' ') > $taskTop-build.log 2>&1 && $taskObject/V$taskTop $taskSimulationArgs > $taskTop-run.log 2>&1"
 & wsl -d $Distro --exec bash -lc $taskCommand
 $taskExit=$LASTEXITCODE
 Get-Content "$taskBuild/$taskTop-build.log" -Tail 5
@@ -23,3 +24,5 @@ $taskLog=Get-Content "$taskBuild/$taskTop-run.log" -ErrorAction SilentlyContinue
 $taskLog
 $taskMarker=if($Test -eq 'Memory'){'PASS CPU memory:'}else{'PASS RSA firmware control:'}
 if($taskExit -ne 0 -or !($taskLog -match $taskMarker)){throw 'Verilator failed or missing PASS marker'}
+
+if($Exhaustion -and $Test -eq 'Firmware' -and !($taskLog -match 'PASS full retry limits:')){throw 'Full retry boundary coverage did not complete'}

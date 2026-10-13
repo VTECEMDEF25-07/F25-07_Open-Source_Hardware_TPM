@@ -47,7 +47,7 @@ For each prime, five passing M-R witness rounds are required. Range, pair-separa
 
 Pinned compiler/reproducible ROM hash are documented in `firmware/TOOLCHAIN.md` and `firmware/rsa_control_manifest.json`. C compilation uses -Wall -Wextra -Werror. ROM text is 1648 bytes, data/BSS0; capacity32KiB ROM/16KiB RAM.
 
-Questa2024.3 control regression PASS:118 descriptors at1089680ns; range/composite/witness rejection, five rounds, squaring, q separation, short-d pair restart, source/service failures, real illegal-instruction trap, watchdog fault, long service stall, reset abort, held completion, repeat job, and every CPU architectural register/RAM word cleared before completion. RTL compiled as Verilog2001; SV only in tests. Full retry exhaustion and full-size actual arithmetic integration remain further verification gates.
+Questa2024.3 control regression PASS:118 descriptors at1089680ns; range/composite/witness rejection, five rounds, squaring, q separation, short-d pair restart, source/service failures, real illegal-instruction trap, watchdog fault, long service stall, reset abort, held completion, repeat job, and every CPU architectural register/RAM word cleared before completion. RTL compiled as Verilog2001; SV only in tests. Later retry-boundary and full-size integration results are recorded below.
 
 QuartusPro26.1 actual RSA-controller synthesis on A5ED013BB32AE4SCS succeeded:3554 logic cells,64 RAM segments (explicit Altera RAM macro). These are synthesis units, not final ALMs, fit or timing closure. Warnings remain as documented in README: board Reset Release integration, inherited CPU attributes/shift widths, inferred RAM bypass/DRC. The CPU data RAM now uses the shared keygen_ram32 wrapper. Whole-word stores write directly; byte/halfword stores use a serialized read-modify-write, preserving other byte lanes. The wrapper adds the defined synchronous read acknowledgment cycle.
 
@@ -60,3 +60,11 @@ Scrub validation observes all4096 sequential zero writes in both backends and ch
 The same generic controller and memory-instruction tests also pass Verilator5.020 through `run_verilator.ps1 -Toolchain <bin> -Test Firmware` or `-Test Memory`. A verified temporary WSL symlink only shortens paths; actual sources/builds stay under the class root. The runner overrides GNU Make CURDIR with that alias because symlinks alone do not avoid its spaces restriction.
 
 Source SHA-256 manifests normalize line endings to LF; generated machine-code hashes remain exact. The RSA firmware image hash remains a9b67a3d34031e12b4fc4afba521fbf13549d39523749980195c55fa9c86fb9f.
+
+## Complete-key and retry-boundary evidence
+
+Generic full-core integration passed directed RSA-2048 seed 1: 384 input words, 133572067 cycles, and exact reference n/e/p/q comparison after protected handoff and final cleanup. At 50 MHz that cycle count is 2.67144134 seconds. The directed stream supplies known acceptable prime candidates and five witnesses per prime; all arithmetic is real, but this does not measure candidate-search latency. Verilator simulation took 154.08 seconds. Canonical integration evidence is under `build/full_softcore_directed/`.
+
+`run_verilator.ps1 -Toolchain <bin> -Exhaustion` additionally passed 61591 scripted descriptors using the unmodified production firmware limits. It verifies p exhaustion at 10240 and q exhaustion at 20480, status3 plus cleanup, exclusion of range/separation redraws from the counter, and inclusion of a Miller-Rabin composite. These tests validate control flow; the service peer remains scripted.
+
+`run_full_altera_questa.py --source-root <integrated Key Generation directory> --softcore --directed --seeds 1` compiles unchanged installed `220model.v` and `altera_mf.v` with KEYGEN_ALTERA selected. Its default output directory is distinct from generic evidence. Genuine vendor full-top elaboration in Verilator5.020 failed on unsupported tristate semantics at lpm_mult's sum port, so this runner uses Questa. Do not substitute generic models or claim a passing run from compilation alone. Full vendor run results are recorded only after the final full-key PASS marker.
