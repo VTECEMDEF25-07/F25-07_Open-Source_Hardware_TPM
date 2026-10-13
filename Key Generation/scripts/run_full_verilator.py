@@ -6,11 +6,64 @@ in its current directory. No source copies or external workspace are needed.
 import argparse
 import hashlib
 import json
+import os
+import selectors
+import signal
 from pathlib import Path
 import re
 import shutil
 import subprocess
 import time
+
+
+def run_simulation(command, cwd, log_path, timeout):
+    """Keep stdout in memory; never hold a SeaDrive log open during simulation."""
+    chunks = []
+    pending = b''
+    deadline = time.monotonic() + timeout
+    last_progress = 0.0
+    process = subprocess.Popen(command, cwd=cwd, stdout=subprocess.PIPE,
+                               stderr=subprocess.STDOUT, bufsize=0,
+                               start_new_session=True)
+    selector = selectors.DefaultSelector()
+    selector.register(process.stdout, selectors.EVENT_READ)
+    try:
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise subprocess.TimeoutExpired(command, timeout)
+            if not selector.select(min(5.0, remaining)):
+                continue
+            chunk = os.read(process.stdout.fileno(), 65536)
+            if not chunk:
+                break
+            chunks.append(chunk)
+            pending += chunk
+            while b'\n' in pending:
+                line, pending = pending.split(b'\n', 1)
+                now = time.monotonic()
+                if line.startswith(b'PASS ') or (line.startswith(b'PROGRESS ') and now-last_progress >= 10):
+                    print(line.decode('utf-8', errors='replace'), flush=True)
+                    last_progress = now
+        returncode = process.wait(timeout=max(0.001, deadline-time.monotonic()))
+        if returncode:
+            raise subprocess.CalledProcessError(returncode, command)
+    except BaseException:
+        # A timeout or interruption must not leave descendants running.
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        tail, _ = process.communicate(timeout=5)
+        if tail:
+            chunks.append(tail)
+        raise
+    finally:
+        selector.close()
+        process.stdout.close()
+        temporary = log_path.with_name(log_path.name + '.partial')
+        temporary.write_bytes(b''.join(chunks))
+        temporary.replace(log_path)
 
 p=argparse.ArgumentParser()
 p.add_argument('--softcore',action='store_true')
@@ -98,8 +151,7 @@ for seed in a.seeds:
                  '+DIRECTED',f'+STIMULUS={stimulus_path}']
     started=time.monotonic()
     if a.stalls:command+=['+STALLS']
-    with (build/f'seed-{seed}.log').open('w') as log:
-        subprocess.run(command,cwd=build,stdout=log,stderr=subprocess.STDOUT,check=True,timeout=7200)
+    run_simulation(command, build, build/f'seed-{seed}.log', timeout=7200)
     text=(build/f'seed-{seed}.log').read_text()
     match=re.search(r'PASS FULL_RSA seed=(\d+) softcore=(\d+) words=(\d+) cycles=(\d+)',text)
     if not match:raise RuntimeError('No complete-key PASS evidence')
