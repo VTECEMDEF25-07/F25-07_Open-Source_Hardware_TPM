@@ -9,6 +9,7 @@ from pathlib import Path
 import statistics
 import sys
 import time
+from fan_diagnostics import read_diagnostics
 
 SERIAL = "FTA6H280"
 TIMEOUT = 180.0
@@ -168,9 +169,12 @@ def telemetry(adapter):
     flags = adapter.register(15)
     def signed16(value):
         return value-65536 if value & 32768 else value
-    return {"fpga_c":signed16(temperatures>>16),"board_c":signed16(temperatures&65535),
+    sample = {"fpga_c":signed16(temperatures>>16),"board_c":signed16(temperatures&65535),
             "fan_rpm":adapter.register(14),"alarm":flags&255,
             "i2c_ready":bool(flags&256),"temperature_valid":bool(flags&512),"fan_fail_safe":bool(flags&1024)}
+    if getattr(adapter, "fan_diagnostics_version", 0) == 1:
+        sample.update(read_diagnostics(adapter))
+    return sample
 
 
 def poll(adapter, mask, samples=None, source_schedule=None, transitions=None, deadline=None):
@@ -216,6 +220,10 @@ def identify(adapter, manifest=None):
             raise RuntimeError("loaded image build fingerprint does not match selected manifest")
         if manifest.get("variant") != f"{control}_{backend}":
             raise RuntimeError("loaded image configuration does not match selected manifest")
+    diagnostic_version = manifest.get("fan_diagnostics_version", 0) if manifest is not None else 0
+    if type(diagnostic_version) is not int or diagnostic_version not in (0, 1):
+        raise RuntimeError("unsupported fan diagnostic version")
+    adapter.fan_diagnostics_version = diagnostic_version
     return {"control": control, "backend": backend, "test_mode": True, "build_fingerprint": fingerprint}
 
 
@@ -448,7 +456,7 @@ def stall_replay(adapter, fixture, results, checkpoint=lambda:None):
 
 
 def provenance_inputs(reference):
-    paths=[Path(__file__).resolve()]+[reference/name for name in
+    paths=[Path(__file__).resolve(), Path(__file__).resolve().with_name("fan_diagnostics.py")]+[reference/name for name in
            ("key_checker.py","keygen_reference.py","seeds.json","expected_keys.json")]
     return {str(path):hashlib.sha256(path.read_bytes()).hexdigest() for path in paths}
 

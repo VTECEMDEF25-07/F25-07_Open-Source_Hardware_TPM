@@ -9,6 +9,7 @@ import sys
 import unittest
 from unittest.mock import patch, Mock
 HERE=Path(__file__).resolve().parents[1]
+sys.path.insert(0,str(HERE))
 sys.path.insert(0,str(HERE.parents[1]/'reference'))
 spec=importlib.util.spec_from_file_location('host_test',HERE/'host_test.py')
 host=importlib.util.module_from_spec(spec);spec.loader.exec_module(host)
@@ -53,6 +54,23 @@ class FakeAdapter:
         return self.reg.get(address,0)
 
 class HostTests(unittest.TestCase):
+    def test_diagnostics_only_for_declared_version(self):
+        adapter=FakeAdapter()
+        self.assertNotIn('fan_fault_reasons',host.telemetry(adapter))
+        adapter.reg.update({32:0x102,33:0x20308000,34:0x55420102})
+        adapter.fan_diagnostics_version=1
+        sample=host.telemetry(adapter)
+        self.assertEqual(sample['fan_fault_reasons'],['identity'])
+        self.assertTrue(sample['conversion_wait'])
+        self.assertEqual(sample['device'],0x42)
+    def test_unknown_diagnostic_version_rejected(self):
+        adapter=FakeAdapter();fingerprint='0123456789abcdef'*4
+        for index in range(8):adapter.reg[24+index]=int(fingerprint[index*8:index*8+8],16)
+        manifest={'variant':'rtl_generic','build_fingerprint':fingerprint,'fan_diagnostics_version':2}
+        with self.assertRaisesRegex(RuntimeError,'diagnostic version'):host.identify(adapter,manifest)
+        manifest['fan_diagnostics_version']=1
+        host.identify(adapter,manifest)
+        self.assertEqual(adapter.fan_diagnostics_version,1)
     def test_build_fingerprint(self):
         adapter=FakeAdapter();fingerprint='0123456789abcdef'*4
         for index in range(8):adapter.reg[24+index]=int(fingerprint[index*8:index*8+8],16)
@@ -293,11 +311,11 @@ class HostTests(unittest.TestCase):
         scratch=(HERE.parents[4]/'AI/tmp').resolve()
         with tempfile.TemporaryDirectory(dir=scratch) as directory:
             root=Path(directory).resolve();root.relative_to(scratch)
-            for name in ('host_test.py','key_checker.py','keygen_reference.py','seeds.json','expected_keys.json'):
+            for name in ('host_test.py','fan_diagnostics.py','key_checker.py','keygen_reference.py','seeds.json','expected_keys.json'):
                 (root/name).write_text('original')
             with patch.object(host,'__file__',str(root/'host_test.py')):
                 fingerprints=host.provenance_inputs(root)
-                self.assertEqual(len(fingerprints),5)
+                self.assertEqual(len(fingerprints),6)
                 host.verify_provenance(root,fingerprints)
                 (root/'expected_keys.json').write_text('changed')
                 with self.assertRaisesRegex(RuntimeError,'inputs changed'):host.verify_provenance(root,fingerprints)

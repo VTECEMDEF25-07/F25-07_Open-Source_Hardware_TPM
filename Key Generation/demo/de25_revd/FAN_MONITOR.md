@@ -29,7 +29,7 @@ Reason bits describe the last completed frame except live bits6/8. Read repeated
 `simulate_fan.py` exercises the real management engines with decoded-register injection, including pair ordering, bounded no-start/stuck-BUSY, preflight failures, missing ACK, wrong IDs, both OPEN flags, nPVLD, negative sentinel, staleness and recovery. `simulate_fan_bus.py` independently exercises real serial open-drain ACK/data using a TMP442/MAX6650 test slave; it never forces internal DUT data. Top-reset and real-core SPI regressions cover the additive diagnostic interface.
 
 Primary source: [TI TMP441/TMP442 datasheet, SBOS425A](https://www.ti.com/lit/gpn/tmp442), electrical conversion times and sections Temperature Registers, Configuration1/2, One-Shot Conversion. Local original: `AI/tmp/de25-docs/DE25_RevD_extracted/Datasheet/Temp Sensor/TMP442ADCNT.pdf`. The datasheet requires adjacent high/low reads, defines BUSY as conversion activity, and states that one-shot writes during an existing conversion are ignored. No cryptographic RTL or host acceptance rule is relaxed by these changes.
-# Read-only hardware observation
+## Read-only hardware observation
 
 After the lead programs and verifies the diagnostic bitstream, run:
 
@@ -44,4 +44,13 @@ reads temperature, fan speed and raw fault diagnostics once per second. The
 last ten samples must all be healthy for its diagnostic PASS. Source hashes
 are recorded and rechecked; an existing report is never overwritten. This
 checks cooling only and cannot establish key-generation or soak acceptance.
+
+The first revised diagnostic image passed 30 physical samples on October 13:
+all samples reported valid temperature data, no alarms or fault reasons, and
+no failsafe request. Fan speed settled from 5940 to 3660 RPM; reported FPGA/board
+temperatures were 30/28 C and remote channel 2 was 34–36 C. BUSY was observed
+both high and low without being treated as a fault. Evidence is retained at
+class-workspace `AI/tmp/keygen-fan-hardware-v3/monitor.json`; image fingerprint
+`d6c74f10c1b7888506caa960d0989cc621b4c13a826dc0dc5634b90240f9e608`.
+The four integrated images still require their own timing and hardware tests.
 

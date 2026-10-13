@@ -132,6 +132,13 @@ The 180-second job deadline starts immediately before the START write attempt an
 
 After failure, recovery has a separate 10-second deadline, checked between bounded USB calls, and reports its actual elapsed time and outcome. Recovery never converts failure into success. Transport CS release, initialization cleanup, adapter close and driver-close failures preserve the initiating error and accumulate secondary diagnostics.
 
+When the selected manifest declares `fan_diagnostics_version: 1`, key-test
+samples also include decoded registers 32–34. Older images retain their original
+telemetry format; unknown diagnostic versions are rejected. The decoder's source
+hash is included in the test provenance. `fan_monitor.py` separately supports
+the explicitly identified FAN1 diagnostic image; key-generation tests continue
+to require KG01 and never accept FAN1 as a key generator.
+
 Every hardware report records UTC start, Python version, and SHA-256 hashes of this host script, the independent key checker, generation reference, seed list and expected-key corpus. Those files must remain unchanged through completion before PASS can be recorded. These hashes supplement the loaded image's build fingerprint.
 
 The frozen offline suite passes 33 tests. Added cases reject late ready status, late verification/ACK, exhausted recovery budget, changed reference inputs, and transport/driver cleanup failures without masking the primary cause.
