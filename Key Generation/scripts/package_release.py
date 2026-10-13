@@ -90,18 +90,27 @@ def report_gate(report, role, variant, fingerprint, provenance):
     elif role == 'fault-replay':
         failures = [r for r in rows if 'fault_boundary' in r]
         replay = [r for r in rows if r.get('fault_replay') is True]
+        profiles = {'generation_stall': 2, 'rsa_active': 2, 'result_stall': 0, 'ownership_stall': 1}
         require(len(rows) == 7 and len(failures) == 4
                 and {r['fault_boundary'] for r in failures} ==
                     {'generation_stall', 'rsa_active', 'result_stall', 'ownership_stall'}
                 and all(r.get('expected_status') == 2 and r.get('observed_status') == 2
-                        and r.get('no_stale_result') is True for r in failures)
+                        and r.get('no_stale_result') is True
+                        and r.get('profile') == profiles.get(r['fault_boundary']) for r in failures)
                 and sorted(r.get('profile') for r in replay) == [0, 1, 2], 'incomplete generation-failure replay')
     elif role == 'stall-replay':
         require(len(rows) == 2 and {r.get('replay') for r in rows} == {'baseline', 'generation_stalls'}
                 and all(r.get('profile') == 2 for r in rows)
                 and len({r.get('seed_id') for r in rows}) == 1, 'incomplete deterministic stall replay')
         stalled = next(r for r in rows if r['replay'] == 'generation_stalls')
-        require(len(stalled.get('source_transitions', [])) == 4, 'stall schedule did not complete')
+        transitions = stalled.get('source_transitions', [])
+        require(len(transitions) == 4, 'stall schedule did not complete')
+        for transition, scheduled, hold in zip(transitions, (.02, .12, .20, .30), (True, False, True, False)):
+            require(transition.get('scheduled_seconds') == scheduled and transition.get('hold_generation') is hold
+                    and finite(transition.get('observed_seconds')) and scheduled <= transition['observed_seconds'] <= 180,
+                    'stall schedule evidence differs')
+        require(all(a['observed_seconds'] <= b['observed_seconds'] for a, b in zip(transitions, transitions[1:])),
+                'stall transitions out of order')
     elif role == 'soak':
         elapsed = [r.get('soak_elapsed_seconds') for r in rows]
         require(finite(report.get('soak_seconds')) and report['soak_seconds'] >= 1800
@@ -109,7 +118,8 @@ def report_gate(report, role, variant, fingerprint, provenance):
                 and all(finite(t) and t > 0 for t in elapsed)
                 and all(a < b for a, b in zip(elapsed, elapsed[1:]))
                 and elapsed[-1] >= 1800 and elapsed[-1] <= report['soak_seconds']
-                and all(r.get('profile') == i % 3 for i, r in enumerate(rows)),
+                and all(r.get('profile') == i % 3 and r.get('seed_id') == (i//3)%20+1
+                        for i, r in enumerate(rows)),
                 'soak must complete at least 30 minutes of alternating AES128/AES256/RSA jobs')
 
 

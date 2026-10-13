@@ -70,16 +70,18 @@ class ReleaseTests(unittest.TestCase):
                                          ('generation_stall', 'rsa_active', 'result_stall', 'ownership_stall', 'held_success')]
                     report['results'] += [dict(self.job(profile), reset_replay=True) for profile in range(3)]
                 if role == 'stall-replay':
-                    report['results'] = [dict(self.job(2), replay=name, source_transitions=[1, 0, 1, 0]) for name in
+                    transitions = [dict(scheduled_seconds=t, observed_seconds=t+.001, hold_generation=h)
+                                   for t, h in zip((.02,.12,.20,.30), (True,False,True,False))]
+                    report['results'] = [dict(self.job(2), replay=name, source_transitions=transitions) for name in
                                          ('baseline', 'generation_stalls')]
                 if role == 'fault-replay':
-                    report['results'] = [dict(fault_boundary=name, profile=2, result='PASS', expected_status=2,
+                    report['results'] = [dict(fault_boundary=name, profile=profile, result='PASS', expected_status=2,
                                              observed_status=2, no_stale_result=True, fan_samples=[self.fan()],
-                                             host_operation_seconds=1) for name in
-                                         ('generation_stall', 'rsa_active', 'result_stall', 'ownership_stall')]
+                                             host_operation_seconds=1) for name, profile in
+                                         (('generation_stall',2), ('rsa_active',2), ('result_stall',0), ('ownership_stall',1))]
                     report['results'] += [dict(self.job(i), fault_replay=True) for i in range(3)]
                 if role == 'soak':
-                    report['results'] = [dict(self.job(i % 3), soak_elapsed_seconds=(i+1)*10) for i in range(180)]
+                    report['results'] = [dict(self.job(i % 3, (i//3)%20+1), soak_elapsed_seconds=(i+1)*10) for i in range(180)]
                     report.update(soak_seconds=1800.1, soak_jobs=180)
                 reports[role] = role+'.json'
                 write(variant+'/hardware/'+role+'.json', json.dumps(report))
@@ -154,6 +156,12 @@ class ReleaseTests(unittest.TestCase):
 
     def test_fault_status_and_stale_results(self):
         self.mutate_report('fault-replay', lambda r: r['results'][0].update(observed_status=0, no_stale_result=False)); self.rejected()
+
+    def test_wrong_stall_polarity(self):
+        self.mutate_report('stall-replay', lambda r: r['results'][1]['source_transitions'][0].update(hold_generation=False)); self.rejected()
+
+    def test_soak_seed_rotation(self):
+        self.mutate_report('soak', lambda r: r['results'][6].update(seed_id=1)); self.rejected()
 
     def test_provenance_changed(self):
         (self.root/'reference/key_checker.py').write_text('changed'); self.rejected()
