@@ -28,6 +28,7 @@ def main():
     parser.add_argument("--firmware", type=Path)
     parser.add_argument("--variant", choices=("all", "rtl_generic", "rtl_altera", "softcore_generic", "softcore_altera"), default="all")
     parser.add_argument("--compile", action="store_true")
+    parser.add_argument("--processors",type=int,choices=range(1,17),default=2,help="limit Quartus worker pressure")
     parser.add_argument("--quartus", default="C:/altera_pro/26.1/quartus/bin64/quartus_sh.exe")
     args = parser.parse_args()
     here = Path(__file__).resolve().parent
@@ -71,6 +72,7 @@ set_false_path -to [get_ports {fan_i2c_scl fan_i2c_sda}]
             settings = base + [
                 "set_global_assignment -name TOP_LEVEL_ENTITY keygen_de25_top",
                 "set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files",
+                f"set_global_assignment -name NUM_PARALLEL_PROCESSORS {args.processors}",
                 'set_global_assignment -name RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"',
                 "set_global_assignment -name SDC_FILE keygen_de25.sdc",
                 f"set_parameter -name RSA_SOFTCORE {int(control=='softcore')}",
