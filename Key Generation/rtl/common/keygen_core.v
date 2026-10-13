@@ -134,7 +134,14 @@ module keygen_core #(
                 RSA_START: if(work_ready && engine_ready) state_reg<=RSA_RUN;
                 RSA_RUN: if(completion_valid) begin
                     if(completion_status==0) begin component_reg<=2;index_reg<=0;state_reg<=READ_REQUEST;end
-                    else begin status_reg<=completion_status[3:0];discard_reg<=1;state_reg<=RESET_ENGINE;end
+                    else begin
+                        // Unexpected internal status must never truncate to success.
+                        case(completion_status)
+                            8'd2,8'd3,8'd4,8'd6,8'd7: status_reg<=completion_status[3:0];
+                            default: status_reg<=4'd4;
+                        endcase
+                        discard_reg<=1;state_reg<=RESET_ENGINE;
+                    end
                 end
                 READ_REQUEST: begin
                     if(component_reg==3) begin data_reg<=32'd65537;state_reg<=EMIT;end

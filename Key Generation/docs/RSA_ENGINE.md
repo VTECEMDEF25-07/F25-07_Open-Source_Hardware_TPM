@@ -33,6 +33,11 @@ All addresses below identify 32-bit words. Integers use little-endian limbs.
 The accelerator owns all 4096 words. It clears the full allocation, its operand
 caches and its synchronous RAM output before declaring reset cleanup complete.
 The CPU cannot read these operands. Its MMIO returns status predicates only.
+The area-optimized pair checker has an additional 512-word private RAM, also
+scrubbed with its read latch. Total private arithmetic storage is therefore
+18 KiB (16 KiB shared scratch plus 2 KiB pair scratch). CPU ROM/data allocations
+remain separate. This small memory increase replaces thousands of registers
+and wide arithmetic paths; it does not remove any key-pair validation.
 
 ## Service descriptors
 

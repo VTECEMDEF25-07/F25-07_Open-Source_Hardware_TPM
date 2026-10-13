@@ -27,6 +27,7 @@ module tb_keygen_lifecycle;
  wire [31:0]status_id_o;
  integer tests=0,j;
  reg [31:0]active_id=0,held_word;
+ localparam [1023:0]P=1024'hf71ccdb1c7544608b1eea2307f4dd112e1ea90ffa89a11a67aa87aced1a654a64b04a412eb1e4ed1cb0fc7b7e2271e94917e2f93f6f9058138975ee5515196e2a6717fdff1e2a6c8fa5e8daa16ee856f4d278b7a55744bab2b1fdeaf4d4ae93540527c08717acb9839a1cffee7dd6163cc2181697fed4e6ffbdf34c1f735bf3b;
  keygen_core #(.RSA_SOFTCORE(SOFTCORE)) dut(.*);
  task tick;@(posedge clock_i);#1;endtask
  task request(input [1:0]profile);
@@ -36,7 +37,7 @@ module tb_keygen_lifecycle;
  endtask
  task word(input [31:0]value);
   @(negedge clock_i);generation_data_i=value;generation_valid_i=1;
-  do tick();while(!generation_ready_o); // Draw remains ready for these words.
+  wait(generation_ready_o);tick();
   @(negedge clock_i);generation_valid_i=0;
  endtask
  task terminal(input [3:0]code);
@@ -93,10 +94,22 @@ module tb_keygen_lifecycle;
   request(2);wait(generation_ready_o);@(negedge clock_i);peers_ready_i=0;
   wait(status_valid_o);if(status_code_o!==8)$fatal(1,"peer fault");
   @(negedge clock_i);peers_ready_i=1;terminal(8);
+  // Inject an invalid internal completion code at the controller boundary.
+  // This is a fault test, not a substitute for successful RSA arithmetic.
+  request(2);wait(generation_ready_o);@(negedge clock_i);
+  force dut.completion_valid=1'b1;force dut.completion_status=8'h10;
+  tick();@(negedge clock_i);release dut.completion_valid;release dut.completion_status;
+  terminal(4);
   // Reset after partially filling the candidate must not preserve its words.
   request(2);wait(generation_ready_o);
   for(j=0;j<7;j++)word(32'hdead0000+j);
   reset_core();aes(1,1);
+  // Enter a real Montgomery exponentiation, then reset and prove reuse.
+  request(2);
+  for(j=31;j>=0;j--)word(P[j*32+:32]);
+  for(j=31;j>=0;j--)word(j==0 ? 32'd2 : 32'd0);
+  wait(dut.cmd_valid && dut.cmd_ready && dut.cmd_op==8'h13);
+  repeat(1000)tick();reset_core();aes(0,1);
   // Reset while an AES result is backpressured, during cleanup and at status.
   request(0);
   for(j=0;j<4;j++)begin

@@ -33,10 +33,11 @@ are legal. Internal controller watchdogs are distinct from host deadlines.
 ## Integration evidence
 
 `python3 scripts/run_integration_verilator.py` and the same command with
-`--softcore` both passed **15 lifecycle checks** using real engine storage:
+`--softcore` both passed **18 lifecycle checks** using real engine storage:
 AES128/256, capture, source gaps, result stalls, ownership rejection, invalid
-profile, source failure, first-fault preservation, peer failure, partial RSA
-candidate reset, AES result reset, cleanup reset, held-status reset and reuse.
+profile, source failure, first-fault preservation, peer failure, invalid internal
+status mapping, partial RSA candidate reset, active modular-exponentiation reset,
+AES result reset, cleanup reset, held-status reset and reuse.
 
 `scripts/run_full_verilator.py` compares every RSA word and component/index
 against the independent corpus and requires exact source consumption. It fails
@@ -45,6 +46,12 @@ tests known candidate inputs, `--stalls` adds source gaps/result backpressure,
 and `--softcore` selects firmware. No option replaces vendor models: genuine
 Altera runs use `scripts/softcore/run_full_altera_questa.py` and the installed
 unmodified simulation library.
+
+Use `--label` to preserve a distinct evidence directory. The generic full-key
+runner records source, firmware, fixture, simulator and binary fingerprints and
+rejects stale `--reuse-build` requests. The vendor runner independently hashes
+its unchanged model files as well. Build labels are not test results: the runner
+requires a complete-key PASS before writing successful runtime evidence.
 
 The full-key directed tests passed both generic controller configurations.
 Normal twenty-seed search, all four final fits and hardware soak remain

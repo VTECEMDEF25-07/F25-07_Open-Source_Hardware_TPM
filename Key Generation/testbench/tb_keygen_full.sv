@@ -28,6 +28,7 @@ module tb_keygen_full;
     reg [255:0] seed=1;
     reg directed=0;
     reg stalls=0;
+    reg offered_reg=0;
     reg [31:0] directed_words[0:383];
     integer directed_index=0;
     wire source_valid,source_failed;
@@ -35,9 +36,12 @@ module tb_keygen_full;
     reg [31:0] expected[0:128];
     integer received=0,words=0,seed_id=1,expected_count=0;
     reg [63:0] cycles=0,start_cycle=0;
+    reg result_stalled_reg=0,source_stalled_reg=0;
+    reg [75:0] stalled_result_reg=0;
+    reg [31:0] stalled_source_reg=0;
     string expected_file;
     string stimulus_file;
-    wire offer_en=!stalls || (cycles%11<7);
+    wire offer_en=!stalls || offered_reg;
     assign generation_valid_i=offer_en && (directed ? (directed_index<384) : source_valid);
     assign generation_data_i=directed ? directed_words[directed_index] : source_data;
     assign generation_failed_i=directed ? 1'b0 : source_failed;
@@ -49,6 +53,21 @@ module tb_keygen_full;
     always @(negedge clock_i) if(stalls) result_ready_i=(cycles%7<4);
     always @(posedge clock_i) begin
         cycles<=cycles+1;
+        if(reset_n_i)begin
+            if(result_stalled_reg && (!result_valid_o ||
+               {result_data_o,result_component_o,result_index_o,result_component_last_o,result_last_o,result_id_o}!==stalled_result_reg))
+                $fatal(1,"result changed under backpressure");
+            if(source_stalled_reg && (!generation_valid_i || generation_data_i!==stalled_source_reg))
+                $fatal(1,"test source violated ready/valid hold");
+        end
+        result_stalled_reg<=reset_n_i && result_valid_o && !result_ready_i;
+        source_stalled_reg<=reset_n_i && generation_valid_i && !generation_ready_o;
+        stalled_result_reg<={result_data_o,result_component_o,result_index_o,result_component_last_o,result_last_o,result_id_o};
+        stalled_source_reg<=generation_data_i;
+        // Delay a new offer, but never withdraw valid while the core stalls.
+        if(!reset_n_i) offered_reg<=0;
+        else if(generation_valid_i && generation_ready_o) offered_reg<=0;
+        else if(!offered_reg && cycles%11<7) offered_reg<=1;
         if(generation_valid_i&&generation_ready_o)begin
             words<=words+1;
             if(directed)directed_index<=directed_index+1;
@@ -62,6 +81,8 @@ module tb_keygen_full;
             if(result_index_o!==((received<64)?received:((received==64)?0:((received<97)?received-65:received-97))))
                 $fatal(1,"index mismatch");
             if(result_last_o!==(received==128))$fatal(1,"last mismatch");
+            if(result_component_last_o!==((received==63)||(received==64)||(received==96)||(received==128)))
+                $fatal(1,"component last mismatch");
             received<=received+1;
         end
         if(cycles%10000000==0 && cycles>0)begin
