@@ -18,6 +18,15 @@ TMP = next(p / "AI/tmp" for p in SCRIPT.parents if (p / "AI/tmp").is_dir())
 
 
 class EvidenceTests(unittest.TestCase):
+    def test_compiler_output_uses_pipe_and_retains_exit_code(self):
+        with tempfile.TemporaryDirectory(dir=TMP) as folder:
+            directory = Path(folder)
+            result = subprocess.CompletedProcess([], 7, b"compiler failure details\n")
+            with patch.object(compile_build.subprocess, "run", return_value=result) as run:
+                self.assertEqual(compile_build.capture_compile("unused", directory), 7)
+            self.assertEqual(run.call_args.kwargs["stdout"], subprocess.PIPE)
+            self.assertEqual(run.call_args.kwargs["stderr"], subprocess.STDOUT)
+            self.assertEqual((directory / "compile.log").read_bytes(), result.stdout)
     def test_detects_changed_input(self):
         with tempfile.TemporaryDirectory(dir=TMP) as folder:
             source = Path(folder) / "source.v"

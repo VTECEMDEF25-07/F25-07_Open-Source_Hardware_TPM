@@ -6,6 +6,16 @@ from pathlib import Path
 import subprocess
 
 
+def capture_compile(tool, build):
+    # A cloud-backed inherited stdout handle can fail while a child is running.
+    # Keep its output in a pipe; publish a closed log only after it exits.
+    result = subprocess.run([tool, "--flow", "compile", "keygen_de25"], cwd=build,
+                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    with (build / "compile.log").open("xb") as log:
+        log.write(result.stdout)
+    return result.returncode
+
+
 def verify(build, manifest):
     if manifest.get("status") != "prepared" or (build / "compile.log").exists():
         raise RuntimeError("only an uncompiled prepared snapshot may be started")
@@ -34,14 +44,14 @@ def main():
     version = subprocess.run([tool, "--version"], check=True, capture_output=True, text=True, timeout=60)
     if (version.stdout+version.stderr).strip() != manifest["quartus_version"]:
         raise RuntimeError("Quartus version differs from prepared snapshot")
-    with (build / "compile.log").open("x") as log:
-        manifest["status"] = "compiling"
-        manifest_path.write_text(json.dumps(manifest, indent=2)+"\n")
-        result = subprocess.run([tool, "--flow", "compile", "keygen_de25"], cwd=build, stdout=log, stderr=subprocess.STDOUT)
-    manifest["status"] = "compiled" if result.returncode == 0 else "failed"
+    manifest["status"] = "compiling"
+    manifest_path.write_text(json.dumps(manifest, indent=2)+"\n")
+    returncode = capture_compile(tool, build)
+    manifest["compiler_returncode"] = returncode
+    manifest["status"] = "compiled" if returncode == 0 else "failed"
     manifest_path.write_text(json.dumps(manifest, indent=2)+"\n")
     print(f"{manifest['variant']}: {manifest['status']}; timing acceptance remains a separate review", flush=True)
-    raise SystemExit(result.returncode)
+    raise SystemExit(returncode)
 
 
 if __name__ == "__main__":

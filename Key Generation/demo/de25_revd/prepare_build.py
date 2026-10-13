@@ -157,11 +157,14 @@ set_false_path -to [get_ports {fan_i2c_scl fan_i2c_sda}]
             (build / "build_manifest.json").write_text(json.dumps(manifest, indent=2)+"\n")
             print(f"PREPARED {variant}: {build}", flush=True)
             if args.compile:
-                with (build / "compile.log").open("w") as log:
-                    result = subprocess.run([args.quartus, "--flow", "compile", "keygen_de25"], cwd=build, stdout=log, stderr=subprocess.STDOUT)
-                manifest["status"] = "compiled" if result.returncode == 0 else "failed"
+                from compile_build import capture_compile
+                manifest["status"] = "compiling"
                 (build / "build_manifest.json").write_text(json.dumps(manifest, indent=2)+"\n")
-                if result.returncode:
+                returncode = capture_compile(args.quartus, build)
+                manifest["compiler_returncode"] = returncode
+                manifest["status"] = "compiled" if returncode == 0 else "failed"
+                (build / "build_manifest.json").write_text(json.dumps(manifest, indent=2)+"\n")
+                if returncode:
                     raise RuntimeError(f"{variant}: Quartus failed; inspect {build/'compile.log'}")
                 print(f"COMPILED {variant}; timing/resource reports still require acceptance review", flush=True)
 
