@@ -30,7 +30,12 @@ try {
         (Join-Path $PSScriptRoot 'tb_unavailable_keygen_backend.sv'),
         (Join-Path $PSScriptRoot 'tb_aes_key_assembler.sv')
     )
-    & $vlog -sv -work 'work' @sources
+    # Verilog source is compiled separately; SV is approved only for testbenches.
+    $rtlSources = @($sources | Where-Object { $_.EndsWith('.v') })
+    $testSources = @($sources | Where-Object { $_.EndsWith('.sv') })
+    & $vlog -vlog01compat -work 'work' @rtlSources
+    if ($LASTEXITCODE -ne 0) { throw 'Verilog source compilation failed' }
+    & $vlog -sv -work 'work' @testSources
     if ($LASTEXITCODE -ne 0) { throw 'vlog failed' }
     foreach ($testName in @('tb_execution_keygen_plumbing', 'tb_unavailable_keygen_backend', 'tb_aes_key_assembler')) {
         $doFile = Join-Path $runRoot ($testName + '.do')
