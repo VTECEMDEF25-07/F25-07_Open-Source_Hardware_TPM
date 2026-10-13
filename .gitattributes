@@ -1,0 +1,2 @@
+# WSL/Linux runners must remain executable after Windows Git checkouts.
+*.sh text eol=lf
