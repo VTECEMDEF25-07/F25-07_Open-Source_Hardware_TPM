@@ -19,6 +19,7 @@ p.add_argument('--altera-models',type=Path,default=Path('C:/intelFPGA_lite/24.1s
 p.add_argument('--questa-bin',type=Path,default=Path('C:/intelFPGA_lite/24.1std/questa_fse/win64'))
 p.add_argument('--softcore',action='store_true')
 p.add_argument('--directed',action='store_true',help='Known prime candidates and witness2; functional test, not search-performance evidence')
+p.add_argument('--stalls',action='store_true',help='Legal source gaps, result backpressure and delayed ownership')
 p.add_argument('--seeds',nargs='+',type=int,default=[1])
 p.add_argument('--reuse-build',action='store_true')
 p.add_argument('--build-only',action='store_true')
@@ -92,12 +93,13 @@ for seed in a.seeds:
         stimulus_path.write_text(''.join(f'{w:08x}\n' for w in stimulus))
         command=[str(a.questa_bin/'vsim.exe'),'-c','-L','vendor','work.tb_keygen_full',f'+SEED={seed}',f'+EXPECTED={path}','+WORDS=384',
                  '+DIRECTED',f'+STIMULUS={stimulus_path}']
+    if a.stalls:command+=['+STALLS']
     command+=['-do','onerror {quit -code 1}; onbreak {quit -code 1}; run -all; quit -code 0']
     run_path=build/f'seed-{seed}-manifest.json'
     if run_path.exists():raise RuntimeError('Preserve previous run evidence: choose a new --label')
     evidence={'status':'RUNNING','started_utc':datetime.now(timezone.utc).isoformat(),
               'build_manifest_sha256':file_hash(manifest_path),'command':command,
-              'expected_fixture_sha256':file_hash(path),'directed':a.directed,
+              'expected_fixture_sha256':file_hash(path),'directed':a.directed,'external_stalls':a.stalls,
               'firmware_sha256':file_hash(build/'rsa_control.hex') if a.softcore else None}
     if a.directed:evidence['stimulus_sha256']=file_hash(stimulus_path)
     save_json(run_path,evidence)
@@ -107,6 +109,9 @@ for seed in a.seeds:
             subprocess.run(command,cwd=build,stdout=log,stderr=subprocess.STDOUT,check=True,timeout=7200)
     except (subprocess.CalledProcessError,subprocess.TimeoutExpired) as failure:
         evidence['status']='FAILED_OR_INCOMPLETE';evidence['error']=str(failure);save_json(run_path,evidence);raise
+    if input_hashes(root,sources,models,a.softcore)!=manifest['inputs']:
+        evidence['status']='FAILED_SOURCE_CHANGED';save_json(run_path,evidence)
+        raise RuntimeError('Sources changed during simulation; evidence is not accepted')
     text=(build/f'seed-{seed}.log').read_text()
     match=re.search(r'PASS FULL_RSA seed=(\d+) softcore=(\d+) words=(\d+) cycles=(\d+)',text)
     if not match:
@@ -115,6 +120,7 @@ for seed in a.seeds:
     report=dict(zip(['seed','softcore','words','cycles'],map(int,match.groups())))
     report['resource_backend']='Altera: installed 220model.v and altera_mf.v'
     report['simulator']='Questa'
+    report['external_stalls']=a.stalls
     report['simulator_seconds']=time.monotonic()-started
     report['hardware_seconds_50mhz']=report['cycles']/50_000_000
     report['directed_candidates_not_search_benchmark']=a.directed
