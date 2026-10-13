@@ -23,9 +23,10 @@ module keygen_core #(
     reg [31:0] id_reg,data_reg;
     reg [2:0] component_reg;
     reg [6:0] index_reg;
-    reg discard_reg;
+    reg discard_reg,engine_reset_reg;
     wire running=reset_n_i && reset_release_reg[1];
-    wire engine_reset_n=running && state_reg!=RESET_ENGINE;
+    // A registered request keeps binary FSM transitions out of async reset nets.
+    wire engine_reset_n=running && !engine_reset_reg;
     wire aes_selected=(state_reg==AES_START || state_reg==AES_RUN);
     wire rsa_unowned=(state_reg==RSA_START || state_reg==RSA_RUN || state_reg==READ_REQUEST ||
         state_reg==READ_WAIT || state_reg==EMIT || state_reg==OWNERSHIP);
@@ -116,11 +117,12 @@ module keygen_core #(
     always @(posedge clock_i or negedge reset_n_i) begin
         if(!reset_n_i) begin
             state_reg<=BOOT;profile_reg<=0;status_reg<=0;id_reg<=0;data_reg<=0;
-            component_reg<=0;index_reg<=0;discard_reg<=0;
+            component_reg<=0;index_reg<=0;discard_reg<=0;engine_reset_reg<=0;
         end else if(running) begin
+            engine_reset_reg<=0;
             if(rsa_fault || aes_start_fault) begin
                 status_reg<=generation_failed_i ? 4'd2 : 4'd8;
-                discard_reg<=1;data_reg<=0;state_reg<=RESET_ENGINE;
+                discard_reg<=1;data_reg<=0;state_reg<=RESET_ENGINE;engine_reset_reg<=1;
             end else case(state_reg)
                 BOOT: if(engine_ready && work_ready && aes_request_ready) state_reg<=IDLE;
                 IDLE: if(request_valid_i && request_ready_o) begin
@@ -128,7 +130,7 @@ module keygen_core #(
                     discard_reg<=0;data_reg<=0;index_reg<=0;component_reg<=2;
                     if(request_profile_i<=1) state_reg<=AES_START;
                     else if(request_profile_i==2) state_reg<=RSA_START;
-                    else begin status_reg<=1;state_reg<=RESET_ENGINE;end
+                    else begin status_reg<=1;state_reg<=RESET_ENGINE;engine_reset_reg<=1;end
                 end
                 AES_START: if(aes_request_ready) state_reg<=AES_RUN;
                 AES_RUN: if(aes_status_valid && status_ready_i) state_reg<=IDLE;
@@ -141,7 +143,7 @@ module keygen_core #(
                             8'd2,8'd3,8'd4,8'd6,8'd7: status_reg<=completion_status[3:0];
                             default: status_reg<=4'd4;
                         endcase
-                        discard_reg<=1;state_reg<=RESET_ENGINE;
+                        discard_reg<=1;state_reg<=RESET_ENGINE;engine_reset_reg<=1;
                     end
                 end
                 READ_REQUEST: begin
@@ -159,12 +161,12 @@ module keygen_core #(
                 end
                 OWNERSHIP: if(ownership_valid_i) begin
                     if(!ownership_accept_i) begin status_reg<=5;discard_reg<=1;end
-                    data_reg<=0;state_reg<=RESET_ENGINE;
+                    data_reg<=0;state_reg<=RESET_ENGINE;engine_reset_reg<=1;
                 end
                 RESET_ENGINE: state_reg<=SCRUB;
                 SCRUB: if(engine_ready && work_ready) state_reg<=STATUS;
                 STATUS: if(status_ready_i) begin discard_reg<=0;state_reg<=IDLE;end
-                default: begin status_reg<=4;discard_reg<=1;data_reg<=0;state_reg<=RESET_ENGINE;end
+                default: begin status_reg<=4;discard_reg<=1;data_reg<=0;state_reg<=RESET_ENGINE;engine_reset_reg<=1;end
             endcase
         end
     end

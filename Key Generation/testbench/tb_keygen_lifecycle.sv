@@ -145,6 +145,15 @@ module tb_keygen_lifecycle;
   peers_ready_i=0;repeat(100)tick();
   if(request_ready_o || status_valid_o || result_discard_o)$fatal(1,"unadmitted outage");
   peers_ready_i=1;tick();aes(0,1);
+  // A between-edge state decode transient must not assert an engine reset.
+  // This structural fault injection distinguishes registered reset control
+  // from a binary equality decoder on an asynchronous reset net.
+  request(2);wait(generation_ready_o);@(negedge clock_i);#1;
+  force dut.state_reg=4'd10;#1;
+  if(!dut.engine_reset_n)$fatal(1,"binary state decode drives asynchronous reset");
+  force dut.state_reg=4'd5;#1;release dut.state_reg;
+  generation_failed_i=1;wait(status_valid_o);
+  @(negedge clock_i);generation_failed_i=0;terminal(2);
   $display("PASS CORE_LIFECYCLE softcore=%0d checks=%0d",SOFTCORE,tests);$finish;
  end
  initial begin #20000000;$fatal(1,"lifecycle timeout state=%0d",dut.state_reg);end
