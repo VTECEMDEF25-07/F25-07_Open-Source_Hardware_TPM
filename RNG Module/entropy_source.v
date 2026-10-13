@@ -9,6 +9,8 @@
 // safe to use for keys.
 //
 // Requires ring_osc.v in the same project.
+//
+// Written by Jungyeon Won with the help of generative AI
 // ===========================================================================
  
 // Simulation time units (ignored by synthesis).

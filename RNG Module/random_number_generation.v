@@ -6,7 +6,10 @@
 // in a 256-bit DRBG data state register, and uses a small FSM to control the
 // placeholder Hash_DRBG processing flow. Hash.v and the real Hash_DRBG
 // algorithm are intentionally not implemented yet.
-
+// Written by Jungyeon Won with the help of generative AI
+ 
+`timescale 1ns/1ps
+ 
 module random_number_generation (
     input  wire        clk,
     input  wire        rst_n,
@@ -15,19 +18,19 @@ module random_number_generation (
     output reg  [255:0] random_output,
     output reg         random_valid
 );
-
+ 
     localparam [1:0] FSM_IDLE   = 2'd0;
     localparam [1:0] FSM_LOAD   = 2'd1;
     localparam [1:0] FSM_DRBG   = 2'd2;
     localparam [1:0] FSM_OUTPUT = 2'd3;
-
+ 
     reg [1:0] current_state;
     reg [1:0] next_state;
-
+ 
     reg [255:0] state_register;
     reg [255:0] next_state_register;
     reg [255:0] drbg_result;
-
+ 
     function [255:0] Hash_DRBG;
         input [255:0] state_data;
         begin
@@ -35,35 +38,35 @@ module random_number_generation (
             Hash_DRBG = state_data;
         end
     endfunction
-
+ 
     always @(*) begin
         next_state = current_state;
-
+ 
         case (current_state)
             FSM_IDLE: begin
                 if (enable) begin
                     next_state = FSM_LOAD;
                 end
             end
-
+ 
             FSM_LOAD: begin
                 next_state = FSM_DRBG;
             end
-
+ 
             FSM_DRBG: begin
                 next_state = FSM_OUTPUT;
             end
-
+ 
             FSM_OUTPUT: begin
                 next_state = FSM_IDLE;
             end
-
+ 
             default: begin
                 next_state = FSM_IDLE;
             end
         endcase
     end
-
+ 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             current_state      <= FSM_IDLE;
@@ -75,33 +78,32 @@ module random_number_generation (
         end else begin
             current_state <= next_state;
             random_valid  <= 1'b0;
-
+ 
             case (current_state)
                 FSM_IDLE: begin
                     if (enable) begin
                         next_state_register <= hash_input;
                     end
                 end
-
+ 
                 FSM_LOAD: begin
                     state_register <= next_state_register;
                 end
-
+ 
                 FSM_DRBG: begin
                     drbg_result <= Hash_DRBG(state_register);
                 end
-
+ 
                 FSM_OUTPUT: begin
                     random_output <= drbg_result;
                     random_valid  <= 1'b1;
                 end
-
+ 
                 default: begin
                     random_valid <= 1'b0;
                 end
             endcase
         end
     end
-
+ 
 endmodule
-   

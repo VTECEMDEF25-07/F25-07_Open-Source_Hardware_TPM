@@ -18,9 +18,22 @@
 //
 // Only the two small cells, ro_inv and ro_nand, differ between vendors.
 // Everything above them is identical on every board.
+//
+// Written by Jungyeon Won with the help of generative AI
 // ===========================================================================
 `define RO_INTEL
 
+// Turn on the simulation model automatically in any simulator.
+// Quartus synthesis skips everything between translate_off and translate_on,
+// so on the FPGA the real ring is built. Simulators (Questa, ModelSim,
+// Icarus) read these lines, so they get the behavioral model without needing
+// +define+SIMULATION. This matters when Quartus launches Questa for you,
+// because it doesn't pass that define along.
+// synthesis translate_off
+`ifndef SIMULATION
+`define SIMULATION
+`endif
+// synthesis translate_on
  
 // Sets simulation time units: "#1" means 1 ns, with 1 ps precision.
 // Synthesis ignores this; it only matters for the simulation model below.
