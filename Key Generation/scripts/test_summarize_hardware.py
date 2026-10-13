@@ -55,7 +55,8 @@ class CorpusAuditTests(unittest.TestCase):
 
     def test_each_cooling_fault_blocks_gate(self):
         for change in ({"fan_fail_safe": True}, {"i2c_ready": False},
-                       {"alarm": 1}, {"fan_rpm": 0}, {"fan_rpm": float("inf")}):
+                       {"alarm": 1}, {"fan_rpm": 0}, {"fan_rpm": float("inf")},
+                       {"fan_fault_reasons": ["identity"]}):
             report = fixture()
             report["results"][0]["fan_samples"][0].update(change)
             result = audit(report, "seed-hash")

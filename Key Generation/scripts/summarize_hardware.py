@@ -59,6 +59,7 @@ def audit(report, seed_hash):
         for sample in samples:
             healthy = (sample.get("fan_fail_safe") is False and
                        sample.get("i2c_ready") is True and sample.get("alarm") == 0 and
+                       not sample.get("fan_fault_reasons", []) and
                        type(sample.get("fan_rpm")) in (int, float) and
                        math.isfinite(sample["fan_rpm"]) and sample["fan_rpm"] > 0)
             if not healthy:

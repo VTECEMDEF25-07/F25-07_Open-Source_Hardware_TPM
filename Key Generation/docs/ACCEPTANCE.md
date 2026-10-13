@@ -12,12 +12,12 @@ Every entry remains pending until reproducible evidence is recorded.
 | SYS-07 | Prime retention and n/e/p/q transfer | Exact129-word comparison PASS both generic directed RSA controllers. |
 | SYS-08 | Reset every phase, scrub and recovery | Pair12 busy phases, math scrub, CPU and integrated reset tests PASS; exhaustive integration phases and hardware pending. |
 | SYS-09/10 | Isolated32bit stream, failure and replay | SHA20seeds×4blocks/stalls/replay PASS; source failure/captured operation tests PASS. Full search replay with stalls pending. |
-| SYS-11 | Actual Altera models versus synthesizable generic | Resources2637 products/2750 reads/596 collisions/1300 stalls PASS; pair8 vectors and math48 full-width cases PASS both backends. Final full-core vendor gate pending. |
+| SYS-11 | Actual Altera models versus synthesizable generic | Resources2637 products/2750 reads/596 collisions/1300 stalls PASS; pair8 vectors and math48 full-width cases PASS both backends. Final dedicated full-core vendor PASS; soft-core full vendor pending. |
 | SYS-12/13 | Verilog2001 source, separate SV tests, naming review | Project sources compiled in Verilog mode; third-party source exceptions documented. Final audit pending. |
 | SYS-14 | Focused documented MRs, Aaron merges | In progress |
 | Fit | Routed50MHz; reviewed unconstrained paths;70% resource target | Arithmetic-only routed PASS:12,266ALMs,8M20Ks,+12.503ns setup,+0.095ns hold. Original full design85%/92% estimates prompted pair optimization; optimized pair alone passes route at5,748ALMs/1M20K. Final whole-board fits running. |
-| Speed | Each build median<=30s over fixed20seeds | Pending |
-| Board | SPI3rates, reset/fault/replay,30min soak per build | Pending |
+| Speed | Each build median<=30s over fixed20seeds | Initial soft-core/Altera hardware median26.40469044s PASS; all four corrected images pending. |
+| Board | SPI3rates, reset/fault/replay,30min soak per build | Initial image SPI/AES/RSA/stall replay/reset recovery PASS. Cooling correction passes separate diagnostic; corrected full images and soaks pending. |
 
 Measure accepted request through post-scrub terminal success with unstalled
 source/receiver. Report SPI end-to-end time separately. Record every sample,
@@ -127,5 +127,18 @@ checking: median 26.40469044 seconds, maximum 101.45542472 seconds, with every
 host operation below 180 seconds. The separate corpus auditor correctly rejects
 overall acceptance because all 757 cooling samples report fallback/invalid
 health. Report SHA256: `1b76d8f935c792d6e8c1d1dd573d1e63048ba2ff6fc843f287bb48c85e783bef`.
-Replay, reset, soak and other configurations remain pending. A corrected board image
+Source-stall replay and reset recovery subsequently pass on that original image.
+Soak and other configurations remain pending. A corrected board image
 must repeat acceptance. No thermal-health or final-completion claim is made.
+
+The corrected FAN1 diagnostic independently passes 30 physical cooling samples;
+see `../demo/de25_revd/FAN_MONITOR.md`. This contains no key generator. Four full
+images containing that correction are being built and remain unaccepted.
+
+Final dedicated full RSA with genuine Altera models passes the same directed
+fixture and stalls as its generic counterpart: 384 source words, 129 checked
+result words and exactly 136,232,057 cycles. Ownership, cleanup and reuse checks
+pass. The final transcript has zero NUL bytes and no errors (two documented
+model warnings); source/model/fixture hashes are unchanged. Evidence is under
+`build/full_altera_rtl_directed-reset_audited_capture_v1/`. This is a directed
+functional comparison, not a random-search performance measurement.
