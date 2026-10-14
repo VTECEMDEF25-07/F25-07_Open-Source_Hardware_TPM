@@ -5,15 +5,15 @@
 
 module symmetric_demo_top
 (
-    input         CLOCK_50,
-    input  [1:0]  KEY,
-    input  [9:0]  SW,
-    output [9:0]  LEDR,
-    output [6:0]  HEX4,
-    output [6:0]  HEX3,
-    output [6:0]  HEX2,
-    output [6:0]  HEX1,
-    output [6:0]  HEX0
+    input wire        CLOCK_50,
+    input wire [1:0]  KEY,
+    input wire [9:0]  SW,
+    output wire [9:0] LEDR,
+    output wire [6:0] HEX4,
+    output wire [6:0] HEX3,
+    output wire [6:0] HEX2,
+    output wire [6:0] HEX1,
+    output wire [6:0] HEX0
 );
 
     localparam TPM_CC_ENCRYPT_DECRYPT_2 = 16'h0193;
@@ -84,10 +84,10 @@ module symmetric_demo_top
             end
 
             2'b01: begin
-                // Scenario 1: Session XOR valid request
+                // Scenario 1: Session CFB: KDFa -> fake HMAC -> AES (practice values).
                 session_protect_r = 1'b1;
-                session_use_xor_r = 1'b1;
-                mode_r            = SYM_MODE_NULL;
+                session_use_xor_r = 1'b0;
+                mode_r            = SYM_MODE_CFB;
                 session_encrypt_r = ~SW[2];
                 session_decrypt_r = SW[2];
             end
@@ -105,7 +105,7 @@ module symmetric_demo_top
                 // Scenario 3: Primitive invalid size (expect TPM_RC_SIZE)
                 session_protect_r = 1'b0;
                 mode_r            = SYM_MODE_CFB;
-                data_bytes_r      = 5'd0;
+                data_bytes_r      = 5'd17;
             end
         endcase
     end
@@ -139,6 +139,11 @@ module symmetric_demo_top
         .iv_i(iv_r),
         .data_in_i(data_in_r),
         .session_mask_i(session_mask_r),
+
+        // Fixed demo values stand in for the execution engine's session inputs.
+        .session_value_i(256'h000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F),
+        .nonce_newer_i(256'h202122232425262728292A2B2C2D2E2F303132333435363738393A3B3C3D3E3F),
+        .nonce_older_i(256'h404142434445464748494A4B4C4D4E4F505152535455565758595A5B5C5D5E5F),
 
         .wait_o(wait_w),
         .done_o(done_w),
@@ -189,7 +194,7 @@ module symmetric_demo_top
 
     hex7seg H0(.hex_digit_i(rc_latched_r[3:0]),   .hex_display_o(HEX0));
     hex7seg H1(.hex_digit_i(rc_latched_r[7:4]),   .hex_display_o(HEX1));
-    hex7seg H2(.hex_digit_i({1'b0,rc_latched_r[11:8]}), .hex_display_o(HEX2));
+    hex7seg H2(.hex_digit_i(rc_latched_r[11:8]), .hex_display_o(HEX2));
     hex7seg H3(.hex_digit_i({2'b00,SW[1:0]}), .hex_display_o(HEX3));
     hex7seg H4(.hex_digit_i(data_latched_r[3:0]), .hex_display_o(HEX4));
     
@@ -197,7 +202,7 @@ endmodule
 
 module hex7seg
 (
-    input  [3:0] hex_digit_i,
+    input wire [3:0] hex_digit_i,
     output reg [6:0] hex_display_o
 );
 

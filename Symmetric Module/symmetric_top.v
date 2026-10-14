@@ -3,8 +3,9 @@
 // Author:       Makeda Solomon
 // Date Created: 14/04/26
 // Version:      1
-// Description:  The symmetric module design is based off the Trusted Computing Group's
-//			     Trusted Platform Module 2.0 Specification Revision 1.59.
+// Description:  Single-block AES-256 CFB with a session key/IV preparation step.
+// Session CFB flow: supplied session value/nonces -> KDFa -> FAKE HMAC -> AES.
+// The HMAC placeholder makes this a practice integration, not a complete TPM.
 ///////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -16,21 +17,27 @@ module symm_top
 
     // Command context from execution engine
     input wire [15:0] command_code_i, // TPM command sent from the Execution Engine
-    input wire       session_protect_i, // Status signal that indicates whether to take the session-based path or the primitive path
+    input wire       snession_protect_i, // Status signal that indicates whether to take the session-based path or the primitive path
     input wire       session_decrypt_i, // Status signal to enable the module to decrypt incoming command parameters
     input wire       session_encrypt_i, // Status signal to enable the module to encrypt incoming command parameters
     input wire       session_use_xor_i,  // Select XOR Obfuscation within session protection instead of block ciphers
 
     // Input validity and cryptography context
-    input wire       key_valid_i, // Status signal to indicate a valid symmetric key
+    input wire       key_valid_i, // Caller confirms the primitive key OR session value is valid.
     input wire       session_valid_i, // Status signal to indicate a valid session creation for session-based protection
     input wire [2:0] mode_i, // Cipher-block mode selected for the primitive path
     input wire       decrypt_i, // Decrypt status signal 
     input wire [4:0] data_bytes_i, // Valid byte count
-    input wire [255:0] key_i, // Primitive key OR session-derived key
-    input wire [127:0] iv_i, // Initialization vector used in both paths
+    input wire [255:0] key_i, // Supplied AES key for the primitive path.
+    input wire [127:0] iv_i, // Primitive IV; also passed through unchanged on the XOR path.
     input wire [127:0] data_in_i, // Data to be encrypted or decrypted from Execution Engine
     input wire [127:0] session_mask_i,   // KDFa calcualted mask used in the session-based path
+
+    // Session CFB inputs from the caller (eventually the execution engine).
+    // These are supplied values: this module does not create sessions or nonces.
+    input wire [255:0] session_value_i, // Secret passed to the HMAC service.
+    input wire [255:0] nonce_newer_i, // Caller supplies the correctly ordered newer nonce.
+    input wire [255:0] nonce_older_i, // Caller supplies the correctly ordered older nonce.
 
     // Outputs back to execution engine
     output reg            wait_o, // Signal indicating the AES cipher is still computing cipher
@@ -65,15 +72,16 @@ module symm_top
     localparam TPM_RC_FAILURE      = 12'h101;
 
     // FSM states
-    localparam ST_IDLE    = 3'd0;
-    localparam ST_EXECUTE = 3'd1;
-    localparam ST_KEY_BUSY = 3'd2;
-    localparam ST_KEY_READY = 3'd3;
-    localparam ST_BLOCK_BUSY = 3'd4;
-    localparam ST_BLOCK_DONE = 3'd5;
-    localparam ST_DONE = 3'd6;
-    localparam ST_RELEASE = 3'd7;
-    reg [2:0] state_r;
+    localparam ST_IDLE    = 4'd0;
+    localparam ST_EXECUTE = 4'd1;
+    localparam ST_KEY_BUSY = 4'd2;
+    localparam ST_KEY_READY = 4'd3;
+    localparam ST_BLOCK_BUSY = 4'd4;
+    localparam ST_BLOCK_DONE = 4'd5;
+    localparam ST_DONE = 4'd6;
+    localparam ST_RELEASE = 4'd7;
+    localparam ST_KDFA_WAIT = 4'd8; // Wait for the session AES key and IV before AES starts.
+    reg [3:0] state_r;
 
 
     // Combinational decode/validation ("management unit" behavior)
@@ -98,6 +106,48 @@ module symm_top
     wire [127:0] cfb_feedback_w;
     assign cfb_result_w = (data_r ^ cipher_stream_block_w) & data_mask_r;
     assign cfb_feedback_w = (decrypt_r ? data_r : cfb_result_w) & data_mask_r;
+
+    // Top <-> KDFa: request a derivation, then receive its key/IV or error.
+    wire kdfa_req_valid_w, kdfa_req_ready_w;
+    wire kdfa_rsp_valid_w, kdfa_rsp_ready_w, kdfa_error_w;
+    wire [255:0] kdfa_key_w;
+    wire [127:0] kdfa_iv_w;
+
+    // KDFa <-> HMAC: send the secret/message and receive one 32-byte digest.
+    wire hmac_req_valid_w, hmac_req_ready_w;
+    wire hmac_rsp_valid_w, hmac_rsp_ready_w, hmac_error_w;
+    wire [255:0] hmac_key_w, hmac_digest_w;
+    wire [607:0] hmac_message_w;
+
+    // KDFa captures these inputs on the SAME edge that this top captures the data.
+    // Primitive requests and externally supplied XOR masks do not use this KDFa.
+    assign kdfa_req_valid_w = reset_n_i && (state_r == ST_IDLE) && start_i &&
+                              request_valid_r && session_protect_i && !session_use_xor_i;
+    assign kdfa_rsp_ready_w = reset_n_i && (state_r == ST_KDFA_WAIT);
+
+    kdfa_control KDFA_CONTROLLER (
+        .clk_i(clock_i), .reset_n_i(reset_n_i),
+        .req_valid_i(kdfa_req_valid_w), .req_ready_o(kdfa_req_ready_w),
+        .rsp_valid_o(kdfa_rsp_valid_w), .rsp_ready_i(kdfa_rsp_ready_w),
+        .error_o(kdfa_error_w),
+        .session_value_i(session_value_i), .label_i(32'h43464200), // "CFB" + zero.
+        .context_u_i(nonce_newer_i), .context_v_i(nonce_older_i),
+        .aes_key_o(kdfa_key_w), .aes_iv_o(kdfa_iv_w),
+        .hmac_req_valid_o(hmac_req_valid_w), .hmac_req_ready_i(hmac_req_ready_w),
+        .hmac_key_o(hmac_key_w), .hmac_message_o(hmac_message_w),
+        .hmac_rsp_valid_i(hmac_rsp_valid_w), .hmac_rsp_ready_o(hmac_rsp_ready_w),
+        .hmac_digest_i(hmac_digest_w), .hmac_error_i(hmac_error_w)
+    );
+
+    // PRACTICE ONLY: replace this instance with the teammate's real HMAC service.
+    // The fake service only copies bytes; AES below still performs real AES.
+    hmac_sha256_placeholder HMAC_PLACEHOLDER (
+        .clk_i(clock_i), .reset_n_i(reset_n_i),
+        .req_valid_i(hmac_req_valid_w), .req_ready_o(hmac_req_ready_w),
+        .key_i(hmac_key_w), .message_i(hmac_message_w),
+        .rsp_valid_o(hmac_rsp_valid_w), .rsp_ready_i(hmac_rsp_ready_w),
+        .digest_o(hmac_digest_w), .error_o(hmac_error_w)
+    );
 
     always @(*) begin
         if (data_bytes_i == 5'd0)
@@ -203,9 +253,12 @@ module symm_top
 
                         if (!request_valid_r)
                             state_r <= ST_DONE;
+                        else if (session_protect_i && !session_use_xor_i && !kdfa_req_ready_w) begin
+                            // A dedicated, acknowledged KDFa should be idle for each new job.
+                            tpm_rc_o <= TPM_RC_FAILURE;
+                            state_r <= ST_DONE;
+                        end
                         else begin
-                            aes_key_r        <= key_i;
-                            aes_feedback_r   <= iv_i;
                             data_r           <= data_in_i;
                             data_mask_r      <= byte_mask_w;
                             xor_mask_r       <= session_mask_i;
@@ -213,14 +266,37 @@ module symm_top
                             decrypt_r        <= session_protect_i ? session_decrypt_i : decrypt_i;
                             primitive_path_o <= !session_protect_i;
                             session_path_o   <= session_protect_i;
-                            state_r          <= ST_EXECUTE;
+                            if (session_protect_i && !session_use_xor_i) begin
+                                // KDFa accepted the supplied session inputs on this edge.
+                                aes_key_r      <= 0;
+                                aes_feedback_r <= 0;
+                                state_r        <= ST_KDFA_WAIT;
+                            end else begin
+                                aes_key_r      <= key_i;
+                                aes_feedback_r <= iv_i;
+                                state_r        <= ST_EXECUTE;
+                            end
+                        end
+                    end
+                end
+
+                ST_KDFA_WAIT: begin
+                    if (kdfa_rsp_valid_w) begin
+                        if (kdfa_error_w) begin
+                            tpm_rc_o <= TPM_RC_FAILURE;
+                            state_r <= ST_DONE; // Failed derivation must never start AES.
+                        end else begin
+                            // Capture before KDFa clears its outputs on this acknowledgement.
+                            aes_key_r <= kdfa_key_w;
+                            aes_feedback_r <= kdfa_iv_w;
+                            state_r <= ST_EXECUTE;
                         end
                     end
                 end
 
                 ST_EXECUTE: begin
                     if (data_mask_r == 128'b0) begin
-                        // Empty operation: preserve IV and do not start AES.
+                        // Empty operation: return the supplied/derived IV without starting AES.
                         data_out_o <= 128'b0;
                         iv_out_o   <= aes_feedback_r;
                         state_r    <= ST_DONE;
