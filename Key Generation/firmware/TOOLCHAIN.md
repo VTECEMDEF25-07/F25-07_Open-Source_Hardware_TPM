@@ -1,3 +1,11 @@
+<!--
+Filename: TOOLCHAIN.md
+Authors: Project contributors; see Git history.
+Date: 2026-10-13
+General Description: Documents Firmware toolchain.
+AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+-->
+
 # Firmware toolchain
 
 Pinned portable compiler: xPack GNU RISC-V Embedded GCC 15.2.0-1 for Windows x64.

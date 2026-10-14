@@ -1,3 +1,9 @@
+# Filename: softcore_boot.S
+# Authors: Project contributors; see Git history.
+# Date: 2026-10-13
+# General Description: Provides the deterministic RV32I feasibility and memory-interface boot self-test.
+# AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 # RV32I feasibility program. Opcode 0 is a TEST-ONLY accelerator self-test.
 # No stack, interrupts, secret loads, runtime library, or RSA procedure yet.
 lui x1, 0x40000

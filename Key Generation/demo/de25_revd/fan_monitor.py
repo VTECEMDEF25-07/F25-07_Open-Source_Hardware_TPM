@@ -1,3 +1,9 @@
+# Filename: fan_monitor.py
+# Authors: Project contributors; see Git history.
+# Date: 2026-10-13
+# General Description: Read-only cooling diagnostics for explicitly fingerprinted test images.
+# AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 """Read-only cooling diagnostics for explicitly fingerprinted test images."""
 import argparse
 from datetime import datetime, timezone

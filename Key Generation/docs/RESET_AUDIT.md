@@ -1,3 +1,11 @@
+<!--
+Filename: RESET_AUDIT.md
+Authors: Project contributors; see Git history.
+Date: 2026-10-13
+General Description: Documents Reset/clear/clock-enable audit.
+AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+-->
+
 # Reset/clear/clock-enable audit
 
 Scope: every contributed Verilog module under Key Generation/rtl, IP and demo, excluding imported vendor fan/configuration source and third_party PicoRV32. Exact source inventory/hashes are in class-workspace AI/tmp/keygen-reset-constraint-audit/contributed_rtl_inventory.json. PicoRV32 reset sensitivity was additionally inspected: its CPU reset is synchronous, sampled on posedge clk.

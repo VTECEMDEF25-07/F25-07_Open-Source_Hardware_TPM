@@ -1,3 +1,9 @@
+# Filename: simulate_small_altera.py
+# Authors: Project contributors; see Git history.
+# Date: 2026-10-13
+# General Description: Genuine Altera small-domain math regression; coordinate the single Questa license.
+# AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 """Genuine Altera small-domain math regression; coordinate the single Questa license."""
 import argparse,subprocess,json,hashlib,sys,time
 from pathlib import Path

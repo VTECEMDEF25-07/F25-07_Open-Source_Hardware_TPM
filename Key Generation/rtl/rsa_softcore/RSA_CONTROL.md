@@ -1,3 +1,11 @@
+<!--
+Filename: RSA_CONTROL.md
+Authors: Project contributors; see Git history.
+Date: 2026-10-13
+General Description: Documents RSA firmware controller review.
+AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+-->
+
 # RSA firmware controller review
 
 `keygen_rsa_softcore.v` now runs real compiled RV32I control firmware, `firmware/rsa_control.c`. It sequences the shared RSA service/arithmetic contracts; those external engines supply the cryptographic computation. The scripted-service test proves sequencing and recovery, not complete RSA generation.

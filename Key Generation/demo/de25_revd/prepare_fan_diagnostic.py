@@ -1,3 +1,9 @@
+# Filename: prepare_fan_diagnostic.py
+# Authors: Project contributors; see Git history.
+# Date: 2026-10-13
+# General Description: Prepare a fan/SPI-only diagnostic, never a key-generation acceptance image.
+# AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 """Prepare a fan/SPI-only diagnostic, never a key-generation acceptance image."""
 import argparse, hashlib, json
 from pathlib import Path

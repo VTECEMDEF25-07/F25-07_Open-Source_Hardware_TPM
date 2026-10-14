@@ -1,3 +1,9 @@
+# Filename: build_boot.py
+# Authors: Project contributors; see Git history.
+# Date: 2026-10-13
+# General Description: Deterministic minimal RV32I assembler for feasibility boot, not a C toolchain.
+# AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 """Deterministic minimal RV32I assembler for feasibility boot, not a C toolchain."""
 import argparse, hashlib, json, re
 from pathlib import Path

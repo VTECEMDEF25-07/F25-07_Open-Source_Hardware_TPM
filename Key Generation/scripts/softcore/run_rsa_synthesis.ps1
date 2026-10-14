@@ -1,3 +1,9 @@
+# Filename: run_rsa_synthesis.ps1
+# Authors: Project contributors; see Git history.
+# Date: 2026-10-13
+# General Description: Provides run rsa synthesis support for the key-generation implementation and verification.
+# AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 param([ValidateSet("Generic","Altera")][string]$Backend="Generic",[Parameter(Mandatory=$true)][string]$Toolchain,[string]$QuartusBin = 'C:/altera_pro/26.1/quartus/bin64', [string]$Python = 'C:/Python314/python.exe')
 $ErrorActionPreference='Stop'
 $taskRoot=(Resolve-Path "$PSScriptRoot/../..").Path

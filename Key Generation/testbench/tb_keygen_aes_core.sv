@@ -1,3 +1,10 @@
+// Filename: tb_keygen_aes_core.sv
+// Modules: tb_keygen_aes_core
+// Authors: Project contributors; see Git history.
+// Date: 2026-10-13
+// General Description: Checks keygen aes core behavior and reports failures.
+// AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 `timescale 1ns/1ps
 module tb_keygen_aes_core;
     reg clock_i=0; always #10 clock_i=~clock_i;

@@ -1,3 +1,9 @@
+# Filename: compile_build.py
+# Authors: Project contributors; see Git history.
+# Date: 2026-10-13
+# General Description: Compile a prepared snapshot once, after verifying its recorded evidence.
+# AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 """Compile a prepared snapshot once, after verifying its recorded evidence."""
 import argparse
 import hashlib

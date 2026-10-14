@@ -1,3 +1,11 @@
+<!--
+Filename: README.md
+Authors: Project contributors; see Git history.
+Date: 2026-10-14
+General Description: Documents DE1-SoC Phase 1 project.
+AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+-->
+
 # DE1-SoC Phase 1 project
 
 Open `de1_soc_top.qpf` in Quartus Prime Lite or Standard with Cyclone V device

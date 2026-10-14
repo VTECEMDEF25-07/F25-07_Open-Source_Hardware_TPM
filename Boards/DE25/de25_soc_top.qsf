@@ -1,3 +1,9 @@
+# Filename: de25_soc_top.qsf
+# Authors: Project contributors; see Git history.
+# Date: 2026-10-14
+# General Description: Connects the original Phase 1 TPM to DE25 pins, related clocks, reset and independent cooling.
+# AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 set_global_assignment -name FAMILY "Agilex 5"
 set_global_assignment -name DEVICE A5ED013BB32AE4SCS
 set_global_assignment -name DEVICE_FILTER_PACKAGE VPBGA

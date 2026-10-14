@@ -1,3 +1,9 @@
+# Filename: run_verilator.ps1
+# Authors: Project contributors; see Git history.
+# Date: 2026-10-13
+# General Description: Provides run verilator support for the key-generation implementation and verification.
+# AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 param([Parameter(Mandatory=$true)][string]$Toolchain,[ValidateSet('Firmware','Memory')][string]$Test='Firmware',[string]$Python='C:/Python314/python.exe',[string]$Distro='Ubuntu-24.04',[switch]$Exhaustion,[switch]$BlockingStatus)
 $ErrorActionPreference='Stop'
 $taskRoot=(Resolve-Path "$PSScriptRoot/../..").Path

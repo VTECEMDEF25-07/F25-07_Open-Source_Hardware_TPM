@@ -1,3 +1,9 @@
+# Filename: de1_soc_top.qsf
+# Authors: Project contributors; see Git history.
+# Date: 2026-10-14
+# General Description: Defines the board FPGA, pins, source files and build settings.
+# AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 # DE1-SoC pins: Terasic User Manual, tables 3-5, 3-7, 3-8 and 3-11.
 set_global_assignment -name FAMILY "Cyclone V"
 set_global_assignment -name DEVICE 5CSEMA5F31C6

@@ -1,3 +1,11 @@
+<!--
+Filename: PAIR_CHECK.md
+Authors: Project contributors; see Git history.
+Date: 2026-10-13
+General Description: Documents Shared RSA pair arithmetic.
+AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+-->
+
 # Shared RSA pair arithmetic
 
 `keygen_pair_check` captures two already-tested 1024-bit prime candidates on `start_valid_i && start_ready_o`, validates their RSA relationships, and holds a public 2048-bit modulus/status until accepted. Primality remains the caller's responsibility. Ports are unchanged by the RAM-based implementation.
@@ -14,13 +22,13 @@ The pair service uses one 512x32 RAM (2 KiB; one M20K) and the shared generic/Al
 
 | Word addresses | Contents |
 | --- | --- |
-| 0–31, 32–63 | Captured p, q |
-| 64–95, 96–127 | Binary GCD working operands |
-| 128–191 | Public product n |
-| 192–255 | First phi, then lambda |
-| 256–319 | Restoring-division remainder |
-| 320–384 | Numerator, then canonical d with an overflow word |
-| 385–511 | Reserved; still scrubbed |
+| 0â€“31, 32â€“63 | Captured p, q |
+| 64â€“95, 96â€“127 | Binary GCD working operands |
+| 128â€“191 | Public product n |
+| 192â€“255 | First phi, then lambda |
+| 256â€“319 | Restoring-division remainder |
+| 320â€“384 | Numerator, then canonical d with an overflow word |
+| 385â€“511 | Reserved; still scrubbed |
 
 Inputs are captured atomically in the 2048-bit staging register before serial RAM writes, so callers may change p/q immediately after the handshake. Staging is then cleared and reused for final n. The internal limb ALU reads private RAM synchronously and performs compare, subtraction and shifts over 32-bit words. No private operand is available through CPU control descriptors.
 

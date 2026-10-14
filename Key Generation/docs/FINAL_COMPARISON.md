@@ -1,3 +1,11 @@
+<!--
+Filename: FINAL_COMPARISON.md
+Authors: Project contributors; see Git history.
+Date: 2026-10-13
+General Description: Documents Four-build comparison.
+AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+-->
+
 # Four-build comparison
 
 **In progress: no final default is recommended yet.** Aaron waived the

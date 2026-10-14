@@ -1,3 +1,9 @@
+# Filename: simulate_test_source.ps1
+# Authors: Project contributors; see Git history.
+# Date: 2026-10-13
+# General Description: Provides simulate test source support for the key-generation implementation and verification.
+# AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 param(
     [Parameter(Mandatory=$true)][string] $BuildDirectory,
     [string] $QuestaBin = 'C:/intelFPGA_lite/24.1std/questa_fse/win64',

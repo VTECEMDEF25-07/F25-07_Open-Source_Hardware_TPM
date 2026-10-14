@@ -1,3 +1,9 @@
+# Filename: de1_soc_top.sdc
+# Authors: Project contributors; see Git history.
+# Date: 2026-10-14
+# General Description: Defines board clocks and timing constraints, with remaining limitations documented.
+# AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 # Original Phase 1 clock pair: direct board 50 MHz and PLL-generated 100 MHz.
 create_clock -name board_clock -period 20.000 [get_ports CLOCK_50]
 derive_pll_clocks

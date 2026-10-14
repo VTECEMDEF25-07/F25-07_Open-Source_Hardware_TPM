@@ -1,3 +1,12 @@
+<!--
+Filename: README.md
+Authors: Original upstream authors (preserved below); project contributors for local changes.
+Date: 2026-10-13
+General Description: Documents Pinned PicoRV32 source.
+AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+AI disclosure applies only to project-local modifications.
+-->
+
 # Pinned PicoRV32 source
 
 Upstream: https://github.com/YosysHQ/picorv32

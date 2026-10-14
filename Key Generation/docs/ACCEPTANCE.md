@@ -1,3 +1,11 @@
+<!--
+Filename: ACCEPTANCE.md
+Authors: Project contributors; see Git history.
+Date: 2026-10-13
+General Description: Documents Implementation and evidence ledger.
+AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+-->
+
 # Implementation and evidence ledger
 
 Target: RTL/generic, RTL/Altera, softcore/generic, softcore/Altera. Xilinx deferred.

@@ -1,3 +1,11 @@
+<!--
+Filename: COMPLETION_MATRIX.md
+Authors: Project contributors; see Git history.
+Date: 2026-10-13
+General Description: Documents Full-plan completion matrix.
+AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+-->
+
 # Full-plan completion matrix
 
 **Review snapshot: October 13, 2026. Overall status: INCOMPLETE.**

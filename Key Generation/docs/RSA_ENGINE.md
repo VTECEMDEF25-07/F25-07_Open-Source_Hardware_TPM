@@ -1,3 +1,11 @@
+<!--
+Filename: RSA_ENGINE.md
+Authors: Project contributors; see Git history.
+Date: 2026-10-13
+General Description: Documents RSA generation engine.
+AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+-->
+
 # RSA generation engine
 
 The dedicated controller and RV32I firmware issue the same descriptors to one

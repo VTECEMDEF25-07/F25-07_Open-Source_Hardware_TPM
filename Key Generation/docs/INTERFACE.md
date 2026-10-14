@@ -1,3 +1,11 @@
+<!--
+Filename: INTERFACE.md
+Authors: Project contributors; see Git history.
+Date: 2026-10-13
+General Description: Documents Portable keygen interface v1.
+AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+-->
+
 # Portable keygen interface v1
 
 Implements the approved October 13 plan. Direction is the last suffix

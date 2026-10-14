@@ -1,3 +1,10 @@
+// Filename: keygen_rsa_services.v
+// Modules: keygen_rsa_services
+// Authors: Project contributors; see Git history.
+// Date: 2026-10-13
+// General Description: Provides RSA candidate generation, witness selection and probable-prime testing services.
+// AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 // Fixed-profile RSA services; CPU receives predicates, never private operands.
 // Scratch addresses are 32-bit words. All operand accesses use the private port.
 module keygen_rsa_services (

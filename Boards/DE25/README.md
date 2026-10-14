@@ -1,3 +1,11 @@
+<!--
+Filename: README.md
+Authors: Project contributors; see Git history.
+Date: 2026-10-14
+General Description: Documents Minimal DE25 port of Phase 1.
+AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+-->
+
 # Minimal DE25 port of Phase 1
 
 Open `de25_soc_top.qpf` in Quartus Pro 26.1. The top is the repository-root

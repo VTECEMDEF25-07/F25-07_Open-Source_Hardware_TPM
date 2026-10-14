@@ -1,3 +1,9 @@
+# Filename: key_checker.py
+# Authors: Project contributors; see Git history.
+# Date: 2026-10-13
+# General Description: Independent mathematical checker; does not import the generation procedure.
+# AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 """Independent mathematical checker; does not import the generation procedure."""
 import math
 import secrets

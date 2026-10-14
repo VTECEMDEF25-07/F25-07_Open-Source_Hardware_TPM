@@ -1,3 +1,10 @@
+// Filename: tb_softcore_boot.sv
+// Modules: tb_softcore_boot
+// Authors: Project contributors; see Git history.
+// Date: 2026-10-13
+// General Description: Checks softcore boot behavior and reports failures.
+// AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 `timescale 1ns/1ps
 module tb_softcore_boot;
     reg clock=0; always #10 clock=~clock;

@@ -1,3 +1,9 @@
+# Filename: de25_soc_top.sdc
+# Authors: Project contributors; see Git history.
+# Date: 2026-10-14
+# General Description: Connects the original Phase 1 TPM to DE25 pins, related clocks, reset and independent cooling.
+# AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 # Minimal DE25 port: original spi_slave is preserved, with related 50/100 MHz.
 # This is NOT complete signoff for the inherited asynchronous serializer.
 create_clock -name board_clock -period 20.000 [get_ports clock_i]

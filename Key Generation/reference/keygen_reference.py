@@ -1,3 +1,9 @@
+# Filename: keygen_reference.py
+# Authors: Project contributors; see Git history.
+# Date: 2026-10-13
+# General Description: Executable RSA-2048 procedure oracle. Predictable fixtures only, never production RNG.
+# AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 """Executable RSA-2048 procedure oracle. Predictable fixtures only, never production RNG."""
 from __future__ import annotations
 

@@ -1,3 +1,10 @@
+// Filename: PLL_100.v
+// Modules: PLL_100
+// Authors: Project contributors; see Git history.
+// Date: 2026-10-14
+// General Description: Supplies the original DE1-SoC top with a 100 MHz clock from its 50 MHz reference.
+// AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 // Supplies the clock module referenced by the original Phase 1 board top.
 // Cyclone V ALTERA_PLL macro: 50 MHz reference, one 100 MHz output.
 module PLL_100 (

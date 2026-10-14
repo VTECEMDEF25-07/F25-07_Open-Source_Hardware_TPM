@@ -1,3 +1,9 @@
+# Filename: test_reference.py
+# Authors: Project contributors; see Git history.
+# Date: 2026-10-13
+# General Description: Checks reference behavior and reports failures.
+# AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 """Run: python -m unittest discover -s "Key Generation/reference" -v"""
 import hashlib
 import json

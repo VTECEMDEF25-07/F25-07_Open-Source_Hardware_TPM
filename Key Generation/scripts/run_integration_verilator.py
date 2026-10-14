@@ -1,3 +1,9 @@
+# Filename: run_integration_verilator.py
+# Authors: Project contributors; see Git history.
+# Date: 2026-10-13
+# General Description: Bounded Linux/WSL integration tests, with all products in ignored build/.
+# AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 """Bounded Linux/WSL integration tests, with all products in ignored build/."""
 import argparse
 from pathlib import Path

@@ -1,3 +1,9 @@
+# Filename: generate_vectors.py
+# Authors: Project contributors; see Git history.
+# Date: 2026-10-13
+# General Description: Generate predictable SHA-256 fixtures with Python's independent hashlib implementation.
+# AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 """Generate predictable SHA-256 fixtures with Python's independent hashlib implementation."""
 import argparse
 import hashlib

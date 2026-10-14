@@ -1,3 +1,10 @@
+// Filename: tb_keygen_fan.sv
+// Modules: tb_keygen_fan
+// Authors: Project contributors; see Git history.
+// Date: 2026-10-13
+// General Description: Checks keygen fan behavior and reports failures.
+// AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 `timescale 1ns/1ps
 module tb_keygen_fan;
     reg clock_i=0;always #5 clock_i=~clock_i;

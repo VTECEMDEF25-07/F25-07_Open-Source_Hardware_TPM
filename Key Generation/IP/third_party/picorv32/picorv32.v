@@ -1,3 +1,11 @@
+// Filename: picorv32.v
+// Modules: picorv32, picorv32_regs, picorv32_pcpi_mul, picorv32_pcpi_fast_mul, picorv32_pcpi_div, picorv32_axi, picorv32_axi_adapter, picorv32_wb
+// Authors: Original upstream authors (preserved below); project contributors for local changes.
+// Date: 2026-10-13
+// General Description: Provides the pinned upstream RV32I CPU with project-local reset and private-state clearing patches.
+// AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+// AI disclosure applies only to project-local modifications.
+
 /*
  *  PicoRV32 -- A Small RISC-V (RV32I) Processor Core
  *

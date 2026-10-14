@@ -1,3 +1,9 @@
+# Filename: verify_corpus.py
+# Authors: Project contributors; see Git history.
+# Date: 2026-10-13
+# General Description: Regenerate and independently check the frozen twenty-key public test corpus.
+# AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 """Regenerate and independently check the frozen twenty-key public test corpus."""
 import json
 from pathlib import Path

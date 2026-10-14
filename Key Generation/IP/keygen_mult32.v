@@ -1,3 +1,10 @@
+// Filename: keygen_mult32.v
+// Modules: keygen_mult32
+// Authors: Project contributors; see Git history.
+// Date: 2026-10-13
+// General Description: Selects the generic or Altera 32-bit multiplier resource with a common interface.
+// AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 module keygen_mult32 (
     input clock_i,
     input reset_n_i,

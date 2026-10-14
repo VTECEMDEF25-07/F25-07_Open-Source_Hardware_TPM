@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# Filename: test_pair_verilator.sh
+# Authors: Project contributors; see Git history.
+# Date: 2026-10-13
+# General Description: Checks pair verilator behavior and reports failures.
+# AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 set -euo pipefail
 if [[ $# -ne 2 ]]; then echo "Usage: $0 ABSOLUTE_BUILD_DIRECTORY ABSOLUTE_CORPUS_JSON" >&2;exit 2;fi
 source_root=$(cd "$(dirname "$0")/.." && pwd)

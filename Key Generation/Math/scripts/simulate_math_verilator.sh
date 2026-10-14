@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# Filename: simulate_math_verilator.sh
+# Authors: Project contributors; see Git history.
+# Date: 2026-10-13
+# General Description: Provides simulate math verilator support for the key-generation implementation and verification.
+# AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 set -euo pipefail
 if [[ $# -ne 1 ]]; then echo "Usage: $0 ABSOLUTE_SCRATCH_DIRECTORY" >&2; exit 2; fi
 source_root=$(cd "$(dirname "$0")/../.." && pwd)

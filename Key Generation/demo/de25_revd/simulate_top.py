@@ -1,3 +1,9 @@
+# Filename: simulate_top.py
+# Authors: Project contributors; see Git history.
+# Date: 2026-10-13
+# General Description: Isolated board/reset-boundary regression; run under Linux/WSL.
+# AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 """Isolated board/reset-boundary regression; run under Linux/WSL."""
 import argparse
 import hashlib

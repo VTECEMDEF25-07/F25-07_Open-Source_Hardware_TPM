@@ -1,3 +1,9 @@
+# Filename: run_rsa_sim.ps1
+# Authors: Project contributors; see Git history.
+# Date: 2026-10-13
+# General Description: Provides run rsa sim support for the key-generation implementation and verification.
+# AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 param([ValidateSet("Generic","Altera")][string]$Backend="Generic",[Parameter(Mandatory=$true)][string]$Toolchain,[string]$QuestaBin='C:/intelFPGA_lite/24.1std/questa_fse/win64',[string]$Python='C:/Python314/python.exe',[switch]$BlockingStatus,[int]$StallCycles=3000,[switch]$Exhaustion)
 $ErrorActionPreference='Stop'
 $taskRoot=(Resolve-Path "$PSScriptRoot/../..").Path

@@ -1,3 +1,11 @@
+// Filename: CLOCKMEM.v
+// Modules: CLOCKMEM
+// Authors: Original upstream authors (preserved below); project contributors for local changes.
+// Date: 2026-10-13
+// General Description: Divides the board clock for management timing, including project-local parameterization.
+// AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+// AI disclosure applies only to project-local modifications.
+
 
 
 module CLOCKMEM ( 

@@ -1,3 +1,11 @@
+<!--
+Filename: RSA_ALGORITHM.md
+Authors: Project contributors; see Git history.
+Date: 2026-10-13
+General Description: Documents RSA-2048 generation procedure, RSA-2048-v1-trial251.
+AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+-->
+
 # RSA-2048 generation procedure, RSA-2048-v1-trial251
 
 This is the executable algorithm contract for the dedicated controller and the soft-core firmware. The Python oracle is test infrastructure, not synthesizable HDL or a production random generator. Both controllers consume the same accepted 32-bit words in this order and must generate identical keys even when handshake timing differs.

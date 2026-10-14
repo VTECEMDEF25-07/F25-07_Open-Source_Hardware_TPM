@@ -1,3 +1,9 @@
+# Filename: simulate_real.py
+# Authors: Project contributors; see Git history.
+# Date: 2026-10-13
+# General Description: Real-core SPI regression under Linux/WSL; no behavioral keygen replacement.
+# AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 """Real-core SPI regression under Linux/WSL; no behavioral keygen replacement."""
 import argparse
 import hashlib

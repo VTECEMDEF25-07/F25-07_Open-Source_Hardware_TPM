@@ -1,3 +1,10 @@
+// Filename: keygen_ram32_generic.v
+// Modules: keygen_ram32_generic
+// Authors: Project contributors; see Git history.
+// Date: 2026-10-13
+// General Description: Implements portable synchronous scratch memory and the defined read/write contract.
+// AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 // One enabled-edge read, new data on collision. Reset never clears memory.
 module keygen_ram32_generic #(parameter ADDRESS_WIDTH = 8) (
     input clock_i,

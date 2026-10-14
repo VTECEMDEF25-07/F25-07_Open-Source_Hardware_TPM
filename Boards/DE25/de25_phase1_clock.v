@@ -1,3 +1,10 @@
+// Filename: de25_phase1_clock.v
+// Modules: de25_phase1_clock
+// Authors: Project contributors; see Git history.
+// Date: 2026-10-14
+// General Description: Generates the related 50 MHz and 100 MHz DE25 TPM clocks through the vendor PLL macro.
+// AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 // Approved vendor PLL internals; project wrapper remains Verilog.
 // Our board wrapper is Verilog; no generated IP-catalog source is required.
 module de25_phase1_clock (

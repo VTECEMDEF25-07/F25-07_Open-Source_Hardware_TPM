@@ -1,3 +1,10 @@
+// Filename: keygen_ram32.v
+// Modules: keygen_ram32
+// Authors: Project contributors; see Git history.
+// Date: 2026-10-13
+// General Description: Selects the generic or Altera synchronous scratch-memory resource.
+// AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 module keygen_ram32 #(parameter ADDRESS_WIDTH = 8) (
     input clock_i,
     input reset_n_i,

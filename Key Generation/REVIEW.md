@@ -1,3 +1,11 @@
+<!--
+Filename: REVIEW.md
+Authors: Project contributors; see Git history.
+Date: 2026-09-30
+General Description: Documents Review status after architecture reset.
+AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+-->
+
 # Review status after architecture reset
 
 October 13, 2026: the review below concerns the historical September outline. Its cancel/staged-store contracts are superseded by the current README. This historical review is not approval of the new interfaces or algorithms. The revised architecture and Verilog-only rules require Aaron's review.

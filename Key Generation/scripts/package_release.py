@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+# Filename: package_release.py
+# Authors: Project contributors; see Git history.
+# Date: 2026-10-13
+# General Description: Provides package release support for the key-generation implementation and verification.
+# AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 """Package explicitly selected, reviewed demo evidence; never flash or publish."""
 import argparse
 from datetime import datetime, timezone

@@ -1,3 +1,9 @@
+# Filename: run_full_altera_questa.py
+# Authors: Project contributors; see Git history.
+# Date: 2026-10-13
+# General Description: Full-key Questa regression against genuine installed Altera models. All build products remain under this repository.
+# AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 """Full-key Questa regression against genuine installed Altera models. All build products remain under this repository.
 
 Vendor files are compiled unchanged; generic implementations remain unselected.

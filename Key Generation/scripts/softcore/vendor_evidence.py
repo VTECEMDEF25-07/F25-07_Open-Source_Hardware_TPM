@@ -1,3 +1,9 @@
+# Filename: vendor_evidence.py
+# Authors: Project contributors; see Git history.
+# Date: 2026-10-13
+# General Description: Evidence helpers for genuine-vendor simulations; never copy vendor sources.
+# AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 """Evidence helpers for genuine-vendor simulations; never copy vendor sources."""
 import hashlib
 import json

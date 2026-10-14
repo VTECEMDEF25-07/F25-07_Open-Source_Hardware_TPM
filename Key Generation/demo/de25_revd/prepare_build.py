@@ -1,3 +1,9 @@
+# Filename: prepare_build.py
+# Authors: Project contributors; see Git history.
+# Date: 2026-10-13
+# General Description: Prepare or compile four DE25 images. This script never programs a board.
+# AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 """Prepare or compile four DE25 images. This script never programs a board."""
 import argparse
 import hashlib

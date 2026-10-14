@@ -1,3 +1,10 @@
+// Filename: keygen_pair_check.v
+// Modules: keygen_pair_check
+// Authors: Project contributors; see Git history.
+// Date: 2026-10-13
+// General Description: Validates RSA key-pair relationships and clears private intermediate arithmetic state.
+// AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 // RSA pair validation with 32-bit arithmetic and 2 KiB private RAM.
 // Primality is checked by the caller. RAM and multiplier scrub before handoff.
 module keygen_pair_check (

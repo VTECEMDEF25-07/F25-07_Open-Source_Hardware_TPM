@@ -1,3 +1,11 @@
+<!--
+Filename: README.md
+Authors: Project contributors; see Git history.
+Date: 2026-10-13
+General Description: Documents Public test reference and fixtures.
+AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+-->
+
 # Public test reference and fixtures
 
 Read `../docs/RSA_ALGORITHM.md` first for the procedure and standards mapping. This directory contains Python verification infrastructure; none of it is synthesizable source or production key-generation software.

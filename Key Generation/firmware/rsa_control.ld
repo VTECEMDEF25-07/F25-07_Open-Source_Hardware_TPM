@@ -1,3 +1,11 @@
+/*
+ * Filename: rsa_control.ld
+ * Authors: Project contributors; see Git history.
+ * Date: 2026-10-13
+ * General Description: Sequences RSA generation by issuing shared-hardware accelerator descriptors from RV32I firmware.
+ * AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+ */
+
 OUTPUT_ARCH(riscv)
 ENTRY(_start)
 MEMORY { ROM (rx) : ORIGIN = 0x00000000, LENGTH = 32K

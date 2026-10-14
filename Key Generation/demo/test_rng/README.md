@@ -1,3 +1,11 @@
+<!--
+Filename: README.md
+Authors: Project contributors; see Git history.
+Date: 2026-10-13
+General Description: Documents Predictable hardware test-word source.
+AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+-->
+
 # Predictable hardware test-word source
 
 This Verilog-2001 module reproduces the reference fixture stream inside the FPGA. It produces public test data for AES/RSA demos. It is **not an approved DRBG**, an entropy source, a hierarchy-seed service, or a production random generator.

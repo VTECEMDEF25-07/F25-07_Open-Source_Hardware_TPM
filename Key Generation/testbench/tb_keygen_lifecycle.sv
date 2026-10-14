@@ -1,3 +1,10 @@
+// Filename: tb_keygen_lifecycle.sv
+// Modules: tb_keygen_lifecycle
+// Authors: Project contributors; see Git history.
+// Date: 2026-10-13
+// General Description: Checks keygen lifecycle behavior and reports failures.
+// AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 `timescale 1ns/1ps
 // Fast integration checks use the real engine, CPU and storage. Successful RSA
 // arithmetic is covered by tb_keygen_full, not substituted by this test.

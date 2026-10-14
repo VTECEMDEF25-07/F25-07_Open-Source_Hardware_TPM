@@ -1,3 +1,10 @@
+// Filename: de25_soc_top.v
+// Modules: de25_soc_top
+// Authors: Project contributors; see Git history.
+// Date: 2026-10-14
+// General Description: Connects the original Phase 1 TPM to DE25 pins, related clocks, reset and independent cooling.
+// AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 // Phase 1 TPM board wrapper for the DE25 Standard RevD.
 // This top preserves tpm_top's command path; it does not instantiate keygen.
 module de25_soc_top (

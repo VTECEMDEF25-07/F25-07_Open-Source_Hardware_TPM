@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+# Filename: summarize_hardware.py
+# Authors: Project contributors; see Git history.
+# Date: 2026-10-13
+# General Description: Provides summarize hardware support for the key-generation implementation and verification.
+# AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 """Independently audit corpus reports; this is not whole-system acceptance."""
 import argparse
 import hashlib

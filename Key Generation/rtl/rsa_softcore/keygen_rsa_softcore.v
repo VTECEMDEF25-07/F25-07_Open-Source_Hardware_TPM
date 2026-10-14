@@ -1,3 +1,10 @@
+// Filename: keygen_rsa_softcore.v
+// Modules: keygen_rsa_softcore
+// Authors: Project contributors; see Git history.
+// Date: 2026-10-13
+// General Description: Connects RV32I firmware control to the shared RSA services and arithmetic interface.
+// AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 // One RSA firmware job at a time; completion follows local CPU/RAM cleanup.
 // Accelerator P/Q/N remain owned by the outer protected-result controller.
 module keygen_rsa_softcore #(

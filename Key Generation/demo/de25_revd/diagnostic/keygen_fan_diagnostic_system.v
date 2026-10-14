@@ -1,3 +1,10 @@
+// Filename: keygen_fan_diagnostic_system.v
+// Modules: keygen_demo_system
+// Authors: Project contributors; see Git history.
+// Date: 2026-10-13
+// General Description: Provides keygen fan diagnostic system support for the key-generation implementation and verification.
+// AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 // Fan/SPI diagnostic image only. No key generation or private-key registers.
 module keygen_demo_system #(
     parameter RSA_SOFTCORE=0, parameter ROM_FILE="",

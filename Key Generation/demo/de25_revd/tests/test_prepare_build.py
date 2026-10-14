@@ -1,3 +1,9 @@
+# Filename: test_prepare_build.py
+# Authors: Project contributors; see Git history.
+# Date: 2026-10-13
+# General Description: Checks prepare build behavior and reports failures.
+# AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 """Offline evidence-integrity tests; no compiler or board access."""
 import importlib.util
 import json

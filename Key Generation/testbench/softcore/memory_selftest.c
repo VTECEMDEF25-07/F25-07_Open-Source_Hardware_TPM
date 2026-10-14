@@ -1,3 +1,11 @@
+/*
+ * Filename: memory_selftest.c
+ * Authors: Project contributors; see Git history.
+ * Date: 2026-10-13
+ * General Description: Provides memory selftest support for the key-generation implementation and verification.
+ * AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+ */
+
 /* Test fixture only: exercise all CPU RAM byte lanes and halfword stores. */
 #include <stdint.h>
 int main(void)

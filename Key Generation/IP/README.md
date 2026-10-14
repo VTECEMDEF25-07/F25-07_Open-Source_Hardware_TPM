@@ -1,3 +1,11 @@
+<!--
+Filename: README.md
+Authors: Project contributors; see Git history.
+Date: 2026-10-13
+General Description: Documents Portable keygen resources.
+AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+-->
+
 # Portable keygen resources
 
 This change adds two small reusable resources needed by the later RSA arithmetic engine. It does not implement RSA, AES key assembly, the keygen controller, or board firmware.

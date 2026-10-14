@@ -1,3 +1,9 @@
+# Filename: build_rsa.py
+# Authors: Project contributors; see Git history.
+# Date: 2026-10-13
+# General Description: Build the RV32I RSA descriptor firmware using an explicit local xPack toolchain.
+# AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 """Build the RV32I RSA descriptor firmware using an explicit local xPack toolchain."""
 import argparse,hashlib,json,subprocess
 from pathlib import Path

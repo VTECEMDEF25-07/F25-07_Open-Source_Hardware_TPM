@@ -1,3 +1,10 @@
+// Filename: keygen_softcore_control.v
+// Modules: keygen_softcore_control
+// Authors: Project contributors; see Git history.
+// Date: 2026-10-13
+// General Description: Provides RV32I boot, accelerator access, watchdog handling and CPU/RAM cleanup.
+// AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 // RV32I CPU substrate. Descriptor-only MMIO; no secret operand window.
 // ROM_FILE selects the feasibility self-test or compiled RSA control firmware.
 module keygen_softcore_control #(

@@ -1,3 +1,11 @@
+<!--
+Filename: FAN_MONITOR.md
+Authors: Project contributors; see Git history.
+Date: 2026-10-13
+General Description: Documents TMP442 monitoring and safe fan control.
+AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+-->
+
 # TMP442 monitoring and safe fan control
 
 The first hardware image generated valid keys but continually reported invalid sensor frames and requested full fan speed. Its temperature high-byte/low-byte reads were not adjacent, and it treated a snapshot of ongoing conversion as invalid. The public telemetry did not identify the cause. The changes below correct sampling and expose diagnostic evidence; physical root-cause confirmation still requires the new image.

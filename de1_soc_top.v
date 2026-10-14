@@ -2,6 +2,9 @@
 // modules:
 //	test0_top
 //
+// AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+// Disclosure applies to project-local changes; original authorship is preserved.
+//
 // Authors:
 //	Ian Sizemore (idsizemore@vt.edu)
 //

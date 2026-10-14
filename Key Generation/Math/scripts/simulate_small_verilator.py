@@ -1,3 +1,9 @@
+# Filename: simulate_small_verilator.py
+# Authors: Project contributors; see Git history.
+# Date: 2026-10-13
+# General Description: Run actual math RTL with exhaustive small-input vectors, in Linux/WSL.
+# AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 """Run actual math RTL with exhaustive small-input vectors, in Linux/WSL."""
 import argparse,subprocess,json,hashlib
 from pathlib import Path

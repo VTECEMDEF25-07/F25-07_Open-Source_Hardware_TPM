@@ -1,3 +1,11 @@
+<!--
+Filename: README.md
+Authors: Project contributors; see Git history.
+Date: 2026-09-30
+General Description: Documents Portable key-generation core.
+AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+-->
+
 # Portable key-generation core
 
 Generate AES-128, AES-256 and RSA-2048 keys from an externally supplied generation stream. Dedicated Verilog control and PicoRV32 firmware control share the RSA arithmetic. Each can use generic resources or hand-instantiated Altera resources.

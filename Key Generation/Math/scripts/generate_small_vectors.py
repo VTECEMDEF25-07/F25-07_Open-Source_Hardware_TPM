@@ -1,3 +1,9 @@
+# Filename: generate_small_vectors.py
+# Authors: Project contributors; see Git history.
+# Date: 2026-10-13
+# General Description: Exhaustive input domains on the unchanged32-bit datapath, not reduced-width RTL.
+# AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 """Exhaustive input domains on the unchanged32-bit datapath, not reduced-width RTL."""
 import argparse,json,hashlib
 from pathlib import Path

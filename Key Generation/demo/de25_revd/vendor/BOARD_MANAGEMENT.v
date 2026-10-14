@@ -1,3 +1,11 @@
+// Filename: BOARD_MANAGEMENT.v
+// Modules: BOARD_MANAGEMENT
+// Authors: Original upstream authors (preserved below); project contributors for local changes.
+// Date: 2026-10-13
+// General Description: Communicates with the DE25 temperature/fan controller and implements local cooling-safety changes.
+// AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+// AI disclosure applies only to project-local modifications.
+
 module BOARD_MANAGEMENT #(parameter SENSOR_STALE_TICKS=1953125, parameter MANAGEMENT_SECOND_TICKS=400000, parameter MANAGEMENT_CLOCK_DIVIDE=125, parameter CONVERSION_TIMEOUT_TICKS=800000) (
     output reg I2C_READY,
     output FAN_FAILSAFE,

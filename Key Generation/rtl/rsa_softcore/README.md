@@ -1,3 +1,11 @@
+<!--
+Filename: README.md
+Authors: Project contributors; see Git history.
+Date: 2026-10-13
+General Description: Documents Softcore feasibility slice.
+AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+-->
+
 # Softcore feasibility slice
 
 The later real RSA sequencing controller is documented in [RSA_CONTROL.md](RSA_CONTROL.md). This page retains the independently reproducible initial boot milestone.

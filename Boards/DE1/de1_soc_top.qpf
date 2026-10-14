@@ -1,1 +1,7 @@
+# Filename: de1_soc_top.qpf
+# Authors: Project contributors; see Git history.
+# Date: 2026-10-14
+# General Description: Selects the board project revision.
+# AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 PROJECT_REVISION = "de1_soc_top"

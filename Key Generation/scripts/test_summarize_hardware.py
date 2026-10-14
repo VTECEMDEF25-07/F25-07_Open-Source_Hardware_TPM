@@ -1,3 +1,9 @@
+# Filename: test_summarize_hardware.py
+# Authors: Project contributors; see Git history.
+# Date: 2026-10-13
+# General Description: Checks summarize hardware behavior and reports failures.
+# AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 import copy
 import unittest
 from summarize_hardware import audit

@@ -1,3 +1,10 @@
+// Filename: keygen_resources_smoke.v
+// Modules: keygen_resources_smoke
+// Authors: Project contributors; see Git history.
+// Date: 2026-10-13
+// General Description: Provides keygen resources smoke support for the key-generation implementation and verification.
+// AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 // Compile-only resource top; no physical board programming.
 module keygen_resources_smoke (
     input clock_i, input reset_n_i, input clock_en_i,

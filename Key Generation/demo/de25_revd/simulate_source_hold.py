@@ -1,3 +1,9 @@
+# Filename: simulate_source_hold.py
+# Authors: Project contributors; see Git history.
+# Date: 2026-10-13
+# General Description: Focused actual-SPI/SHA hold regression; controllable test core, not RSA proof.
+# AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 """Focused actual-SPI/SHA hold regression; controllable test core, not RSA proof.
 
 Run under Linux/WSL with --build pointing to an ignored build or AI/tmp path.

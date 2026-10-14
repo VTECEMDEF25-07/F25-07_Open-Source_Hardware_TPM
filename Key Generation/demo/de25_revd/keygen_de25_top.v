@@ -1,3 +1,10 @@
+// Filename: keygen_de25_top.v
+// Modules: keygen_de25_top
+// Authors: Project contributors; see Git history.
+// Date: 2026-10-13
+// General Description: Connects the keygen demonstration to DE25 pins, reset, clocks and autonomous cooling.
+// AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 // DE25 RevD demo wrapper. Gray SPI reset never resets temperature/fan control.
 module keygen_de25_top #(
     parameter RSA_SOFTCORE=0, parameter ROM_FILE="rsa_control.hex",

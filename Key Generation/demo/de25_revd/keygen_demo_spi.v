@@ -1,3 +1,10 @@
+// Filename: keygen_demo_spi.v
+// Modules: keygen_demo_spi
+// Authors: Project contributors; see Git history.
+// Date: 2026-10-13
+// General Description: Implements the demonstration SPI register interface and bounded operation handshakes.
+// AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 // Fixed eight-byte mode-0 frames. Writes publish only after all 64 bits arrive.
 module keygen_demo_spi (
     input clock_i, input reset_n_i,

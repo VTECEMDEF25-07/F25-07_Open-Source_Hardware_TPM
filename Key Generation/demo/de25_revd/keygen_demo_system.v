@@ -1,3 +1,10 @@
+// Filename: keygen_demo_system.v
+// Modules: keygen_demo_system
+// Authors: Project contributors; see Git history.
+// Date: 2026-10-13
+// General Description: Connects the SPI demonstration interface, test generation source and portable keygen core.
+// AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 // Test-only SPI register bank and protected-receiver stand-in. Never a production export interface.
 module keygen_demo_system #(
     parameter RSA_SOFTCORE = 0, parameter ROM_FILE = "rsa_control.hex",

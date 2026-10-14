@@ -1,3 +1,11 @@
+<!--
+Filename: test_rsa_controller.md
+Authors: Project contributors; see Git history.
+Date: 2026-10-13
+General Description: Documents Dedicated RSA controller regression.
+AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+-->
+
 # Dedicated RSA controller regression
 
 Run `test_rsa_controller_verilator.sh ABSOLUTE_BUILD_DIRECTORY ABSOLUTE_CONTROLLER_SOURCE` under WSL/Linux with Verilator, g++, and a writable class scratch directory. The runner copies the chosen controller into the build directory and records its SHA-256, so uncommitted integration source can be tested without modifying it. Paths with spaces are supported. No FPGA or SPI device is accessed.

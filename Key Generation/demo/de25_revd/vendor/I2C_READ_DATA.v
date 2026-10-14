@@ -1,3 +1,11 @@
+// Filename: I2C_READ_DATA.v
+// Modules: I2C_READ_DATA
+// Authors: Original upstream authors (preserved below); project contributors for local changes.
+// Date: 2026-10-13
+// General Description: Reads management I2C data, including the local temperature-sampling changes.
+// AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+// AI disclosure applies only to project-local modifications.
+
 module I2C_READ_DATA(
    output reg NO_ACK ,
    input  				RESET_N ,

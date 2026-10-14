@@ -1,3 +1,9 @@
+# Filename: test_rsa_services.ps1
+# Authors: Project contributors; see Git history.
+# Date: 2026-10-13
+# General Description: Checks rsa services behavior and reports failures.
+# AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 param([string]$QuestaBin='C:/intelFPGA_lite/24.1std/questa_fse/win64', [string]$BuildDirectory='')
 $ErrorActionPreference='Stop'
 $taskRoot=(Resolve-Path (Join-Path $PSScriptRoot '..')).Path

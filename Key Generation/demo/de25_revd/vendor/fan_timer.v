@@ -1,3 +1,11 @@
+// Filename: fan_timer.v
+// Modules: fan_timer
+// Authors: Original upstream authors (preserved below); project contributors for local changes.
+// Date: 2026-10-13
+// General Description: Provides management timer events, including project-local timing configuration.
+// AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+// AI disclosure applies only to project-local modifications.
+
 module fan_timer ( 
 input RESET_N,
 input CLK     , // 400KHz

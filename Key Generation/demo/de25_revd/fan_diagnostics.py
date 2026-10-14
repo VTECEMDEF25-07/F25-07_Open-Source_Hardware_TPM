@@ -1,3 +1,9 @@
+# Filename: fan_diagnostics.py
+# Authors: Project contributors; see Git history.
+# Date: 2026-10-13
+# General Description: Decode read-only fan diagnostic register version 1.
+# AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 """Decode read-only fan diagnostic register version 1."""
 
 

@@ -1,3 +1,11 @@
+<!--
+Filename: CORE.md
+Authors: Project contributors; see Git history.
+Date: 2026-10-13
+General Description: Documents Portable AES/RSA core.
+AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+-->
+
 # Portable AES/RSA core
 
 `rtl/common/keygen_core.v` is the integration boundary. It accepts one captured

@@ -1,3 +1,11 @@
+<!--
+Filename: AES.md
+Authors: Project contributors; see Git history.
+Date: 2026-10-13
+General Description: Documents Standalone AES assembly.
+AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+-->
+
 # Standalone AES assembly
 
 `keygen_aes_core` implements the v1 request/generation/result/ownership/status

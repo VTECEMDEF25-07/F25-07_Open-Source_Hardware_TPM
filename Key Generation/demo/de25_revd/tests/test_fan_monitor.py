@@ -1,3 +1,9 @@
+# Filename: test_fan_monitor.py
+# Authors: Project contributors; see Git history.
+# Date: 2026-10-13
+# General Description: Checks fan monitor behavior and reports failures.
+# AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 import sys
 from pathlib import Path
 import unittest

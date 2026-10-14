@@ -1,3 +1,11 @@
+<!--
+Filename: README.md
+Authors: Project contributors; see Git history.
+Date: 2026-10-13
+General Description: Documents DE25 RevD key-generation demonstration.
+AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+-->
+
 # DE25 RevD key-generation demonstration
 
 This is an explicit **test image**: a deterministic SHA-256 fixture stream feeds the portable core, and a stand-in protected receiver allows the host to inspect test keys. It must not be used with production seeds or keys. The core itself has no public private-key export port. Four images cover RTL/softcore control and generic/Altera arithmetic; each image contains both AES profiles and RSA-2048.

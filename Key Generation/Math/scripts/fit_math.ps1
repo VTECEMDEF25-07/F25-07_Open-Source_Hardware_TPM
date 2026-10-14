@@ -1,3 +1,9 @@
+# Filename: fit_math.ps1
+# Authors: Project contributors; see Git history.
+# Date: 2026-10-13
+# General Description: Provides fit math support for the key-generation implementation and verification.
+# AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 param(
     [string] $BuildDirectory = '',
     [string] $QuartusBin = 'C:/altera_pro/26.1/quartus/bin64',

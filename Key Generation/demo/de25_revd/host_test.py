@@ -1,3 +1,9 @@
+# Filename: host_test.py
+# Authors: Project contributors; see Git history.
+# Date: 2026-10-13
+# General Description: DE25 test-image client. Only explicit CLI execution opens the named SPI adapter; never flashes.
+# AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 """DE25 test-image client. Only explicit CLI execution opens the named SPI adapter; never flashes."""
 import argparse
 import ctypes as c

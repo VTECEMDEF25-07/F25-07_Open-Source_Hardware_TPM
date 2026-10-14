@@ -1,3 +1,11 @@
+/*
+ * Filename: rsa_control.c
+ * Authors: Project contributors; see Git history.
+ * Date: 2026-10-13
+ * General Description: Sequences RSA generation by issuing shared-hardware accelerator descriptors from RV32I firmware.
+ * AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+ */
+
 /* Control-only RSA-2048 sequencing. Secret arithmetic stays in the accelerator.
  * Firmware cannot read candidate limbs, witnesses, primes, or private exponent.
  * Service implementation and FIPS mapping are verified separately. */

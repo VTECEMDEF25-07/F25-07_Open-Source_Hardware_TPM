@@ -1,3 +1,9 @@
+# Filename: test_source_hold_runner.py
+# Authors: Project contributors; see Git history.
+# Date: 2026-10-13
+# General Description: Checks source hold runner behavior and reports failures.
+# AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 """Fail-closed runner evidence tests: no simulator or hardware required."""
 import importlib.util
 from pathlib import Path

@@ -1,3 +1,11 @@
+/*
+ * Filename: rsa_start.S
+ * Authors: Project contributors; see Git history.
+ * Date: 2026-10-13
+ * General Description: Establishes the RV32I firmware entry point and startup state.
+ * AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+ */
+
 .section .text.start,"ax",@progbits
 .global _start
 _start:

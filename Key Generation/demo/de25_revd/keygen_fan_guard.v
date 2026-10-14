@@ -1,3 +1,10 @@
+// Filename: keygen_fan_guard.v
+// Modules: keygen_fan_guard
+// Authors: Project contributors; see Git history.
+// Date: 2026-10-13
+// General Description: Monitors cooling telemetry and requests failsafe fan behavior when readings are invalid or stale.
+// AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 // Read-only temperature freshness guard. Faults request the fan controller's full-on mode.
 module keygen_fan_guard #(parameter STALE_TICKS=1953125) (
     input clock_i, input reset_n_i, input sample_valid_i, input sample_good_i,

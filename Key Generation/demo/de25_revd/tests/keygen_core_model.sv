@@ -1,3 +1,10 @@
+// Filename: keygen_core_model.sv
+// Modules: keygen_core
+// Authors: Project contributors; see Git history.
+// Date: 2026-10-13
+// General Description: Provides keygen core model support for the key-generation implementation and verification.
+// AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 // Transport/receiver fixture ONLY. Never compile this model in a board image.
 module keygen_core #(parameter RSA_SOFTCORE=0, parameter ROM_FILE="") (
     input clock_i,reset_n_i,peers_ready_i,request_valid_i,output request_ready_o,

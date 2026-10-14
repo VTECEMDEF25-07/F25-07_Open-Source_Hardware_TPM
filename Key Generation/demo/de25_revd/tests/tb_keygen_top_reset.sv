@@ -1,3 +1,10 @@
+// Filename: tb_keygen_top_reset.sv
+// Modules: altera_s10_user_rst_clkgate, keygen_demo_system, BOARD_MANAGEMENT, tb_keygen_top_reset
+// Authors: Project contributors; see Git history.
+// Date: 2026-10-13
+// General Description: Checks keygen top reset behavior and reports failures.
+// AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
 `timescale 1ns/1ps
 // Models isolate the top-level reset boundary. Real core/SPI and fan have separate regressions.
 module altera_s10_user_rst_clkgate(output reg ninit_done=1);
