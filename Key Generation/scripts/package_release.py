@@ -6,12 +6,15 @@ import hashlib
 import json
 import math
 from pathlib import Path, PurePosixPath
+import subprocess
 
 from summarize_hardware import audit
 
 VARIANTS = {f'{control}_{backend}' for control in ('rtl', 'softcore')
             for backend in ('generic', 'altera')}
-ROLES = {'aes', 'corpus', 'reset-replay', 'stall-replay', 'fault-replay', 'soak'}
+TRANSPORT = {f'transport_{rate}': rate for rate in (100000, 500000, 1000000)}
+ROLES = {'aes', 'corpus', 'reset-replay', 'stall-replay', 'fault-replay', 'soak'} | TRANSPORT.keys()
+CONFIGS = {'keygen_de25.qsf', 'keygen_de25.qpf', 'keygen_de25.sdc', 'rsa_control.hex'}
 PROVENANCE = {'host_test.py': 'demo/de25_revd/host_test.py',
               'fan_diagnostics.py': 'demo/de25_revd/fan_diagnostics.py',
               **{name: 'reference/'+name for name in
@@ -47,7 +50,7 @@ def healthy(sample):
 
 
 def report_gate(report, role, variant, fingerprint, provenance):
-    require(report.get('result') == 'PASS' and report.get('action') == role,
+    require(report.get('result') == 'PASS' and report.get('action') == ('transport' if role in TRANSPORT else role),
             f'{variant}: missing/failed {role}')
     require(report.get('test_mode') is True and report.get('build_fingerprint') == fingerprint
             and f"{report.get('control')}_{report.get('backend')}" == variant,
@@ -58,6 +61,10 @@ def report_gate(report, role, variant, fingerprint, provenance):
         require(base not in actual, 'ambiguous host provenance')
         actual[base] = value
     require(actual == provenance, f'{variant}: {role} tester/reference provenance differs')
+    if role in TRANSPORT:
+        require(report.get('frequency_hz') == TRANSPORT[role] and report.get('transport') == 'PASS'
+                and report.get('partial_frame_abort') == 'PASS', 'missing transport rate/scratch/abort evidence')
+        return
     rows = report.get('results', [])
     require(rows and all(row.get('result') == 'PASS' for row in rows), 'empty/failed hardware results')
     for row in rows:
@@ -107,7 +114,8 @@ def report_gate(report, role, variant, fingerprint, provenance):
         require(len(transitions) == 4, 'stall schedule did not complete')
         for transition, scheduled, hold in zip(transitions, (.02, .12, .20, .30), (True, False, True, False)):
             require(transition.get('scheduled_seconds') == scheduled and transition.get('hold_generation') is hold
-                    and finite(transition.get('observed_seconds')) and scheduled <= transition['observed_seconds'] <= 180,
+                    and finite(transition.get('observed_seconds'))
+                    and scheduled <= transition['observed_seconds'] <= stalled['host_operation_seconds'],
                     'stall schedule evidence differs')
         require(all(a['observed_seconds'] <= b['observed_seconds'] for a, b in zip(transitions, transitions[1:])),
                 'stall transitions out of order')
@@ -118,6 +126,8 @@ def report_gate(report, role, variant, fingerprint, provenance):
                 and all(finite(t) and t > 0 for t in elapsed)
                 and all(a < b for a, b in zip(elapsed, elapsed[1:]))
                 and elapsed[-1] >= 1800 and elapsed[-1] <= report['soak_seconds']
+                and all(stop-start+1e-6 >= row['host_operation_seconds']
+                        for start, stop, row in zip([0]+elapsed[:-1], elapsed, rows))
                 and all(r.get('profile') == i % 3 and r.get('seed_id') == (i//3)%20+1
                         for i, r in enumerate(rows)),
                 'soak must complete at least 30 minutes of alternating AES128/AES256/RSA jobs')
@@ -163,7 +173,8 @@ def package(config, root, output):
     for relative in ('IP/third_party/picorv32/COPYING', 'IP/third_party/picorv32/README.md',
                      'demo/de25_revd/README.md', 'demo/de25_revd/FAN_MONITOR.md',
                      'scripts/softcore/build_rsa.py', 'scripts/package_release.py',
-                     'scripts/summarize_hardware.py'):
+                     'scripts/summarize_hardware.py', 'demo/de25_revd/prepare_build.py',
+                     'demo/de25_revd/compile_build.py', 'demo/de25_revd/vendor/pin_reference.qsf'):
         payload.add(root/relative, relative)
     firmware = read_json(root/'firmware/rsa_control_manifest.json')
     for name, expected in firmware['source_sha256'].items():
@@ -181,6 +192,9 @@ def package(config, root, output):
                 and manifest.get('diagnostic_mode') is False, f'{variant}: unaccepted build')
         require(sha(json.dumps(manifest['fingerprint_inputs'], sort_keys=True,
                                separators=(',', ':')).encode()) == fingerprint, 'invalid build fingerprint')
+        require(manifest['fingerprint_inputs'].get('variant') == variant
+                and manifest['fingerprint_inputs'].get('firmware') == manifest['firmware_sha256'],
+                'variant/firmware not bound to fingerprint')
         require(manifest['snapshot_sha256'] and
                 {basename(p): value for p, value in manifest['snapshot_sha256'].items()}
                 == manifest['fingerprint_inputs']['sources'], 'snapshot not bound to fingerprint')
@@ -198,6 +212,7 @@ def package(config, root, output):
         for original, expected in manifest['snapshot_sha256'].items():
             name = basename(original)
             payload.add(build/'sources'/name, prefix+'sources/'+name, expected)
+        require(set(timing['post_tool_config_sha256']) == CONFIGS, 'required build configurations missing')
         for name, expected in timing['post_tool_config_sha256'].items():
             require(Path(name).name == name, 'unexpected configuration path')
             payload.add(build/name, prefix+name, expected)
@@ -241,12 +256,73 @@ def package(config, root, output):
     return release
 
 
+def prepare_rebuild(package_root, variant, output, quartus):
+    """Prepare a NEW build from verified packaged bytes, preserving old evidence."""
+    package_root, output = Path(package_root).resolve(), Path(output).resolve()
+    require(variant in VARIANTS and not output.exists(), 'choose a valid variant and fresh output')
+    release_manifest = read_json(package_root/'release_manifest.json')
+    data = {}
+    for name, expected in release_manifest['files_sha256'].items():
+        path = (package_root/name).resolve()
+        require(path.is_relative_to(package_root), 'invalid package path')
+        data[name] = path.read_bytes()
+        require(sha(data[name]) == expected, f'package integrity failed: {name}')
+    prefix = f'variants/{variant}/'
+    original = json.loads(data[prefix+'build_manifest.json'])
+    inputs = dict(original['fingerprint_inputs'])
+    version = subprocess.run([str(quartus), '--version'], capture_output=True, text=True,
+                             check=True, timeout=60)
+    inputs.update(quartus_version=(version.stdout+version.stderr).strip(),
+                  rebuild_of=original['build_fingerprint'],
+                  rebuild_created_utc=datetime.now(timezone.utc).isoformat())
+    require(inputs['quartus_version'], 'Quartus version missing')
+    settings = []
+    for line in inputs['settings_before_fingerprint']:
+        if line.startswith('set_global_assignment -name VERILOG_FILE '):
+            name = basename(line.split('VERILOG_FILE ', 1)[1].strip().strip('"'))
+            require(name in inputs['sources'], 'QSF references source outside packaged snapshot')
+            line = f'set_global_assignment -name VERILOG_FILE "sources/{name}"'
+        settings.append(line)
+    inputs['settings_before_fingerprint'] = settings
+    fingerprint = sha(json.dumps(inputs, sort_keys=True, separators=(',', ':')).encode())
+    settings.append(f'set_parameter -name BUILD_FINGERPRINT "256\'h{fingerprint}"')
+    files = {'keygen_de25.qsf': ('\n'.join(settings)+'\n').encode(),
+             'keygen_de25.qpf': b'PROJECT_REVISION = "keygen_de25"\n',
+             'keygen_de25.sdc': data[prefix+'keygen_de25.sdc'],
+             'rsa_control.hex': data[prefix+'rsa_control.hex']}
+    for name, expected in inputs['sources'].items():
+        files['sources/'+name] = data[prefix+'sources/'+name]
+        require(sha(files['sources/'+name]) == expected, 'rebuild source differs')
+    manifest = {**original, 'status': 'prepared', 'timing_accepted': False,
+                'quartus_executable': str(Path(quartus).resolve()), 'quartus_version': inputs['quartus_version'],
+                'build_fingerprint': fingerprint, 'fingerprint_inputs': inputs,
+                'rebuild_of': original['build_fingerprint'],
+                'snapshot_sha256': {str(output/'sources'/name): expected for name, expected in inputs['sources'].items()},
+                'config_sha256': {name: sha(files[name]) for name in CONFIGS}}
+    for field in ('timing_review', 'compiler_returncode'):
+        manifest.pop(field, None)
+    files['build_manifest.json'] = (json.dumps(manifest, indent=2)+'\n').encode()
+    output.mkdir(parents=True)
+    for name, value in files.items():
+        path = output/name; path.parent.mkdir(parents=True, exist_ok=True); path.write_bytes(value)
+        require(path.read_bytes() == value, 'rebuild write mismatch')
+    return manifest
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--selection', type=Path, required=True)
+    mode = parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument('--selection', type=Path)
+    mode.add_argument('--rebuild', choices=sorted(VARIANTS))
+    parser.add_argument('--package-root', type=Path)
+    parser.add_argument('--quartus', type=Path)
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
-    result = package(read_json(args.selection), Path(__file__).resolve().parents[1], args.output)
+    if args.rebuild:
+        require(args.package_root and args.quartus, '--rebuild requires --package-root and --quartus')
+        result = prepare_rebuild(args.package_root, args.rebuild, args.output, args.quartus)
+    else:
+        result = package(read_json(args.selection), Path(__file__).resolve().parents[1], args.output)
     print(json.dumps({'status': result['status'], 'output': str(args.output.resolve())}))
 
 

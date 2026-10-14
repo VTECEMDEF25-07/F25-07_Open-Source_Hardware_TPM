@@ -3,6 +3,8 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
+import subprocess
 
 import package_release as release
 
@@ -27,6 +29,8 @@ class ReleaseTests(unittest.TestCase):
         for relative in ('docs/spec.md', 'IP/third_party/picorv32/COPYING',
                          'IP/third_party/picorv32/README.md', 'demo/de25_revd/README.md',
                          'demo/de25_revd/FAN_MONITOR.md', 'scripts/softcore/build_rsa.py',
+                         'demo/de25_revd/prepare_build.py', 'demo/de25_revd/compile_build.py',
+                         'demo/de25_revd/vendor/pin_reference.qsf',
                          'scripts/package_release.py', 'scripts/summarize_hardware.py', 'matrix.md'):
             write(relative, 'synthetic fixture; not acceptance')
         write('firmware/rsa_control_manifest.json', json.dumps({'source_sha256': {}, 'image_sha256': release.sha(b'ROM')}))
@@ -40,7 +44,10 @@ class ReleaseTests(unittest.TestCase):
             for name, value in {'rsa_control.hex': 'ROM', 'keygen_de25.sdc': 'CLOCK',
                                 'keygen_de25.qsf': 'SETTINGS', 'keygen_de25.qpf': 'PROJECT'}.items():
                 config_hashes[name] = release.sha(write(variant+'/'+name, value).read_bytes())
-            inputs = {'sources': {source.name: release.sha(source.read_bytes())}, 'sdc': 'CLOCK'}
+            inputs = {'sources': {source.name: release.sha(source.read_bytes())}, 'sdc': 'CLOCK',
+                      'variant': variant, 'firmware': release.sha(b'ROM'),
+                      'settings_before_fingerprint': [f'set_global_assignment -name VERILOG_FILE "{source}"',
+                                                     'set_global_assignment -name SDC_FILE keygen_de25.sdc']}
             fingerprint = release.sha(json.dumps(inputs, sort_keys=True, separators=(',', ':')).encode())
             manifest = {'variant': variant, 'status': 'compiled', 'test_mode': True, 'timing_accepted': True,
                         'diagnostic_mode': False, 'build_fingerprint': fingerprint, 'fingerprint_inputs': inputs,
@@ -60,9 +67,12 @@ class ReleaseTests(unittest.TestCase):
             reports = {}
             for role in release.ROLES:
                 control, backend = variant.split('_')
-                report = {'action': role, 'result': 'PASS', 'test_mode': True, 'control': control,
+                report = {'action': 'transport' if role in release.TRANSPORT else role,
+                          'result': 'PASS', 'test_mode': True, 'control': control,
                           'backend': backend, 'build_fingerprint': fingerprint,
                           'inputs_sha256': self.provenance, 'results': []}
+                if role in release.TRANSPORT:
+                    report.update(frequency_hz=release.TRANSPORT[role], transport='PASS', partial_frame_abort='PASS')
                 if role == 'corpus': report['results'] = [self.job(2, seed) for seed in range(1, 21)]
                 if role == 'aes': report['results'] = [self.job(0), self.job(1)]
                 if role == 'reset-replay':
@@ -81,8 +91,8 @@ class ReleaseTests(unittest.TestCase):
                                          (('generation_stall',2), ('rsa_active',2), ('result_stall',0), ('ownership_stall',1))]
                     report['results'] += [dict(self.job(i), fault_replay=True) for i in range(3)]
                 if role == 'soak':
-                    report['results'] = [dict(self.job(i % 3, (i//3)%20+1), soak_elapsed_seconds=(i+1)*10) for i in range(180)]
-                    report.update(soak_seconds=1800.1, soak_jobs=180)
+                    report['results'] = [dict(self.job(i % 3, (i//3)%20+1), soak_elapsed_seconds=(i+1)*10.1) for i in range(180)]
+                    report.update(soak_seconds=1818.1, soak_jobs=180)
                 reports[role] = role+'.json'
                 write(variant+'/hardware/'+role+'.json', json.dumps(report))
             self.config['variants'][variant] = {'build_dir': str(build), 'hardware_dir': str(hardware), 'reports': reports}
@@ -162,6 +172,40 @@ class ReleaseTests(unittest.TestCase):
 
     def test_soak_seed_rotation(self):
         self.mutate_report('soak', lambda r: r['results'][6].update(seed_id=1)); self.rejected()
+
+    def test_missing_transport_rate(self):
+        self.config['variants']['rtl_generic']['reports'].pop('transport_100000'); self.rejected()
+
+    def test_wrong_transport_rate(self):
+        self.mutate_report('transport_500000', lambda r: r.update(frequency_hz=100000)); self.rejected()
+
+    def test_missing_configuration_hashes(self):
+        path = self.root/'rtl_generic/acceptance_audit.json'
+        obj = json.loads(path.read_text()); obj['post_tool_config_sha256'] = {}; path.write_text(json.dumps(obj)); self.rejected()
+
+    def test_compressed_soak_chronology(self):
+        self.mutate_report('soak', lambda r: r['results'][0].update(soak_elapsed_seconds=.001)); self.rejected()
+
+    def test_stall_after_completed_job(self):
+        self.mutate_report('stall-replay', lambda r: r['results'][1]['source_transitions'][-1].update(observed_seconds=179)); self.rejected()
+
+    def test_fingerprint_variant_binding(self):
+        path = self.root/'rtl_generic/build_manifest.json'
+        obj = json.loads(path.read_text()); obj['fingerprint_inputs']['variant'] = 'softcore_generic'
+        obj['build_fingerprint'] = release.sha(json.dumps(obj['fingerprint_inputs'], sort_keys=True, separators=(',', ':')).encode())
+        path.write_text(json.dumps(obj)); self.rejected()
+
+    def test_rebuild_after_package_move(self):
+        release.package(self.config, self.root, self.output)
+        moved = self.output.with_name('moved_package'); self.output.rename(moved)
+        fresh = self.output.with_name('fresh_build')
+        with patch.object(release.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, 'Quartus test', '')):
+            manifest = release.prepare_rebuild(moved, 'rtl_generic', fresh, self.root/'quartus.exe')
+        self.assertEqual(manifest['status'], 'prepared'); self.assertFalse(manifest['timing_accepted'])
+        self.assertNotEqual(manifest['build_fingerprint'], manifest['rebuild_of'])
+        self.assertIn('"sources/core.v"', (fresh/'keygen_de25.qsf').read_text())
+        self.assertNotIn(str(self.root/'rtl_generic'), (fresh/'keygen_de25.qsf').read_text())
+        self.assertEqual((fresh/'rsa_control.hex').read_bytes(), b'ROM')
 
     def test_provenance_changed(self):
         (self.root/'reference/key_checker.py').write_text('changed'); self.rejected()
