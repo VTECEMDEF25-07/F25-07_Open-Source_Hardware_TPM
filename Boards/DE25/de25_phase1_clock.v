@@ -1,5 +1,5 @@
-// Approved vendor PLL internals; project wrapper remains Verilog-2001.
-// Our board wrapper is Verilog-2001; no generated IP-catalog source is required.
+// Approved vendor PLL internals; project wrapper remains Verilog.
+// Our board wrapper is Verilog; no generated IP-catalog source is required.
 module de25_phase1_clock (
     input clock_i,
     input reset_i,

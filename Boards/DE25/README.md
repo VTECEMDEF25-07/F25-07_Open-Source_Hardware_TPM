@@ -5,7 +5,7 @@ Open `de25_soc_top.qpf` in Quartus Pro 26.1. The top is the repository-root
 
 The original TPM top, SPI serializer, register logic and command logic are
 unchanged. The board wrapper supplies related 50 MHz and 100 MHz clocks from one vendor PLL, waits for configuration/PLL readiness, and keeps cooling
-independent of the gray SPI reset. Our RTL remains Verilog-2001; only the
+independent of the gray SPI reset. Our RTL remains Verilog (.v); Verilog-2005 features such as `$clog2` are allowed; only the
 vendor PLL's internal SystemVerilog uses the specifically approved exception.
 
 ## Review these changes
@@ -14,8 +14,6 @@ vendor PLL's internal SystemVerilog uses the specifically approved exception.
 2. `de25_phase1_clock.v`: vendor PLL macro providing both TPM clocks.
 3. `de25_soc_top.qsf`: device, pins and explicit source list.
 4. `de25_soc_top.sdc`: clock constraints and inherited timing limitations.
-5. `../../IO Interface/fifo_buffer.v`: replace `$clog2` with a constant
-   function so the existing buffer compiles as Verilog-2001.
 
 No SPI redesign, keygen integration, copied tester or new test framework is
 included. Fan support is reused from the existing reviewed board-support files.
@@ -40,6 +38,11 @@ channel-close behavior holds gray reset low; opening the channel releases it.
 
 ## Validation
 
+The original FIFO is restored unchanged, including `$clog2`; the forced
+Verilog-2001 project setting is removed. Prior fit/timing figures below describe
+the earlier equivalent-width helper revision; place-and-route has not been
+repeated for this language-setting cleanup.
+
 | Check | Result |
 |---|---|
 | Original Phase 1 simulation vectors, 1 MHz SPI | PASS; ideal PLL model, not vendor PLL simulation |
@@ -62,6 +65,6 @@ TPM conformance or key generation.
 
 Local validation records are in the class workspace under `AI/tmp/`:
 `phase1-minimal-build-v3`, `phase1-minimal-v3-final-audit`,
-`phase1-minimal-sim-1m-v5`, and `phase1-minimal-program` (failed device discovery).
+`phase1-minimal-sim-v2005`, and `phase1-minimal-program` (failed device discovery).
 The fitted SOF SHA-256 is
 `4bea0b39856d152e06a57e849e9673eedc1a31834fd6fe10cce831cc69053404`.
