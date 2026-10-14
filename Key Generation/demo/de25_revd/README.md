@@ -74,6 +74,16 @@ The default `--processors 2` bounds per-build worker pressure. Run one full fit 
 
 A successful tool exit is not timing acceptance. Review fitted resources, 50 MHz setup/hold, generated fan clock, asynchronous input synchronizers, and every timing exception. `timing_accepted` remains false until that review. Build products stay under `AI/tmp/`.
 
+### Boot from configuration flash
+
+The `.sof` loaded over JTAG is volatile. For automatic boot after a power cycle, set DE25 SW10 to Active Serial: switch 1 OFF, switches 2 and 3 ON; switch 4 is unused. Use only a reviewed, timing-accepted build. From an empty output directory, convert its `keygen_de25.sof` with the same Quartus installation used for the build:
+
+```text
+quartus_pfg -c <build>/output_files/keygen_de25.sof keygen_de25.jic -o device=MT25QU128 -o flash_loader=A5ED013BB32AE4SCS -o mode=ASX4
+```
+
+Copy `flash_keygen.cdf` beside the generated `.jic`, then run `quartus_pgm -m JTAG -c "DE25-Standard [USB-1]" flash_keygen.cdf` from that directory. This replaces the board's existing configuration-flash image, including any factory image. After the programmer reports success, power-cycle the board and run `host_test.py --action transport --manifest <build_manifest.json> --report <report.json>` over SPI. The build fingerprint check proves the intended image actually booted. Check fan telemetry and run AES/RSA again before the demonstration.
+
 ## Tests and host use
 
 `simulate_demo.ps1 -BuildDirectory <project>/AI/tmp/keygen-demo-sim` runs the transport/receiver bench. Its clearly marked **model core** checks framing, request capture, full 129-word reception, stalls, ownership, discard, clearing, reset, and fan-register wiring. It does not prove RSA mathematics. Production builds never include the model. Real AES/RSA integration has separate core tests.
