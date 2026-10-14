@@ -35,6 +35,13 @@ class ReleaseTests(unittest.TestCase):
                          'scripts/package_release.py', 'scripts/summarize_hardware.py', 'matrix.md'):
             write(relative, 'synthetic fixture; not acceptance')
         write('firmware/rsa_control_manifest.json', json.dumps({'source_sha256': {}, 'image_sha256': release.sha(b'ROM')}))
+        canonical_source = write('rtl/core.v', 'module core; endmodule')
+        write('testbench/tb_core.sv', 'module tb_core; endmodule')
+        write('Math/tests/vectors.hex', '12345678\n')
+        write('IP/tests/resource.sv', 'module resource; endmodule')
+        write('testbench/work/ignored.v', 'generated simulator output')
+        write('IP/vendor/220model.v', 'proprietary model excluded')
+        write('scripts/toolchain/ignored.py', 'tool installation excluded')
         self.provenance = {name: release.sha((self.root/path).read_bytes()) for name, path in release.PROVENANCE.items()}
         for variant in sorted(release.VARIANTS):
             build = self.root/variant
@@ -53,6 +60,7 @@ class ReleaseTests(unittest.TestCase):
             manifest = {'variant': variant, 'status': 'compiled', 'test_mode': True, 'timing_accepted': True,
                         'diagnostic_mode': False, 'build_fingerprint': fingerprint, 'fingerprint_inputs': inputs,
                         'snapshot_sha256': {str(source): release.sha(source.read_bytes())},
+                        'source_sha256': {str(canonical_source): release.sha(canonical_source.read_bytes())},
                         'firmware_sha256': release.sha(b'ROM'), 'timing_review': {'audit': 'acceptance_audit.json'}}
             write(variant+'/build_manifest.json', json.dumps(manifest))
             sof = write(variant+'/output_files/keygen_de25.sof', 'synthetic sof')
@@ -121,6 +129,10 @@ class ReleaseTests(unittest.TestCase):
         for line in (self.output/'SHA256SUMS').read_text().splitlines():
             expected, name = line.split('  ', 1)
             self.assertEqual(release.sha((self.output/name).read_bytes()), expected)
+        for name in ('rtl/core.v', 'testbench/tb_core.sv', 'Math/tests/vectors.hex', 'IP/tests/resource.sv'):
+            self.assertTrue((self.output/name).is_file())
+        for name in ('testbench/work/ignored.v', 'IP/vendor/220model.v', 'scripts/toolchain/ignored.py'):
+            self.assertFalse((self.output/name).exists())
         with self.assertRaises(ValueError): release.package(self.config, self.root, self.output)
 
     def test_missing_variant(self):
@@ -138,6 +150,9 @@ class ReleaseTests(unittest.TestCase):
 
     def test_snapshot_tamper(self):
         (self.root/'rtl_generic/sources/core.v').write_text('changed source'); self.rejected()
+
+    def test_canonical_source_must_match_selected_image(self):
+        (self.root/'rtl/core.v').write_text('untested implementation'); self.rejected()
 
     def test_windows_sdc_line_endings_preserve_raw_audit_hash(self):
         build = self.root/'rtl_generic'

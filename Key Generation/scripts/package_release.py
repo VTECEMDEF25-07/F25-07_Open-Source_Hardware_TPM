@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 import hashlib
 import json
 import math
+import os
 from pathlib import Path, PurePosixPath
 import subprocess
 
@@ -15,6 +16,14 @@ VARIANTS = {f'{control}_{backend}' for control in ('rtl', 'softcore')
 TRANSPORT = {f'transport_{rate}': rate for rate in (100000, 500000, 1000000)}
 ROLES = {'aes', 'corpus', 'reset-replay', 'stall-replay', 'fault-replay', 'soak'} | TRANSPORT.keys()
 CONFIGS = {'keygen_de25.qsf', 'keygen_de25.qpf', 'keygen_de25.sdc', 'rsa_control.hex'}
+SOURCE_DIRS = ('rtl', 'IP', 'Math', 'testbench', 'scripts', 'reference', 'demo')
+SOURCE_SUFFIXES = {'.v', '.sv', '.vh', '.svh', '.py', '.ps1', '.sh', '.md', '.json',
+                   '.hex', '.mem', '.mif', '.txt', '.csv', '.sdc', '.qsf', '.qpf',
+                   '.c', '.h', '.s', '.ld', '.tcl', '.f', '.do', '.rst'}
+EXCLUDED_DIRS = {'build', 'work', 'db', 'qdb', 'incremental_db', '__pycache__',
+                 'output_files', 'generated', 'obj', 'obj_dir', 'tmp-clearbox',
+                 'dni', '.git', '.venv', 'venv', 'node_modules', 'tools', 'toolchain'}
+VENDOR_MODELS = ('220model.v', 'altera_mf.v', 'altera_lnsim.v', 'altera_primitives.v')
 PROVENANCE = {'host_test.py': 'demo/de25_revd/host_test.py',
               'fan_diagnostics.py': 'demo/de25_revd/fan_diagnostics.py',
               **{name: 'reference/'+name for name in
@@ -144,7 +153,7 @@ class Payload:
         require(not target.is_absolute() and '..' not in target.parts and ':' not in destination,
                 'unsafe package destination')
         require(not any(part.lower() in ('qdb', 'db', 'incremental_db') for part in source.parts)
-                and not source.name.lower().endswith(('220model.v', 'altera_mf.v')),
+                and not source.name.lower().endswith(VENDOR_MODELS),
                 'proprietary model/build database excluded')
         require(str(target) not in self.files, 'duplicate package destination')
         data = source.read_bytes()
@@ -159,13 +168,44 @@ class Payload:
             require(sha(path.read_bytes()) == expected, f'input changed during packaging: {path}')
 
 
+def collect_canonical_inputs(payload, root):
+    """Curated source/test tree; never recurse into tool/generated databases."""
+    for directory in SOURCE_DIRS:
+        for current, directories, filenames in os.walk(root/directory):
+            directories[:] = sorted(name for name in directories if name.lower() not in EXCLUDED_DIRS)
+            for name in sorted(filenames):
+                source = Path(current)/name
+                if source.name.lower().endswith(VENDOR_MODELS):
+                    continue
+                if source.suffix.lower() not in SOURCE_SUFFIXES and not name.upper().startswith(('COPYING', 'LICENSE', 'NOTICE')):
+                    continue
+                relative = source.relative_to(root).as_posix()
+                if relative not in payload.files:
+                    payload.add(source, relative)
+    for source in sorted(root.glob('*.md')):
+        payload.add(source, source.name)
+
+
+def canonical_relative(original, root):
+    path = Path(original)
+    if path.is_relative_to(root):
+        return path.relative_to(root).as_posix()
+    # Builds prepared from a managed checkout retain its original absolute path.
+    # Recover only the canonical Key Generation suffix, never an arbitrary path.
+    text = str(original).replace('\\', '/')
+    require('/Key Generation/' in text, 'unknown canonical build source location')
+    relative = text.rsplit('/Key Generation/', 1)[1]
+    require('..' not in PurePosixPath(relative).parts, 'invalid canonical source path')
+    return relative
+
+
 def package(config, root, output):
     root, output = Path(root).resolve(), Path(output).resolve()
     require(not output.exists(), 'output already exists; preserve prior release')
     entries = config.get('variants', {})
     require(set(entries) == VARIANTS, 'exactly four controller/backend variants required')
     payload = Payload()
-    provenance = {name: sha(payload.add(root/path, 'tools/'+path)) for name, path in PROVENANCE.items()}
+    provenance = {name: sha(payload.add(root/path, path)) for name, path in PROVENANCE.items()}
     for directory in ('docs', 'firmware'):
         for path in sorted((root/directory).iterdir()):
             if path.is_file():
@@ -176,6 +216,7 @@ def package(config, root, output):
                      'scripts/summarize_hardware.py', 'demo/de25_revd/prepare_build.py',
                      'demo/de25_revd/compile_build.py', 'demo/de25_revd/vendor/pin_reference.qsf'):
         payload.add(root/relative, relative)
+    collect_canonical_inputs(payload, root)
     firmware = read_json(root/'firmware/rsa_control_manifest.json')
     for name, expected in firmware['source_sha256'].items():
         data = payload.files['firmware/'+name]
@@ -204,6 +245,12 @@ def package(config, root, output):
         require(manifest['snapshot_sha256'] and
                 {basename(p): value for p, value in manifest['snapshot_sha256'].items()}
                 == manifest['fingerprint_inputs']['sources'], 'snapshot not bound to fingerprint')
+        require(sorted(manifest['source_sha256'].values()) == sorted(manifest['snapshot_sha256'].values()),
+                'canonical source list differs from compiled snapshots')
+        for original, expected in manifest['source_sha256'].items():
+            relative = canonical_relative(original, root)
+            require(relative in payload.files and sha(payload.files[relative]) == expected,
+                    f'canonical source differs from selected tested image: {relative}')
         audit_path = build/manifest['timing_review']['audit']
         timing = json.loads(payload.add(audit_path, prefix+'acceptance_audit.json'))
         require(timing.get('status') == 'timing_resource_review_passed'
@@ -247,6 +294,7 @@ def package(config, root, output):
     require(sum(map(len, payload.files.values())) <= 256*1024*1024, 'package exceeds 256 MiB')
     release = {'format': 'KEYGEN-RELEASE-v1', 'created_utc': datetime.now(timezone.utc).isoformat(),
                'status': 'PACKAGED_MACHINE_GATES_PASSED', 'test_only': True, 'variants': selected,
+               'canonical_inputs': 'Curated source/test layout; compile sources match every selected image snapshot.',
                'human_completion_review': 'review/COMPLETION_MATRIX.md',
                'scope': 'Selected evidence packaged; does not certify simulation coverage, timing interpretation, licensing or whole-spec completion.',
                'files_sha256': {name: sha(data) for name, data in sorted(payload.files.items())}}

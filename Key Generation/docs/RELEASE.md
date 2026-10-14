@@ -74,14 +74,34 @@ distributed. Validate `SHA256SUMS` before moving or sharing a package.
 
 Each variant contains the tested SOF, firmware ROM, source/config snapshots,
 build/timing manifests, reviewed reports and selected hardware evidence. Shared
-content includes tester/reference files, firmware sources and build script, docs,
+content retains the canonical `rtl/`, `IP/`, `Math/`, `testbench/`, `scripts/`,
+`reference/` and `demo/` layout, including resource/arithmetic benches, fixtures
+and test runners. It includes firmware sources and build script, docs,
 and pinned PicoRV32 license/provenance. Explicit extra evidence is text only.
 Firmware source files use the exact bytes certified by their pinned manifest;
 Windows checkout CRLF expansion is reversed only when that reproduces the
 recorded hash. Audited build configuration bytes, including SDC line endings,
 remain unchanged.
+Canonical compile inputs must match the selected image snapshots byte for byte;
+packaging rejects a newer untested source tree. Per-image snapshots remain the
+authority for their tested SOFs. All copied inputs are hashed and checked for
+changes during packaging.
 Proprietary `220model.v`/`altera_mf.v`, Quartus databases and tool installations
 are excluded. Each file is limited to64MiB and the package to256MiB.
+
+Run the firmware and simulation commands in `docs/BUILD_AND_TEST.md` from the
+package root. For a quick offline source check:
+
+```text
+python -m unittest discover -s reference -p test_reference.py
+python demo/de25_revd/tests/test_host.py
+python demo/de25_revd/tests/test_fan_monitor.py
+```
+
+Tool installations remain external dependencies. Generated simulator outputs,
+build databases, caches, recovery backups and toolchains are not copied. The
+Git-specific repository-hygiene command requires the original Git checkout;
+Git metadata is intentionally absent from a release archive.
 
 `release_manifest.json` hashes every payload file; `SHA256SUMS` additionally
 hashes the release manifest. The checksum index does not hash itself.
