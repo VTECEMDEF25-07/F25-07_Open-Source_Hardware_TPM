@@ -43,6 +43,7 @@ TPM commands, authorization, hierarchy seeds, production randomness, object wrap
 | [Build and test](docs/BUILD_AND_TEST.md) | Reproducible simulation and board commands |
 | [DE25 demo](demo/de25_revd/README.md) | Wiring, SPI registers and bounded host tests |
 | [Release](docs/RELEASE.md) | Four-image evidence and package/rebuild procedure |
+| [Dependencies](docs/DEPENDENCIES.md) | Pinned versions, source provenance and supplied license notices |
 
 ## Source organization
 
