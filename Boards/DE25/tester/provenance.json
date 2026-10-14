@@ -1,0 +1,7 @@
+{
+  "original": "IO Interface/Testbenches/testbench.c",
+  "original_sha256": "c4a0d86b264c2e9af10776164804d4dcea71ecbf4892d0eec3db7dd8d038908e",
+  "safe_sha256": "b4cf7a367b5275bffe646c71417e1dfd1cceb330950e43ead1131d0605ee8abe",
+  "scope": "Original eight suites retained; transport/selection/exit/offline safeguards, 2 ms USB latency, and diagnostic out-of-bounds fixes only. No hardware execution by this build.",
+  "latency_reference": "https://ftdichip.com/wp-content/uploads/2023/08/AN_178_User-Guide-for-LibMPSSE-SPI.pdf section 3.4.1"
+}

@@ -1,0 +1,201 @@
+{
+  "date_local": "2026-10-13",
+  "scope": "Phase 1 TPM migration baseline; keygen is not connected",
+  "result": "PASS_PHASE1_BOARD_MIGRATION",
+  "board": "DE25 Standard RevD / A5ED013BB32AE4SCS",
+  "tool_version": "Quartus Prime Shell\nVersion 26.1.0 Build 110 03/26/2026 SC Pro Edition\nCopyright (C) 2026  Altera Corporation. All rights reserved.",
+  "core_clock_hz": 50000000,
+  "sof_sha256": "0dcc8340fa0b3becfb04f96679a67603a4500a2d5c95744efa34cdf9b9ad15d3",
+  "source_sha256": {
+    "de25_soc_top.v": "6ebe04308154f07a07a3accd4a00ce1e729b92426edb762cd919c3b19d88c2f4",
+    "TPM_TOP.v": "7007aa7aad2ed473b922b1d85b9bfed97bf766b7a8cfb04e8104baef588e8576",
+    "Management Module\\management_module.v": "694d6168fcf93d9761017ee725cb6af818d693438f209782ab4ad8ed64a2170e",
+    "Execution Engine\\execution_engine.v": "6d68322e7d283e2d0ae86676fdecfb2d3a5153a41bc25b38df7059a8d3f88b08",
+    "IO Interface\\de25_spi_slave.v": "c801bbcd93422724cce78135aedeecc0f5adb1e820bc1b348928759ec67653c3",
+    "IO Interface\\fifo_buffer.v": "67b9b250992efa0420844a763f94e4b5bb9808132d0f40cdcec29028b5fa2815",
+    "IO Interface\\spi_slave.v": "a504650dbe42ae6963cb4f9a8c08f2089c0613961b9f3e7e018dfdb5b258d7bc",
+    "IO Interface\\tpm_crb.v": "8770dcf9240e72176a8b8a079fd9a43adef314488e7c91c01be8815a2b334af3",
+    "IO Interface\\tpm_io.v": "496dd3c10506cfd38346661c419369a4835f51473873eabf8d690bf7849988e3",
+    "IO Interface\\tpm_reg_space.v": "8f31efe819e18e52a76b72daba210ec15470a25c9ca914275b1755040bda4100",
+    "IO Interface\\tpm_spi_ctrl.v": "7abf4cd7277cb2578c16b9ec5a589f1b25fb55bedd9d78bb95761ab12f56f111",
+    "Key Generation\\demo\\de25_revd\\vendor\\altera_s10_user_rst_clkgate.v": "9646a5c97b739262523414a3e178947835b54519aebc79e476501d3dbf55e9b9",
+    "Key Generation\\demo\\de25_revd\\vendor\\auto_fan.v": "4394102ae53217ee31e9d4325dddc475b45de3ff004f2761bca59be46ba391d9",
+    "Key Generation\\demo\\de25_revd\\vendor\\BOARD_MANAGEMENT.v": "312ced464997ae6662c5553815c3d901f221dca2be05493924cfdcdc0bd971de",
+    "Key Generation\\demo\\de25_revd\\vendor\\CLOCKMEM.v": "d895e509055855732c076ed58b8b29a81c89d30fad2ddc2f6b19b27f5a663d49",
+    "Key Generation\\demo\\de25_revd\\vendor\\fan_timer.v": "f01a84764a7ff4a6bef0025df237c32799965f1328f8c664b93fda357196d4f3",
+    "Key Generation\\demo\\de25_revd\\vendor\\I2C_READ_DATA.v": "656c17acdc90848bb3f35bcaa79b8859a6a8091a39db017b94285c6dc0f7f72f",
+    "Key Generation\\demo\\de25_revd\\vendor\\I2C_WRITE_BYTE.v": "cf801d60818a7445052c8aa4513b8e22e10269dd1091f935c4974fbd8970238b",
+    "Key Generation\\demo\\de25_revd\\vendor\\I2C_WRITE_POINTER.v": "690357e42ccce4f6fb14c5248b726bcc4a15bc9377e008acb8058e9a06e33b4b",
+    "Key Generation\\demo\\de25_revd\\keygen_fan_guard.v": "ba39d432f28f44158b77555d93860f9934939233d9c5f91dbc1cc12ad70cac09",
+    "IO Interface\\tpm_types.vh": "cbb70c7ba6a0449916ac34f29f1af32104c1f80cd1a3bad5b73d7241df17fd03"
+  },
+  "corrected_sdc_sha256": "84eab8c41c72fc34aec34ca73e4d68cdb394ebcc0a528cbf58e8dcd8f872b618",
+  "timing_acceptance_sha256": "96021cd0306cf18ae629e77d9488b5864b378a686627f98be7b537285cfb2b11",
+  "timing_evidence": "AI/tmp/phase1-v4-lead-acceptance.json",
+  "timing_note": "Original v4 snapshot preserved. Corrected JTAG SDC was applied to the same fitted netlist for all-corner signoff; no RTL/netlist/SOF change.",
+  "timing_slack_ns": {
+    "setup": 8.373,
+    "board_setup": 13.089,
+    "hold": 0.004,
+    "recovery": 16.33,
+    "removal": 0.075,
+    "pulse_width": 8.377
+  },
+  "resources": {
+    "needed_alms": 1538,
+    "registers": 1798,
+    "ram_blocks": 2,
+    "ram_bits": 32768,
+    "dsp": 0,
+    "pll": 0
+  },
+  "operating_requirements": [
+    "DE25 RevD onboard USB-BlasterIII; single-FPGA chain",
+    "Lead must read JtagClock15M before programming and diagnostics; same divider-selected sample phase",
+    "SPI<=1MHz; independent board/fan reset preserved",
+    "JTAG telemetry is asynchronous read-only capture; require repeated plausible consistent samples before interpreting health"
+  ],
+  "reviewed_exceptions": {
+    "TMC-20012": "MISO/IRQ max20ns,min0; vendor slow open-drainI2Cexcluded",
+    "CLK-30026_and_TMC-20011": "Original buildwarnings resolved by separate correctedSDC; all UCPcounts0",
+    "RDC-50003": "Independent board/fan and SPIreset domains, both recognized compliant2-stage chains",
+    "LNT-30010": "Registered board-release drives fanreset/enable; recovery/removal positive",
+    "CDC_probe": "49new asynchronous read-only probe captures plus7vendor fanSDApaths; no JTAG source control connected. Not atomic telemetry.",
+    "20759": "Endpoint wrapper present and elaborated; fitted board reset chains compliant; inherited toolwarning also occurs in verified keygen builds"
+  },
+  "simulation": {
+    "original_vectors": "PASS at 1 MHz",
+    "evidence": "AI/tmp/phase1-sim-final-v3",
+    "manifest_sha256": "b1336124c1c0a1e42c5bfce2d3e6b3a53ef6030bbe208db05d79f6a13ecc9e1d",
+    "spi_unit": "PASS at 100 kHz, 500 kHz, 1 MHz; backpressure, partial CS abort and reset",
+    "spi_unit_evidence": "AI/tmp/de25-spi-unit-v2"
+  },
+  "hardware_runs": [
+    {
+      "result": "HARDWARE_PASS",
+      "frequency_hz": 100000,
+      "elapsed_seconds": 4.0951225999961025,
+      "executable_sha256": "76b7b69895814a7835794d1663e3fbbe63b1aefc7cddcf199b4a6f1465f67e59",
+      "log_sha256": "e4eb2577ed7044ebd3b404096a57920c4a9b68d7219ea09a8762dbad173f5bfc",
+      "runner_sha256": "0adc82a14f0466aa0e56d1a47bd767329c9273527f69ba2e3f8e6fd6e0a6c264",
+      "evidence_directory": "AI/tmp/phase1-original-hardware-v2-100k"
+    },
+    {
+      "result": "HARDWARE_PASS",
+      "frequency_hz": 500000,
+      "elapsed_seconds": 2.868513900000835,
+      "executable_sha256": "76b7b69895814a7835794d1663e3fbbe63b1aefc7cddcf199b4a6f1465f67e59",
+      "log_sha256": "c11c8fc6ff86371b701158769e13a168720635eaa5ef7a6eb13bdd0f726a4278",
+      "runner_sha256": "0adc82a14f0466aa0e56d1a47bd767329c9273527f69ba2e3f8e6fd6e0a6c264",
+      "evidence_directory": "AI/tmp/phase1-original-hardware-v2-500k"
+    },
+    {
+      "result": "HARDWARE_PASS",
+      "frequency_hz": 1000000,
+      "elapsed_seconds": 2.891178999998374,
+      "executable_sha256": "76b7b69895814a7835794d1663e3fbbe63b1aefc7cddcf199b4a6f1465f67e59",
+      "log_sha256": "3c5d786a3ea94861fa0afbfa0a876c642dc394bbe82a091f462712e87b2b257b",
+      "runner_sha256": "0adc82a14f0466aa0e56d1a47bd767329c9273527f69ba2e3f8e6fd6e0a6c264",
+      "evidence_directory": "AI/tmp/phase1-original-hardware-v2-1m"
+    }
+  ],
+  "cooling": {
+    "result": "PASS",
+    "samples": [
+      {
+        "magic": "50315450",
+        "health": 3,
+        "rpm": 3600,
+        "fpga_c": 29,
+        "board_c": 28,
+        "status": 5
+      },
+      {
+        "magic": "50315450",
+        "health": 3,
+        "rpm": 3660,
+        "fpga_c": 29,
+        "board_c": 28,
+        "status": 5
+      },
+      {
+        "magic": "50315450",
+        "health": 3,
+        "rpm": 3660,
+        "fpga_c": 29,
+        "board_c": 28,
+        "status": 5
+      },
+      {
+        "magic": "50315450",
+        "health": 3,
+        "rpm": 3660,
+        "fpga_c": 29,
+        "board_c": 28,
+        "status": 5
+      },
+      {
+        "magic": "50315450",
+        "health": 3,
+        "rpm": 3600,
+        "fpga_c": 29,
+        "board_c": 28,
+        "status": 5
+      },
+      {
+        "magic": "50315450",
+        "health": 3,
+        "rpm": 3660,
+        "fpga_c": 29,
+        "board_c": 28,
+        "status": 5
+      },
+      {
+        "magic": "50315450",
+        "health": 3,
+        "rpm": 3660,
+        "fpga_c": 29,
+        "board_c": 28,
+        "status": 5
+      },
+      {
+        "magic": "50315450",
+        "health": 3,
+        "rpm": 3600,
+        "fpga_c": 29,
+        "board_c": 28,
+        "status": 5
+      },
+      {
+        "magic": "50315450",
+        "health": 3,
+        "rpm": 3660,
+        "fpga_c": 29,
+        "board_c": 28,
+        "status": 5
+      },
+      {
+        "magic": "50315450",
+        "health": 3,
+        "rpm": 3600,
+        "fpga_c": 29,
+        "board_c": 28,
+        "status": 5
+      }
+    ],
+    "evidence": "AI/tmp/phase1-cooling-final",
+    "log_sha256": "389c54240d1f05c8b00c7009853b070b7ad61a16d76873482929168c5aac143a",
+    "idle_reset": "Status 5 is intentional: original tester closes DBUS4/reset low; board and cooling remain released. Subsequent tester initialization releases TPM reset."
+  },
+  "limitations": [
+    "Inherited Phase 1 authorization, memory, self-test and execution placeholders remain.",
+    "Eight original suites are not complete TPM 2.0 conformance or cryptographic quote validation.",
+    "No key-generation core connected; no AES/RSA claim from this tester.",
+    "JTAG telemetry is observational and not an atomic sensor snapshot.",
+    "No extended soak or new KEY0 manual test in this migration run."
+  ],
+  "retained_history": [
+    "AI/tmp/phase1-original-hardware-100k: prior 255 ms latency tester also passed in 138.688 s.",
+    "AI/tmp/phase1-cooling-after-100k: checker initially expected status 7; observed valid cooling with intentional idle-reset status 5. Record retained."
+  ]
+}
