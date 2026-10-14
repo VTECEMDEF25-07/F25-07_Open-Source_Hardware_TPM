@@ -2,6 +2,9 @@
 // modules:
 //	test0_top
 //
+// AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+// Disclosure applies to project-local changes; original authorship is preserved.
+//
 // Authors:
 //	Ian Sizemore (idsizemore@vt.edu)
 //
@@ -10,7 +13,7 @@
 // General Description:
 //	Top level module for our physical fpga testing.
 //	Other top level modules for different devices will likely look similar.
-//	This module targets the Terasic DE0-CV development board.
+//	This module targets the Terasic DE1-SoC development board.
 
 module de1_soc_top
 (
@@ -30,6 +33,7 @@ module de1_soc_top
 	wire	pirq_out;
 	assign	GPIO_1_7 = pirq_out;
 	assign	LEDR[0] = pirq_out;
+	assign	LEDR[9:1] = 9'b0;
 	
 	
 	wire	CLOCK_100;

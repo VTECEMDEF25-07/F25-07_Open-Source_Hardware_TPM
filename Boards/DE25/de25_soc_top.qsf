@@ -1,0 +1,68 @@
+# Filename: de25_soc_top.qsf
+# Authors: Project contributors; see Git history.
+# Date: 2026-10-14
+# General Description: Connects the original Phase 1 TPM to DE25 pins, related clocks, reset and independent cooling.
+# AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
+set_global_assignment -name FAMILY "Agilex 5"
+set_global_assignment -name DEVICE A5ED013BB32AE4SCS
+set_global_assignment -name DEVICE_FILTER_PACKAGE VPBGA
+set_global_assignment -name USE_CONF_DONE SDM_IO16
+set_global_assignment -name USE_HPS_COLD_RESET SDM_IO11
+set_global_assignment -name USE_INIT_DONE SDM_IO13
+set_global_assignment -name STRATIXV_CONFIGURATION_SCHEME "ACTIVE SERIAL X4"
+set_global_assignment -name ACTIVE_SERIAL_CLOCK AS_FREQ_100MHZ
+set_global_assignment -name DEVICE_INITIALIZATION_CLOCK OSC_CLK_1_125MHZ
+set_global_assignment -name PWRMGT_VOLTAGE_OUTPUT_FORMAT "LINEAR FORMAT"
+set_global_assignment -name PWRMGT_LINEAR_FORMAT_N "-12"
+set_global_assignment -name BOARD default
+set_global_assignment -name POWER_APPLY_THERMAL_MARGIN ADDITIONAL
+set_global_assignment -name TOP_LEVEL_ENTITY de25_soc_top
+set_global_assignment -name VERILOG_MACRO "DE25_PHASE1_DIAGNOSTICS=1"
+set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
+set_global_assignment -name NUM_PARALLEL_PROCESSORS 2
+set_global_assignment -name RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"
+set_global_assignment -name SDC_FILE de25_soc_top.sdc
+set_location_assignment PIN_CH128 -to clock_i
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to clock_i
+set_location_assignment PIN_BW59 -to board_reset_n_i
+set_instance_assignment -name IO_STANDARD "1.2-V" -to board_reset_n_i
+set_location_assignment PIN_BU28 -to spi_clock_i
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to spi_clock_i
+set_location_assignment PIN_BP31 -to spi_cs_n_i
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to spi_cs_n_i
+set_location_assignment PIN_BM31 -to spi_mosi_i
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to spi_mosi_i
+set_location_assignment PIN_BW28 -to spi_reset_n_i
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to spi_reset_n_i
+set_location_assignment PIN_BF40 -to spi_miso_o
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to spi_miso_o
+set_location_assignment PIN_BE43 -to interrupt_n_o
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to interrupt_n_o
+set_location_assignment PIN_BF120 -to fan_i2c_scl
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to fan_i2c_scl
+set_location_assignment PIN_BH118 -to fan_i2c_sda
+set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to fan_i2c_sda
+set_global_assignment -name SEARCH_PATH "../../IO Interface"
+set_global_assignment -name VERILOG_FILE "../../de25_soc_top.v"
+set_global_assignment -name VERILOG_FILE "de25_phase1_clock.v"
+set_global_assignment -name VERILOG_FILE "../../TPM_TOP.v"
+set_global_assignment -name VERILOG_FILE "../../Management Module/management_module.v"
+set_global_assignment -name VERILOG_FILE "../../Execution Engine/execution_engine.v"
+set_global_assignment -name VERILOG_FILE "../../IO Interface/fifo_buffer.v"
+set_global_assignment -name VERILOG_FILE "../../IO Interface/spi_slave.v"
+set_global_assignment -name VERILOG_FILE "../../IO Interface/tpm_crb.v"
+set_global_assignment -name VERILOG_FILE "../../IO Interface/tpm_io.v"
+set_global_assignment -name VERILOG_FILE "../../IO Interface/tpm_reg_space.v"
+set_global_assignment -name VERILOG_FILE "../../IO Interface/tpm_spi_ctrl.v"
+set_global_assignment -name VERILOG_FILE "../../Key Generation/demo/de25_revd/vendor/altera_s10_user_rst_clkgate.v"
+set_global_assignment -name VERILOG_FILE "../../Key Generation/demo/de25_revd/vendor/auto_fan.v"
+set_global_assignment -name VERILOG_FILE "../../Key Generation/demo/de25_revd/vendor/BOARD_MANAGEMENT.v"
+set_global_assignment -name VERILOG_FILE "../../Key Generation/demo/de25_revd/vendor/CLOCKMEM.v"
+set_global_assignment -name VERILOG_FILE "../../Key Generation/demo/de25_revd/vendor/fan_timer.v"
+set_global_assignment -name VERILOG_FILE "../../Key Generation/demo/de25_revd/vendor/I2C_READ_DATA.v"
+set_global_assignment -name VERILOG_FILE "../../Key Generation/demo/de25_revd/vendor/I2C_WRITE_BYTE.v"
+set_global_assignment -name VERILOG_FILE "../../Key Generation/demo/de25_revd/vendor/I2C_WRITE_POINTER.v"
+set_global_assignment -name VERILOG_FILE "../../Key Generation/demo/de25_revd/keygen_fan_guard.v"
+set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to {tpm_release_reg[*]}
+set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to {board_release_reg[*]}

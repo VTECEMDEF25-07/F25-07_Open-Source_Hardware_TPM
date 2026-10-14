@@ -1,0 +1,14 @@
+{
+  "compiler": "riscv-none-elf-gcc.exe (xPack GNU RISC-V Embedded GCC x86_64) 15.2.0",
+  "isa": "rv32i",
+  "abi": "ilp32",
+  "rom_capacity_bytes": 32768,
+  "ram_capacity_bytes": 16384,
+  "binary_bytes": 1648,
+  "image_sha256": "a9b67a3d34031e12b4fc4afba521fbf13549d39523749980195c55fa9c86fb9f",
+  "source_sha256": {
+    "rsa_control.c": "66ca4bc21441c600c5ef1e0a6a50a3410cf6f11a7ddd6fe0e9dcdf706f97e7dd",
+    "rsa_start.S": "e0cf9dd05093990d0a3da6739e7d5de62411cd36d4e4be0fba7897d77c192fcf",
+    "rsa_control.ld": "142d8f33fe299e3b0fca2ab191d6028ca631ecfe094e2e16cd3cd4e3afb1c02d"
+  }
+}
