@@ -4,6 +4,8 @@ Generate AES-128, AES-256 and RSA-2048 keys from an externally supplied generati
 
 **Status: implementation is in draft review; final four-image acceptance is in progress.** The [completion matrix](docs/COMPLETION_MATRIX.md) identifies actual passes and remaining gates. Nothing merges automatically.
 
+Aaron waived the 30-minute soak tests on October 13 to meet a 20-minute delivery deadline. All four complete-key simulations pass. Both Altera board images meet routed timing; their physical results and the remaining generic-board gates are recorded in the [measured comparison](docs/FINAL_COMPARISON.md). The handoff is explicitly incomplete until the remaining gates close.
+
 ## System layout
 
 ```text

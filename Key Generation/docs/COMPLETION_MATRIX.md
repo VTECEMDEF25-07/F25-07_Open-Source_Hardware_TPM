@@ -2,6 +2,16 @@
 
 **Review snapshot: October 13, 2026. Overall status: INCOMPLETE.**
 
+**User scope change:** Aaron removed the 30-minute soak tests and set a
+20-minute delivery deadline at 20:41 EDT. Soaks are **WAIVED BY USER**, never
+PASS. The active soft-core/Altera soak was deliberately stopped after 23
+completed jobs (235.715 seconds of recorded completed work). Its retained
+RUNNING checkpoint and process-exit failure are explained by
+`CLASS/AI/tmp/keygen-delivery/USER_SCOPE_CHANGE.json`; they are not evidence of
+a functional failure. Generic final fit/hardware gates remain pending and
+were not waived. Delivery may therefore be an explicitly incomplete demo
+handoff rather than the original four-image release.
+
 This matrix covers the approved four-build delivery, not merely a working demo.
 PASS below applies only to the stated evidence and scope. PENDING is not approval.
 The coordinating lead must update final build identities and physical results
@@ -17,15 +27,19 @@ revision alone does not replace those hashes.
 
 | Build | Complete-key simulation | Final routed board image | Final physical acceptance |
 |---|---|---|---|
-| Dedicated / generic | **PASS:** reset-audited directed+stalls and normal SHA seed1; see simulation table below. | **PENDING:** select and review final fan/source-offer-corrected image. | **PENDING:** all required actions and healthy soak on that exact image. |
-| Dedicated / Altera | **PASS:** genuine installed models, directed+stalls, 136,232,057 cycles. | **PENDING:** select and review final fan/source-offer-corrected image. | **PENDING:** all required actions and healthy soak on that exact image. |
-| Soft-core / generic | **PASS:** reset-audited directed+stalls and normal SHA seed1. | **PENDING:** select and review final fan/source-offer-corrected image. | **PENDING:** all required actions and healthy soak on that exact image. |
-| Soft-core / Altera | **PASS:** genuine installed models, directed+stalls, 136,243,488 cycles; exact generic match. | **PENDING:** select and review final fan/source-offer-corrected image. | **PENDING:** repeat acceptance after correcting the initial image's cooling failure. |
+| Dedicated / generic | **PASS:** reset-audited directed+stalls and normal SHA seed1; see simulation table below. | **PENDING:** final snapshot prepared; no completed final fit. | **PENDING:** correctness/recovery corpus on final image; soak waived. |
+| Dedicated / Altera | **PASS:** genuine installed models, directed+stalls, 136,232,057 cycles. | **PASS:** `kga4/rtl_altera`, 56.97% occupied ALMs; independently reviewed timing and hashes. | **RUNNING:** programmed identity and physical sequence; soak waived. |
+| Soft-core / generic | **PASS:** reset-audited directed+stalls and normal SHA seed1. | **RUNNING:** final fit; approval pending final reports. | **PENDING:** correctness/recovery corpus on final image; soak waived. |
+| Soft-core / Altera | **PASS:** genuine installed models, directed+stalls, 136,243,488 cycles; exact generic match. | **PASS:** `kga4/softcore_altera`, 65.18% occupied ALMs; independently reviewed timing and hashes. | **PASS for revised non-soak scope:** all three SPI rates, both AES profiles, 20 RSA seeds, stalls, reset and source-fault recovery; healthy cooling. Soak waived. |
 
 The portable core simulation snapshot includes the registered-reset and cleanup
 fixes. Later board-only fan and source-offer changes need their own board-wrapper
 regression and final image evidence; they do not turn earlier physical results
 into results for the new image.
+
+Selected image fingerprints, bitstream hashes, measurements and evidence paths
+are in [FINAL_COMPARISON.md](FINAL_COMPARISON.md). The physical reports below
+remain immutable; the user scope record explains the intentionally stopped soak.
 
 | Simulation evidence | Result / limitation |
 |---|---|
@@ -67,7 +81,7 @@ operations are implemented privately in the pair checker.
 | Gate | Evidence / disposition |
 |---|---|
 | Independent arithmetic | `Math/README.md`:48full-width cases and full1024-bit exponent tests on generic and genuine models. `CLASS/AI/tmp/keygen-math-small-{generic,altera}-preload/`:10,771independent small-domain cases, carry/borrow boundaries and pseudoprime arithmetic examples. **PASS.** |
-| Pair validation / canonical d | `CLASS/AI/tmp/keygen-pair-registered-reset-{generic,altera}/`:8fixtures, twelve busy-reset phases, held-result reset, storage/latch cleanup. **PASS.** Vendor `final-console.json` and verified hashes are authoritative; damaged native transcript is retained and disclosed. |
+| Pair validation / canonical d | `CLASS/AI/tmp/keygen-pair-generic-final-capture/` and `keygen-pair-registered-reset-altera/`: eight fixtures, twelve busy-reset phases, held-result reset and complete storage/latch cleanup. **PASS.** Generic evidence was rebuilt and captured cleanly after finding its original log damaged. Vendor `final-console.json` and verified hashes are authoritative; original damaged native transcripts remain preserved. |
 | Dedicated retry/watchdog flow | `CLASS/AI/tmp/keygen-controller-final/result.log`, controller tests: real10240/20480limits, bounded command/internal-response waits, legal source waits and first fault. **PASS.** Scripted service tests prove control flow, not substitute arithmetic. |
 | Soft-core firmware/control | `rtl/rsa_softcore/RSA_CONTROL.md`:119descriptor real-CPU tests, production retry exhaustion, traps/watchdogs, blocking status and RAM-latch cleanup on generic/Altera. **PASS within documented configurations.** |
 | Portable reset generation | `RESET_AUDIT.md`:registered controls replace four contributed asynchronous state decodes; synchronizer/release behavior and imported Pico synchronous reset reviewed. **PASS.** Imported board-management scope is reviewed separately. |
@@ -75,18 +89,19 @@ operations are implemented privately in the pair checker.
 
 ## Physical gates required for every selected image
 
-Each of the four physical columns above stays PENDING until **all** rows below
-are linked to the same selected source snapshot, SOF hash and loaded 256-bit
-fingerprint. A filename containing “final” does not establish finality.
+Each physical row needs the same selected source snapshot, SOF hash and loaded
+256-bit fingerprint. The current per-image results are in the four-build table
+above. A filename containing “final” does not establish finality. The original
+soak requirement is now explicitly waived by the user.
 
 | Gate | Required evidence / current disposition |
 |---|---|
-| FPGA fit and clock | Full routed50MHz; reviewed setup/hold/recovery/removal/pulse-width, CDC/reset/constraints, all warnings; exact ALM/register/M20K/DSP use and <=70%principal-resource target. Four final selections **PENDING**. |
-| Programmed identity | JTAG programming outcome/SOF hash plus all8fingerprint words and controller/backend/test-mode checks. Final selections **PENDING**. |
-| Transport | Separate100kHz,500kHz,1MHz scratch/framing/partial-abort reports. Final selections **PENDING**. |
-| AES and RSA corpus | AES128/256 and all20fixed seeds, independently validated key components. Record each core cycle count and host elapsed time, median/max; median<=30s, every host job<=180s. Final selections **PENDING**. |
-| Replay and fault recovery | Same-seed source pauses, five observable reset boundaries, four source-failure boundaries with error2/no-stale/discard, then AES128/AES256/RSA reuse. Final selections **PENDING**. |
-| Cooling and soak | Healthy temperature/fan/freshness samples; gray reset leaves cooling operational. At least30minutes mixed AES128/AES256/RSA per image, errors and samples retained. Final selections **PENDING**. |
+| FPGA fit and clock | Full routed 50 MHz; reviewed timing, crossings, constraints and warnings; exact physical resource use and <=70% target. Both Altera images **PASS**. Generic final fits **PENDING**. |
+| Programmed identity | Programming outcome/SOF hash and all eight fingerprint words. Both Altera images **PASS**. Generic images **PENDING**. |
+| Transport | Separate 100 kHz, 500 kHz and 1 MHz scratch/framing/partial-abort reports. Both Altera images **PASS**. Generic images **PENDING**. |
+| AES and RSA corpus | Both AES profiles and all 20 fixed seeds; independently validated components, median <=30 s and each host job <=180 s. Soft-core/Altera **PASS**; dedicated/Altera running; generic images pending. |
+| Replay and fault recovery | Source pauses, five reset boundaries, four source-failure boundaries with error 2/discard, then three-profile reuse. Soft-core/Altera **PASS**; dedicated/Altera running; generic images pending. |
+| Cooling and soak | Healthy cooling required for selected operations. Soft-core/Altera **PASS**; dedicated/Altera observations remain healthy. All 30-minute soaks **WAIVED BY USER**, not passed. |
 
 The initial soft-core/Altera image at
 `CLASS/AI/tmp/keygen-board-acceptance-v2/softcore_altera/` passed routed timing and
@@ -104,7 +119,7 @@ gate. Corrected fan/source-offer images must repeat physical acceptance.
 | Firmware reproducibility | Pinned xPackGCC15.2.0-1, RV32I/ILP32flags, source and exactROM hashes in `firmware/TOOLCHAIN.md`, `rsa_control_manifest.json`; current control text1648bytes. **PASS for recorded build.** Final ROMs must match selected manifests. |
 | Upstream CPU / tool licenses | PicoRV32 ISC license and pin `ef203c2b0a3fb793280f5114941416c425c5b461` preserved with documented runtime cleanup patch. Toolchain licenses retained with external dependency; no toolchain redistribution assumed. **Human final license/provenance review required**, including board vendor sources. |
 | Vendor model provenance | Unchanged installed Quartus24.1models under Questa2024.3; QuartusPro26.1fits establish actual Agilex5mapping. AUTO-family warning and Verilator incompatibility documented. Proprietary models excluded from release payload. |
-| Evidence gate tooling | `scripts/package_release.py` at17b7f36 independently reviewed;26testsPASS, including missing rates/configs, failed cooling, bad hashes, timing chronology and relocated package preparation. **PASS for tooling, not a completed release.** |
+| Evidence gate tooling | `scripts/package_release.py` through d66ff83 independently reviewed; 29 tests PASS, including missing rates/configs, failed cooling, bad hashes, timing chronology, canonical source closure and relocation. **PASS for tooling, not a completed release.** |
 | Selected release artifact | **PENDING:** four approvedimages with ninehardware report roles each, final simulation summaries, this reviewed matrix, licenses and SHA256index. `RELEASE.md` defines package/rebuild commands and limitations. |
 | Rebuildability | Packager retains audited originals and prepares a separate relative-path snapshot with new fingerprint/tool version. Unit relocation testPASS; any actual rebuilt image needs new timing/physical acceptance. No inherited approval. |
 | Final comparison and user review | **PENDING:** concise four-way correctness/latency/resource table, recommended default, residual limitations and progressive MR reading order. No whole-plan completion until all required cells close. |

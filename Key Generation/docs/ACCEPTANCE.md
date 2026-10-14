@@ -158,3 +158,28 @@ log SHA256:
 `af57b3381dc5187cdb79569674f5d6bfbc72fc18691b419c3e966f084b7d7128`.
 This closes the four-way complete-key simulation comparison. It does not close
 physical image acceptance or establish a random-search latency median.
+
+## Time-bounded demo handoff amendment
+
+On October 13 at 20:41 EDT, Aaron waived the 30-minute soaks and requested
+delivery within 20 minutes. The original release validator remains strict;
+an incomplete demo handoff is labeled separately. Soaks are waived, not passed.
+
+The corrected soft-core/Altera image under `AI/tmp/kga4/softcore_altera`
+passes all non-soak physical gates: three SPI rates, both AES profiles,
+20 independently checked RSA seeds, source-stall replay and reset/fault recovery.
+Its median is 26.40469044 s, maximum 101.45542472 s, and all 754 corpus cooling
+samples are healthy (maximum 32 C). Physical evidence is under
+`AI/tmp/keygen-hardware-v4/softcore_altera`. The user stopped its soak after
+23 completed jobs; the immutable process failure/checkpoint records are
+annotated by `USER_SCOPE_CHANGE.json` and do not claim a spontaneous failure.
+
+Both final Altera images pass independently reviewed routed timing and fit.
+Dedicated/Altera physical acceptance is running; final generic-board acceptance
+remains pending. See `COMPLETION_MATRIX.md` and `FINAL_COMPARISON.md` for current
+per-image identities and outcomes. Original failed evidence remains preserved.
+
+The damaged generic pair-checker log was replaced as selected evidence by a
+fresh build and clean capture under `AI/tmp/keygen-pair-generic-final-capture`.
+All eight fixtures, twelve busy resets, held-result reset and full cleanup pass.
+The old damaged log remains retained and is not used as passing evidence.
