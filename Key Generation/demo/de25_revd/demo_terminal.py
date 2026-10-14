@@ -8,6 +8,7 @@
 import argparse
 import json
 from pathlib import Path
+import statistics
 import sys
 import time
 
@@ -48,15 +49,20 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument("--seed", type=int, choices=range(1, 21), default=1)
+    parser.add_argument("--rsa-count", type=int, choices=(1, 5, 10), default=5,
+                        help="number of distinct test seeds for RSA (default: 5)")
     parser.add_argument("--frequency", type=int, choices=(100000, 500000, 1000000), default=1000000)
     args = parser.parse_args()
 
     reference = Path(__file__).resolve().parents[2] / "reference"
     sys.path.insert(0, str(reference))
-    fixture = json.loads((reference / "seeds.json").read_text())["seeds"][args.seed - 1]
+    seeds = json.loads((reference / "seeds.json").read_text())["seeds"]
+    fixture = seeds[args.seed - 1]
+    rsa_fixtures = [seeds[(args.seed - 1 + offset) % len(seeds)]
+                    for offset in range(args.rsa_count)]
     manifest = json.loads(args.manifest.read_text())
 
-    print("DE25 KEY GENERATION — LIVE HARDWARE DEMO", flush=True)
+    print("DE25 KEY GENERATION - LIVE HARDWARE DEMO", flush=True)
     print("Deterministic TEST seed and TEST keys; not production randomness.\n", flush=True)
     with DemoAdapter(args.frequency) as adapter:
         identity = host_test.identify(adapter, manifest)
@@ -65,23 +71,34 @@ def main():
         print(f"Build fingerprint: {identity['build_fingerprint']}")
         print(f"SPI: {args.frequency:,} Hz, transport PASS; seed {fixture['id']}\n", flush=True)
 
-        for profile, label, count in ((0, "AES-128", 4), (1, "AES-256", 8), (2, "RSA-2048", 129)):
+        for profile, label, count in ((0, "AES-128", 4), (1, "AES-256", 8)):
             print(f"[{label}] generating on FPGA...", flush=True)
             result = host_test.run_key(adapter, profile, fixture, fixture["id"])
             words = [adapter.words[index] for index in range(count)]
-            if profile < 2:
-                print(f"  verified test key: {key_hex(words)}")
-                print(f"  PASS — {result['core_cycles']} core cycles")
-            else:
-                print("  verified public modulus n (2048 bits):")
-                for offset in range(0, 64, 8):
-                    print(f"    {key_hex(words[offset:offset + 8])}")
-                print(f"  public exponent e: {words[64]}")
-                print("  private factors p and q: independently verified (1024 bits each)")
-                print(f"  PASS — {result['core_seconds']:.2f} core seconds")
+            print(f"  verified test key: {key_hex(words)}")
+            print(f"  PASS - {result['core_cycles']} core cycles")
             sample = result["fan_samples"][-1]
             print(f"  Cooling: {sample['fpga_c']} C FPGA, {sample['fan_rpm']} RPM, alarm {sample['alarm']}\n", flush=True)
-    print("ALL THREE KEYS VERIFIED ON THE LIVE BOARD", flush=True)
+
+        rsa_results = []
+        for number, rsa_fixture in enumerate(rsa_fixtures, 1):
+            print(f"[RSA-2048 {number}/{args.rsa_count}] test seed {rsa_fixture['id']}: generating on FPGA...", flush=True)
+            result = host_test.run_key(adapter, 2, rsa_fixture, rsa_fixture["id"])
+            words = [adapter.words[index] for index in range(129)]
+            modulus = key_hex(words[:64])
+            print(f"  verified public n: {modulus[:24]}...{modulus[-24:]} (2048 bits)")
+            print(f"  public e: {words[64]}; private p/q: independently verified")
+            print(f"  PASS - {result['core_seconds']:.2f} core seconds")
+            sample = result["fan_samples"][-1]
+            print(f"  Cooling: {sample['fpga_c']} C FPGA, {sample['fan_rpm']} RPM, alarm {sample['alarm']}\n", flush=True)
+            rsa_results.append(result)
+
+    core_times = [result["core_seconds"] for result in rsa_results]
+    host_times = [result["host_operation_seconds"] for result in rsa_results]
+    print(f"RSA-2048: {len(rsa_results)} distinct seeds, all keys verified")
+    print(f"  Core time: average {statistics.mean(core_times):.2f} s; median {statistics.median(core_times):.2f} s")
+    print(f"  Terminal time: average {statistics.mean(host_times):.2f} s; median {statistics.median(host_times):.2f} s")
+    print("AES-128, AES-256, AND ALL RSA KEYS VERIFIED ON THE LIVE BOARD", flush=True)
 
 
 if __name__ == "__main__":
