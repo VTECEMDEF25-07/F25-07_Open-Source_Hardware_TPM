@@ -128,5 +128,8 @@ facilities, not a production secret-key interface.
   reports remain required.
 - Independent packaging review: the original 19 tests passed but missed concrete
   false-pass cases; 17b7f36 corrections independently rerun: 26/26 PASS.
+- Actual Windows build review found an SDC CRLF-versus-logical-LF false rejection;
+  5db4336 preserves exact raw hashes and normalizes only the logical comparison.
+  Independent CRLF acceptance and snapshot-tamper tests both pass.
 - Final coordinating reviewer / selected build identities / completion date:
   **PENDING**. Do not replace this with an automatic package success string.

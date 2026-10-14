@@ -1,77 +1,64 @@
-# Key Generation: architecture and review baseline
+# Portable key-generation core
 
-Updated October 13, 2026. This is a documentation-only review chunk for the revised standalone core. It supersedes the September proposed cancel/staged-store protocol; it does not make the historical implementation conform to this design.
+Generate AES-128, AES-256 and RSA-2048 keys from an externally supplied generation stream. Dedicated Verilog control and PicoRV32 firmware control share the RSA arithmetic. Each can use generic resources or hand-instantiated Altera resources.
 
-## Agreed system
+**Status: implementation is in draft review; final four-image acceptance is in progress.** The [completion matrix](docs/COMPLETION_MATRIX.md) identifies actual passes and remaining gates. Nothing merges automatically.
 
-- Assemble AES-128/AES-256 from supplied generation words.
-- Generate RSA-2048 from two 1024-bit primes, with public exponent 65537.
-- Use FIPS 186-5 Appendix A.1.3 as the generation baseline; finish the precise standards/errata mapping before algorithm implementation.
-- Evaluate dedicated RTL and soft-core-driven RSA; both execute inside FPGA fabric.
-- Accept one operation at a time and capture its parameters.
-- Transfer validated complete results to a protected receiver, obtain whole-result ownership acknowledgment, clear temporary local secrets, then report success.
-- Preserve generated RSA primes through protected handoff. Internal full-exponent/CRT preparation is deferred; required private-key validation is not.
-- Use reset-only abort for the first version; no separate core cancel interface is selected.
-- Consume an external fresh or isolated repeatable generation stream. Raw hierarchy seeds stay outside keygen. The detailed teammate contract is pending.
-- Use generic Verilog for synthesizable source. SystemVerilog testbenches are explicitly permitted. Any synthesizable SV section requires Aaron's approval before use.
-
-## Boundaries
+## System layout
 
 ```text
-External request controller + generation service
-                     |
-             Portable keygen controller
-              /                    \
-       AES assembler           RSA candidate
-                                     |
-                          Arithmetic + scratch RAM
-              \                    /
-              Protected complete-result handoff
-                     |
-             External object/receiver service
+External coordinator + isolated generation service
+                  | requests + 32-bit words
+             Portable keygen core
+              /                \
+       AES assembler      RSA controller (RTL or firmware)
+                               |
+                      Shared arithmetic + scratch RAM
+              \                /
+        Protected 32-bit result + whole-key acceptance
+                  |
+       External receiver / TPM object service
 ```
 
-TPM parsing, authorization, hierarchy seeds, object wrapping/handles, durable storage and host responses stay outside this core. A keygen demo is not complete TPM command support.
+The portable core uses one 50 MHz clock and accepts one operation at a time. Accepted parameters cannot change mid-operation. AES returns four or eight key words. RSA uses exponent 65537 and returns n, e, p and q; it calculates and checks d internally, then clears it. External words and bytes are most significant first; arithmetic uses little-endian 32-bit limbs internally.
 
-## Portability
+Success requires validation, complete-result acceptance and local clearing before held terminal status. Individual word transfers do not transfer whole-key ownership. Reset aborts unaccepted work, invalidates transfers and scrubs local storage before admission resumes. It cannot revoke a key the receiver already accepted. External stalls are legal; internal watchdogs detect failed progress.
 
-Common resource wrappers select generic or Altera implementations for this milestone. Xilinx-specific resources are deferred by agreement. Every vendor implementation must have a synthesizable generic equivalent and match its defined cycle-level interface. Board clocks, pins, SPI transport and vendor primitives stay in wrappers/backends.
+TPM commands, authorization, hierarchy seeds, production randomness, object wrapping and persistence remain external. CRT preparation and Xilinx-specific resources are deferred. The DE25 demonstration uses predictable test streams and exports test keys for independent checking; production integration excludes that board test wrapper.
 
-Directory proposal: `rtl/`, `IP/wrappers/`, `IP/generic/`, `IP/altera/`, `IP/xilinx/`, `firmware/`, `Testbenches/`, `reference/`, `demo/` and `scripts/`. Preserve existing organization until moves are intentional review chunks. [Coding and language rules](CODING_STANDARDS.md) apply to new/updated work.
+## Read the design
 
-## Existing draft review disposition
+| Document | What it explains |
+|---|---|
+| [Interface](docs/INTERFACE.md) | Exact signals, ordering, ownership, reset and fault codes |
+| [Core lifecycle](docs/CORE.md) | Admission, workers, clearing and terminal status |
+| [RSA algorithm](docs/RSA_ALGORITHM.md) | FIPS procedure, bounds, witnesses, retries and correction audit |
+| [AES worker](docs/AES.md) | Key assembly, transfer and clearing |
+| [RSA engine](docs/RSA_ENGINE.md) | Shared services and dedicated controller |
+| [Pair validation](docs/PAIR_CHECK.md) | Modulus, GCD/LCM, private inverse and checks |
+| [Soft-core control](rtl/rsa_softcore/RSA_CONTROL.md) | Firmware, acceleration and CPU cleanup |
+| [Resources](IP/README.md) | Generic/Altera latency, RAM collisions and actual-model equivalence |
+| [Arithmetic](Math/README.md) | Limb operations and independent vectors |
+| [Coding standards](CODING_STANDARDS.md) | Verilog-2001 source, approved SV tests and naming rules |
+| [Build and test](docs/BUILD_AND_TEST.md) | Reproducible simulation and board commands |
+| [DE25 demo](demo/de25_revd/README.md) | Wiring, SPI registers and bounded host tests |
+| [Release](docs/RELEASE.md) | Four-image evidence and package/rebuild procedure |
 
-| Existing chunk | Disposition |
-| --- | --- |
-| This architecture outline | Review the current requirements/boundaries; exact interfaces remain open. |
-| Execution/keygen plumbing | Hold from merge. Captured-request/wait/error fixes are reusable, but should be separated from legacy Create adapter integration. |
-| AES assembly | Most reusable code chunk. Review counts, ordering and clearing after language/naming cleanup; reset-only and explicit complete-result handoff still require redesign. |
-| AES staged-store backend | Historical prototype; do not merge as the new core. Redesign around the selected handoff boundary instead of durable-store commit/cancel. |
+## Source organization
 
-The legacy branches are preserved. Their original tests demonstrate historical behavior only. Style and Verilog migration must not be confused with architectural acceptance.
+- `rtl/common`, `rtl/aes`, `rtl/rsa_rtl`, `rtl/rsa_softcore`: portable control.
+- `rtl/arithmetic`: limb arithmetic and private pair validation; `Math/` contains associated documentation, tests and runners.
+- `IP/keygen_*`: resource wrappers and generic/Altera implementations; `IP/third_party`: pinned PicoRV32 source and license.
+- `firmware`, `reference`, `testbench`: firmware, independent checks and fixtures.
+- `demo/de25_revd`, `demo/test_rng`: board adaptation and explicit test stream.
+- `scripts`: build, simulation, evidence and release helpers.
 
-## Next progressive review chunks
+`RSA_SOFTCORE=0/1` selects the controller; `KEYGEN_ALTERA` selects Altera resources. Both controllers consume the same ordered words and produce identical keys under different stalls. Vendor simulation must use genuine installed Altera models. Generated Quartus databases, waveforms, logs and firmware products are ignored; source, constraints, scripts, licenses and checked fixtures remain tracked.
 
-1. Agree exact request/generation/result/reset contracts.
-2. Generic Verilog resources and a runner that compiles Verilog source separately from SV tests.
-3. Standalone AES worker under the new contract.
-4. Independently checked RSA arithmetic.
-5. Complete dedicated RTL RSA generation.
-6. Soft-core feasibility and RSA firmware/accelerator integration as separate chunks.
-7. Shared controller/protected handoff/reset integration.
-8. DE25 SPI/demo wrapper and host checker.
-9. Later TPM command/object adapter integration.
+## Acceptance and review
 
-Each request states behavior, dependencies, actual checks and untested limitations. Keep requests draft until review; do not merge automatically. AI contributions and independent verification are disclosed.
+All four configurations must simulate, route at 50 MHz, fit the DE25 with the 70% resource-headroom target, and pass physical validation. Each needs the fixed 20-seed RSA corpus with median generation at most 30 seconds, a 180-second host deadline per operation, three SPI rates, AES checks, replay/reset/fault recovery, and a 30-minute mixed-operation soak with healthy cooling.
 
-The canonical living spec and plan stay in the class workspace `AI/KEY_GENERATION_SPEC.md` and `AI/KEYGEN_IMPLEMENTATION_PLAN.md`. This summary is self-contained for repository reviewers.
+See the [evidence ledger](docs/ACCEPTANCE.md) for historical measurements and the [completion matrix](docs/COMPLETION_MATRIX.md) for remaining work. The initial soft-core/Altera image met the RSA median target but failed cooling acceptance; corrected images must repeat testing.
 
-## Approved implementation contracts
-
-The implementation now follows [interface v1](docs/INTERFACE.md) and the
-[acceptance ledger](docs/ACCEPTANCE.md). These close the earlier interface proposal.
-The ledger distinguishes planned gates from actual passed evidence.
-
-Build four configurations (two RSA controllers times two resource backends),
-separately fitted on DE25 at50MHz. Target medianRSA2048 latency<=30s over20fixed
-test seeds;180s host deadline. Preserve independent cooling in every board image.
+Review architecture first, then interfaces/resources/AES, arithmetic, each RSA controller and board integration. Each draft MR includes behavior, dependencies, reading order, reproducible tests and limitations. The closed legacy plumbing and staged-store drafts are not dependencies of this implementation.
