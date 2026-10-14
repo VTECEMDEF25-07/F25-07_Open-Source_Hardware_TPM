@@ -2,6 +2,7 @@
 import json
 from pathlib import Path
 import tempfile
+import shutil
 import unittest
 from unittest.mock import patch
 import subprocess
@@ -197,7 +198,7 @@ class ReleaseTests(unittest.TestCase):
 
     def test_rebuild_after_package_move(self):
         release.package(self.config, self.root, self.output)
-        moved = self.output.with_name('moved_package'); self.output.rename(moved)
+        moved = self.output.with_name('moved_package'); shutil.copytree(self.output, moved)
         fresh = self.output.with_name('fresh_build')
         with patch.object(release.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, 'Quartus test', '')):
             manifest = release.prepare_rebuild(moved, 'rtl_generic', fresh, self.root/'quartus.exe')
