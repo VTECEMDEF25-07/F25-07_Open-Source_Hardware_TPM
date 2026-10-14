@@ -44,6 +44,7 @@ TPM commands, authorization, hierarchy seeds, production randomness, object wrap
 | [DE25 demo](demo/de25_revd/README.md) | Wiring, SPI registers and bounded host tests |
 | [Release](docs/RELEASE.md) | Four-image evidence and package/rebuild procedure |
 | [Dependencies](docs/DEPENDENCIES.md) | Pinned versions, source provenance and supplied license notices |
+| [Measured comparison](docs/FINAL_COMPARISON.md) | Per-build latency, physical resource use, timing and remaining acceptance |
 
 ## Source organization
 
