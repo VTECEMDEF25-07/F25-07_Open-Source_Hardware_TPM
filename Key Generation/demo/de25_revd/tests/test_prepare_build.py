@@ -14,7 +14,9 @@ spec.loader.exec_module(build)
 compile_spec = importlib.util.spec_from_file_location("compile_build", SCRIPT.with_name("compile_build.py"))
 compile_build = importlib.util.module_from_spec(compile_spec)
 compile_spec.loader.exec_module(compile_build)
-TMP = next(p / "AI/tmp" for p in SCRIPT.parents if (p / "AI/tmp").is_dir())
+TMP = next((p / "AI/tmp" for p in SCRIPT.parents if (p / "AI/tmp").is_dir()),
+           SCRIPT.parents[2] / "build/test_prepare_tmp")
+TMP.mkdir(parents=True, exist_ok=True)
 
 
 class EvidenceTests(unittest.TestCase):
