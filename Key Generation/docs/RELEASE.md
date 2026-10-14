@@ -76,6 +76,10 @@ Each variant contains the tested SOF, firmware ROM, source/config snapshots,
 build/timing manifests, reviewed reports and selected hardware evidence. Shared
 content includes tester/reference files, firmware sources and build script, docs,
 and pinned PicoRV32 license/provenance. Explicit extra evidence is text only.
+Firmware source files use the exact bytes certified by their pinned manifest;
+Windows checkout CRLF expansion is reversed only when that reproduces the
+recorded hash. Audited build configuration bytes, including SDC line endings,
+remain unchanged.
 Proprietary `220model.v`/`altera_mf.v`, Quartus databases and tool installations
 are excluded. Each file is limited to64MiB and the package to256MiB.
 

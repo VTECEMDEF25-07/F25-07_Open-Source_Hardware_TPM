@@ -156,6 +156,19 @@ class ReleaseTests(unittest.TestCase):
         release.package(self.config, self.root, self.output)
         self.assertEqual((self.output/'variants/rtl_generic/keygen_de25.sdc').read_bytes(), raw)
 
+    def test_firmware_checkout_line_endings_match_pinned_bytes(self):
+        source = self.root/'firmware/rsa_control.c'
+        source.write_bytes(b'int main(void) {\r\n return 0;\r\n}\r\n')
+        certified = source.read_bytes().replace(b'\r\n', b'\n')
+        path = self.root/'firmware/rsa_control_manifest.json'
+        manifest = json.loads(path.read_text()); manifest['source_sha256'] = {source.name: release.sha(certified)}
+        path.write_text(json.dumps(manifest))
+        release.package(self.config, self.root, self.output)
+        self.assertEqual((self.output/'firmware/rsa_control.c').read_bytes(), certified)
+        source.write_bytes(b'int different;\r\n')
+        self.output = self.output.with_name('must_reject_changed_firmware')
+        self.rejected()
+
     def test_missing_timing_evidence(self):
         path = self.root/'rtl_generic/acceptance_audit.json'
         obj = json.loads(path.read_text()); obj['report_sha256'] = {}; path.write_text(json.dumps(obj)); self.rejected()

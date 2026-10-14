@@ -178,7 +178,13 @@ def package(config, root, output):
         payload.add(root/relative, relative)
     firmware = read_json(root/'firmware/rsa_control_manifest.json')
     for name, expected in firmware['source_sha256'].items():
-        require(sha((root/'firmware'/name).read_bytes()) == expected, 'firmware source provenance mismatch')
+        data = payload.files['firmware/'+name]
+        if sha(data) != expected:
+            # Git Windows checkout may expand LF; emit the exact manifest-certified
+            # source bytes, never accept another source-content difference.
+            data = data.replace(b'\r\n', b'\n')
+        require(sha(data) == expected, 'firmware source provenance mismatch')
+        payload.files['firmware/'+name] = data
     matrix = Path(config['completion_matrix']).resolve()
     payload.add(matrix, 'review/COMPLETION_MATRIX.md')
     selected = {}
