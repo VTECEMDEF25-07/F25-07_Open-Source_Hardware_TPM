@@ -305,11 +305,27 @@ module	GENERIC_BUFFER
 (
 	input					clock,
 	input					wren_n,	// write enable, active low
-	input		[$clog2(BUF_SIZE)-1:0]	addr,	// mem address
+	input		[address_width(BUF_SIZE)-1:0]	addr,	// mem address
 	input		[WORD_SIZE-1:0]		wrByte,	// write byte in
 	output	reg	[WORD_SIZE-1:0]		rdByte	// read byte out
 );
 	
+	// Constant function keeps the legacy buffer compatible with Verilog-2001.
+	// Reserve one address bit for a one-word buffer.
+	function integer address_width;
+		input integer depth;
+		integer remaining;
+		begin
+			remaining = depth - 1;
+			address_width = 0;
+			while (remaining > 0) begin
+				address_width = address_width + 1;
+				remaining = remaining >> 1;
+			end
+			if (address_width == 0) address_width = 1;
+		end
+	endfunction
+
 	reg	[WORD_SIZE-1:0]	mem[0:BUF_SIZE-1];
 	
 	always @(posedge clock)
