@@ -92,6 +92,8 @@ Copy `flash_keygen.cdf` beside the generated `.jic`, then run `quartus_pgm -m JT
 
 The host client opens only C232HM serial `FTA6H280`. Use `python host_test.py --action transport --manifest <build_manifest.json> --report <report.json>` first; then `--action aes`, `--action rsa --seed 1`, or `--action corpus`. `--reset` pulses gray core reset only. Reads and operations are bounded; each operation has a 180-second deadline. A failure records FAIL and exits nonzero. Timeout may leave a busy operation: explicitly reset the core before retrying.
 
+For a short live presentation, run `python demo_terminal.py --manifest <build_manifest.json> --seed 1`. It identifies the test image, generates AES-128, AES-256, then RSA-2048 on the board, shows RSA progress every five seconds, and prints the verified test keys and fan status. Only this explicit terminal demo prints key material; the normal acceptance reports do not.
+
 RSA results must match the frozen deterministic corpus and pass the independent key checker. AES must match the SHA fixture stream. The host records 50 MHz cycle counts, separate wall-clock completion latency, and roughly one-second fan telemetry samples. No private result values are saved to reports. The corpus acceptance checks the median of all twenty RSA core times against 30 seconds; a transport-only or single-key success does not establish that target.
 
 ## Initial evidence
