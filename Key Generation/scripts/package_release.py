@@ -218,8 +218,8 @@ def package(config, root, output):
             payload.add(build/name, prefix+name, expected)
         require(manifest['firmware_sha256'] == firmware['image_sha256'], 'firmware image revision mismatch')
         require(sha((build/'rsa_control.hex').read_bytes()) == manifest['firmware_sha256']
-                and sha((build/'keygen_de25.sdc').read_bytes())
-                == sha(manifest['fingerprint_inputs']['sdc'].encode()), 'firmware/constraints fingerprint mismatch')
+                and (build/'keygen_de25.sdc').read_bytes().decode('utf-8').replace('\r\n', '\n')
+                == manifest['fingerprint_inputs']['sdc'], 'firmware/constraints fingerprint mismatch')
         require({'keygen_de25.sta.rpt', 'keygen_de25.fit.rpt'} <= set(timing['report_sha256']),
                 'missing routed timing/resource reports')
         for name, expected in timing['report_sha256'].items():

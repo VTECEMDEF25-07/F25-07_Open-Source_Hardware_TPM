@@ -139,6 +139,23 @@ class ReleaseTests(unittest.TestCase):
     def test_snapshot_tamper(self):
         (self.root/'rtl_generic/sources/core.v').write_text('changed source'); self.rejected()
 
+    def test_windows_sdc_line_endings_preserve_raw_audit_hash(self):
+        build = self.root/'rtl_generic'
+        manifest = json.loads((build/'build_manifest.json').read_text())
+        manifest['fingerprint_inputs']['sdc'] = 'CLOCK\nUNCERTAINTY\n'
+        fingerprint = release.sha(json.dumps(manifest['fingerprint_inputs'], sort_keys=True, separators=(',', ':')).encode())
+        manifest['build_fingerprint'] = fingerprint
+        (build/'build_manifest.json').write_text(json.dumps(manifest))
+        raw = b'CLOCK\r\nUNCERTAINTY\r\n'; (build/'keygen_de25.sdc').write_bytes(raw)
+        timing = json.loads((build/'acceptance_audit.json').read_text())
+        timing['build_fingerprint'] = fingerprint
+        timing['post_tool_config_sha256']['keygen_de25.sdc'] = release.sha(raw)
+        (build/'acceptance_audit.json').write_text(json.dumps(timing))
+        for role in release.ROLES:
+            self.mutate_report(role, lambda r: r.update(build_fingerprint=fingerprint))
+        release.package(self.config, self.root, self.output)
+        self.assertEqual((self.output/'variants/rtl_generic/keygen_de25.sdc').read_bytes(), raw)
+
     def test_missing_timing_evidence(self):
         path = self.root/'rtl_generic/acceptance_audit.json'
         obj = json.loads(path.read_text()); obj['report_sha256'] = {}; path.write_text(json.dumps(obj)); self.rejected()
