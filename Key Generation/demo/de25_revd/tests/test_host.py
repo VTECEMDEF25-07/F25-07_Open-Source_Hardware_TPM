@@ -358,7 +358,7 @@ class HostTests(unittest.TestCase):
         self.assertEqual(caught.exception.cleanup_errors,['adapter initialization close: initialization close failed'])
 
     def test_provenance_rejects_changed_reference(self):
-        scratch=(HERE.parents[4]/'AI/tmp').resolve()
+        scratch=next(p/'AI/tmp' for p in HERE.parents if (p/'AI/tmp').is_dir()).resolve()
         with tempfile.TemporaryDirectory(dir=scratch) as directory:
             root=Path(directory).resolve();root.relative_to(scratch)
             for name in ('host_test.py','fan_diagnostics.py','key_checker.py','keygen_reference.py','seeds.json','expected_keys.json'):
