@@ -142,3 +142,19 @@ pass. The final transcript has zero NUL bytes and no errors (two documented
 model warnings); source/model/fixture hashes are unchanged. Evidence is under
 `build/full_altera_rtl_directed-reset_audited_capture_v1/`. This is a directed
 functional comparison, not a random-search performance measurement.
+
+Final soft-core full RSA with genuine Altera models also passes: 384 source
+words, all 129 checked result words, legal external stalls and exactly
+136,243,488 cycles, matching the generic soft-core run. Questa exits0 after
+3248.111 seconds. The closed transcript contains no NUL bytes or errors and two
+documented vendor warnings. All 28 recorded source, runner and model inputs,
+the ROM and both fixtures were independently rehashed after completion.
+Evidence: `build/full_altera_softcore_directed-reset-audited-pipe/`.
+Build-manifest SHA256:
+`e99e45e38806c8e940fab27d1fa7831082a2025de64cce8345d58cb7bb999e29`;
+run-manifest SHA256:
+`f18a795ce5058fbf1de94c3f4324d872894514d7fc08968f3e000fb659bf77eb`;
+log SHA256:
+`af57b3381dc5187cdb79569674f5d6bfbc72fc18691b419c3e966f084b7d7128`.
+This closes the four-way complete-key simulation comparison. It does not close
+physical image acceptance or establish a random-search latency median.
