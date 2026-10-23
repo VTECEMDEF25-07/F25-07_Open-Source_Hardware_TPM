@@ -44,7 +44,7 @@ set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to fan_i2c_scl
 set_location_assignment PIN_BH118 -to fan_i2c_sda
 set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to fan_i2c_sda
 set_global_assignment -name SEARCH_PATH "../../IO Interface"
-set_global_assignment -name VERILOG_FILE "../../de25_soc_top.v"
+set_global_assignment -name VERILOG_FILE "de25_soc_top.v"
 set_global_assignment -name VERILOG_FILE "de25_phase1_clock.v"
 set_global_assignment -name VERILOG_FILE "../../TPM_TOP.v"
 set_global_assignment -name VERILOG_FILE "../../Management Module/management_module.v"
@@ -66,3 +66,5 @@ set_global_assignment -name VERILOG_FILE "support/I2C_WRITE_POINTER.v"
 set_global_assignment -name VERILOG_FILE "support/de25_fan_guard.v"
 set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to {tpm_release_reg[*]}
 set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to {board_release_reg[*]}
+set_global_assignment -name LAST_QUARTUS_VERSION "26.1.0 Pro Edition"
+set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS INPUT TRI-STATED"

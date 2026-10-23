@@ -19,3 +19,7 @@ Run the two included fan runners under WSL/Linux with Verilator and a fresh abso
 Local evidence: `AI/tmp/de25-board-fan-test/`, `de25-board-fan-bus-test/`, `de25-board-main-spi-v2/`, and `de25-board-main-build/`. `AI/tmp/de25-board-validation.json` binds fan/TPM simulation logs to the inspected source. The build manifest records source/configuration hashes. No hardware programming, TPM certification or approval to merge is implied by these checks.
 
 Compiled SOF SHA256: `461f305a6d28c91b44185ff9b8df61ed57abe428a1351de1e5f0d183cf6b54c1`. Compilation completed successfully; timing acceptance remains false for the SPI limitations above. Imported HDL/testbench whitespace is preserved from the tested sources.
+
+## Dual-board organization follow-up
+
+The DE25 top now lives beside its QPF/QSF in `Boards/DE25/`. A fresh compile through the root board selector completed successfully after relocation; 1 PLL and assigned physical pins were verified. Existing main TPM vectors also pass with the relocated top. Fan RTL is unchanged from the fault simulations above. Fresh SOF SHA256: `430011d4fe8c718b40cb8da9bf5e8a8524dbd7d51e586d7ac7b99591d7bb3a98`. The -2.700 ns SPI timing limitation remains. Local evidence: `AI/tmp/dual-board-DE25-compile.log`, `dual-board-de25-sim/`, and this checkout's ignored `Boards/DE25/output_files/`.

@@ -151,3 +151,12 @@ __pycache__/
 !Boards/DE25/*.qsf
 !Boards/DE25/*.sdc
 /local_scripts/
+
+!Boards/DE1/*.qpf
+!Boards/DE1/*.qsf
+!Boards/DE1/*.sdc
+
+# Quartus-generated per-board IP work directories.
+/Boards/*/dni/
+/Boards/*/tmp-clearbox/
+/Boards/*/c5_pin_model_dump.txt
