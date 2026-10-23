@@ -10,7 +10,7 @@ AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
 
 ## Decision requested
 
-Review the dedicated-logic AES/RSA key-generation design and its interface for future TPM integration. PR #35 also retains the DE1-SoC project. DE25 fan/reset/board support is a separate PR targeting main; the keygen demonstration is local-only and is not wired into the TPM command path.
+Review the dedicated-logic AES/RSA key-generation design and its interface for future TPM integration. DE1/DE25 board projects and board selection belong to PR #36 targeting main; the keygen demonstration is local-only and is not wired into the TPM command path.
 
 The CPU implementation has been preserved separately on `aaron/keygen-cpu` at `c90610165605cac55243522847c5e5f50f60ef08`. Review this PR's **Files changed** view for the final dedicated-logic scope; earlier commits still contain the superseded combined implementation.
 

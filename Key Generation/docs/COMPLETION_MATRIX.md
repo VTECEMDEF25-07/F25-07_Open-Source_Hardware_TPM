@@ -21,7 +21,7 @@ PR #35 contains two resource configurations: dedicated RTL/generic and dedicated
 | Transport and recovery | 100 kHz/500 kHz/1 MHz SPI; five reset boundaries, source stalls and four fault boundaries with reuse; pending on newly built images. |
 | Cooling and soak | Healthy fan/temperature telemetry required. October 13's 30-minute soak waiver was a demo waiver, not a passing test; local hardware acceptance still requires soak evidence. |
 | Production TPM integration | Entropy, seed management, authorization, protected object storage and command wiring remain external. |
-| Phase 1 board ports | DE1 retained; DE25 support extracted into a separate PR against main. |
+| Phase 1 board ports | DE1 and DE25 projects and board selection are in PR #36 against main. |
 | Release package | Pending both accepted source-matched images and all required reports; no release package is claimed by this review. |
 
 Historical board measurements and demo packaging are preserved locally. Review-ready does not mean hardware-release complete or approved to merge.
