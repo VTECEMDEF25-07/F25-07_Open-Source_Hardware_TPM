@@ -21,9 +21,11 @@ Commands below run from `Key Generation`; Linux commands use Ubuntu 24.04/WSL an
 | SHA/SPI source hold | `python3 demo/de25_revd/simulate_source_hold.py --build build/advisor-source-hold` | PASS: outstanding offer, single transfer, pause/resume and reset; controllable core model |
 | Board preparation | `python demo/de25_revd/prepare_build.py --build-root build/advisor-board --variant all` | PASS: exactly `rtl_generic` and `rtl_altera`; no firmware required; snapshot/config hashes checked |
 | Repository hygiene | `python scripts/check_repository_hygiene.py` and `git diff --check` | PASS |
-| Genuine Altera full RSA | `python scripts/run_full_altera_questa.py --directed --stalls --seeds 1 --label advisor-altera` | Source compilation PASS; simulation running, not yet counted as a pass |
+| Genuine Altera full RSA | `python scripts/run_full_altera_questa.py --directed --stalls --seeds 1 --label advisor-altera` | PASS: all 129 result words match; 384 input words; 136,232,057 cycles, identical to generic resources |
 
 Source audit found no CPU RTL, PicoRV32 source, firmware files, controller selectors or CPU build options in the retained implementation. Changed Markdown links resolve. Python syntax checks pass. Complete generic RSA input hashes still match the tested source; its manifest SHA-256 is `d0b41dee270dde4e9a5b1776b910ae772e6e75b819af04985a22ed65f80a1bb7`.
+
+The genuine-model run completed successfully in 2,844.45 simulator seconds. Its source, runner, installed vendor-model, fixture and log hashes were rechecked after completion. Run-manifest SHA-256: `0f32ce60516155bac7601317cc59245e098874c3edfddd3c7396db3dd6f56c6b`; build-manifest SHA-256: `cf6a97dc495634f7ef70bf7f43193fd59e5933b2392031f41318488fce60e909`. The installed model's AUTO RAM-block warning remains a simulation-model limitation; this run does not establish device-specific RAM mapping or fit.
 
 ## Interpretation and limits
 
