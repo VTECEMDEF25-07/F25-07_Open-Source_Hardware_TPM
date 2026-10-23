@@ -1,50 +1,37 @@
-# Review status after architecture reset
+<!--
+Filename: REVIEW.md
+Authors: Project contributors; see Git history.
+Date: 2026-09-30
+General Description: Provides the faculty advisor reading order and review scope.
+AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+-->
 
-October 13, 2026: the review below concerns the historical September outline. Its cancel/staged-store contracts are superseded by the current README. This historical review is not approval of the new interfaces or algorithms. The revised architecture and Verilog-only rules require Aaron's review.
+# Faculty advisor review guide
 
----
+## Decision requested
 
-# Outline validation record
+Review the dedicated-logic AES/RSA key-generation design and its interface for future TPM integration. DE1/DE25 board projects and board selection belong to PR #36 targeting main; the keygen demonstration is local-only and is not wired into the TPM command path.
 
-Date: 2026-09-30. Scope: documentation-only proposal in `Key Generation/README.md` on `aaron/key-generation`, based on main `91759b2c98ccf0f0a1bf29012d9f5ec64d669b57`.
+The CPU implementation has been preserved separately on `aaron/keygen-cpu` at `c90610165605cac55243522847c5e5f50f60ef08`. Review this PR's **Files changed** view for the final dedicated-logic scope; earlier commits still contain the superseded combined implementation.
 
-Codex authored the outline at Aaron's request. A separate AI tester reviewed it read-only; the development agent remained sole repository writer. AI review is not human approval. Aaron must review the draft PR before merge.
+## Suggested reading order
 
-## Independent review findings resolved
+1. [README](README.md), [interface](docs/INTERFACE.md) and [lifecycle](docs/CORE.md): external responsibilities, ownership and fault behavior.
+2. [Algorithm](docs/RSA_ALGORITHM.md), `rtl/rsa_rtl/keygen_rsa_controller.v` and [engine](docs/RSA_ENGINE.md): prime-generation sequencing and bounded failures.
+3. [AES](docs/AES.md), [pair validation](docs/PAIR_CHECK.md), [arithmetic](Math/README.md) and [resources](IP/README.md): implementation and reference checks.
+4. [Validation](docs/RTL_REVIEW_VALIDATION.md) and [build commands](docs/BUILD_AND_TEST.md): what was rerun for this branch.
 
-| Finding | Correction |
-| --- | --- |
-| Stray Markdown fence hid later design sections | Removed fence; diagram fence is balanced. |
-| Cancellation could coincide with storage begin/worker launch, making rollback ownership ambiguous | Cancel/fault suppresses request/begin/work/RNG/data/commit normal transfers on that edge. Start worker only after staging opens; wait for cleanup only from actually started peers. |
-| Late fault could rewrite a stalled terminal success response | First `rsp_valid` publishes immutable status/object/token through acknowledgment, except reset. Faults through publication decision edge dominate success; later faults are separately supervised through sticky health state and storage recovery. |
+## Review questions
 
-## Static validation
+- Are result ownership, discard, reset and clearing contracts suitable for the team's protected object store?
+- Do the RSA state-machine ordering, retry bounds and arithmetic checks implement the intended algorithm? No FIPS certification is claimed.
+- Are the external entropy and seed-service responsibilities sufficiently explicit?
+- Are resource use and remaining timing/physical gates acceptable before integration?
 
-- Port directions and widths reviewed for external wrapper/controller, both workers, request/cancel/status, RNG, protected component stream, storage finalization and health/recovery.
-- Reviewed latching and held-start rearming, accepted-word counting, stalls, error priority, cancel/zeroization intent, rollback versus accepted commit, immutable terminal status and reset reconciliation.
-- Component arithmetic checked: AES-256 eight words; RSA basic n/e/d profile 129 words; reserved full CRT profile 289 words; 7-bit component index accommodates maximum used index 63; 12-bit sizes accommodate 2048 bits.
-- Repo-relative Markdown links and fence balance checked; final staged whitespace and changed-file scope checks performed before commit. Only two new Markdown files in `Key Generation` are intended changes.
-- Every generation/storage operation remains proposed. No inherited HDL or board configuration changed. No success stub, source algorithm, functional key generation or compliance claim added.
+## Known limits
 
-The independent tester found no remaining substantive documentation issue after corrections. This is a proposal review, not verification that hardware satisfies the contracts.
+Production entropy, hierarchy seed management, authorization, object wrapping, CRT preparation and full TPM command integration are outside this subsystem. Test fixtures contain public test keys only. Generic RAM inference/DE25 fit remains a separate follow-up. Prior bitstream evidence does not certify the changed source snapshot; final fit, timing and physical acceptance must use matching manifests. Existing Phase 1 SPI CDC/generated-clock limitations remain documented in the board README.
 
-## Inherited implementation evidence reused
+[Completion matrix](docs/COMPLETION_MATRIX.md) separates review readiness from hardware release acceptance. AI assistance is disclosed in [AI_DISCLOSURE.md](docs/AI_DISCLOSURE.md); human review remains required before merge.
 
-The read-only chat **Review inherited TPM execution and management modules** analyzed the same base; its saved report is class `AI/INHERITED_MODULE_REVIEW.md`, and its separate logs live outside the repository under class `AI/tmp/inherited-module-review/`. The development agent read the report and relevant log output and reconciled the integration plan. Selected observations:
-
-- Execution's default next state can leave EXECUTE when `command_done` is low; command_start is not a safe one-shot launch protocol.
-- Session-free command progression, authorization/preprocessing waits and initialization-on-error behavior need correction before generation launch.
-- Dispatcher error response can revert to success; execution response input is only one bit. Neither is a valid full-width error return path.
-- Management hierarchy changes depend on enable-gated, prior-latched values; a one-cycle command enable cannot be assumed to apply the new request.
-- Management reset coverage and response priority also need correction before autonomous lifecycle/object side effects.
-- Top validation/completion constants and CRB's ten-byte header-only response remain integration blockers.
-
-These are inherited-module findings, **not tests of this outline or a new key-generation implementation**. This PR documents required changes and does not fix those modules.
-
-## Limits and future verification
-
-No new HDL exists to compile, elaborate or simulate. No cryptographic functional tests ran for this change. Native PATH searches did not find HDL tools; the separate inherited review found an off-PATH Questa installation. Its availability does not make documentation an executable design.
-
-Future implementation must test accepted-word counts and ordering; stalls and equal-valued consecutive words; reset/RNG error/cancel at every transfer boundary; held request/rearming; late failure and status stability; rollback/commit and stale IDs; variable RSA candidate retries and independent arithmetic/key checks. RNG assurance/CDC, actual secret clearing, protected-storage behavior and TPM creation/session response semantics need separate verification.
-
-RNG full contract, formal AES sizes, primary derivation, byte order/encoding, target board/clocks, storage profile, failure/recovery classification and RSA generation/compliance procedure remain review gates.
+DE25 board support: [PR #36](https://github.com/VTECEMDEF25-07/F25-07_Open-Source_Hardware_TPM/pull/36), targeting main and intended to merge first.
