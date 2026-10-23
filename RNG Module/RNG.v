@@ -1,96 +1,33 @@
-// RNG.v
-//
-// Top-level module that connects:
-// entropy_source -> future Hash.v placeholder -> random_number_generation
-//                -> tpm2_get_random (TPM2_GetRandom command)
-//
-// Hash.v is intentionally not implemented yet. For now, entropy_output is
-// passed directly into random_number_generation through hash_output_placeholder
-// so this top-level module compiles.
-//
-// The host talks to the TPM over two 8-bit byte streams: it sends a
-// TPM2_GetRandom command frame on cmd_*, and the response frame comes back on
-// rsp_*. Random bytes leave the chip only inside a TPM2_GetRandom response,
-// never on their own.
-//
-// Written by Jungyeon Won with the help of generative AI
- 
 `timescale 1ns/1ps
- 
-module RNG (
-    input  wire        clk,
-    input  wire        rst_n,
-    input  wire        enable,
- 
-    // TPM command in
-    input  wire [7:0]  cmd_data,
-    input  wire        cmd_valid,
-    input  wire        cmd_last,
-    output wire        cmd_ready,
- 
-    // TPM response out
-    output wire [7:0]  rsp_data,
-    output wire        rsp_valid,
-    output wire        rsp_last,
-    input  wire        rsp_ready
+// Standalone GetRandom frontend. For shared keygen use rng_keygen_physical.
+// Replaces the original hash/DRBG bypass. No tied-off startup or health status.
+// VALIDATED_ENTROPY defaults OFF until physical entropy characterization.
+module RNG #(parameter VALIDATED_ENTROPY=0) (
+ input wire clk,rst_n,enable,tpm_initialized,
+ input wire [7:0] cmd_data,input wire cmd_valid,cmd_last,output wire cmd_ready,
+ output wire [7:0] rsp_data,output wire rsp_valid,rsp_last,input wire rsp_ready,
+ output wire health_fault
 );
- 
-    wire [255:0] entropy_output;
-    wire         entropy_valid;
- 
-    wire [255:0] hash_output_placeholder;
-    wire         hash_valid_placeholder;
-    wire [255:0] random_output_internal;
-    wire         random_valid_internal;
- 
-    entropy_source u_entropy_source (
-        .clk           (clk),
-        .rst_n         (rst_n),
-        .enable        (enable),
-        .entropy_output(entropy_output),
-        .entropy_valid (entropy_valid)
-    );
- 
-    // Future Hash.v connection:
-    //
-    // Hash u_hash (
-    //     .clk        (clk),
-    //     .rst_n      (rst_n),
-    //     .enable     (entropy_valid),
-    //     .hash_input (entropy_output),
-    //     .hash_output(hash_output_placeholder),
-    //     .hash_valid (hash_valid_placeholder)
-    // );
-    //
-    // Placeholder passthrough until Hash.v is implemented.
-    assign hash_output_placeholder = entropy_output;
-    assign hash_valid_placeholder  = entropy_valid;
- 
-    random_number_generation u_random_number_generation (
-        .clk          (clk),
-        .rst_n        (rst_n),
-        .enable       (hash_valid_placeholder),
-        .hash_input   (hash_output_placeholder),
-        .random_output(random_output_internal),
-        .random_valid (random_valid_internal)
-    );
- 
-    tpm2_get_random u_tpm2_get_random (
-        .clk            (clk),
-        .rst_n          (rst_n),
-        .cmd_data       (cmd_data),
-        .cmd_valid      (cmd_valid),
-        .cmd_last       (cmd_last),
-        .cmd_ready      (cmd_ready),
-        .rsp_data       (rsp_data),
-        .rsp_valid      (rsp_valid),
-        .rsp_last       (rsp_last),
-        .rsp_ready      (rsp_ready),
-        .rng_data       (random_output_internal),
-        .rng_valid      (random_valid_internal),
-        .tpm_initialized(1'b1),   // drive from TPM2_Startup once it exists
-        .rng_fault      (1'b0)    // drive from health tests once they exist
-    );
- 
+ wire source_reset_n;
+ rng_reset_sync reset_sync(.clock_i(clk),.reset_n_i(rst_n),.reset_n_o(source_reset_n));
+ wire sample,sample_valid,seed_valid,seed_ready;
+ wire [383:0] seed;
+ wire open_valid,open_ready,open_rsp_valid,open_rsp_ready,word_valid,word_ready,fault;
+ wire close_valid,close_ready,close_rsp_valid,close_rsp_ready,close_fault;
+ wire [3:0] open_status;wire [31:0] word_data;
+ entropy_source source(.clk(clk),.rst_n(source_reset_n),.enable(enable),.entropy_output(),.entropy_valid(),.raw_sample(sample),.raw_sample_valid(sample_valid));
+ rng_entropy_seed #(.VALIDATED(VALIDATED_ENTROPY)) entropy(.clock_i(clk),.reset_n_i(source_reset_n),.clear_i(!enable),
+ .sample_i(sample),.sample_valid_i(sample_valid),.seed_valid_o(seed_valid),.seed_ready_i(seed_ready),.seed_o(seed),.health_fault_o(health_fault));
+ rng_service service(.clock_i(clk),.reset_n_i(source_reset_n),.open_valid_i(open_valid),.open_ready_o(open_ready),
+ .client_i(1'b1),.operation_id_i(32'b0),.mode_i(2'b0),.profile_i(2'b0),.procedure_version_i(16'b0),.context_handle_i(32'b0),.test_seed_i(256'b0),
+ .open_rsp_valid_o(open_rsp_valid),.open_rsp_ready_i(open_rsp_ready),.open_status_o(open_status),.client_o(),.operation_id_o(),
+ .seed_valid_i(seed_valid),.seed_ready_o(seed_ready),.seed_i(seed),.health_fault_i(health_fault || !enable),
+ .word_valid_o(word_valid),.word_ready_i(word_ready),.word_data_o(word_data),.context_fault_o(fault),
+ .close_valid_i(close_valid),.close_ready_o(close_ready),.close_rsp_valid_o(close_rsp_valid),.close_rsp_ready_i(close_rsp_ready),.close_fault_o(close_fault));
+ rng_getrandom frontend(.clock_i(clk),.reset_n_i(source_reset_n),.tpm_initialized_i(tpm_initialized),
+ .cmd_data_i(cmd_data),.cmd_valid_i(cmd_valid),.cmd_last_i(cmd_last),.cmd_ready_o(cmd_ready),
+ .rsp_data_o(rsp_data),.rsp_valid_o(rsp_valid),.rsp_last_o(rsp_last),.rsp_ready_i(rsp_ready),
+ .open_valid_o(open_valid),.open_ready_i(open_ready),.open_rsp_valid_i(open_rsp_valid),.open_rsp_ready_o(open_rsp_ready),.open_status_i(open_status),
+ .word_valid_i(word_valid),.word_ready_o(word_ready),.word_data_i(word_data),.context_fault_i(fault),
+ .close_valid_o(close_valid),.close_ready_i(close_ready),.close_rsp_valid_i(close_rsp_valid),.close_rsp_ready_o(close_rsp_ready),.close_fault_i(close_fault),.busy_o());
 endmodule
- 
