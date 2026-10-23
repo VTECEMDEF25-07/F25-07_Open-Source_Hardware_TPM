@@ -10,8 +10,8 @@ AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
 
 `rtl/common/keygen_core.v` is the integration boundary. It accepts one captured
 profile and operation ID, delegates AES key assembly or RSA generation, and
-delivers a protected result. `RSA_SOFTCORE=0` selects dedicated Verilog control;
-1 selects RV32I firmware. `KEYGEN_ALTERA` independently selects resource macros.
+delivers a protected result using dedicated Verilog control.
+`KEYGEN_ALTERA` selects resource macros.
 There are no board pins, SPI registers or test-generation seeds in this module.
 
 Read `INTERFACE.md`, this document, then the top-level state machine. Use
@@ -40,8 +40,7 @@ are legal. Internal controller watchdogs are distinct from host deadlines.
 
 ## Integration evidence
 
-`python3 scripts/run_integration_verilator.py` and the same command with
-`--softcore` both passed **28 lifecycle checks** using real engine storage:
+The historical dedicated run of `python3 scripts/run_integration_verilator.py` passed **28 lifecycle checks** using real engine storage:
 AES128/256, capture, source gaps, result stalls, ownership rejection, invalid
 profile, source failure, first-fault preservation, peer failure, invalid internal
 status mapping, partial RSA candidate reset, active modular-exponentiation reset,
@@ -55,20 +54,20 @@ suppresses the internal AES request on a fault, preventing an orphan worker job.
 against the independent corpus and requires exact source consumption. It fails
 on error status, missing PASS, timeout or incomplete execution. `--directed`
 tests known candidate inputs, `--stalls` adds source gaps/result backpressure,
-and `--softcore` selects firmware. No option replaces vendor models: genuine
-Altera runs use `scripts/softcore/run_full_altera_questa.py` and the installed
+and ownership delay. No option replaces vendor models: genuine
+Altera runs use `scripts/run_full_altera_questa.py` and the installed
 unmodified simulation library.
 
 Use `--label` to preserve a distinct evidence directory. The generic full-key
-runner records source, firmware, fixture, simulator and binary fingerprints and
+runner records source, fixture, simulator and binary fingerprints and
 rejects stale `--reuse-build` requests. The vendor runner independently hashes
 its unchanged model files as well. Build labels are not test results: the runner
 requires a complete-key PASS before writing successful runtime evidence.
 
-The full-key directed tests passed both generic controller configurations.
-Normal twenty-seed search, all four final fits and hardware soak remain
+The full-key directed tests passed the dedicated generic configuration.
+Normal twenty-seed search, both final resource fits and hardware soak remain
 acceptance gates; see `ACCEPTANCE.md`. Fast lifecycle tests do not claim every
-RSA internal reset phase is covered; arithmetic/CPU tests and board recovery
+RSA internal reset phase is covered; arithmetic tests and board recovery
 tests provide additional evidence.
 
 ## Registered reset control
@@ -80,5 +79,5 @@ This avoids relying on FPGA state-machine recoding for glitch-free reset and
 keeps the same behavior in generic Verilog and ASIC synthesis.
 
 The lifecycle test injects a between-edge state-decode transient and requires
-the engine reset to remain released. Both generic controllers pass this added
+the engine reset to remain released. The historical dedicated generic run passed this
 case; full vendor and routed acceptance must use the final reset-audited source.

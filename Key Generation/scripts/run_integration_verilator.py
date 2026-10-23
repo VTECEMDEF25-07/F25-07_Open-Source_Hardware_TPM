@@ -12,11 +12,10 @@ import subprocess
 
 p = argparse.ArgumentParser()
 p.add_argument('--suite', choices=['services', 'lifecycle'], default='lifecycle')
-p.add_argument('--softcore', action='store_true')
 a = p.parse_args()
 root = Path(__file__).resolve().parents[1]
 top = 'tb_keygen_rsa_services' if a.suite == 'services' else 'tb_keygen_lifecycle'
-build = root / 'build' / (a.suite + ('_softcore' if a.softcore else '_rtl'))
+build = root / 'build' / (a.suite + '_rtl')
 obj = build / 'obj'
 build.mkdir(parents=True, exist_ok=True)
 sources = ['rtl/rsa_rtl/keygen_rsa_services.v', 'testbench/' + top + '.sv']
@@ -26,14 +25,8 @@ if a.suite == 'lifecycle':
                 'rtl/aes/keygen_aes_core.v', 'rtl/arithmetic/keygen_math.v',
                 'rtl/arithmetic/keygen_pair_check.v', 'rtl/rsa_rtl/keygen_rsa_controller.v',
                 'rtl/rsa_rtl/keygen_rsa_engine.v', 'rtl/common/keygen_core.v']
-    if a.softcore:
-        sources += ['IP/third_party/picorv32/picorv32.v',
-                    'rtl/rsa_softcore/keygen_softcore_control.v', 'rtl/rsa_softcore/keygen_rsa_softcore.v']
-        shutil.copyfile(root / 'build/full/rsa_control.hex', build / 'rsa_control.hex')
 command = ['verilator', '--cc', '--exe', '--main', '--timing', '--top-module', top,
            '--Mdir', str(obj), '-Wno-fatal', '+1364-2001ext+v', '+1800-2017ext+sv']
-if a.softcore:
-    command += ['+define+KEYGEN_SOFTCORE']
 command += [str(root / s) for s in sources]
 with (build / 'elaborate.log').open('w') as log:
     subprocess.run(command, cwd=build, stdout=log, stderr=subprocess.STDOUT, check=True, timeout=120)

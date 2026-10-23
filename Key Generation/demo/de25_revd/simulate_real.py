@@ -14,7 +14,6 @@ import subprocess
 p=argparse.ArgumentParser()
 p.add_argument('--core-root',type=Path,required=True)
 p.add_argument('--build',type=Path,required=True)
-p.add_argument('--softcore',action='store_true')
 a=p.parse_args();here=Path(__file__).resolve().parent;core=a.core_root.resolve();build=a.build.resolve()
 obj=build/'obj';snapshot=build/'sources';snapshot.mkdir(parents=True,exist_ok=True)
 originals=sorted((core/'rtl').rglob('*.v'))+sorted(s for s in (core/'IP').rglob('*.v') if 'tests' not in s.parts)
@@ -23,16 +22,12 @@ sources=[];hashes={}
 for index,source in enumerate(originals):
     target=snapshot/(str(index).zfill(3)+'_'+source.name);shutil.copyfile(source,target)
     hashes[str(source)]=hashlib.sha256(target.read_bytes()).hexdigest();sources.append(target)
-firmware=core/'build/full/rsa_control.hex'
-if not firmware.exists():raise FileNotFoundError('Build real firmware first; no placeholder allowed')
-shutil.copyfile(firmware,build/'rsa_control.hex')
 # Independent standard-library oracle, without importing the project's generator.
 digest=hashlib.sha256(b'KEYGEN-TEST-v1\0'+(1).to_bytes(32,'big')+bytes(8)).digest()
 expected=build/'aes_expected.hex';expected.write_text(''.join(digest[i:i+4].hex()+'\n' for i in range(0,32,4)))
-manifest={'controller':'softcore' if a.softcore else 'rtl','source_sha256':hashes,'firmware_sha256':hashlib.sha256(firmware.read_bytes()).hexdigest(),'oracle':'Python hashlib, seed1 counter0','status':'running'}
+manifest={'controller':'rtl','source_sha256':hashes,'oracle':'Python hashlib, seed1 counter0','status':'running'}
 (build/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
 command=['verilator','--cc','--exe','--main','--timing','--top-module','tb_keygen_demo_real','--Mdir',str(obj),'-Wno-fatal','+1364-2001ext+v','+1800-2017ext+sv']
-if a.softcore:command+=['+define+TEST_SOFTCORE']
 command += [str(s) for s in sources]
 with (build/'elaborate.log').open('w') as log:subprocess.run(command,cwd=build,stdout=log,stderr=subprocess.STDOUT,check=True,timeout=180)
 combined=obj/'combined.cpp';combined.write_text(''.join('#include "'+s.name+'"\n' for s in sorted(obj.glob('*.cpp')) if s!=combined))

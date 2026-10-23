@@ -8,7 +8,7 @@ AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
 
 # RSA generation engine
 
-The dedicated controller and RV32I firmware issue the same descriptors to one
+The dedicated controller issues descriptors to one
 private arithmetic engine. For example, a candidate is drawn into scratch,
 filtered, tested with five accepted witnesses, and copied to the retained prime
 slot. A rejected witness consumes more source words but does not reject the
@@ -83,11 +83,10 @@ Outer cleanup runs before terminal failure becomes visible to the caller.
   failure coincident with the last input word and cached-state reset.
 - `scripts/run_full_verilator.py --directed --seeds 1`: complete dedicated
   generic RSA passed, including all five rounds per prime, pair arithmetic,
-  exact 129-word n/e/p/q output, ownership and cleanup. Add `--softcore` for the
-  same integrated firmware path; that also passed.
+  exact 129-word n/e/p/q output, ownership and cleanup.
 
 Directed candidates remove prime search from this test. The measured
-133,559,973 dedicated / 133,572,067 soft-core cycles are functional evidence,
+historical 133,559,973 dedicated cycles are functional evidence,
 **not** the twenty-seed search benchmark. Normal SHA-stream searches, actual
 Altera full-key simulation and final board acceptance have separate evidence.
 

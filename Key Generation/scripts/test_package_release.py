@@ -33,14 +33,12 @@ class ReleaseTests(unittest.TestCase):
             return path
         for relative in release.PROVENANCE.values():
             write(relative, relative)
-        for relative in ('docs/spec.md', 'IP/third_party/picorv32/COPYING',
-                         'IP/third_party/picorv32/README.md', 'demo/de25_revd/README.md',
-                         'demo/de25_revd/FAN_MONITOR.md', 'scripts/softcore/build_rsa.py',
+        for relative in ('docs/spec.md', 'demo/de25_revd/README.md',
+                         'demo/de25_revd/FAN_MONITOR.md',
                          'demo/de25_revd/prepare_build.py', 'demo/de25_revd/compile_build.py',
                          'demo/de25_revd/vendor/pin_reference.qsf',
                          'scripts/package_release.py', 'scripts/summarize_hardware.py', 'matrix.md'):
             write(relative, 'synthetic fixture; not acceptance')
-        write('firmware/rsa_control_manifest.json', json.dumps({'source_sha256': {}, 'image_sha256': release.sha(b'ROM')}))
         canonical_source = write('rtl/core.v', 'module core; endmodule')
         write('testbench/tb_core.sv', 'module tb_core; endmodule')
         write('Math/tests/vectors.hex', '12345678\n')
@@ -55,11 +53,11 @@ class ReleaseTests(unittest.TestCase):
             hardware.mkdir(parents=True)
             source = write(variant+'/sources/core.v', 'module core; endmodule')
             config_hashes = {}
-            for name, value in {'rsa_control.hex': 'ROM', 'keygen_de25.sdc': 'CLOCK',
+            for name, value in {'keygen_de25.sdc': 'CLOCK',
                                 'keygen_de25.qsf': 'SETTINGS', 'keygen_de25.qpf': 'PROJECT'}.items():
                 config_hashes[name] = release.sha(write(variant+'/'+name, value).read_bytes())
             inputs = {'sources': {source.name: release.sha(source.read_bytes())}, 'sdc': 'CLOCK',
-                      'variant': variant, 'firmware': release.sha(b'ROM'),
+                      'variant': variant,
                       'settings_before_fingerprint': [f'set_global_assignment -name VERILOG_FILE "{source}"',
                                                      'set_global_assignment -name SDC_FILE keygen_de25.sdc']}
             fingerprint = release.sha(json.dumps(inputs, sort_keys=True, separators=(',', ':')).encode())
@@ -67,7 +65,7 @@ class ReleaseTests(unittest.TestCase):
                         'diagnostic_mode': False, 'build_fingerprint': fingerprint, 'fingerprint_inputs': inputs,
                         'snapshot_sha256': {str(source): release.sha(source.read_bytes())},
                         'source_sha256': {str(canonical_source): release.sha(canonical_source.read_bytes())},
-                        'firmware_sha256': release.sha(b'ROM'), 'timing_review': {'audit': 'acceptance_audit.json'}}
+                        'timing_review': {'audit': 'acceptance_audit.json'}}
             write(variant+'/build_manifest.json', json.dumps(manifest))
             sof = write(variant+'/output_files/keygen_de25.sof', 'synthetic sof')
             report_hashes = {name: release.sha(write(variant+'/output_files/'+name, 'reviewed synthetic report').read_bytes())
@@ -142,7 +140,7 @@ class ReleaseTests(unittest.TestCase):
         with self.assertRaises(ValueError): release.package(self.config, self.root, self.output)
 
     def test_missing_variant(self):
-        self.config['variants'].pop('softcore_altera'); self.rejected()
+        self.config['variants'].pop('rtl_altera'); self.rejected()
 
     def test_wrong_bitstream(self):
         (self.root/'rtl_generic/output_files/keygen_de25.sof').write_text('different'); self.rejected()
@@ -176,19 +174,6 @@ class ReleaseTests(unittest.TestCase):
             self.mutate_report(role, lambda r: r.update(build_fingerprint=fingerprint))
         release.package(self.config, self.root, self.output)
         self.assertEqual((self.output/'variants/rtl_generic/keygen_de25.sdc').read_bytes(), raw)
-
-    def test_firmware_checkout_line_endings_match_pinned_bytes(self):
-        source = self.root/'firmware/rsa_control.c'
-        source.write_bytes(b'int main(void) {\r\n return 0;\r\n}\r\n')
-        certified = source.read_bytes().replace(b'\r\n', b'\n')
-        path = self.root/'firmware/rsa_control_manifest.json'
-        manifest = json.loads(path.read_text()); manifest['source_sha256'] = {source.name: release.sha(certified)}
-        path.write_text(json.dumps(manifest))
-        release.package(self.config, self.root, self.output)
-        self.assertEqual((self.output/'firmware/rsa_control.c').read_bytes(), certified)
-        source.write_bytes(b'int different;\r\n')
-        self.output = self.output.with_name('must_reject_changed_firmware')
-        self.rejected()
 
     def test_missing_timing_evidence(self):
         path = self.root/'rtl_generic/acceptance_audit.json'
@@ -243,7 +228,7 @@ class ReleaseTests(unittest.TestCase):
 
     def test_fingerprint_variant_binding(self):
         path = self.root/'rtl_generic/build_manifest.json'
-        obj = json.loads(path.read_text()); obj['fingerprint_inputs']['variant'] = 'softcore_generic'
+        obj = json.loads(path.read_text()); obj['fingerprint_inputs']['variant'] = 'rtl_altera'
         obj['build_fingerprint'] = release.sha(json.dumps(obj['fingerprint_inputs'], sort_keys=True, separators=(',', ':')).encode())
         path.write_text(json.dumps(obj)); self.rejected()
 
@@ -257,7 +242,7 @@ class ReleaseTests(unittest.TestCase):
         self.assertNotEqual(manifest['build_fingerprint'], manifest['rebuild_of'])
         self.assertIn('"sources/core.v"', (fresh/'keygen_de25.qsf').read_text())
         self.assertNotIn(str(self.root/'rtl_generic'), (fresh/'keygen_de25.qsf').read_text())
-        self.assertEqual((fresh/'rsa_control.hex').read_bytes(), b'ROM')
+        self.assertFalse((fresh/'rsa_control.hex').exists())
 
     def test_provenance_changed(self):
         (self.root/'reference/key_checker.py').write_text('changed'); self.rejected()

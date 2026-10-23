@@ -8,11 +8,6 @@
 `timescale 1ns/1ps
 // Real portable core + real SHA source + SPI + receiver. No keygen_core model.
 module tb_keygen_demo_real;
-`ifdef TEST_SOFTCORE
-    localparam SOFTCORE=1;
-`else
-    localparam SOFTCORE=0;
-`endif
     reg clock_i=0;always #10 clock_i=~clock_i;
     reg reset_n_i=0,spi_clock_i=0,spi_cs_n_i=1,spi_mosi_i=0;
     wire spi_miso_o,interrupt_n_o;
@@ -22,7 +17,7 @@ module tb_keygen_demo_real;
     string expected_path;
     integer i,polls;
     localparam [255:0] FINGERPRINT={4{64'h0123456789abcdef}};
-    keygen_demo_system #(.RSA_SOFTCORE(SOFTCORE),.BUILD_FINGERPRINT(FINGERPRINT)) dut (
+    keygen_demo_system #(.BUILD_FINGERPRINT(FINGERPRINT)) dut (
         .fan_diagnostic_i(96'h123456789abcdef001234567),.temperatures_i(32'h002a0020),.fan_status_i(32'h07000fa0),.*
     );
     always @(negedge clock_i) if(reset_n_i) begin
@@ -110,7 +105,7 @@ module tb_keygen_demo_real;
         $readmemh(expected_path,expected);
         #100;reset_n_i=1;await_status(1);
         read_reg(0,value);if(value!==32'h4b473031)$fatal(1,"ID");
-        read_reg(1,value);if(value!==(4+SOFTCORE))$fatal(1,"controller config");
+        read_reg(1,value);if(value!==4)$fatal(1,"controller config");
         read_reg(32,value);if(value!==32'h01234567)$fatal(1,"fan diagnostic32");
         read_reg(33,value);if(value!==32'h9abcdef0)$fatal(1,"fan diagnostic33");
         read_reg(34,value);if(value!==32'h12345678)$fatal(1,"fan diagnostic34");
@@ -137,14 +132,14 @@ module tb_keygen_demo_real;
         if(value[11:8]!==2 || value[2])$fatal(1,"AES source failure %h",value);
         acknowledge();start_key(0,0);successful(4);
         start_key(1,2);await_status(2);gray_reset();start_key(0,0);successful(4);
-        // Exercise actual RTL or firmware RSA request/abort path without an expensive key search.
+        // Exercise actual RTL RSA request/abort path without an expensive key search.
         start_key(2,0);await_status(2);
         repeat(4)begin write_reg(11,1);read_reg(3,value);write_reg(11,0);end
         gray_reset();
         start_key(2,1);await_status(2);write_reg(11,9);await_status(8);
         if(value[11:8]!==2 || value[2])$fatal(1,"RSA source failure %h",value);
         acknowledge();start_key(1,0);successful(8);
-        $display("PASS REAL_SPI_CORE controller=%0d: hashlib AES128/AES256, source/result/ownership stalls, capture, error, reset and RSA abort/recovery",SOFTCORE);
+        $display("PASS REAL_SPI_CORE controller=rtl: hashlib AES128/AES256, source/result/ownership stalls, capture, error, reset and RSA abort/recovery");
         $finish;
     end
     initial begin #200000000;$fatal(1,"global timeout");end

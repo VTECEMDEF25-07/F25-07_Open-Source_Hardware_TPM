@@ -28,7 +28,7 @@ def audit(report, seed_hash):
     require(report.get("result") == "PASS", "host run did not pass")
     require(report.get("test_mode") is True, "test-build identity missing")
     control, backend = report.get("control"), report.get("backend")
-    require(control in ("rtl", "softcore"), "unknown controller")
+    require(control == "rtl", "unknown controller")
     require(backend in ("generic", "altera"), "unknown backend")
     require(bool(re.fullmatch(r"[0-9a-f]{64}", report.get("build_fingerprint", ""))),
             "missing build fingerprint")

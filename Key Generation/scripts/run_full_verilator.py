@@ -72,7 +72,6 @@ def run_simulation(command, cwd, log_path, timeout):
         temporary.replace(log_path)
 
 p=argparse.ArgumentParser()
-p.add_argument('--softcore',action='store_true')
 p.add_argument('--directed',action='store_true',help='Known prime candidates and witness2; functional test, not search-performance evidence')
 p.add_argument('--stalls',action='store_true',help='Insert source gaps, result backpressure and ownership delay')
 p.add_argument('--seeds',nargs='+',type=int,default=[1])
@@ -82,7 +81,7 @@ p.add_argument('--label',default='',help='Optional evidence directory suffix; le
 a=p.parse_args()
 if a.label and not re.fullmatch(r'[A-Za-z0-9_-]+',a.label):p.error('Invalid evidence label')
 root=Path(__file__).resolve().parents[1]
-build=root/'build'/(('full_softcore' if a.softcore else 'full_rtl')+('_directed' if a.directed else '')+('_stalls' if a.stalls else '')+('_'+a.label if a.label else ''))
+build=root/'build'/('full_rtl'+('_directed' if a.directed else '')+('_stalls' if a.stalls else '')+('_'+a.label if a.label else ''))
 obj=build/'obj'
 build.mkdir(parents=True,exist_ok=True)
 sources=[
@@ -93,23 +92,18 @@ sources=[
     'rtl/rsa_rtl/keygen_rsa_engine.v','rtl/common/keygen_core.v',
     'demo/test_rng/keygen_test_source.v','testbench/tb_keygen_full.sv',
 ]
-if a.softcore:
-    sources += ['IP/third_party/picorv32/picorv32.v','rtl/rsa_softcore/keygen_softcore_control.v',
-                'rtl/rsa_softcore/keygen_rsa_softcore.v']
-    shutil.copyfile(root/'build/full/rsa_control.hex',build/'rsa_control.hex')
 def digest(path):return hashlib.sha256(path.read_bytes()).hexdigest()
 manifest_path=build/'source_manifest.json'
 inputs={s:digest(root/s) for s in sources}
-if a.softcore:inputs['build/full/rsa_control.hex']=digest(root/'build/full/rsa_control.hex')
 inputs['reference/expected_keys.json']=digest(root/'reference/expected_keys.json')
 inputs['scripts/run_full_verilator.py']=digest(Path(__file__))
-manifest={'inputs_sha256':inputs,'controller':'softcore' if a.softcore else 'dedicated',
+manifest={'inputs_sha256':inputs,'controller':'dedicated',
           'resources':'generic','simulator':subprocess.check_output(['verilator','--version'],text=True).strip()}
 binary=obj/'Vtb_keygen_full'
 if a.reuse_build:
     if not manifest_path.exists():raise RuntimeError('Reuse requires a recorded source manifest; rebuild with a fresh label')
     previous=json.loads(manifest_path.read_text())
-    if any(previous.get(k)!=v for k,v in manifest.items()):raise RuntimeError('Source/tool/firmware changed; refusing stale binary')
+    if any(previous.get(k)!=v for k,v in manifest.items()):raise RuntimeError('Source/tool changed; refusing stale binary')
     if previous.get('binary_sha256')!=digest(binary):raise RuntimeError('Binary hash differs from recorded build')
     manifest=previous
 if not a.reuse_build:
@@ -118,7 +112,6 @@ if not a.reuse_build:
         shutil.rmtree(obj)
     command=['verilator','--cc','--exe','--main','--timing','--top-module','tb_keygen_full',
              '--Mdir',str(obj),'-Wno-fatal','+1364-2001ext+v','+1800-2017ext+sv']
-    if a.softcore:command+=['+define+KEYGEN_SOFTCORE']
     command += [str(root/s) for s in sources]
     with (build/'elaborate.log').open('w') as log:
         subprocess.run(command,cwd=build,stdout=log,stderr=subprocess.STDOUT,check=True)
@@ -159,9 +152,9 @@ for seed in a.seeds:
     if a.stalls:command+=['+STALLS']
     run_simulation(command, build, build/f'seed-{seed}.log', timeout=7200)
     text=(build/f'seed-{seed}.log').read_text()
-    match=re.search(r'PASS FULL_RSA seed=(\d+) softcore=(\d+) words=(\d+) cycles=(\d+)',text)
+    match=re.search(r'PASS FULL_RSA seed=(\d+) words=(\d+) cycles=(\d+)',text)
     if not match:raise RuntimeError('No complete-key PASS evidence')
-    report=dict(zip(['seed','softcore','words','cycles'],map(int,match.groups())))
+    report=dict(zip(['seed','words','cycles'],map(int,match.groups())))
     report['simulator_seconds']=time.monotonic()-started
     report['hardware_seconds_50mhz']=report['cycles']/50_000_000
     report['directed_candidates_not_search_benchmark']=a.directed

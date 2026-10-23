@@ -7,7 +7,7 @@
 
 `timescale 1ns/1ps
 // Scripted service predicates validate control flow, not primality arithmetic.
-// Expected descriptors follow docs/RSA_ALGORITHM.md and firmware/rsa_control.c.
+// Expected descriptors follow docs/RSA_ALGORITHM.md.
 // Real production retry/watchdog bounds are exercised; no force or small limits.
 module tb_keygen_rsa_controller;
     reg clock_i=0; always #1 clock_i=~clock_i;

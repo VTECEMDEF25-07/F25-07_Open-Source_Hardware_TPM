@@ -97,7 +97,6 @@ p=argparse.ArgumentParser()
 p.add_argument('--source-root',type=Path,help='Integrated Key Generation source root')
 p.add_argument('--altera-models',type=Path,default=Path('C:/intelFPGA_lite/24.1std/quartus/eda/sim_lib'))
 p.add_argument('--questa-bin',type=Path,default=Path('C:/intelFPGA_lite/24.1std/questa_fse/win64'))
-p.add_argument('--softcore',action='store_true')
 p.add_argument('--directed',action='store_true',help='Known prime candidates and witness2; functional test, not search-performance evidence')
 p.add_argument('--stalls',action='store_true',help='Legal source gaps, result backpressure and delayed ownership')
 p.add_argument('--seeds',nargs='+',type=int,default=[1])
@@ -106,8 +105,8 @@ p.add_argument('--build-only',action='store_true')
 p.add_argument('--label',default='verified',help='Unique evidence directory suffix')
 a=p.parse_args()
 if not re.fullmatch(r'[A-Za-z0-9_-]+',a.label):p.error('label must contain only letters, digits, underscores or hyphens')
-root=(a.source_root or Path(__file__).resolve().parents[2]).resolve()
-build=root/'build'/(('full_altera_softcore' if a.softcore else 'full_altera_rtl')+('_directed' if a.directed else '')+'-'+a.label)
+root=(a.source_root or Path(__file__).resolve().parents[1]).resolve()
+build=root/'build'/('full_altera_rtl'+('_directed' if a.directed else '')+'-'+a.label)
 obj=build/'obj'
 build.mkdir(parents=True,exist_ok=True)
 sources=[
@@ -118,23 +117,16 @@ sources=[
     'rtl/rsa_rtl/keygen_rsa_engine.v','rtl/common/keygen_core.v',
     'demo/test_rng/keygen_test_source.v','testbench/tb_keygen_full.sv',
 ]
-if a.softcore:
-    sources += ['IP/third_party/picorv32/picorv32.v','rtl/rsa_softcore/keygen_softcore_control.v',
-                'rtl/rsa_softcore/keygen_rsa_softcore.v']
-
 models=[(a.altera_models/name).resolve() for name in ('220model.v','altera_mf.v')]
 simulator=subprocess.run([str(a.questa_bin/'vsim.exe'),'-version'],capture_output=True,text=True,check=True).stdout.strip()
 manifest_path=build/'build-manifest.json'
-manifest={'inputs':input_hashes(root,sources,models,a.softcore),'simulator':simulator,
-          'configuration':{'softcore':a.softcore,'backend':'KEYGEN_ALTERA','top':'tb_keygen_full',
+manifest={'inputs':input_hashes(root,sources,models),'simulator':simulator,
+          'configuration':{'controller':'rtl','backend':'KEYGEN_ALTERA','top':'tb_keygen_full',
                            'rtl_language':'Verilog2001','test_language':'SystemVerilog'},'commands':[]}
 if a.reuse_build:
     manifest=validate_reuse(manifest_path,manifest)
-    if a.softcore and file_hash(build/'rsa_control.hex')!=file_hash(root/'build/full/rsa_control.hex'):
-        raise RuntimeError('Stale built firmware rejected')
 else:
     if manifest_path.exists():raise RuntimeError('Preserve previous evidence: choose a new --label or --reuse-build')
-    if a.softcore:shutil.copyfile(root/'build/full/rsa_control.hex',build/'rsa_control.hex')
 
 def run_tool(tool, args, log_name):
     manifest['commands'].append([str(a.questa_bin/(tool+'.exe'))]+args)
@@ -146,10 +138,9 @@ if not a.reuse_build:
         if not (build/library).exists():run_tool('vlib',[library],library+'_create.log')
     run_tool('vlog',['-work','vendor']+[str(a.altera_models/s) for s in ('220model.v','altera_mf.v')],'vendor_compile.log')
     defines=['+define+KEYGEN_ALTERA']
-    if a.softcore:defines+=['+define+KEYGEN_SOFTCORE']
     run_tool('vlog',['-vlog01compat']+defines+[str(root/s) for s in sources if s.endswith('.v')],'rtl_compile.log')
     run_tool('vlog',['-sv']+defines+[str(root/s) for s in sources if s.endswith('.sv')],'test_compile.log')
-    if input_hashes(root,sources,models,a.softcore)!=manifest['inputs']:raise RuntimeError('Sources changed during compilation')
+    if input_hashes(root,sources,models)!=manifest['inputs']:raise RuntimeError('Sources changed during compilation')
     save_json(manifest_path,manifest)
     print('PASS full-top Altera source compile',build,flush=True)
 if a.build_only:raise SystemExit(0)
@@ -179,8 +170,7 @@ for seed in a.seeds:
     if run_path.exists():raise RuntimeError('Preserve previous run evidence: choose a new --label')
     evidence={'status':'RUNNING','started_utc':datetime.now(timezone.utc).isoformat(),
               'build_manifest_sha256':file_hash(manifest_path),'command':command,
-              'expected_fixture_sha256':file_hash(path),'directed':a.directed,'external_stalls':a.stalls,
-              'firmware_sha256':file_hash(build/'rsa_control.hex') if a.softcore else None}
+              'expected_fixture_sha256':file_hash(path),'directed':a.directed,'external_stalls':a.stalls}
     if a.directed:evidence['stimulus_sha256']=file_hash(stimulus_path)
     save_json(run_path,evidence)
     started=time.monotonic()
@@ -188,15 +178,15 @@ for seed in a.seeds:
         run_simulation(command, build, build/f'seed-{seed}.log', timeout=7200)
     except (subprocess.CalledProcessError,subprocess.TimeoutExpired) as failure:
         evidence['status']='FAILED_OR_INCOMPLETE';evidence['error']=str(failure);save_json(run_path,evidence);raise
-    if input_hashes(root,sources,models,a.softcore)!=manifest['inputs']:
+    if input_hashes(root,sources,models)!=manifest['inputs']:
         evidence['status']='FAILED_SOURCE_CHANGED';save_json(run_path,evidence)
         raise RuntimeError('Sources changed during simulation; evidence is not accepted')
     text=(build/f'seed-{seed}.log').read_text()
-    match=re.search(r'PASS FULL_RSA seed=(\d+) softcore=(\d+) words=(\d+) cycles=(\d+)',text)
+    match=re.search(r'PASS FULL_RSA seed=(\d+) words=(\d+) cycles=(\d+)',text)
     if not match:
         evidence['status']='FAILED_MISSING_PASS';save_json(run_path,evidence)
         raise RuntimeError('No complete-key PASS evidence')
-    report=dict(zip(['seed','softcore','words','cycles'],map(int,match.groups())))
+    report=dict(zip(['seed','words','cycles'],map(int,match.groups())))
     report['resource_backend']='Altera: installed 220model.v and altera_mf.v'
     report['simulator']='Questa'
     report['external_stalls']=a.stalls

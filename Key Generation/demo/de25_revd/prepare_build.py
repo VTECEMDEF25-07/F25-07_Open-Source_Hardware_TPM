@@ -1,10 +1,10 @@
 # Filename: prepare_build.py
 # Authors: Project contributors; see Git history.
 # Date: 2026-10-13
-# General Description: Prepare or compile four DE25 images. This script never programs a board.
+# General Description: Prepare or compile two dedicated-logic DE25 images. This script never programs a board.
 # AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
 
-"""Prepare or compile four DE25 images. This script never programs a board."""
+"""Prepare or compile two dedicated-logic DE25 images. This script never programs a board."""
 import argparse
 import hashlib
 import json
@@ -41,20 +41,16 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--build-root", type=Path, required=True)
     parser.add_argument("--core-root", type=Path)
-    parser.add_argument("--firmware", type=Path)
-    parser.add_argument("--variant", choices=("all", "rtl_generic", "rtl_altera", "softcore_generic", "softcore_altera"), default="all")
+    parser.add_argument("--variant", choices=("all", "rtl_generic", "rtl_altera"), default="all")
     parser.add_argument("--compile", action="store_true")
     parser.add_argument("--processors",type=int,choices=range(1,17),default=2,help="limit Quartus worker pressure")
     parser.add_argument("--quartus", default="C:/altera_pro/26.1/quartus/bin64/quartus_sh.exe")
     args = parser.parse_args()
     here = Path(__file__).resolve().parent
     core = (args.core_root or here.parents[1]).resolve()
-    firmware = (args.firmware or core / "build/full/rsa_control.hex").resolve()
     if not (core / "rtl/common/keygen_core.v").exists():
         raise FileNotFoundError("canonical keygen_core.v missing; pass --core-root")
-    if not firmware.exists():
-        raise FileNotFoundError("built firmware missing; pass --firmware; no placeholder ROM is permitted")
-    variants = [f"{control}_{backend}" for control in ("rtl", "softcore")
+    variants = [f"{control}_{backend}" for control in ("rtl",)
                 for backend in ("generic", "altera")
                 if args.variant in ("all", f"{control}_{backend}")]
     for variant in variants:
@@ -79,7 +75,6 @@ def main():
     ip = sorted(p for p in (core / "IP").rglob("*.v") if "tests" not in p.parts)
     sources = rtl + ip + sorted(here.glob("*.v")) + sorted((here / "vendor").glob("*.v")) + [here.parent / "test_rng/keygen_test_source.v"]
     inputs = {source: source.read_bytes() for source in sources}
-    inputs[firmware] = firmware.read_bytes()
     inputs[pin_path] = pin_bytes
     verify_inputs(inputs)
     sdc = """create_clock -name board_clock -period 20.000 [get_ports clock_i]
@@ -101,7 +96,7 @@ set_min_delay 0.000 -to [get_ports {spi_miso_o interrupt_n_o}]
 set_false_path -from [get_ports {fan_i2c_scl fan_i2c_sda}]
 set_false_path -to [get_ports {fan_i2c_scl fan_i2c_sda}]
 """
-    for control in ("rtl", "softcore"):
+    for control in ("rtl",):
         for backend in ("generic", "altera"):
             variant = f"{control}_{backend}"
             if args.variant not in ("all", variant):
@@ -114,7 +109,6 @@ set_false_path -to [get_ports {fan_i2c_scl fan_i2c_sda}]
                 f"set_global_assignment -name NUM_PARALLEL_PROCESSORS {args.processors}",
                 'set_global_assignment -name RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"',
                 "set_global_assignment -name SDC_FILE keygen_de25.sdc",
-                f"set_parameter -name RSA_SOFTCORE {int(control=='softcore')}",
             ]
             if backend == "altera":
                 settings.append('set_global_assignment -name VERILOG_MACRO "KEYGEN_ALTERA=1"')
@@ -140,7 +134,7 @@ set_false_path -to [get_ports {fan_i2c_scl fan_i2c_sda}]
                              f'set_instance_assignment -name IO_STANDARD "{standard}" -to {port}']
             fingerprint_inputs = {"format": "KEYGEN-BUILD-v1", "variant": variant,
                                   "sources": {p.name: digest(p.read_bytes()) for p in snapshot_paths},
-                                  "firmware": digest(inputs[firmware]), "pin_reference": digest(pin_bytes),
+                                  "pin_reference": digest(pin_bytes),
                                   "quartus_version": tool_version, "sdc": sdc,
                                   "settings_before_fingerprint": [line.replace(build.as_posix(), ".") for line in settings]}
             fingerprint = digest(json.dumps(fingerprint_inputs, sort_keys=True, separators=(",", ":")).encode())
@@ -148,11 +142,10 @@ set_false_path -to [get_ports {fan_i2c_scl fan_i2c_sda}]
             (build / "keygen_de25.qsf").write_text("\n".join(settings)+"\n")
             (build / "keygen_de25.qpf").write_text('PROJECT_REVISION = "keygen_de25"\n')
             (build / "keygen_de25.sdc").write_text(sdc)
-            (build / "rsa_control.hex").write_bytes(inputs[firmware])
             verify_inputs(inputs)
-            config_files = [build / name for name in ("keygen_de25.qsf", "keygen_de25.qpf", "keygen_de25.sdc", "rsa_control.hex")]
+            config_files = [build / name for name in ("keygen_de25.qsf", "keygen_de25.qpf", "keygen_de25.sdc")]
             manifest = {"variant": variant, "device": "A5ED013BB32AE4SCS", "clock_hz": 50000000,
-                        "test_mode": True, "fan_diagnostics_version": 1, "diagnostic_mode": False, "firmware_sha256": digest(inputs[firmware]),
+                        "test_mode": True, "fan_diagnostics_version": 1, "diagnostic_mode": False,
                         "quartus_executable": str(Path(args.quartus).resolve()), "quartus_version": tool_version,
                         "pin_reference_sha256": digest(pin_bytes),
                         "build_fingerprint": fingerprint, "fingerprint_inputs": fingerprint_inputs,

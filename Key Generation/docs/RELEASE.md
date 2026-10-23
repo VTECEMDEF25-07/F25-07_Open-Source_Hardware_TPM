@@ -8,7 +8,7 @@ AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
 
 # Reviewable demo release
 
-`scripts/package_release.py` collects an explicitly selected four-image release.
+`scripts/package_release.py` collects an explicitly selected two-image release.
 It never builds, programs, publishes, merges or changes hardware reports. A package
 is a test/demo artifact: its deterministic source and exported private keys are
 not a production entropy source or secure TPM implementation.
@@ -16,9 +16,9 @@ not a production entropy source or secure TPM implementation.
 ## Required evidence
 
 Supply one build directory and hardware directory for each `rtl_generic`,
-`rtl_altera`, `softcore_generic` and `softcore_altera` variant. Each needs:
+`rtl_altera` variant. Each needs:
 
-- Compiled build manifest, immutable source snapshots/configuration/firmware,
+- Compiled build manifest, immutable source snapshots/configuration,
   accepted timing review, audit-bound SOF and timing/resource reports.
 - Passing AES128/256, full twenty-seed RSA corpus, five reset boundaries plus
   three-profile replay, baseline/stalled RSA replay, four generation-failure
@@ -31,13 +31,13 @@ Supply one build directory and hardware directory for each `rtl_generic`,
 
 The packager reuses the independent corpus audit. It additionally checks reset
 and replay coverage, completed stall schedule, monotonic soak duration, operation
-timing, tester provenance, source/firmware fingerprints, routed timing numbers,
+timing, tester provenance, source fingerprints, routed timing numbers,
 SOF/report hashes and cooling. Missing or failed evidence prevents output creation.
 
 ## Explicit selection
 
 Create a selection JSON outside the source tree, under the class `AI/tmp` folder.
-Use absolute paths. Repeat the following variant entry for all four variants:
+Use absolute paths. Repeat the following variant entry for both variants:
 
 ```json
 {
@@ -80,24 +80,14 @@ distributed. Validate `SHA256SUMS` before moving or sharing a package.
 
 ## Package contents
 
-Each variant contains the tested SOF, firmware ROM, source/config snapshots,
+Each variant contains the tested SOF, source/config snapshots,
 build/timing manifests, reviewed reports and selected hardware evidence. Shared
 content retains the canonical `rtl/`, `IP/`, `Math/`, `testbench/`, `scripts/`,
 `reference/` and `demo/` layout, including resource/arithmetic benches, fixtures
-and test runners. It includes firmware sources and build script, docs,
-and pinned PicoRV32 license/provenance. Explicit extra evidence is text only.
-Firmware source files use the exact bytes certified by their pinned manifest;
-Windows checkout CRLF expansion is reversed only when that reproduces the
-recorded hash. Audited build configuration bytes, including SDC line endings,
-remain unchanged.
-Canonical compile inputs must match the selected image snapshots byte for byte;
-packaging rejects a newer untested source tree. Per-image snapshots remain the
-authority for their tested SOFs. All copied inputs are hashed and checked for
-changes during packaging.
-Proprietary `220model.v`/`altera_mf.v`, Quartus databases and tool installations
-are excluded. Each file is limited to64MiB and the package to256MiB.
+and test runners. It includes build scripts, docs and supplied vendor notices. Explicit extra evidence is text only.
 
-Run the firmware and simulation commands in `docs/BUILD_AND_TEST.md` from the
+
+Run the simulation commands in `docs/BUILD_AND_TEST.md` from the
 package root. For a quick offline source check:
 
 ```text
@@ -138,7 +128,7 @@ source revision, reviewer, result and remaining limitations. Reviewers must cove
 - Generic and genuine unchanged-Altera model equivalence/full-key simulation,
   cleanup/lifecycle/watchdogs, arithmetic and negative cases.
 - Routed timing/CDC/reset exceptions, resource fit, report warnings and exact
-  bitstream/source binding for all four images.
+  bitstream/source binding for both images.
 - Hardware fault injection, including explicit generation-failure behavior and
   proof that reuse occurs without resetting away an error-state defect.
 - Physical fan/temperature acceptance, licensed third-party provenance and all

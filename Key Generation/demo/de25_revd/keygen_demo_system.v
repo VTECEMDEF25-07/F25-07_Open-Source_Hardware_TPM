@@ -7,7 +7,6 @@
 
 // Test-only SPI register bank and protected-receiver stand-in. Never a production export interface.
 module keygen_demo_system #(
-    parameter RSA_SOFTCORE = 0, parameter ROM_FILE = "rsa_control.hex",
     parameter [255:0] BUILD_FINGERPRINT = 256'b0
 ) (
     input clock_i, input reset_n_i,
@@ -49,9 +48,9 @@ module keygen_demo_system #(
     wire source_reset_n = reset_n_i && source_run_reg;
     wire busy = state_reg==SOURCE_START || state_reg==CORE_START || (state_reg==RUN && !core_status_valid);
 `ifdef KEYGEN_ALTERA
-    localparam [31:0] CONFIG = 32'd6 + RSA_SOFTCORE;
+    localparam [31:0] CONFIG = 32'd6;
 `else
-    localparam [31:0] CONFIG = 32'd4 + RSA_SOFTCORE;
+    localparam [31:0] CONFIG = 32'd4;
 `endif
     assign source_word_ready = core_generation_ready && source_offer;
     // Once offered, the source owns this word until the core accepts it. A host
@@ -74,7 +73,7 @@ module keygen_demo_system #(
         .start_ready_o(source_ready),.seed_i(captured_seed_reg),.word_valid_o(source_valid),
         .word_ready_i(source_word_ready),.data_o(source_data),.failed_o(source_failed)
     );
-    keygen_core #(.RSA_SOFTCORE(RSA_SOFTCORE),.ROM_FILE(ROM_FILE)) core (
+    keygen_core core (
         .clock_i(clock_i),.reset_n_i(reset_n_i),.peers_ready_i(!receiver_scrub_reg),
         .request_valid_i(state_reg==CORE_START),.request_ready_o(core_ready),
         .request_profile_i(captured_profile_reg),.request_id_i(captured_id_reg),

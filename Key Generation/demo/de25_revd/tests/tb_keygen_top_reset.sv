@@ -9,7 +9,7 @@
 // Models isolate the top-level reset boundary. Real core/SPI and fan have separate regressions.
 module altera_s10_user_rst_clkgate(output reg ninit_done=1);
 endmodule
-module keygen_demo_system #(parameter RSA_SOFTCORE=0,ROM_FILE="",parameter [255:0] BUILD_FINGERPRINT=0)(
+module keygen_demo_system #(parameter [255:0] BUILD_FINGERPRINT=0)(
     input clock_i,reset_n_i,spi_clock_i,spi_cs_n_i,spi_mosi_i,
     input [95:0] fan_diagnostic_i,input [31:0] temperatures_i,fan_status_i,output spi_miso_o,interrupt_n_o);
     assign spi_miso_o=reset_n_i;

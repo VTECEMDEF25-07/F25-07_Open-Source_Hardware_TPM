@@ -11,7 +11,7 @@ from summarize_hardware import audit
 
 def fixture():
     return {"action": "corpus", "result": "PASS", "test_mode": True,
-            "control": "softcore", "backend": "altera", "build_fingerprint": "a" * 64,
+            "control": "rtl", "backend": "altera", "build_fingerprint": "a" * 64,
             "inputs_sha256": {"C:\\reference\\seeds.json": "seed-hash"},
             "results": [{"seed_id": seed, "profile": 2, "result": "PASS",
                          "core_cycles": 1_000_000_000, "core_seconds": 20,

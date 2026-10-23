@@ -50,8 +50,6 @@ class EvidenceTests(unittest.TestCase):
             core = root / "core"
             (core / "rtl/common").mkdir(parents=True)
             (core / "rtl/common/keygen_core.v").write_text("module keygen_core; endmodule\n")
-            (core / "build/full").mkdir(parents=True)
-            (core / "build/full/rsa_control.hex").write_text("00000000\n")
             argv = [str(SCRIPT), "--core-root", str(core), "--build-root", str(root / "out"),
                     "--variant", "rtl_generic"]
             version = subprocess.CompletedProcess([], 0, "Quartus test version\n", "")
@@ -63,6 +61,8 @@ class EvidenceTests(unittest.TestCase):
             original_manifest = manifest_path.read_bytes()
             manifest = json.loads(original_manifest)
             self.assertEqual(manifest["quartus_version"], "Quartus test version")
+            self.assertFalse((project / "rsa_control.hex").exists())
+            self.assertNotIn("firmware_sha256", manifest)
             compile_build.verify(project, manifest)
             settings = project / "keygen_de25.sdc"
             original_settings = settings.read_bytes()

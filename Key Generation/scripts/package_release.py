@@ -17,11 +17,11 @@ import subprocess
 
 from summarize_hardware import audit
 
-VARIANTS = {f'{control}_{backend}' for control in ('rtl', 'softcore')
+VARIANTS = {f'{control}_{backend}' for control in ('rtl',)
             for backend in ('generic', 'altera')}
 TRANSPORT = {f'transport_{rate}': rate for rate in (100000, 500000, 1000000)}
 ROLES = {'aes', 'corpus', 'reset-replay', 'stall-replay', 'fault-replay', 'soak'} | TRANSPORT.keys()
-CONFIGS = {'keygen_de25.qsf', 'keygen_de25.qpf', 'keygen_de25.sdc', 'rsa_control.hex'}
+CONFIGS = {'keygen_de25.qsf', 'keygen_de25.qpf', 'keygen_de25.sdc'}
 SOURCE_DIRS = ('rtl', 'IP', 'Math', 'testbench', 'scripts', 'reference', 'demo')
 SOURCE_SUFFIXES = {'.v', '.sv', '.vh', '.svh', '.py', '.ps1', '.sh', '.md', '.json',
                    '.hex', '.mem', '.mif', '.txt', '.csv', '.sdc', '.qsf', '.qpf',
@@ -209,29 +209,19 @@ def package(config, root, output):
     root, output = Path(root).resolve(), Path(output).resolve()
     require(not output.exists(), 'output already exists; preserve prior release')
     entries = config.get('variants', {})
-    require(set(entries) == VARIANTS, 'exactly four controller/backend variants required')
+    require(set(entries) == VARIANTS, 'exactly two dedicated-logic backend variants required')
     payload = Payload()
     provenance = {name: sha(payload.add(root/path, path)) for name, path in PROVENANCE.items()}
-    for directory in ('docs', 'firmware'):
+    for directory in ('docs',):
         for path in sorted((root/directory).iterdir()):
             if path.is_file():
                 payload.add(path, directory+'/'+path.name)
-    for relative in ('IP/third_party/picorv32/COPYING', 'IP/third_party/picorv32/README.md',
-                     'demo/de25_revd/README.md', 'demo/de25_revd/FAN_MONITOR.md',
-                     'scripts/softcore/build_rsa.py', 'scripts/package_release.py',
+    for relative in ('demo/de25_revd/README.md', 'demo/de25_revd/FAN_MONITOR.md',
+                     'scripts/package_release.py',
                      'scripts/summarize_hardware.py', 'demo/de25_revd/prepare_build.py',
                      'demo/de25_revd/compile_build.py', 'demo/de25_revd/vendor/pin_reference.qsf'):
         payload.add(root/relative, relative)
     collect_canonical_inputs(payload, root)
-    firmware = read_json(root/'firmware/rsa_control_manifest.json')
-    for name, expected in firmware['source_sha256'].items():
-        data = payload.files['firmware/'+name]
-        if sha(data) != expected:
-            # Git Windows checkout may expand LF; emit the exact manifest-certified
-            # source bytes, never accept another source-content difference.
-            data = data.replace(b'\r\n', b'\n')
-        require(sha(data) == expected, 'firmware source provenance mismatch')
-        payload.files['firmware/'+name] = data
     matrix = Path(config['completion_matrix']).resolve()
     payload.add(matrix, 'review/COMPLETION_MATRIX.md')
     selected = {}
@@ -245,9 +235,8 @@ def package(config, root, output):
                 and manifest.get('diagnostic_mode') is False, f'{variant}: unaccepted build')
         require(sha(json.dumps(manifest['fingerprint_inputs'], sort_keys=True,
                                separators=(',', ':')).encode()) == fingerprint, 'invalid build fingerprint')
-        require(manifest['fingerprint_inputs'].get('variant') == variant
-                and manifest['fingerprint_inputs'].get('firmware') == manifest['firmware_sha256'],
-                'variant/firmware not bound to fingerprint')
+        require(manifest['fingerprint_inputs'].get('variant') == variant,
+                'variant not bound to fingerprint')
         require(manifest['snapshot_sha256'] and
                 {basename(p): value for p, value in manifest['snapshot_sha256'].items()}
                 == manifest['fingerprint_inputs']['sources'], 'snapshot not bound to fingerprint')
@@ -275,10 +264,8 @@ def package(config, root, output):
         for name, expected in timing['post_tool_config_sha256'].items():
             require(Path(name).name == name, 'unexpected configuration path')
             payload.add(build/name, prefix+name, expected)
-        require(manifest['firmware_sha256'] == firmware['image_sha256'], 'firmware image revision mismatch')
-        require(sha((build/'rsa_control.hex').read_bytes()) == manifest['firmware_sha256']
-                and (build/'keygen_de25.sdc').read_bytes().decode('utf-8').replace('\r\n', '\n')
-                == manifest['fingerprint_inputs']['sdc'], 'firmware/constraints fingerprint mismatch')
+        require((build/'keygen_de25.sdc').read_bytes().decode('utf-8').replace('\r\n', '\n')
+                == manifest['fingerprint_inputs']['sdc'], 'constraints fingerprint mismatch')
         require({'keygen_de25.sta.rpt', 'keygen_de25.fit.rpt'} <= set(timing['report_sha256']),
                 'missing routed timing/resource reports')
         for name, expected in timing['report_sha256'].items():
@@ -348,8 +335,7 @@ def prepare_rebuild(package_root, variant, output, quartus):
     settings.append(f'set_parameter -name BUILD_FINGERPRINT "256\'h{fingerprint}"')
     files = {'keygen_de25.qsf': ('\n'.join(settings)+'\n').encode(),
              'keygen_de25.qpf': b'PROJECT_REVISION = "keygen_de25"\n',
-             'keygen_de25.sdc': data[prefix+'keygen_de25.sdc'],
-             'rsa_control.hex': data[prefix+'rsa_control.hex']}
+             'keygen_de25.sdc': data[prefix+'keygen_de25.sdc']}
     for name, expected in inputs['sources'].items():
         files['sources/'+name] = data[prefix+'sources/'+name]
         require(sha(files['sources/'+name]) == expected, 'rebuild source differs')

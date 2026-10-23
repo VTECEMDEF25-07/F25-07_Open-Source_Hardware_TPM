@@ -13,7 +13,7 @@ if build.exists():raise RuntimeError('use a fresh diagnostic directory')
 originals=[here/'keygen_de25_top.v',here/'keygen_demo_spi.v',here/'keygen_fan_guard.v',here/'diagnostic/keygen_fan_diagnostic_system.v']+sorted((here/'vendor').glob('*.v'))
 inputs={p:p.read_bytes() for p in originals};(build/'sources').mkdir(parents=True)
 h=lambda b:hashlib.sha256(b).hexdigest();snapshots={}
-settings=[s for s in template['fingerprint_inputs']['settings_before_fingerprint'] if not any(x in s for x in ('VERILOG_FILE','VERILOG_MACRO','ROM_FILE','RSA_SOFTCORE'))]
+settings=[s for s in template['fingerprint_inputs']['settings_before_fingerprint'] if not any(x in s for x in ('VERILOG_FILE','VERILOG_MACRO'))]
 settings=[s.replace('./',build.as_posix()+'/') for s in settings]
 for index,(original,data) in enumerate(inputs.items()):
     dest=build/'sources'/f'{index:03}_{original.name}';dest.write_bytes(data);snapshots[str(dest)]=h(data)

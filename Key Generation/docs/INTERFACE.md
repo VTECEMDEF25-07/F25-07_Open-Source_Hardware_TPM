@@ -88,6 +88,5 @@ enable freezes data and valid together. Scratch RAM has one-cycle synchronous
 read and explicit forwarding for new-data same-address write/read. Reset does
 not clear RAM contents: its owner sweeps all slots before reuse.
 
-Dedicated and softcore controllers are separate builds sharing little-endian
-32-bit limb arithmetic. Reverse word ordering only at the external boundary.
-The softcore normal MMIO interface has no secret-operand readback window.
+The dedicated controller uses little-endian 32-bit limb arithmetic.
+Reverse word ordering only at the external boundary.

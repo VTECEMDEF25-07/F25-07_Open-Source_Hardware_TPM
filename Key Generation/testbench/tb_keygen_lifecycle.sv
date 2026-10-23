@@ -9,11 +9,6 @@
 // Fast integration checks use the real engine, CPU and storage. Successful RSA
 // arithmetic is covered by tb_keygen_full, not substituted by this test.
 module tb_keygen_lifecycle;
-`ifdef KEYGEN_SOFTCORE
- localparam SOFTCORE=1;
-`else
- localparam SOFTCORE=0;
-`endif
  reg clock_i=0;always #10 clock_i=~clock_i;
  reg reset_n_i=0,peers_ready_i=1,request_valid_i=0;
  wire request_ready_o;
@@ -35,7 +30,7 @@ module tb_keygen_lifecycle;
  integer tests=0,j;
  reg [31:0]active_id=0,held_word;
  localparam [1023:0]P=1024'hf71ccdb1c7544608b1eea2307f4dd112e1ea90ffa89a11a67aa87aced1a654a64b04a412eb1e4ed1cb0fc7b7e2271e94917e2f93f6f9058138975ee5515196e2a6717fdff1e2a6c8fa5e8daa16ee856f4d278b7a55744bab2b1fdeaf4d4ae93540527c08717acb9839a1cffee7dd6163cc2181697fed4e6ffbdf34c1f735bf3b;
- keygen_core #(.RSA_SOFTCORE(SOFTCORE)) dut(.*);
+ keygen_core dut(.*);
  task tick;@(posedge clock_i);#1;endtask
  task request(input [1:0]profile);
   wait(request_ready_o);@(negedge clock_i);
@@ -161,7 +156,7 @@ module tb_keygen_lifecycle;
   force dut.state_reg=4'd5;#1;release dut.state_reg;
   generation_failed_i=1;wait(status_valid_o);
   @(negedge clock_i);generation_failed_i=0;terminal(2);
-  $display("PASS CORE_LIFECYCLE softcore=%0d checks=%0d",SOFTCORE,tests);$finish;
+  $display("PASS CORE_LIFECYCLE checks=%0d",tests);$finish;
  end
  initial begin #20000000;$fatal(1,"lifecycle timeout state=%0d",dut.state_reg);end
 endmodule

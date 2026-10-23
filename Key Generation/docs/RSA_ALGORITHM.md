@@ -8,7 +8,7 @@ AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
 
 # RSA-2048 generation procedure, RSA-2048-v1-trial251
 
-This is the executable algorithm contract for the dedicated controller and the soft-core firmware. The Python oracle is test infrastructure, not synthesizable HDL or a production random generator. Both controllers consume the same accepted 32-bit words in this order and must generate identical keys even when handshake timing differs.
+This is the executable algorithm contract for the dedicated controller. The Python oracle is test infrastructure, not synthesizable HDL or a production random generator. The controller consumes accepted 32-bit words in this order and must produce identical keys when only handshake timing differs.
 
 ## Selected profile
 
@@ -42,7 +42,7 @@ For odd candidate w, factor `w-1 = 2^a * m`, with m odd. For each of five rounds
 
 Compute `n=p*q`, `lambda=lcm(p-1,q-1)`, and canonical `d=65537^-1 mod lambda`. Check exactly 2048 modulus bits, `2^1024 < d < lambda`, and `65537*d mod lambda = 1`. If d is too small, discard **both** primes and start p search again using the continuing operation stream. The two prime-search counters restart for that new pair. Other arithmetic inconsistencies are internal faults, not successful keys.
 
-The reference returns n/e/p/q/d for test checking. This does not require exporting d from the hardware protected interface: hardware must calculate/check it internally and preserve p/q through ownership handoff. The reference does not implement secret-memory scrubbing; Python integers are test-only. RTL/firmware cleanup and result-ownership verification require their own tests.
+The reference returns n/e/p/q/d for test checking. This does not require exporting d from the hardware protected interface: hardware must calculate/check it internally and preserve p/q through ownership handoff. The reference does not implement secret-memory scrubbing; Python integers are test-only. RTL cleanup and result-ownership verification require their own tests.
 
 ## Predictable test stream and frozen corpus
 

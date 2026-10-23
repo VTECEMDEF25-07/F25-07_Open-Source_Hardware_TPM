@@ -6,9 +6,7 @@
 // AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
 
 // Portable AES/RSA core. No board transport, hierarchy seed or production RNG.
-module keygen_core #(
-    parameter RSA_SOFTCORE=0, parameter ROM_FILE="rsa_control.hex"
-) (
+module keygen_core (
     input wire clock_i,input wire reset_n_i,input wire peers_ready_i,
     input wire request_valid_i,output wire request_ready_o,
     input wire [1:0] request_profile_i,input wire [31:0] request_id_i,
@@ -92,25 +90,14 @@ module keygen_core #(
         .status_valid_o(aes_status_valid),.status_ready_i(status_ready_i && aes_selected),
         .status_code_o(aes_status),.status_id_o(aes_status_id)
     );
-    generate if(RSA_SOFTCORE) begin: softcore
-        keygen_rsa_softcore #(.ROM_FILE(ROM_FILE)) controller (
-            .clock_i(clock_i),.reset_n_i(engine_reset_n),.work_valid_i(state_reg==RSA_START && !rsa_fault),
-            .work_ready_o(work_ready),.completion_valid_o(completion_valid),
-            .completion_ready_i(state_reg==RSA_RUN && !rsa_fault),.completion_status_o(completion_status),
-            .command_valid_o(cmd_valid),.command_ready_i(cmd_ready),.command_opcode_o(cmd_op),
-            .command_arg0_o(cmd_arg0),.command_arg1_o(cmd_arg1),.command_arg2_o(cmd_arg2),.command_arg3_o(cmd_arg3),
-            .response_valid_i(rsp_valid),.response_ready_o(rsp_ready),.response_status_i(rsp_status)
-        );
-    end else begin: dedicated
-        keygen_rsa_controller controller (
-            .clock_i(clock_i),.reset_n_i(engine_reset_n),.work_valid_i(state_reg==RSA_START && !rsa_fault),
-            .work_ready_o(work_ready),.completion_valid_o(completion_valid),
-            .completion_ready_i(state_reg==RSA_RUN && !rsa_fault),.completion_status_o(completion_status),
-            .cmd_valid_o(cmd_valid),.cmd_ready_i(cmd_ready),.cmd_op_o(cmd_op),
-            .cmd_arg0_o(cmd_arg0),.cmd_arg1_o(cmd_arg1),.cmd_arg2_o(cmd_arg2),.cmd_arg3_o(cmd_arg3),
-            .rsp_valid_i(rsp_valid),.rsp_ready_o(rsp_ready),.rsp_status_i(rsp_status)
-        );
-    end endgenerate
+    keygen_rsa_controller controller (
+        .clock_i(clock_i),.reset_n_i(engine_reset_n),.work_valid_i(state_reg==RSA_START && !rsa_fault),
+        .work_ready_o(work_ready),.completion_valid_o(completion_valid),
+        .completion_ready_i(state_reg==RSA_RUN && !rsa_fault),.completion_status_o(completion_status),
+        .cmd_valid_o(cmd_valid),.cmd_ready_i(cmd_ready),.cmd_op_o(cmd_op),
+        .cmd_arg0_o(cmd_arg0),.cmd_arg1_o(cmd_arg1),.cmd_arg2_o(cmd_arg2),.cmd_arg3_o(cmd_arg3),
+        .rsp_valid_i(rsp_valid),.rsp_ready_o(rsp_ready),.rsp_status_i(rsp_status)
+    );
     keygen_rsa_engine engine (
         .clock_i(clock_i),.reset_n_i(engine_reset_n),.ready_o(engine_ready),
         .cmd_valid_i(cmd_valid),.cmd_ready_o(cmd_ready),.cmd_op_i(cmd_op),

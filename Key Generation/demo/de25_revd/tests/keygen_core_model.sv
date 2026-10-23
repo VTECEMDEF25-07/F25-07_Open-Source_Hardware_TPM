@@ -6,7 +6,7 @@
 // AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
 
 // Transport/receiver fixture ONLY. Never compile this model in a board image.
-module keygen_core #(parameter RSA_SOFTCORE=0, parameter ROM_FILE="") (
+module keygen_core (
     input clock_i,reset_n_i,peers_ready_i,request_valid_i,output request_ready_o,
     input [1:0] request_profile_i,input [31:0] request_id_i,
     input generation_valid_i,output generation_ready_o,input [31:0] generation_data_i,input generation_failed_i,

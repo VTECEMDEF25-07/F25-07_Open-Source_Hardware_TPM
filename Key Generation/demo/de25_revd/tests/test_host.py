@@ -21,6 +21,15 @@ spec=importlib.util.spec_from_file_location('host_test',HERE/'host_test.py')
 host=importlib.util.module_from_spec(spec);spec.loader.exec_module(host)
 FIXTURE={'id':1,'seed_hex':'00'*31+'01'}
 
+class DedicatedIdentityTests(unittest.TestCase):
+    def test_rejects_cpu_image_before_any_operation(self):
+        for configuration in (5, 7):
+            adapter = FakeAdapter()
+            adapter.reg[1] = configuration
+            with self.assertRaisesRegex(RuntimeError, "CPU-controlled image"):
+                host.identify(adapter)
+
+
 class FakeAdapter:
     def __init__(self):
         self.reg={0:0x4b473031,1:4,3:1,6:1000,7:0,13:0x002a0020,14:4000,15:0x0300}

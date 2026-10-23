@@ -7,11 +7,6 @@
 
 `timescale 1ns/1ps
 module tb_keygen_full;
-`ifdef KEYGEN_SOFTCORE
-    localparam SOFTCORE=1;
-`else
-    localparam SOFTCORE=0;
-`endif
     reg clock_i=0; always #10 clock_i=~clock_i;
     reg reset_n_i=0,peers_ready_i=1,request_valid_i=0;
     wire request_ready_o;
@@ -52,7 +47,7 @@ module tb_keygen_full;
     assign generation_valid_i=offer_en && (directed ? (directed_index<384) : source_valid);
     assign generation_data_i=directed ? directed_words[directed_index] : source_data;
     assign generation_failed_i=directed ? 1'b0 : source_failed;
-    keygen_core #(.RSA_SOFTCORE(SOFTCORE)) dut(.*);
+    keygen_core dut(.*);
     keygen_test_source source(
         .clock_i(clock_i),.reset_n_i(reset_n_i),.start_valid_i(source_start),.start_ready_o(source_ready),
         .seed_i(seed),.word_valid_o(source_valid),.word_ready_i(generation_ready_o && !directed && offer_en),
@@ -123,7 +118,7 @@ module tb_keygen_full;
         if(words!=expected_count)$fatal(1,"stream consumption differs %0d expected%0d",words,expected_count);
         if(status_id_o!==32'h543210ab)$fatal(1,"status ID");
         repeat(3)tick();if(!status_valid_o)$fatal(1,"status not held");
-        $display("PASS FULL_RSA seed=%0d softcore=%0d words=%0d cycles=%0d",seed_id,SOFTCORE,words,cycles-start_cycle);
+        $display("PASS FULL_RSA seed=%0d words=%0d cycles=%0d",seed_id,words,cycles-start_cycle);
         @(negedge clock_i);status_ready_i=1;tick();
         if(!request_ready_o)$fatal(1,"not reusable after cleanup");
         $finish;

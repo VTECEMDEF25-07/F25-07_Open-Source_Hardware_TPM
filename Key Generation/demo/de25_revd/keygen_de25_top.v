@@ -7,7 +7,6 @@
 
 // DE25 RevD demo wrapper. Gray SPI reset never resets temperature/fan control.
 module keygen_de25_top #(
-    parameter RSA_SOFTCORE=0, parameter ROM_FILE="rsa_control.hex",
     parameter [255:0] BUILD_FINGERPRINT=256'b0
 ) (
     input clock_i, input board_reset_n_i,
@@ -43,7 +42,7 @@ module keygen_de25_top #(
         if (!spi_reset_n) spi_release_reg<=0;
         else spi_release_reg<={spi_release_reg[0],1'b1};
     end
-    keygen_demo_system #(.RSA_SOFTCORE(RSA_SOFTCORE),.ROM_FILE(ROM_FILE),.BUILD_FINGERPRINT(BUILD_FINGERPRINT)) system (
+    keygen_demo_system #(.BUILD_FINGERPRINT(BUILD_FINGERPRINT)) system (
         .clock_i(clock_i),.reset_n_i(spi_release_reg[1]),.spi_clock_i(spi_clock_i),
         .spi_cs_n_i(spi_cs_n_i),.spi_mosi_i(spi_mosi_i),.spi_miso_o(spi_miso_o),.interrupt_n_o(interrupt_n_o),
         .temperatures_i(telemetry_sync_reg[31:0]),.fan_status_i(telemetry_sync_reg[63:32]),.fan_diagnostic_i(telemetry_sync_reg[159:64])

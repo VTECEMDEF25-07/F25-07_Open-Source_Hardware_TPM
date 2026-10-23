@@ -217,7 +217,9 @@ def identify(adapter, manifest=None):
     config = adapter.register(1)
     if not config & 4 or config & ~7:
         raise RuntimeError("explicit test-image configuration required")
-    control = "softcore" if config&1 else "rtl"
+    if config & 1:
+        raise RuntimeError("CPU-controlled image is outside this dedicated-logic release")
+    control = "rtl"
     backend = "altera" if config&2 else "generic"
     fingerprint = "".join(f"{adapter.register(address):08x}" for address in range(24,32))
     if manifest is not None:

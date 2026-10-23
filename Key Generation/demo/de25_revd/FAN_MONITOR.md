@@ -60,5 +60,5 @@ temperatures were 30/28 C and remote channel 2 was 34–36 C. BUSY was observed
 both high and low without being treated as a fault. Evidence is retained at
 class-workspace `AI/tmp/keygen-fan-hardware-v3/monitor.json`; image fingerprint
 `d6c74f10c1b7888506caa960d0989cc621b4c13a826dc0dc5634b90240f9e608`.
-The four integrated images still require their own timing and hardware tests.
+The two dedicated-logic images still require their own timing and hardware tests.
 

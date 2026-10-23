@@ -7,7 +7,6 @@
 
 // Fan/SPI diagnostic image only. No key generation or private-key registers.
 module keygen_demo_system #(
-    parameter RSA_SOFTCORE=0, parameter ROM_FILE="",
     parameter [255:0] BUILD_FINGERPRINT=256'b0
 )(
     input clock_i, reset_n_i, spi_clock_i, spi_cs_n_i, spi_mosi_i,

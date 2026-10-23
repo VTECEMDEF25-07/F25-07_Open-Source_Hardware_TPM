@@ -23,14 +23,9 @@ def save_json(path, value):
     Path(path).write_text(json.dumps(value, indent=2, sort_keys=True) + '\n')
 
 
-def input_hashes(root, sources, models, softcore):
+def input_hashes(root, sources, models):
     files = {str(root / name): file_hash(root / name) for name in sources}
     files[str(root / 'reference/expected_keys.json')] = file_hash(root / 'reference/expected_keys.json')
-    if softcore:
-        for name in ('firmware/rsa_control.c', 'firmware/rsa_start.S',
-                     'firmware/rsa_control.ld', 'firmware/rsa_control_manifest.json',
-                     'build/full/rsa_control.hex'):
-            files[str(root / name)] = file_hash(root / name)
     runners=[Path(__file__).resolve(),Path(sys.argv[0]).resolve()]
     return {'project_files': files,
             'runner_files':{str(path):file_hash(path) for path in runners if path.is_file()},
