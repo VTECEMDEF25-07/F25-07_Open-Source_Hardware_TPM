@@ -10,15 +10,15 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parents[2]
 IGNORED = [
-    'Key Generation/build/test/result.log', 'Key Generation/demo/de25/db/chip.qdb',
-    'Key Generation/demo/de25/output_files/keygen.sof',
+    'Key Generation/build/test/result.log', 'Boards/DE1/db/chip.qdb',
+    'Boards/DE1/output_files/keygen.sof',
     'Key Generation/testbench/work/_info', 'Key Generation/reference/__pycache__/a.pyc',
-    'Key Generation/demo/de25/dni/sandboxes/generated.sopcinfo',
-    'Key Generation/demo/de25/tmp-clearbox/generated.tdf',
+    'Boards/DE1/dni/sandboxes/generated.sopcinfo',
+    'Boards/DE1/tmp-clearbox/generated.tdf',
 ]
 TRACKABLE = [
-    'Key Generation/demo/de25/keygen.qpf', 'Key Generation/demo/de25/keygen.qsf',
-    'Key Generation/demo/de25/keygen.sdc', 'Key Generation/IP/altera/ram.v',
+    'Boards/DE1/keygen.qpf', 'Boards/DE1/keygen.qsf',
+    'Boards/DE1/keygen.sdc', 'Key Generation/IP/altera/ram.v',
     'Key Generation/IP/generic/ram.v', 'Key Generation/simulation/check.sv',
     'Key Generation/reference/fixtures.json',
     'Key Generation/scripts/run.tcl', 'Key Generation/docs/evidence.md',

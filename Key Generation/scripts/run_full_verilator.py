@@ -90,7 +90,7 @@ sources=[
     'rtl/aes/keygen_aes_core.v','rtl/arithmetic/keygen_math.v','rtl/arithmetic/keygen_pair_check.v',
     'rtl/rsa_rtl/keygen_rsa_services.v','rtl/rsa_rtl/keygen_rsa_controller.v',
     'rtl/rsa_rtl/keygen_rsa_engine.v','rtl/common/keygen_core.v',
-    'demo/test_rng/keygen_test_source.v','testbench/tb_keygen_full.sv',
+    'testbench/fixtures/keygen_test_source.v','testbench/tb_keygen_full.sv',
 ]
 def digest(path):return hashlib.sha256(path.read_bytes()).hexdigest()
 manifest_path=build/'source_manifest.json'

@@ -10,7 +10,7 @@ AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
 
 ## Decision requested
 
-Review the dedicated-logic AES/RSA key-generation design and its interface for future TPM integration. PR #35 also retains the DE1-SoC and minimal DE25 Phase 1 board projects. The standalone keygen demo is not wired into the Phase 1 TPM command path.
+Review the dedicated-logic AES/RSA key-generation design and its interface for future TPM integration. PR #35 also retains the DE1-SoC project. DE25 fan/reset/board support is a separate PR targeting main; the keygen demonstration is local-only and is not wired into the TPM command path.
 
 The CPU implementation has been preserved separately on `aaron/keygen-cpu` at `c90610165605cac55243522847c5e5f50f60ef08`. Review this PR's **Files changed** view for the final dedicated-logic scope; earlier commits still contain the superseded combined implementation.
 
@@ -20,7 +20,6 @@ The CPU implementation has been preserved separately on `aaron/keygen-cpu` at `c
 2. [Algorithm](docs/RSA_ALGORITHM.md), `rtl/rsa_rtl/keygen_rsa_controller.v` and [engine](docs/RSA_ENGINE.md): prime-generation sequencing and bounded failures.
 3. [AES](docs/AES.md), [pair validation](docs/PAIR_CHECK.md), [arithmetic](Math/README.md) and [resources](IP/README.md): implementation and reference checks.
 4. [Validation](docs/RTL_REVIEW_VALIDATION.md) and [build commands](docs/BUILD_AND_TEST.md): what was rerun for this branch.
-5. [DE25 keygen demo](demo/de25_revd/README.md), [Phase 1 DE25](../Boards/DE25/README.md) and [DE1](../Boards/DE1/README.md): board-specific scope and limitations.
 
 ## Review questions
 
@@ -34,3 +33,5 @@ The CPU implementation has been preserved separately on `aaron/keygen-cpu` at `c
 Production entropy, hierarchy seed management, authorization, object wrapping, CRT preparation and full TPM command integration are outside this subsystem. Test fixtures contain public test keys only. Generic RAM inference/DE25 fit remains a separate follow-up. Prior bitstream evidence does not certify the changed source snapshot; final fit, timing and physical acceptance must use matching manifests. Existing Phase 1 SPI CDC/generated-clock limitations remain documented in the board README.
 
 [Completion matrix](docs/COMPLETION_MATRIX.md) separates review readiness from hardware release acceptance. AI assistance is disclosed in [AI_DISCLOSURE.md](docs/AI_DISCLOSURE.md); human review remains required before merge.
+
+DE25 board support: [PR #36](https://github.com/VTECEMDEF25-07/F25-07_Open-Source_Hardware_TPM/pull/36), targeting main and intended to merge first.

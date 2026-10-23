@@ -115,7 +115,7 @@ sources=[
     'rtl/aes/keygen_aes_core.v','rtl/arithmetic/keygen_math.v','rtl/arithmetic/keygen_pair_check.v',
     'rtl/rsa_rtl/keygen_rsa_services.v','rtl/rsa_rtl/keygen_rsa_controller.v',
     'rtl/rsa_rtl/keygen_rsa_engine.v','rtl/common/keygen_core.v',
-    'demo/test_rng/keygen_test_source.v','testbench/tb_keygen_full.sv',
+    'testbench/fixtures/keygen_test_source.v','testbench/tb_keygen_full.sv',
 ]
 models=[(a.altera_models/name).resolve() for name in ('220model.v','altera_mf.v')]
 simulator=subprocess.run([str(a.questa_bin/'vsim.exe'),'-version'],capture_output=True,text=True,check=True).stdout.strip()
