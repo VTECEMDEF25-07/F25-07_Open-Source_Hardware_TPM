@@ -67,3 +67,6 @@ Desktop.ini
 *~
 *.orig
 *.rej
+
+# Personal verification utilities, excluded from the review.
+/local_scripts/

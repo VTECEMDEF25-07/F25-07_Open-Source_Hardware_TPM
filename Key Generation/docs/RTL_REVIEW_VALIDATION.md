@@ -4,6 +4,8 @@
 
 Date: October 23, 2026. Scope: removal of the CPU-controlled path from PR #35, retaining dedicated RTL with generic and Altera resources. The prior combined implementation is preserved on `aaron/keygen-cpu` at `c90610165605cac55243522847c5e5f50f60ef08`.
 
+The SPI/reset simulation utilities and fan-only diagnostic builder were subsequently moved to ignored `local_scripts/spi_verification/`. Their results below record the earlier runs; these utilities are not included in the PR. Production HDL was unchanged by that cleanup. The 52-test host/helper count includes five runner checks now kept locally.
+
 ## Results on the dedicated-only source
 
 Commands below run from `Key Generation`; Linux commands use Ubuntu 24.04/WSL and Verilator 5.020. Python offline tests use Python 3.14 on Windows.
@@ -16,9 +18,9 @@ Commands below run from `Key Generation`; Linux commands use Ubuntu 24.04/WSL an
 | Core lifecycle | `python3 scripts/run_integration_verilator.py --suite lifecycle` | PASS: 28 checks |
 | RSA services | `python3 scripts/run_integration_verilator.py --suite services` | PASS: 49 checks |
 | Complete generic RSA | `python3 scripts/run_full_verilator.py --directed --stalls --seeds 1 --label advisor-rtl` | PASS: all 129 result words match the independent fixture; 384 input words; 136,232,057 cycles |
-| Real core over SPI | `python3 demo/de25_revd/simulate_real.py --core-root . --build build/advisor-real-spi` | PASS: AES128/256, capture, source/result/ownership stalls, errors, reset and RSA abort/recovery |
-| Board reset boundary | `python3 demo/de25_revd/simulate_top.py --build build/advisor-top-reset` | PASS; isolated reset test with core/fan models |
-| SHA/SPI source hold | `python3 demo/de25_revd/simulate_source_hold.py --build build/advisor-source-hold` | PASS: outstanding offer, single transfer, pause/resume and reset; controllable core model |
+| Real core over SPI | `python3 ../local_scripts/spi_verification/simulate_real.py --core-root . --build build/advisor-real-spi` | PASS: AES128/256, capture, source/result/ownership stalls, errors, reset and RSA abort/recovery |
+| Board reset boundary | `python3 ../local_scripts/spi_verification/simulate_top.py --build build/advisor-top-reset` | PASS; isolated reset test with core/fan models |
+| SHA/SPI source hold | `python3 ../local_scripts/spi_verification/simulate_source_hold.py --build build/advisor-source-hold` | PASS: outstanding offer, single transfer, pause/resume and reset; controllable core model |
 | Board preparation | `python demo/de25_revd/prepare_build.py --build-root build/advisor-board --variant all` | PASS: exactly `rtl_generic` and `rtl_altera`; no firmware required; snapshot/config hashes checked |
 | Repository hygiene | `python scripts/check_repository_hygiene.py` and `git diff --check` | PASS |
 | Genuine Altera full RSA | `python scripts/run_full_altera_questa.py --directed --stalls --seeds 1 --label advisor-altera` | PASS: all 129 result words match; 384 input words; 136,232,057 cycles, identical to generic resources |

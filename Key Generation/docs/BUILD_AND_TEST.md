@@ -25,7 +25,6 @@ python scripts/check_repository_hygiene.py
 python3 scripts/run_integration_verilator.py --suite services
 python3 scripts/run_integration_verilator.py --suite lifecycle
 python3 scripts/run_full_verilator.py --directed --stalls --seeds 1 --label advisor-rtl
-python3 demo/de25_revd/simulate_real.py --core-root . --build build/advisor-real-spi
 ```
 
 The complete-key test checks all 129 output words and exact source consumption against the independent corpus. Directed inputs use known candidates but execute the primality/pair checks; they are not a search-performance benchmark. Omit `--directed` for normal SHA-fixture prime search. Fresh labels preserve evidence; `--reuse-build` checks source, fixture, runner and binary hashes before reuse.
