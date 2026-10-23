@@ -1,0 +1,7 @@
+# Filename: de25_soc_top.qpf
+# Authors: Project contributors; see Git history.
+# Date: 2026-10-14
+# General Description: Connects the original Phase 1 TPM to DE25 pins, related clocks, reset and independent cooling.
+# AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
+PROJECT_REVISION = "de25_soc_top"

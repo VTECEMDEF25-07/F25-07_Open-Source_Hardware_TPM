@@ -146,3 +146,8 @@ __pycache__/
 # *.qip
 # *.bsf
 # testbenches/
+# Reviewed DE25 project sources (generated products remain ignored).
+!Boards/DE25/*.qpf
+!Boards/DE25/*.qsf
+!Boards/DE25/*.sdc
+/local_scripts/
