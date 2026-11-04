@@ -4,7 +4,7 @@
 // Date: 2026-10-14
 // General Description: Supplies the original DE1-SoC top with a 100 MHz clock from its 50 MHz reference.
 
-// Supplies the clock module referenced by the original Phase 1 board top.
+// Supplies the clock module referenced by the TPM board top.
 // ALTERA_PLL General mode lets Quartus map 50-to-100 MHz to the target Cyclone V.
 // Family-specific low-level mode requires generated analog/counter settings.
 module PLL_100 (

@@ -2,7 +2,19 @@
 
 Author: Aaron Grossman
 
-## Current vendor-example revision - November 4, 2026
+## Current revision: TPM naming and monitor removal - November 4, 2026
+
+- Optional JTAG probe, telemetry registers, enabling macro and probe timing constraints removed. The synthesized report has no `altsource_probe`/`phase1_monitor` instance.
+- Clock wrapper renamed to `de25_clock.v` / `de25_clock`; PLL parameters and TPM port connections are unchanged. Board descriptions call the design TPM.
+- Full Quartus Pro 26.1 compile PASS: 1,325 ALMs, 2 RAM blocks, 0 DSPs, 1 PLL. Build selector verifies all 10 pins and SOF generation.
+- TPM 1 MHz SPI acceptance vectors PASS with the local ideal board/PLL adapters.
+- The seven vendor fan files still match the archive byte for byte; fan-mode/reset/I2C inputs are unchanged. Their previously passed normal-operation tests remain applicable.
+- Worst setup slack remains negative (-2.790 ns); full timing/CDC signoff is incomplete. No physical-board test performed.
+
+SOF SHA256: `ef790303eb083729f50079b55e47e77a03ccb907e1e97dce46894aad4b81bb4c`.
+Local evidence: class-workspace `AI/tmp/pr36-no-monitor-de25-build.log` and `AI/tmp/pr36-no-monitor-spi-DE25/`.
+
+## Vendor-example revision before monitor removal - November 4, 2026
 
 - All seven fan-example modules match the RevD v1.2.0 Board_Info_RTL ZIP entries byte for byte. Reset-release source differs only by `output logic` -> `output wire` and `.sv` -> `.v`; see [source provenance](Fan%20Controller/README.md).
 - Full Quartus Pro 26.1 compile PASS: 1,501 ALMs, 2 RAM blocks, 0 DSPs, 1 PLL. Build selector verifies all 10 physical pins and the programming file.

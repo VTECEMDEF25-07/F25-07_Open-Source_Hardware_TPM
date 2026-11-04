@@ -21,7 +21,7 @@ The following seven files are copied byte for byte from `Demonstration/FPGA/Boar
 
 - `altera_s10_user_rst_clkgate.v` comes from `Demonstration/FPGA/DDR4_Test_RTL/reset_release/altera_s10_user_rst_clkgate_1949/synth/altera_s10_user_rst_clkgate.sv`. Its only content edit is `output logic` to `output wire`; its extension changes from `.sv` to `.v`. This keeps the supplied endpoint connection compatible with the project's Verilog-only hardware-source rule. It serves board configuration reset, not fan speed control.
 - The project-owned `../de25_soc_top.v` connects the example's 50 MHz clock, reset and I2C ports. Automatic mode is enabled; the manual-speed input remains 4000 RPM, unused in automatic mode.
-- The top no longer connects the custom `FAN_FAILSAFE` port, which the example does not expose. The former diagnostic bit is reserved zero. The other read-only telemetry connections remain.
+- The top uses only the clock/reset/I2C and fan-mode inputs required for fan operation. The optional JTAG telemetry probe and its project setting/constraints are removed; unused management outputs are not connected.
 - The QSF lists the original example files and omits the removed project-specific `de25_fan_guard.v`. Pin assignments and the divide-by-128 fan-clock constraint stay unchanged.
 
 No source changes are required in the seven fan-example modules. The example's continuous-conversion logic, speed curve, startup defaults and unused/unconnected signals (including its `invalid_temp` wire) are preserved. Custom one-shot validation, timeouts and stale-reading logic are removed.

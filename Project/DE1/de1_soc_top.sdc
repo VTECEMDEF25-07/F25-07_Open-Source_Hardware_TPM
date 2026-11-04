@@ -3,7 +3,7 @@
 # Date: 2026-10-14
 # General Description: Defines board clocks and timing constraints, with remaining limitations documented.
 
-# Original Phase 1 clock pair: direct board 50 MHz and PLL-generated 100 MHz.
+# TPM clock pair: direct board 50 MHz and PLL-generated 100 MHz.
 create_clock -name board_clock -period 20.000 [get_ports CLOCK_50]
 derive_pll_clocks
 derive_clock_uncertainty

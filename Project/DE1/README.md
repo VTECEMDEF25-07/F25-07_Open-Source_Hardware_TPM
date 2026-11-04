@@ -2,10 +2,10 @@
 Filename: README.md
 Author: Aaron Grossman
 Date: 2026-10-14
-General Description: Documents DE1-SoC Phase 1 project.
+General Description: Documents DE1-SoC TPM project.
 -->
 
-# DE1-SoC Phase 1 project
+# DE1-SoC TPM project
 
 Open `de1_soc_top.qpf` in Quartus Prime Lite or Standard with Cyclone V device
 support installed. Target: `5CSEMA5F31C6`. Quartus Pro does not support this target.
@@ -15,7 +15,7 @@ From this directory, the command-line build is:
 quartus_sh --flow compile de1_soc_top
 ```
 
-This project uses the board-local `de1_soc_top.v` and existing Phase 1 TPM
+This project uses the board-local `de1_soc_top.v` and TPM
 and SPI modules. `PLL_100.v` supplies the previously missing 50-to-100 MHz
 clock module through the Cyclone V `altera_pll` macro. There is no DE25 fan
 controller or new keygen integration in this project. LED0 shows the original

@@ -1,12 +1,12 @@
-// Filename: de25_phase1_clock.v
-// Modules: de25_phase1_clock
+// Filename: de25_clock.v
+// Modules: de25_clock
 // Author: Aaron Grossman
 // Date: 2026-10-14
 // General Description: Generates the related 50 MHz and 100 MHz DE25 TPM clocks through the vendor PLL macro.
 
 // Approved vendor PLL internals; project wrapper remains Verilog.
 // Our board wrapper is Verilog; no generated IP-catalog source is required.
-module de25_phase1_clock (
+module de25_clock (
     input clock_i,
     input reset_i,
     output clock_50_o,
