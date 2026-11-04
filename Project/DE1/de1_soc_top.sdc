@@ -1,3 +1,8 @@
+# Filename: de1_soc_top.sdc
+# Author: Aaron Grossman
+# Date: 2026-10-14
+# General Description: Defines board clocks and timing constraints, with remaining limitations documented.
+
 # TPM clock remains 50 MHz. SPI clock/pads/mailboxes are constrained separately.
 create_clock -name board_clock -period 20.000 [get_ports CLOCK_50]
 set spi_sck_port GPIO_1_2

@@ -5,7 +5,8 @@ result and supporting evidence in the relevant module or board documentation.
 
 - [ ] **Validate SPI at a true 24 MHz on hardware.** Simulation and routed
   timing pass, but physical acceptance is pending. DE25 passes the existing
-  tester at 1, 10 and 15 MHz. The FTDI library turns a 24 MHz request into
+  tester at 1, 10 and 15 MHz on the earlier fan/monitor image. The FTDI
+  library turns a 24 MHz request into
   30 MHz, which fails. Obtain a suitable clock source and rerun the original
   TPM assertions, recording the actual clock, image hash and results.
   A Pico H with USB-to-SPI bridge firmware is a candidate within the team's
@@ -26,6 +27,12 @@ result and supporting evidence in the relevant module or board documentation.
   intervals, but a full-TPM replay at those intervals fails 13 existing
   assertions. Diagnose the failures and add a reproducible regression before
   reducing the current 100 ns CS setup/hold/high contract.
+
+- [ ] **Repeat DE25 hardware validation after the vendor fan update.** The
+  PR #36 synchronization replaces the custom fan logic with the Terasic
+  example and removes the optional JTAG monitor. Recheck cooling, resets
+  and SPI on the merged image; previous physical results apply to the older
+  image, and its JTAG telemetry procedure is no longer available.
 
 See [the common SPI guide](Source%20Code/IO%20Interface/SPI.md) and the
 [DE1](Project/DE1/VALIDATION.md) / [DE25](Project/DE25/VALIDATION.md) validation

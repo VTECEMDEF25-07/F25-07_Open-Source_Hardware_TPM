@@ -1,11 +1,3 @@
-// Filename: auto_fan.v
-// Modules: AutoFan
-// Authors: Original upstream authors (preserved below); project contributors for local changes.
-// Date: 2026-10-13
-// General Description: Computes automatic fan settings, including the local invalid-temperature failsafe.
-// AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
-// AI disclosure applies only to project-local modifications.
-
 module AutoFan(
 	input				clk,
 	input 			         reset_n,
@@ -89,7 +81,7 @@ reg [7:0] auto_ktach;
 always@(posedge clk or negedge reset_n)
 begin
 	if (~reset_n)
-		auto_ktach <= `FAN_SPEED_1;
+		auto_ktach <= `FAN_SPEED_4;
 	else if ( invalid_temp ) auto_ktach <= `FAN_SPEED_1;
 	else if (TEMP_UP_FLAG)
 	begin

@@ -42,8 +42,8 @@ def main():
         sources.append(str(target))
         hashes[str(path.relative_to(repo))] = hashlib.sha256(data).hexdigest()
     header = repo / 'Source Code/IO Interface/tpm_types.vh'
-    # Legacy source spells its include uppercase; Linux paths are case-sensitive.
-    (build / 'TPM_TYPES.vh').write_bytes(header.read_bytes())
+    # Match the shared source include exactly on case-sensitive hosts.
+    (build / 'tpm_types.vh').write_bytes(header.read_bytes())
     hashes[str(header.relative_to(repo))] = hashlib.sha256(header.read_bytes()).hexdigest()
     original = repo / 'Simulation/IO Interface/tb_test.v'
     bench = original.read_text().replace('`timescale 1ns/1ns','`timescale 1ns/1ps')

@@ -1,12 +1,11 @@
 <!--
 Filename: README.md
-Authors: Project contributors; see Git history.
+Author: Aaron Grossman
 Date: 2026-10-14
-General Description: Documents DE1-SoC Phase 1 project.
-AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+General Description: Documents DE1-SoC TPM project.
 -->
 
-# DE1-SoC Phase 1 project
+# DE1-SoC TPM project
 
 Open `de1_soc_top.qpf` in Quartus Prime Lite or Standard with Cyclone V device
 support installed. Target: `5CSEMA5F31C6`. Quartus Pro does not support this target.
@@ -43,10 +42,9 @@ tables 3-5, 3-7, 3-8 and 3-11. Software support:
 
 ## Validation
 
-See [VALIDATION.md](VALIDATION.md) for fresh simulation/build results. Both boards are selected through `Project/board_config.json` and `Project/build.py`; [board setup](../README.md) describes the common commands.
+See [VALIDATION.md](VALIDATION.md) for fresh simulation/build results. Open each board's QPF directly; [board setup](../README.md) describes the Quartus workflow.
 
-QSF pin targets use quoted names accepted by Quartus Lite. The build selector
-requires zero PLLs for this direct-clock target and checks the physical pin map.
+QSF pin targets use quoted names accepted by Quartus Lite. This direct-clock target uses zero PLLs; verify its pin map in the fitter report.
 SPI SCK clocks the pin interface; held-data mailboxes cross to 50 MHz.
 Local SCK routing and input/output register packing are board-specific.
 Synchronizer interstage and functional paths remain timed. The host timing contract and common regression commands are in

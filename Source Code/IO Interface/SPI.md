@@ -39,8 +39,8 @@ and crypto logic are unchanged. This PR targets PR #36's board-support branch.
 
 ## Board and ASIC boundary
 
-DE1 uses raw 50 MHz with no PLL. DE25 retains its board PLL, reset, fan and
-read-only JTAG support; its 100 MHz output serves reset release. The shared
+DE1 uses raw 50 MHz with no PLL. DE25 retains its board PLL, reset and vendor
+fan support; its 100 MHz output serves reset release. The shared
 TPM/IO interface takes no 100 MHz clock or board-specific SPI parameter.
 Pin-register packing and SCK routing settings belong in each board QSF.
 
@@ -52,14 +52,20 @@ and repeat CDC, reset and physical timing signoff for its own library.
 
 ## Reproduce verification
 
-Run from the repository root with fresh output directories:
+Run from the repository root with fresh output directories. Use the Lite or
+Standard executables for DE1 and Pro for DE25; select the matching edition
+when running each Quartus build or timing audit. The normal GUI workflow is
+to open the board QPF directly, as described in `Project/README.md`:
 
 ```text
 python "Simulation/IO Interface/simulate_spi.py" --build FRESH_UNIT_DIR --questa-bin QUESTA_BIN
 python "Simulation/IO Interface/simulate_tpm_spi.py" --board DE1 --spi-hz 24000000 --build FRESH_DE1_DIR --questa-bin QUESTA_BIN
 python "Simulation/IO Interface/simulate_tpm_spi.py" --board DE25 --spi-hz 24000000 --build FRESH_DE25_DIR --questa-bin QUESTA_BIN
-python Project/build.py --board DE1 --compile --quartus QUARTUS_LITE_SH
-python Project/build.py --board DE25 --compile --quartus QUARTUS_PRO_SH
+cd Project/DE1
+quartus_sh --flow compile de1_soc_top
+cd ../DE25
+quartus_sh --flow compile de25_soc_top
+cd ../..
 quartus_sta -t Project/verify_spi_timing.tcl DE1
 quartus_sta -t Project/verify_spi_timing.tcl DE25
 ```

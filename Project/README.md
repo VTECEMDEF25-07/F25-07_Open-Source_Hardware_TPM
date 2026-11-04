@@ -1,27 +1,18 @@
-# Select a board
+# Quartus board projects
 
-Change `Project/board_config.json`:
+Author: Aaron Grossman
 
-```json
-{"board": "DE25"}
-```
+Open the `.qpf` file for your board in the matching Quartus edition:
 
-Use `DE1` for the DE1-SoC or `DE25` for the DE25 Standard RevD. From the repository root:
-
-```text
-python Project/build.py
-python Project/build.py --compile --quartus PATH_TO_QUARTUS_SH
-```
-
-The first command checks the selected project and prints its top, FPGA and tool edition without compiling. The second compiles it and rejects missing hardware PLLs or ignored pin assignments; neither programs hardware. Use `python Project/build.py --board DE1` for a one-run override without editing the config. `--config PATH` selects an alternate JSON config. Script paths are resolved relative to the repository, so it also works when invoked from another directory.
-
-| Board | Top / project | FPGA | Quartus |
+| Board | Project, relative to this folder | FPGA | Quartus |
 |---|---|---|---|
-| DE1 | `DE1/de1_soc_top.v`, `DE1/de1_soc_top.qpf` | 5CSEMA5F31C6 | Lite or Standard with Cyclone V support |
-| DE25 | `DE25/de25_soc_top.v`, `DE25/de25_soc_top.qpf` | A5ED013BB32AE4SCS | Pro with Agilex 5 support |
+| DE1-SoC | `DE1/de1_soc_top.qpf` | 5CSEMA5F31C6 | Lite or Standard with Cyclone V support |
+| DE25 Standard RevD | `DE25/de25_soc_top.qpf` | A5ED013BB32AE4SCS | Pro 26.1 with Agilex 5 support |
 
-Each folder owns its top, pins, clocks and timing constraints. Both instantiate the shared `Source Code/TPM_TOP.v` and common TPM modules. DE25 alone includes temperature/fan management. Board selection chooses the entire project, not just the top name: devices, pins and PLL implementations differ. Quartus editions are not interchangeable; use the matching executable via --quartus or PATH.
+Use **File > Open Project**, select the QPF, and then **Processing > Start Compilation**. Make project assignments and edit source files in Quartus as usual. The QSF already lists the board-specific and shared source files.
 
-Build outputs stay in each project's ignored output_files/db directories. Switching boards does not rewrite HDL or copy files over the other target. Directly opening either QPF remains supported. See each board README and VALIDATION.md for verification limits. Existing SPI timing/CDC and physical-board acceptance remain separate gates.
+Each folder owns its board top, pins and timing constraints. DE1 uses direct 50 MHz without a PLL; DE25 owns its board PLL. Both projects reference `Source Code/TPM_TOP.v` and the shared module folders at the repository root. DE25 also includes the original Terasic fan-controller example. Keep the full checkout in place so the relative source paths remain valid.
 
-Validation: both targets compile with their matching installed Quartus editions and pass the existing TPM simulation vectors using ideal board models. Physical testing and complete timing/CDC signoff remain separate; see [DE1 results](DE1/VALIDATION.md) and [DE25 results](DE25/VALIDATION.md). Five local selector checks cover config/overrides, wrong-tool rejection, error propagation and rejection of missing PLLs or incorrect pin maps.
+Quartus puts generated results under each board's ignored `output_files/`, `db/` and related directories. The Quartus editions are not interchangeable; open each project with its matching edition.
+
+See [DE1 setup](DE1/README.md) and [DE25 setup](DE25/README.md) for board wiring and device details.

@@ -1,4 +1,54 @@
-# DE25 high-speed SPI validation
+# DE25 validation
+
+Author: Aaron Grossman
+
+## PR #36 synchronization - November 4, 2026
+
+PR #37 incorporates parent `de776b7` and remains ready for review. The
+original vendor fan integration, removal of the optional JTAG monitor,
+`de25_clock` name and direct Quartus workflow are retained. The common
+SCK-clocked SPI transport and 50 MHz TPM processing remain in place.
+
+- Full matching-edition Quartus build: PASS; 1,313 ALMs, 2 RAM blocks,
+  1 PLL(s). All 10 physical pins checked. Both projects use six build processors.
+- Original TPM protocol assertions: PASS at 1, 24 and 30 MHz using the updated
+  board model. The test runner now matches the lowercase `tpm_types.vh`
+  include on case-sensitive hosts. Simulation is not a physical-board test.
+- Routed timing audit: PASS at all four available corners. All five SPI
+  synchronizer chains and the mailbox data paths remain checked.
+- The SPI serializer RTL is unchanged by this merge; its prior isolated
+  unit results remain applicable. No legacy serializer or DE1 PLL is restored.
+
+| Worst slack, ns | Result |
+|---|---:|
+| Setup | +0.416 |
+| Hold | +0.026 |
+| Recovery | +2.690 |
+| Removal | +0.017 |
+| Pulse width | +4.539 |
+
+Both vendor fan regressions PASS: normal automatic-speed/reset behavior,
+and serial I2C configuration, temperature/RPM reads and speed writes. All
+seven vendor source hashes match the parent provenance table byte for byte.
+The fitted design contains no `altsource_probe` monitor. Hardware testing
+must be repeated for this image; the older image's JTAG telemetry procedure
+is no longer available.
+
+SOF SHA-256: `872bf30dc8f085ceceacc9dc1061227a5f33b94279683a6f1b9a5b1a82a4fb46`.
+
+Local evidence is under the class `AI/tmp/`: `pr37-sync36-de25-build.log`,
+`pr37-sync36-de25-timing.log`, `pr37-sync36-de25-*` protocol
+snapshots and `pr37-sync36-fit-check.json`. Fan logs use the
+`pr37-sync36-vendor-fan*` names. Generated evidence is outside tracked source.
+
+**Exact 24 MHz physical acceptance remains outstanding**, as recorded in
+[FUTURE_WORK.md](../../FUTURE_WORK.md). The >=100 ns full-TPM CS framing
+contract is unchanged. The results below describe the pre-synchronization
+image and do not validate the new fan/monitor configuration.
+Parent-only results are available in
+[PR #36's validation record](https://github.com/VTECEMDEF25-07/F25-07_Open-Source_Hardware_TPM/blob/de776b747a3757f671b242f1e0848e5eea786254/Project/DE25/VALIDATION.md).
+
+## DE25 high-speed SPI validation
 
 Validated November 3, 2026, against parent organization revision `a0f9bb4`.
 PR #37 is ready for review. **Exact 24 MHz physical acceptance remains pending**

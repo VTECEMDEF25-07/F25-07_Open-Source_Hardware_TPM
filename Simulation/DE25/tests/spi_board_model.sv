@@ -27,7 +27,6 @@ module BOARD_MANAGEMENT (
     input clk_50, reset_n, Auto_Fan_Speed, BUSY_GO_HI,
     input [15:0] Set_Fan_Speed,
     output [15:0] FPGA_Temperature, Board_Temperature, Fan_Speed,
-    output I2C_READY, TEMP_VALID, FAN_FAILSAFE,
     inout I2C_SCL, I2C_SDA
 );
     assign I2C_SCL = 1'bz;
@@ -35,12 +34,9 @@ module BOARD_MANAGEMENT (
     assign FPGA_Temperature = 16'd30;
     assign Board_Temperature = 16'd25;
     assign Fan_Speed = 16'd4000;
-    assign I2C_READY = reset_n;
-    assign TEMP_VALID = reset_n;
-    assign FAN_FAILSAFE = !reset_n;
 endmodule
 
-module de25_phase1_clock (
+module de25_clock (
     input clock_i, reset_i,
     output reg clock_50_o = 0,
     output reg clock_100_o = 0,

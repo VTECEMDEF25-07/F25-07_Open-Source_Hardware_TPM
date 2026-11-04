@@ -79,7 +79,7 @@ else
 							A <= {POINTER ,1'b1 };  
 							ST <= 2 ; 
 						end
-					   if (BYTE==1) NO_ACK <= NO_ACK | SDAI; // Pointer ACK sampled before SCL falls.
+					   //NO_ACK  <= SDAI;
 				 end
 			 else ST <= 2;
 		    end
@@ -110,7 +110,7 @@ else
           end
 	  //---SLEEP UP-----		 
 	    31: begin  //
-		      END_OK<=0;NO_ACK<=0;
+		      END_OK<=0;
 				CNT <=0 ; 
 		      ST <=32 ; 
 			   { SDAO,  SCLO } <= 2'b01; 
@@ -139,7 +139,7 @@ else
 	    36: begin  
 		         DELY<=DELY+1;
 				   if ( DELY > 1 )  begin 
-				         if ( SDAI ) begin NO_ACK<=1;ST<=6;end // Bound missing-device retry: STOP and report failure.
+				         if ( SDAI ) begin NO_ACK  <= SDAI; ST <= 31 ;  { SDAO,  SCLO } <= 2'b11; end
 			            else  begin ST <=5 ;SCLO <= 1'b0;  end 
 			      end
 				end	
