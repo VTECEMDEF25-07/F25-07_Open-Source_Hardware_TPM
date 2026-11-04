@@ -4,7 +4,7 @@ Virginia Tech Lenovo-sponsored senior design project.
 
 ## Layout
 
-- `Project/DE1/`: DE1-SoC Quartus project, board wrapper, PLL, pins and constraints.
+- `Project/DE1/`: DE1-SoC Quartus project, board wrapper, pins and constraints (direct 50 MHz, no PLL).
 - `Project/DE25/`: DE25 Quartus project, board wrapper, PLL, pins, constraints and Fan Controller.
 - `Source Code/`: shared TPM top and folders for each reusable module.
 - `Simulation/`: module testbenches and DE25 cooling regression scripts/models.
@@ -19,3 +19,7 @@ Virginia Tech Lenovo-sponsored senior design project.
 Keep the complete repository together: project source paths are relative. Generated outputs are ignored; source, constraints, project settings and required test inputs remain tracked.
 
 See [board setup](Project/README.md) for board details and [simulation instructions](Simulation/README.md) for simulations. Each board's VALIDATION.md records build results and timing/hardware limitations.
+
+The shared SPI transport and ASIC portability boundary are described in [SPI documentation](Source%20Code/IO%20Interface/SPI.md).
+
+Open project follow-ups are tracked in [FUTURE_WORK.md](FUTURE_WORK.md).

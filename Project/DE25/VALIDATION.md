@@ -1,55 +1,136 @@
-# Validation against current main
+# DE25 validation
 
 Author: Aaron Grossman
 
-## Current revision: TPM naming and monitor removal - November 4, 2026
+## PR #36 synchronization - November 4, 2026
 
-- Optional JTAG probe, telemetry registers, enabling macro and probe timing constraints removed. The synthesized report has no `altsource_probe`/`phase1_monitor` instance.
-- Clock wrapper renamed to `de25_clock.v` / `de25_clock`; PLL parameters and TPM port connections are unchanged. Board descriptions call the design TPM.
-- Full Quartus Pro 26.1 compile PASS: 1,325 ALMs, 2 RAM blocks, 0 DSPs, 1 PLL. The local-only build helper verified all 10 pins and SOF generation.
-- TPM 1 MHz SPI acceptance vectors PASS with the local ideal board/PLL adapters.
-- The seven vendor fan files still match the archive byte for byte; fan-mode/reset/I2C inputs are unchanged. Their previously passed normal-operation tests remain applicable.
-- Worst setup slack remains negative (-2.790 ns); full timing/CDC signoff is incomplete. No physical-board test performed.
+PR #37 incorporates parent `de776b7` and remains ready for review. The
+original vendor fan integration, removal of the optional JTAG monitor,
+`de25_clock` name and direct Quartus workflow are retained. The common
+SCK-clocked SPI transport and 50 MHz TPM processing remain in place.
 
-SOF SHA256: `ef790303eb083729f50079b55e47e77a03ccb907e1e97dce46894aad4b81bb4c`.
-Local evidence: class-workspace `AI/tmp/pr36-no-monitor-de25-build.log` and `AI/tmp/pr36-no-monitor-spi-DE25/`.
+- Full matching-edition Quartus build: PASS; 1,313 ALMs, 2 RAM blocks,
+  1 PLL(s). All 10 physical pins checked. Both projects use six build processors.
+- Original TPM protocol assertions: PASS at 1, 24 and 30 MHz using the updated
+  board model. The test runner now matches the lowercase `tpm_types.vh`
+  include on case-sensitive hosts. Simulation is not a physical-board test.
+- Routed timing audit: PASS at all four available corners. All five SPI
+  synchronizer chains and the mailbox data paths remain checked.
+- The SPI serializer RTL is unchanged by this merge; its prior isolated
+  unit results remain applicable. No legacy serializer or DE1 PLL is restored.
 
-## Vendor-example revision before monitor removal - November 4, 2026
+| Worst slack, ns | Result |
+|---|---:|
+| Setup | +0.416 |
+| Hold | +0.026 |
+| Recovery | +2.690 |
+| Removal | +0.017 |
+| Pulse width | +4.539 |
 
-- All seven fan-example modules match the RevD v1.2.0 Board_Info_RTL ZIP entries byte for byte. Reset-release source differs only by `output logic` -> `output wire` and `.sv` -> `.v`; see [source provenance](Fan%20Controller/README.md).
-- Full Quartus Pro 26.1 compile PASS: 1,501 ALMs, 2 RAM blocks, 0 DSPs, 1 PLL. Build selector verifies all 10 physical pins and the programming file.
-- AutoFan normal-operation simulation PASS: startup speed, cold/hot ramp and the original invalid-temperature input behavior.
-- Serial I2C simulation PASS: continuous-conversion configuration, three temperature channels, RPM readback and fan-speed writes.
-- Existing 1 MHz TPM SPI acceptance vectors PASS with local ideal board/PLL adapters.
-- Worst setup slack is -2.611 ns. Full timing/CDC signoff remains incomplete; no physical-board test was performed.
+Both vendor fan regressions PASS: normal automatic-speed/reset behavior,
+and serial I2C configuration, temperature/RPM reads and speed writes. All
+seven vendor source hashes match the parent provenance table byte for byte.
+The fitted design contains no `altsource_probe` monitor. Hardware testing
+must be repeated for this image; the older image's JTAG telemetry procedure
+is no longer available.
 
-SOF SHA256: `af04d3f762c37f30e3cca76c14fc8d438544ecd1f73c2800622ab1824fc9d4f3`.
-Local evidence: class-workspace `AI/tmp/pr36-vendor-de25-build.log`, `pr36-vendor-fan-test/`, `pr36-vendor-fan-bus-test-v2/`, and `pr36-vendor-spi-DE25/`.
+SOF SHA-256: `872bf30dc8f085ceceacc9dc1061227a5f33b94279683a6f1b9a5b1a82a4fb46`.
 
-## Historical custom implementation
+Local evidence is under the class `AI/tmp/`: `pr37-sync36-de25-build.log`,
+`pr37-sync36-de25-timing.log`, `pr37-sync36-de25-*` protocol
+snapshots and `pr37-sync36-fit-check.json`. Fan logs use the
+`pr37-sync36-vendor-fan*` names. Generated evidence is outside tracked source.
 
-Historical record: the custom fan implementation tested below has since been replaced by the original Terasic example. Its fault/guard results and bitstream hashes do not validate the vendor-example revision. See `Project/DE25/Fan Controller/README.md` from the repository root for the current source contract.
+**Exact 24 MHz physical acceptance remains outstanding**, as recorded in
+[FUTURE_WORK.md](../../FUTURE_WORK.md). The >=100 ns full-TPM CS framing
+contract is unchanged. The results below describe the pre-synchronization
+image and do not validate the new fan/monitor configuration.
+Parent-only results are available in
+[PR #36's validation record](https://github.com/VTECEMDEF25-07/F25-07_Open-Source_Hardware_TPM/blob/de776b747a3757f671b242f1e0848e5eea786254/Project/DE25/VALIDATION.md).
 
-Base: `4fd41b608554deaa0c3b520933bcabafc4755e92` (October 23, 2026). Existing TPM, execution, management and SPI sources are unchanged from this base. No key-generation/demo source is in the project source list.
+## DE25 high-speed SPI validation
 
-| Check | Result |
-|---|---|
-| Fan guard/decoded sensor regression | PASS: startup, unresponsive bus, full-on/closed-loop commands, invalid identity/readings, staleness and recovery |
-| Serial I2C sensor/fan model | PASS: fresh conversion, adjacent high/low reads, eight fault/recovery cases; 29 shots, 96 paired reads |
-| Existing main TPM SPI vectors at 1 MHz | PASS: no assertion errors; ideal PLL/configuration/fan adapters, not physical hardware or vendor PLL validation |
-| Quartus Pro 26.1 complete compile/bitstream | PASS: 1,587 ALMs (3%), 2 RAM blocks, 0 DSPs, 1 PLL |
-| Fan-clock timing | Setup +15.447 ns; hold +0.004 ns; recovery +17.446 ns; removal +0.079 ns |
-| Whole-design timing signoff | NOT established: worst setup -2.700 ns at unchanged TPM SPI edge detector, from spi_clock_i to tpm/io/spi_serialzier/det_ff0/n |
-| Physical board test | Not performed for this extracted revision |
+Validated November 3, 2026, against parent organization revision `a0f9bb4`.
+PR #37 is ready for review. **Exact 24 MHz physical acceptance remains pending**
+and is tracked in [FUTURE_WORK.md](../../FUTURE_WORK.md).
 
-The existing SPI input is asynchronous to the TPM clocks, and its serializer also creates a logic-generated transmit clock. This PR preserves those existing RTL paths and documents the unresolved timing/CDC limitations rather than hiding them with broad timing exceptions. Positive fan timing does not prove whole-board timing closure.
+- Quartus Pro 26.1 full build: PASS; Agilex 5 A5ED013BB32AE4SCS, 1,561 ALMs,
+  2 RAM blocks, one board PLL. All 10 physical pins verified.
+- Original TPM protocol assertions: PASS at 100 kHz, 1, 10, 15, 24 and 30 MHz
+  using ideal test-only clock/reset models. The 21 inherited bench warnings remain.
+- Shared serializer unit regression: PASS across 100/500 kHz and 1/10/15/24/30 MHz,
+  including phase offsets, short framing and reset/replay; zero simulator errors/warnings.
+- Final routed audit: PASS at all four available corners. Five SPI synchronizer
+  chains remain timed. UCP reports zero unconstrained clocks, ports and paths.
 
-Run the two included fan runners under WSL/Linux with Verilator and a fresh absolute `--build` path. Compile `de25_soc_top.qpf` with Quartus Pro. The legacy-vector adapter and complete run evidence are local class-workspace helpers, not dependencies of the board project.
+| Worst slack, ns | Result |
+|---|---:|
+| Setup | +0.401 |
+| Hold | +0.012 |
+| Recovery | +1.944 |
+| Removal | +0.045 |
+| Pulse width | +4.538 |
 
-Local evidence: `AI/tmp/de25-board-fan-test/`, `de25-board-fan-bus-test/`, `de25-board-main-spi-v2/`, and `de25-board-main-build/`. `AI/tmp/de25-board-validation.json` binds fan/TPM simulation logs to the inspected source. The build manifest records source/configuration hashes. No hardware programming, TPM certification or approval to merge is implied by these checks.
+SCK is constrained at 30 MHz, MOSI at 2/3 ns setup/hold, MISO at <=0.7 of its
+half-period, and frame-start CS at 5 ns setup. The complete legacy TPM retains
+>=100 ns CS setup/hold/high. A diagnostic full-TPM replay at 5/5/50 ns framing
+fails 13 existing assertions despite the isolated serializer passing that framing;
+minimum framing compliance is not accepted by this PR.
 
-Compiled SOF SHA256: `461f305a6d28c91b44185ff9b8df61ed57abe428a1351de1e5f0d183cf6b54c1`. Compilation completed successfully; timing acceptance remains false for the SPI limitations above. Imported HDL/testbench whitespace is preserved from the tested sources.
+The pin interface uses local SCK routing and ordinary fabric registers.
+Forcing an Agilex input I/O register produced an unsuitable hold path; forcing
+an output I/O register required a slower global clock route. Both assignments
+are explicitly OFF for DE25. These settings are board-local; SPI RTL is shared.
+Worst physical mailbox bus delay is 1.158 ns (audit bound:20 ns).
+Only SCK-domain startup reset clear pins are excepted from the core's registered
+reset release. Keep CS high and SCK low through reset and >=1 us after release.
+Core reset release, CS framing, mailbox data and synchronizer interstage timing
+remain checked. Existing fan/JTAG timing assumptions and vendor warnings remain.
 
-## Dual-board organization follow-up
+## Physical test using the previous team's assertions
 
-The DE25 top now lives beside its QPF/QSF in `Project/DE25/`. A fresh compile through the root board selector completed successfully after relocation; 1 PLL and assigned physical pins were verified. Existing main TPM vectors also pass with the relocated top. Fan RTL is unchanged from the fault simulations above. Fresh SOF SHA256: `430011d4fe8c718b40cb8da9bf5e8a8524dbd7d51e586d7ac7b99591d7bb3a98`. The -2.700 ns SPI timing limitation remains. Local evidence: `AI/tmp/dual-board-DE25-compile.log`, `dual-board-de25-sim/`, and this checkout's ignored `Project/DE25/output_files/`.
+The original eight C suites were run through a checked transport port, using
+unmodified vendor libMPSSE 1.0.7/D2XX libraries and adapter serial `FTA6H280`.
+The Linux port adds serial selection, checked/bounded USB operations and timing
+compatibility; test transactions/assertions are retained.
+
+| Requested rate | Vendor-divider rate | Final image result |
+|---|---:|---|
+| 1 MHz | 1 MHz | PASS |
+| 10 MHz | 10 MHz | PASS |
+| 15 MHz | 15 MHz | PASS |
+| 24 MHz | 30 MHz | FAIL, 3/3 runs; command poll limit |
+
+The vendor source computes an integer divider as `(30 MHz/request)-1`;
+requesting 24 MHz selects divider zero. These rates are derived from source,
+not oscilloscope measurements. The [FT232H datasheet, section4.8](https://www.ftdichip.cn/Support/Documents/DataSheets/ICs/DS_FT232H.pdf)
+documents its divided 30 MHz clock and incoming-data setup window. The current
+adapter cannot generate a true 24 MHz clock. Failure resembles late MISO capture,
+but signal/adapter/board causality has not been isolated with measured waveforms.
+**Neither the failing 30 MHz run nor passing simulation proves 24 MHz hardware acceptance.**
+
+The published 50 MHz oversampling baseline (`400ecc6`) passed 1 MHz and failed
+its requested-24/configured-30 MHz run. An intermediate high-speed/global-SCK
+image also passed 1/10/15 MHz and failed 10/10 configured-30 MHz runs. Those
+failed experiments are preserved separately and are not accepted high-speed evidence.
+
+Programming was volatile JTAG under the shared hardware lock at 15 MHz TCK.
+After testing, cooling remained healthy (FPGA34 C, fan >=3960 RPM), the target
+FTDI kernel driver was reattached, and the programmer's persisted 1536 MiB
+memory/no-swap limits were verified. The final image remains loaded; the tester
+closes with TPM reset asserted while autonomous cooling continues.
+
+Serializer SHA-256:
+`dc6dfbc3f27fc5543616491bac09628cd5cbd25534b08c8e20938780e5f692f3`
+
+Programmed SOF SHA-256:
+`975bc8900d692f72b45e2a63cb76fea8e23c712111b75fadbf97126bd4093dfd`
+
+Local class evidence: `AI/tmp/spi24-local-hardware.json`,
+`spi24-local-transfer/manifest.json`, `spi24-accepted-v2-de25-*`,
+`spi24-unit-accepted`, `spi24-layout-de25-compile-v10-local-fabric.log` and
+`spi24-de25-accepted-timing.log`. Remote logs:
+`/tmp/codex-spi24-local-20261103/`. Generated evidence/images are not tracked.
+
+See [SPI reproduction and portability](../../Source%20Code/IO%20Interface/SPI.md).
+This is transport/board validation, not full TPM certification or ASIC signoff.

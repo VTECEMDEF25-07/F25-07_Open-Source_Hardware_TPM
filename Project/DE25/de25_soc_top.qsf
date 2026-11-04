@@ -21,6 +21,7 @@ set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
 set_global_assignment -name NUM_PARALLEL_PROCESSORS 6
 set_global_assignment -name RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"
 set_global_assignment -name SDC_FILE de25_soc_top.sdc
+set_global_assignment -name SDC_FILE "../spi_timing.sdc"
 set_location_assignment PIN_CH128 -to clock_i
 set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to clock_i
 set_location_assignment PIN_BW59 -to board_reset_n_i
@@ -65,3 +66,18 @@ set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOU
 set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to {board_release_reg[*]}
 set_global_assignment -name LAST_QUARTUS_VERSION "26.1.0 Pro Edition"
 set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS INPUT TRI-STATED"
+set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to "tpm|io|spi_serializer|chip_select_meta_reg"
+set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to "tpm|io|spi_serializer|chip_select_sync_reg"
+set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to "tpm|io|spi_serializer|rx_meta_reg"
+set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to "tpm|io|spi_serializer|rx_sync_reg"
+set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to "tpm|io|spi_serializer|request_meta_reg"
+set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to "tpm|io|spi_serializer|request_sync_reg"
+set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to "tpm|io|spi_serializer|ack_meta_reg"
+set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to "tpm|io|spi_serializer|ack_sync_reg"
+set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to "tpm|io|spi_serializer|offer_meta_reg"
+set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to "tpm|io|spi_serializer|offer_sync_reg"
+set_instance_assignment -name FAST_INPUT_REGISTER OFF -to "spi_mosi_i"
+set_instance_assignment -name FAST_OUTPUT_REGISTER OFF -to "spi_miso_o"
+
+# Use ordinary fabric registers so the pin-clocked front end can use local SCK routing.
+set_instance_assignment -name GLOBAL_SIGNAL OFF -to "spi_clock_i"

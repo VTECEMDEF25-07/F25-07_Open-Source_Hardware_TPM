@@ -16,7 +16,6 @@
 module	tpm_top
 (
 	input		CLOCK_50,	// 50 MHz sysclock
-	input		CLOCK_100,	// 100 MHz clock (used for sampling SPI_CLOCK)
 	input		RESET_n,	// async reset
 	
 	input		SPI_CLOCK,	// SPI clock
@@ -60,7 +59,7 @@ module	tpm_top
 	
 	tpm_io io
 	(
-		.clock50(CLOCK_50), .clock100(CLOCK_100),
+		.clock50(CLOCK_50),
 		.reset_n(rst_n),
 		.SPI_clk(SPI_CLOCK), .SPI_cs_n(SPI_CS_n),
 		.SPI_mosi(SPI_MOSI), .SPI_miso(SPI_MISO),

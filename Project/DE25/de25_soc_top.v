@@ -5,7 +5,7 @@
 // General Description: Connects the TPM to DE25 pins, related clocks, reset and independent cooling.
 
 // TPM board wrapper for the DE25 Standard RevD.
-// This top preserves tpm_top's command path; it does not instantiate keygen.
+// Uses the common SCK-clocked SPI transport; command processing is unchanged.
 module de25_soc_top (
     input clock_i,
     input board_reset_n_i,
@@ -57,7 +57,6 @@ module de25_soc_top (
     // Instantiate the TPM top without changing its implementation.
     tpm_top tpm (
         .CLOCK_50(clock_50),
-        .CLOCK_100(clock_100),
         .RESET_n(tpm_release_reg[1]),
         .SPI_CLOCK(spi_clock_i),
         .SPI_CS_n(spi_cs_n_i),

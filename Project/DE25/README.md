@@ -11,6 +11,6 @@ This project targets DE25 Standard RevD (A5ED013BB32AE4SCS) and integrates the e
 
 Fan control uses the raw 50 MHz board clock and remains active during SPI reset. The seven Terasic fan-example files are copied unchanged; see [Fan Controller/README.md](Fan%20Controller/README.md) for their exact origins and the required board-wrapper connections.
 
-Pin assignments and electrical standards are explicit in the QSF. The existing SPI serializer has inherited asynchronous crossings and a logic-generated transmit clock; full SPI timing/CDC signoff is not established. SDC documents these limitations. This change does not claim TPM certification or physical-board acceptance.
+Pin assignments and electrical standards are explicit in the QSF. Both boards use the same portable SCK-clocked SPI serializer with byte transfers to the 50 MHz TPM. See [common SPI documentation](../../Source%20Code/IO%20Interface/SPI.md) for the mode-0, 10--24 MHz host contract, isolated/protocol regressions and routed timing audit. This does not claim TPM certification or physical-board acceptance.
 
 In Quartus, open `de25_soc_top.qpf` and select **Processing > Start Compilation**. See [board setup](../README.md) for both boards. The top is board-local at `Project/DE25/de25_soc_top.v`.
