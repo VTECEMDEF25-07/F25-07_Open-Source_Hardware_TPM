@@ -26,3 +26,5 @@ python Project/build.py --board DE25 --compile --quartus C:/altera_pro/26.1/quar
 See [board setup](Project/README.md) and each board's VALIDATION.md for evidence and timing/hardware limitations. See [simulation instructions](Simulation/README.md) for cooling regressions and legacy testbenches.
 
 The shared SPI transport and ASIC portability boundary are described in [SPI documentation](Source%20Code/IO%20Interface/SPI.md).
+
+Open project follow-ups are tracked in [FUTURE_WORK.md](FUTURE_WORK.md).
