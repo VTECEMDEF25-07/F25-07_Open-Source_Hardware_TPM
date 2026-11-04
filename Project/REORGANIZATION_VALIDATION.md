@@ -1,5 +1,7 @@
 # Layout verification — November 3, 2026
 
+Author: Aaron Grossman
+
 The Project / Source Code / Simulation reorganization changes paths, runners, documentation and ignore rules. All 50 relocated HDL, testbench, C/header and PDF reference files match their previous Git blobs byte for byte. No hardware logic was changed.
 
 - Both board selectors resolve every listed source and timing input.

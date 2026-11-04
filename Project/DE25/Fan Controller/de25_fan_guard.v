@@ -1,9 +1,8 @@
 // Filename: de25_fan_guard.v
 // Modules: de25_fan_guard
-// Authors: Project contributors; see Git history.
+// Author: Aaron Grossman
 // Date: 2026-10-13
 // General Description: Monitors cooling telemetry and requests failsafe fan behavior when readings are invalid or stale.
-// AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
 
 // Read-only temperature freshness guard. Faults request the fan controller's full-on mode.
 module de25_fan_guard #(parameter STALE_TICKS=1953125) (

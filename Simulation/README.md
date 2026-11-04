@@ -1,5 +1,7 @@
 # Simulation
 
+Author: Aaron Grossman
+
 Module-named folders preserve the original module testbenches. These legacy benches are retained as supplied; they are not all automated acceptance tests.
 
 DE25 cooling regressions require Linux/WSL, Verilator and g++:

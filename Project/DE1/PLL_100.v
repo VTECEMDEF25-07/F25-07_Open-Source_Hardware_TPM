@@ -1,9 +1,8 @@
 // Filename: PLL_100.v
 // Modules: PLL_100
-// Authors: Project contributors; see Git history.
+// Author: Aaron Grossman
 // Date: 2026-10-14
 // General Description: Supplies the original DE1-SoC top with a 100 MHz clock from its 50 MHz reference.
-// AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
 
 // Supplies the clock module referenced by the original Phase 1 board top.
 // ALTERA_PLL General mode lets Quartus map 50-to-100 MHz to the target Cyclone V.

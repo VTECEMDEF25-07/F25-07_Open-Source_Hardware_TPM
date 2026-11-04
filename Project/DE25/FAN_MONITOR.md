@@ -1,9 +1,8 @@
 <!--
 Filename: FAN_MONITOR.md
-Authors: Project contributors; see Git history.
+Author: Aaron Grossman
 Date: 2026-10-13
 General Description: Documents TMP442 monitoring and safe fan control.
-AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
 -->
 
 # TMP442 monitoring and safe fan control

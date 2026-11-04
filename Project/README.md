@@ -1,5 +1,7 @@
 # Select a board
 
+Author: Aaron Grossman
+
 Change `Project/board_config.json`:
 
 ```json

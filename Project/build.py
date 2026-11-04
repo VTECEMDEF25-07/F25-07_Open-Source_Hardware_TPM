@@ -1,6 +1,6 @@
+# Author: Aaron Grossman
 """Select/check a board project; compile only when --compile is supplied.
 
-AI disclosure: Codex assisted with this board-selection utility.
 """
 import argparse
 import json

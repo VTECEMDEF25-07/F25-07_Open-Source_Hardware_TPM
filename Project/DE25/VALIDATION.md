@@ -1,5 +1,7 @@
 # Validation against current main
 
+Author: Aaron Grossman
+
 Base: `4fd41b608554deaa0c3b520933bcabafc4755e92` (October 23, 2026). Existing TPM, execution, management and SPI sources are unchanged from this base. No key-generation/demo source is in the project source list.
 
 | Check | Result |

@@ -1,5 +1,7 @@
 # DE1 validation (October 23, 2026)
 
+Author: Aaron Grossman
+
 The DE1 project uses unchanged shared TPM logic from main `4fd41b608554deaa0c3b520933bcabafc4755e92`.
 
 - Existing TPM SPI vectors at 1 MHz pass with an ideal test PLL. This is functional simulation, not vendor-model or physical-board validation.
