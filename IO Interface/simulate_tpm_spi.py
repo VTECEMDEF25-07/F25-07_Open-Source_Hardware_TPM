@@ -24,7 +24,7 @@ def main():
     parser.add_argument('--repo', type=Path, default=Path(__file__).resolve().parents[1])
     parser.add_argument('--models', type=Path, default=None)
     parser.add_argument('--build', type=Path, required=True)
-    parser.add_argument('--spi-hz', type=int, choices=(100000, 500000, 1000000), default=1000000)
+    parser.add_argument('--spi-hz', type=int, choices=(100000,500000,1000000,10000000,15000000,24000000,30000000), default=1000000)
     args = parser.parse_args()
     repo = args.repo.resolve()
     build = args.build.resolve()
@@ -46,12 +46,12 @@ def main():
     (build / 'TPM_TYPES.vh').write_bytes(header.read_bytes())
     hashes[str(header.relative_to(repo))] = hashlib.sha256(header.read_bytes()).hexdigest()
     original = repo / 'IO Interface/Testbenches/tb_test.v'
-    bench = original.read_text()
+    bench = original.read_text().replace('`timescale 1ns/1ns','`timescale 1ns/1ps')
     hashes[str(original.relative_to(repo))] = hashlib.sha256(original.read_bytes()).hexdigest()
     if bench.count('`define SPI_CLK_PERIOD #33') != 1:
         raise RuntimeError('legacy SPI timing definition changed')
     bench = bench.replace('`define SPI_CLK_PERIOD #33',
-                          '`define SPI_CLK_PERIOD #'+str(500000000 // args.spi_hz))
+                          '`define SPI_CLK_PERIOD #'+format(500000000 / args.spi_hz, '.6f'))
     # Preserve every vector/assertion; only turn the interactive stop into an exit
     # and allow the new board-reset/PLL startup model to settle before vectors.
     anchor = '\t\t// test_debugRW'
