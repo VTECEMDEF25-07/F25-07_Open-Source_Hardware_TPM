@@ -13,7 +13,7 @@
 //	and the execution engine.
 // 
 
-module	tpm_top
+module	TPM_TOP
 (
 	input		CLOCK_50,	// 50 MHz sysclock
 	input		CLOCK_100,	// 100 MHz clock (used for sampling SPI_CLOCK)
