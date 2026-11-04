@@ -4,8 +4,7 @@
 # General Description: Connects the original Phase 1 TPM to DE25 pins, related clocks, reset and independent cooling.
 # AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
 
-# Minimal DE25 port: original spi_slave is preserved, with related 50/100 MHz.
-# This is NOT complete signoff for the inherited asynchronous serializer.
+# DE25 uses the opt-in, single-50-MHz-domain SPI serializer.
 create_clock -name board_clock -period 20.000 [get_ports clock_i]
 # Both TPM clocks use the same physical PLL compensation network.
 # C0=64 produces50MHz; C1=32 produces100MHz from50MHz*N(1)^-1*M(64).
@@ -26,22 +25,22 @@ if {[get_collection_size $pll_lock_source] != 1 || [get_collection_size $tpm_rel
 set_false_path -from $pll_lock_source -to $tpm_release_clear
 create_generated_clock -name fan_clock -divide_by 128 -source [get_ports clock_i] [get_registers {*fan_control*CLOCKMEM_inst2*CK_1HZ}]
 
-# External SPI operating envelope for empirical tests: mode 0, <=1 MHz.
-# This clock constrains directly clocked RX registers and falling-edge TX_counter.
-create_clock -name spi_clock -period 1000.000 -waveform {0.000 500.000} [get_ports spi_clock_i]
-# Deliberately no blanket asynchronous clock groups or raw-SPI input false paths:
-# RX_done1 feeds functional logic, TX_counter is a binary bus crossing, and raw
-# chip select drives 50 MHz logic. Cutting these paths would hide existing risks.
-# MOSI/CS input windows and MISO host setup/hold are NOT signed off here: an
-# adapter-specific min/max delay budget and physical measurement remain needed.
-# Do not interpret optimistic phase-related SPI/board paths as CDC correctness.
-
-# det_clock = det_clock0 & ~det_clock1 pulses after a sampled SPI RISING edge.
-# Its phase depends on asynchronous sampling by dual-edge 100 MHz registers.
-# No fictitious fixed divide/phase generated clock is assigned: report its
-# unclocked TX_temp endpoints as an explicit inherited limitation. Functional
-# tests cannot prove clock-pulse/glitch safety or metastability immunity.
-# All PLL/board half-cycle paths and internal reset recovery/removal stay timed.
+# Mode 0, MSB first, <=1 MHz. SCK is data, never a fabric clock.
+# Only asynchronous pad -> first synchronizer D paths are excepted.
+# Each first stage feeds only its second stage; interstage and all functional
+# logic remain timed at 50 MHz. Fail if hierarchy changes or a chain disappears.
+foreach {port first_stage} {
+    spi_clock_i spi_clock_meta_reg
+    spi_mosi_i spi_mosi_meta_reg
+    spi_cs_n_i chip_select_meta_reg
+} {
+    set stage [get_registers "tpm|io|de25_serializer.spi_serializer|$first_stage"]
+    if {[get_collection_size $stage] != 1} { error "Expected one SPI synchronizer first stage: $first_stage" }
+    set_false_path -from [get_ports $port] -to $stage
+}
+# Host contract: SCK half-period >=500 ns; MOSI set on falling SCK and
+# held through rising SCK; CS setup/hold/high >=100 ns (five core clocks).
+# These external margins require hardware acceptance, separate from internal STA.
 
 # Bound output routing only; these are NOT external SPI setup/hold guarantees.
 set_max_delay 20.000 -to [get_ports spi_miso_o]
@@ -49,7 +48,7 @@ set_min_delay 0.000 -to [get_ports spi_miso_o]
 set_max_delay 20.000 -to [get_ports interrupt_n_o]
 set_min_delay 0.000 -to [get_ports interrupt_n_o]
 # Raw asynchronous board/reset inputs; internal registered release paths remain.
-# SPI_CS_n is intentionally NOT included: it also has functional data fanout.
+# SPI CS is excepted only into its first synchronizer stage above.
 set_false_path -from [get_ports {board_reset_n_i spi_reset_n_i}]
 # Existing autonomous slow management I2C interface, independent of TPM SPI.
 set_false_path -from [get_ports {fan_i2c_scl fan_i2c_sda}]

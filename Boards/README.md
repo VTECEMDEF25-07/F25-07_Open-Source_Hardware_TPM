@@ -25,3 +25,5 @@ Each folder owns its top, pins, clocks and timing constraints. Both instantiate 
 Build outputs stay in each project's ignored output_files/db directories. Switching boards does not rewrite HDL or copy files over the other target. Directly opening either QPF remains supported. See each board README and VALIDATION.md for verification limits. Existing SPI timing/CDC and physical-board acceptance remain separate gates.
 
 Validation: both targets compile with their matching installed Quartus editions and pass the existing TPM simulation vectors using ideal board models. Physical testing and complete timing/CDC signoff remain separate; see [DE1 results](DE1/VALIDATION.md) and [DE25 results](DE25/VALIDATION.md). Five local selector checks cover config/overrides, wrong-tool rejection, error propagation and rejection of missing PLLs or incorrect pin maps.
+
+The separate DE25 SPI follow-up opts only DE25 into the synchronous transport. DE1 keeps its existing serializer. See [DE25 SPI timing](DE25/SPI_TIMING.md) for supported host timing and reproducible validation.

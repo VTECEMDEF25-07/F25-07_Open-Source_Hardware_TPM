@@ -13,7 +13,7 @@
 //	and the execution engine.
 // 
 
-module	tpm_top
+module	tpm_top #(parameter DE25_SPI = 0)
 (
 	input		CLOCK_50,	// 50 MHz sysclock
 	input		CLOCK_100,	// 100 MHz clock (used for sampling SPI_CLOCK)
@@ -58,7 +58,7 @@ module	tpm_top
 	wire	[31:0]	ee_responseCode, authHierarchy;
 	wire		initialized;
 	
-	tpm_io io
+	tpm_io #(.DE25_SPI(DE25_SPI)) io
 	(
 		.clock50(CLOCK_50), .clock100(CLOCK_100),
 		.reset_n(rst_n),

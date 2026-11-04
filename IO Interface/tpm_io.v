@@ -10,7 +10,7 @@
 // General Description:
 //	Wrapper module to combine induvidual I/O submodules into a single module.
 	
-module	tpm_io
+module	tpm_io #(parameter DE25_SPI = 0)
 (
 	input		clock50,	// 50 MHz	(sysclock, arbitrary)
 	input		clock100,	// 100 MHz	(for SPI timing, should be >60 MHz)
@@ -53,6 +53,19 @@ module	tpm_io
 	wire		RX_valid, TX_valid;
 	wire		TX_request, TX_received;
 	
+	wire spi_transaction_cs_n;
+	generate if (DE25_SPI) begin : de25_serializer
+		de25_spi_slave spi_serializer (
+			.clock_i(clock50), .reset_n_i(reset_n),
+			.rx_valid_o(RX_valid), .rx_data_o(RX_byte),
+			.tx_valid_i(TX_valid), .tx_data_i(TX_byte),
+			.tx_request_o(TX_request), .tx_received_o(TX_received),
+			.spi_clock_i(SPI_clk), .spi_cs_n_i(SPI_cs_n),
+			.spi_mosi_i(SPI_mosi), .spi_miso_o(SPI_miso),
+			.chip_select_n_o(spi_transaction_cs_n)
+		);
+	end else begin : legacy_serializer
+	assign spi_transaction_cs_n = SPI_cs_n;
 	spi_slave spi_serialzier
 	(
 		.clock50(clock50), .clock100(clock100),
@@ -63,6 +76,7 @@ module	tpm_io
 		.SPI_clock(SPI_clk), .SPI_cs_n(SPI_cs_n),
 		.SPI_miso(SPI_miso), .SPI_mosi(SPI_mosi)
 	);
+	end endgenerate
 	
 	wire	[15:0]	t_addr, t_baseAddr;
 	wire		t_wren_n, t_rden_n;
@@ -74,7 +88,7 @@ module	tpm_io
 	tpm_spi_ctrl transaction_handler
 	(
 		.clock(clock50), .reset_n(reset_n),
-		.SPI_CS_n(SPI_cs_n),
+		.SPI_CS_n(spi_transaction_cs_n),
 		.SPI_RX_byte(RX_byte), .SPI_RX_valid(RX_valid),
 		.SPI_TX_byte(TX_byte), .SPI_TX_valid(TX_valid),
 		.SPI_TX_prepare(TX_request), .SPI_TX_ack(TX_received),
