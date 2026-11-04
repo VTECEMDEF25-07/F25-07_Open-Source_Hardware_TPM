@@ -4,7 +4,7 @@ Virginia Tech Lenovo-sponsored senior design project.
 
 ## Layout
 
-- `Project/DE1/`: DE1-SoC Quartus project, board wrapper, PLL, pins and constraints.
+- `Project/DE1/`: DE1-SoC Quartus project, board wrapper, pins and constraints (direct 50 MHz, no PLL).
 - `Project/DE25/`: DE25 Quartus project, board wrapper, PLL, pins, constraints and Fan Controller.
 - `Source Code/`: shared TPM top and folders for each reusable module.
 - `Simulation/`: module testbenches and DE25 cooling regression scripts/models.

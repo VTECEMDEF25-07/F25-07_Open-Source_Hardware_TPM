@@ -1,6 +1,6 @@
 """Run the isolated 50 MHz / mode-0 common serializer regression with Questa.
 
-Example: python "IO Interface/simulate_spi.py" --build PATH --questa-bin PATH
+Example: python "Simulation/IO Interface/simulate_spi.py" --build PATH --questa-bin PATH
 Uses no FPGA, USB adapter, vendor IP model or command-execution mock.
 """
 import argparse

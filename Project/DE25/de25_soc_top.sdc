@@ -18,12 +18,25 @@ create_generated_clock -name pll_clock_100 -source [get_ports clock_i] -multiply
 # PLL lock asynchronously asserts the two-stage TPM release synchronizer.
 # Exact source and CLR pins verified in the v3 fitted netlist. Scope the
 # asynchronous reset exception ONLY to these two clear inputs: interstage D,
-# release-register output and all downstream reset recovery/removal stay timed.
+# release-register output and the related core reset recovery/removal stay timed.
 set pll_lock_source [get_registers {clocks|clock_multiplier|fp_sm_iopll_inst|tennm_ph2_iopll~pll_ctrl_reg}]
 set tpm_release_clear [get_pins -compatibility_mode {tpm_release_reg[0]|clrn tpm_release_reg[1]|clrn}]
 if {[get_collection_size $pll_lock_source] != 1 || [get_collection_size $tpm_release_clear] != 2} { error "Expected PLL lock source and exactly two TPM release CLR pins" }
 set_false_path -from $pll_lock_source -to $tpm_release_clear
 create_generated_clock -name fan_clock -divide_by 128 -source [get_ports clock_i] [get_registers {*fan_control*CLOCKMEM_inst2*CK_1HZ}]
+
+# Reset release is synchronous to the core but asynchronous to external SCK.
+# Host contract: keep CS high and SCK low through reset and for >=1 us after
+# release, then meet the timed CS-to-SCK setup/hold. No SPI transfer occurs
+# during this startup interval. Except only SCK-domain asynchronous clear pins;
+# never cut the core release paths, mailbox data, CS framing or clocked logic.
+set spi_reset_patterns {}
+foreach name {rx_bit_count_reg rx_shift_reg rx_mailbox_reg rx_toggle_reg tx_bit_count_reg tx_shift_reg tx_pending_reg tx_pending_valid_reg tx_pending_tag_reg offer_meta_reg offer_sync_reg offer_seen_reg request_toggle_reg tx_ack_reg} {
+    lappend spi_reset_patterns "tpm|io|spi_serializer|${name}*|clrn"
+}
+set spi_reset_clear [get_pins -compatibility_mode $spi_reset_patterns]
+if {[get_collection_size $spi_reset_clear] < 40} {error "Missing SCK-domain asynchronous reset pins"}
+set_false_path -from [get_registers {tpm_release_reg[1]}] -to $spi_reset_clear
 
 # SPI uses its own external clock and held-data CDC mailboxes.
 set spi_sck_port spi_clock_i

@@ -17,7 +17,7 @@ quartus_sh --flow compile de1_soc_top
 ```
 
 This project uses the board-local `de1_soc_top.v` and the same portable
-`IO Interface/spi_slave.v` as DE25. SPI and TPM state run directly at the board
+`Source Code/IO Interface/spi_slave.v` as DE25. SPI shifts on external SCK and the TPM uses the board
 50 MHz clock; the old serializer's 100 MHz PLL is no longer needed. No DE25
 fan controller or key-generation integration is included. LED0 shows the
 active-low interrupt signal; the remaining LEDs are off.
@@ -47,8 +47,8 @@ See [VALIDATION.md](VALIDATION.md) for fresh simulation/build results. Both boar
 
 QSF pin targets use quoted names accepted by Quartus Lite. The build selector
 requires zero PLLs for this direct-clock target and checks the physical pin map.
-SPI SCK/MOSI/CS are asynchronous inputs to two-register synchronizers. Only
-pad-to-first-stage paths are excepted; interstage and functional paths remain
-timed. The host timing contract and common regression commands are in
-[SPI documentation](../../IO%20Interface/SPI.md). Physical-board acceptance is
+SPI SCK clocks the pin interface; held-data mailboxes cross to 50 MHz.
+Local SCK routing and input/output register packing are board-specific.
+Synchronizer interstage and functional paths remain timed. The host timing contract and common regression commands are in
+[SPI documentation](../../Source%20Code/IO%20Interface/SPI.md). Physical-board acceptance is
 separate from internal timing and functional simulation.

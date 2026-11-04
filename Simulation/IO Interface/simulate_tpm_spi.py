@@ -57,7 +57,7 @@ def main():
     anchor = '\t\t// test_debugRW'
     if anchor not in bench or bench.count('$stop;') != 10:
         raise RuntimeError('legacy bench layout changed')
-    bench = bench.replace(anchor, '\t\trepeat (30) @(posedge clock);\n' + anchor, 1)
+    bench = bench.replace(anchor, '\t\trepeat (80) @(posedge clock);\n' + anchor, 1)
     prefix, suffix = bench.rsplit('$stop;', 1)
     prefix = prefix.replace('$stop;', '$fatal(1, "PHASE1 EXECUTION TIMEOUT");')
     bench = prefix + 'if (errors) $fatal(1, "PHASE1 ASSERTIONS FAILED");\n\t\t$display("PASS PHASE1 LEGACY VECTORS");\n\t\t$finish;' + suffix

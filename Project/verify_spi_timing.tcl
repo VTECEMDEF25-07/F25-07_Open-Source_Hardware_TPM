@@ -1,5 +1,5 @@
 # Run from repo root: quartus_sta -t Project/verify_spi_timing.tcl DE1|DE25
-# Checks every available timing corner and the three SPI synchronizer chains.
+# Checks every available timing corner and the five SPI synchronizer chains.
 package require ::quartus::project
 package require ::quartus::sta
 set board [lindex $argv 0]
@@ -44,6 +44,23 @@ foreach corner $corners {
             if {$slack < 0} {incr failures}
         }
         report_timing -$check -npaths 5 -detail full_path -file "$report_dir/${corner}_${check}.rpt"
+    }
+    # Check the physical bundled-data paths explicitly, independent of clock
+    # insertion-delay skew. Toggle synchronization leaves >= two core cycles
+    # before RX capture and >= two SCK falling edges before TX capture.
+    foreach bus {rx tx} {
+        set source [set ${bus}_source]
+        set destination [set ${bus}_destination]
+        set paths [get_timing_paths -setup -from $source -to $destination -npaths 64]
+        if {[get_collection_size $paths] == 0} {error "Untimed $bus mailbox"}
+        set worst 0
+        foreach_in_collection path $paths {
+            set delay [get_path_info -data_delay $path]
+            if {$delay > $worst} {set worst $delay}
+            if {$delay > 20.0 || $delay < 0} {incr failures}
+        }
+        puts "$bus mailbox maximum physical data delay $worst"
+        report_timing -setup -from $source -to $destination -npaths 24 -detail full_path -file "$report_dir/${corner}_${bus}_mailbox.rpt"
     }
     foreach signal {rx request ack offer chip_select} {
         set prefix {tpm|io|spi_serializer|}

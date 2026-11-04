@@ -75,3 +75,6 @@ set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOU
 set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to "tpm|io|spi_serializer|offer_sync_reg"
 set_instance_assignment -name FAST_INPUT_REGISTER ON -to "GPIO_1_3"
 set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to "GPIO_1_4"
+# Keep the external SCK clock local to its small I/O front end to reduce insertion delay.
+set_instance_assignment -name GLOBAL_SIGNAL OFF -to "GPIO_1_2"
+set_global_assignment -name SEED 2

@@ -6,7 +6,7 @@
 // AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
 
 // Phase 1 TPM board wrapper for the DE25 Standard RevD.
-// Uses the common synchronous SPI transport; command processing is unchanged.
+// Uses the common SCK-clocked SPI transport; command processing is unchanged.
 module de25_soc_top (
     input clock_i,
     input board_reset_n_i,

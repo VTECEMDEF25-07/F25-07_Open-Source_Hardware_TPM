@@ -79,5 +79,8 @@ set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOU
 set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to "tpm|io|spi_serializer|ack_sync_reg"
 set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to "tpm|io|spi_serializer|offer_meta_reg"
 set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to "tpm|io|spi_serializer|offer_sync_reg"
-set_instance_assignment -name FAST_INPUT_REGISTER ON -to "spi_mosi_i"
-set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to "spi_miso_o"
+set_instance_assignment -name FAST_INPUT_REGISTER OFF -to "spi_mosi_i"
+set_instance_assignment -name FAST_OUTPUT_REGISTER OFF -to "spi_miso_o"
+
+# Use ordinary fabric registers so the pin-clocked front end can use local SCK routing.
+set_instance_assignment -name GLOBAL_SIGNAL OFF -to "spi_clock_i"
