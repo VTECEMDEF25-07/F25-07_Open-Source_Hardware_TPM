@@ -1,7 +1,8 @@
 # DE1 high-speed SPI validation
 
 Validated November 3, 2026, against parent organization revision `a0f9bb4`.
-PR #37 remains a draft while exact 24 MHz hardware acceptance is pending.
+PR #37 is ready for review. Exact 24 MHz hardware acceptance remains pending
+and is tracked in [FUTURE_WORK.md](../../FUTURE_WORK.md).
 
 - Quartus Lite 24.1 full build: PASS; Cyclone V 5CSEMA5F31C6, 920 ALMs,
   4 RAM blocks, zero PLLs. All 18 physical pin assignments verified.

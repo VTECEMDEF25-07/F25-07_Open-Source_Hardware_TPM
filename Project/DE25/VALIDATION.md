@@ -1,7 +1,8 @@
 # DE25 high-speed SPI validation
 
 Validated November 3, 2026, against parent organization revision `a0f9bb4`.
-**PR #37 remains a draft: exact 24 MHz physical acceptance is pending.**
+PR #37 is ready for review. **Exact 24 MHz physical acceptance remains pending**
+and is tracked in [FUTURE_WORK.md](../../FUTURE_WORK.md).
 
 - Quartus Pro 26.1 full build: PASS; Agilex 5 A5ED013BB32AE4SCS, 1,561 ALMs,
   2 RAM blocks, one board PLL. All 10 physical pins verified.
