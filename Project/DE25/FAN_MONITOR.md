@@ -8,4 +8,4 @@ The DE25 wrapper uses the original Terasic Board_Info_RTL fan-management example
 
 The seven fan-example files are unmodified. Board wiring and synchronized board reset stay in `de25_soc_top.v`; the raw 50 MHz clock keeps fan management independent of TPM PLL and SPI reset.
 
-Run `Simulation/DE25/simulate_fan.py` and `Simulation/DE25/simulate_fan_bus.py` under Linux/WSL with fresh absolute `--build` directories. These cover normal example behavior, not the removed custom guard/fault contract. Earlier custom-fan validation results do not apply to this revision.
+Run `Testing/Simulation/DE25/simulate_fan.py` and `Testing/Simulation/DE25/simulate_fan_bus.py` under Linux/WSL with fresh absolute `--build` directories. These cover normal example behavior, not the removed custom guard/fault contract. Earlier custom-fan validation results do not apply to this revision.

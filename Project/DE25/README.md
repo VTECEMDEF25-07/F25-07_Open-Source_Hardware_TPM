@@ -7,7 +7,7 @@ This project targets DE25 Standard RevD (A5ED013BB32AE4SCS) and integrates the e
 - `de25_soc_top.v`: TPM wiring, reset separation and autonomous cooling.
 - `de25_clock.v`: related 50/100 MHz PLL outputs for the existing TPM.
 - `Fan Controller/`: original Terasic example I2C, temperature and fan logic, plus the configuration-reset wrapper. No keygen or demo dependency.
-- `../../Simulation/DE25/tests/`, `../../Simulation/DE25/simulate_fan.py`, `../../Simulation/DE25/simulate_fan_bus.py`: normal-operation vendor-example regressions under Linux/WSL with Verilator. Pass a fresh absolute `--build` directory.
+- `../../Testing/Simulation/DE25/tests/`, `../../Testing/Simulation/DE25/simulate_fan.py`, `../../Testing/Simulation/DE25/simulate_fan_bus.py`: normal-operation vendor-example regressions under Linux/WSL with Verilator. Pass a fresh absolute `--build` directory.
 
 Fan control uses the raw 50 MHz board clock and remains active during SPI reset. The seven Terasic fan-example files are copied unchanged; see [Fan Controller/README.md](Fan%20Controller/README.md) for their exact origins and the required board-wrapper connections.
 
