@@ -16,10 +16,10 @@ From this directory, the command-line build is:
 quartus_sh --flow compile de1_soc_top
 ```
 
-This project uses the board-local `de1_soc_top.v` and existing Phase 1 TPM
-and SPI modules. `PLL_100.v` supplies the previously missing 50-to-100 MHz
-clock module through the Cyclone V `altera_pll` macro. There is no DE25 fan
-controller or new keygen integration in this project. LED0 shows the original
+This project uses the board-local `de1_soc_top.v` and the same portable
+`IO Interface/spi_slave.v` as DE25. SPI and TPM state run directly at the board
+50 MHz clock; the old serializer's 100 MHz PLL is no longer needed. No DE25
+fan controller or key-generation integration is included. LED0 shows the
 active-low interrupt signal; the remaining LEDs are off.
 
 | Signal | Connection | FPGA pin |
@@ -45,6 +45,10 @@ tables 3-5, 3-7, 3-8 and 3-11. Software support:
 
 See [VALIDATION.md](VALIDATION.md) for fresh simulation/build results. Both boards are selected through the root `board_config.json` and `build.py`; [board setup](../README.md) describes the common commands.
 
-PLL_100.v uses the supported General mode so Quartus maps its 50-to-100 MHz request to the selected Cyclone V device. QSF pin targets use quoted names accepted by Quartus Lite; the first full build exposed and corrected the earlier uncompiled project's invalid brace-wrapped targets and unsupported PLL type.
-
-The SDC documents inherited SPI timing/CDC limitations and does not claim full signoff. The original reset behavior is preserved. Simulation with an ideal PLL cannot establish physical clock routing or reset safety; FPGA fit/timing reports and hardware tests are separate evidence.
+QSF pin targets use quoted names accepted by Quartus Lite. The build selector
+requires zero PLLs for this direct-clock target and checks the physical pin map.
+SPI SCK/MOSI/CS are asynchronous inputs to two-register synchronizers. Only
+pad-to-first-stage paths are excepted; interstage and functional paths remain
+timed. The host timing contract and common regression commands are in
+[SPI documentation](../../IO%20Interface/SPI.md). Physical-board acceptance is
+separate from internal timing and functional simulation.

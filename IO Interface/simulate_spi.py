@@ -1,6 +1,6 @@
-"""Run the isolated 50 MHz / mode-0 DE25 serializer regression with Questa.
+"""Run the isolated 50 MHz / mode-0 common serializer regression with Questa.
 
-Example: python Boards/DE25/simulate_spi.py --build PATH --questa-bin PATH
+Example: python "IO Interface/simulate_spi.py" --build PATH --questa-bin PATH
 Uses no FPGA, USB adapter, vendor IP model or command-execution mock.
 """
 import argparse
@@ -15,13 +15,13 @@ def main():
     parser.add_argument('--build', type=Path, required=True)
     parser.add_argument('--questa-bin', type=Path, required=True)
     args = parser.parse_args()
-    root = Path(__file__).resolve().parents[2]
+    root = Path(__file__).resolve().parents[1]
     build = args.build.resolve()
     build.mkdir(parents=True, exist_ok=False)
     tools = args.questa_bin.resolve()
     executable_suffix = '.exe' if (tools / 'vsim.exe').exists() else ''
-    rtl = root / 'IO Interface/de25_spi_slave.v'
-    bench = root / 'Boards/DE25/tests/tb_de25_spi.sv'
+    rtl = root / 'IO Interface/spi_slave.v'
+    bench = root / 'IO Interface/Testbenches/tb_spi_slave.sv'
     inputs = [rtl, bench, Path(__file__).resolve()]
     digest = lambda path: hashlib.sha256(path.read_bytes()).hexdigest()
     hashes = {str(path.relative_to(root)): digest(path) for path in inputs}
@@ -40,9 +40,9 @@ def main():
     run('vlib', ['work'], 'library.log')
     run('vlog', ['-vlog01compat', rtl], 'rtl.log')
     run('vlog', ['-sv', bench], 'bench.log')
-    output = run('vsim', ['-c', 'work.tb_de25_spi', '-do',
+    output = run('vsim', ['-c', 'work.tb_spi_slave', '-do',
         'onerror {quit -code 1}; onbreak {quit -code 1}; run -all; quit -code 0'], 'result.log')
-    if b'PASS DE25 SPI:' not in output or b'\x00' in output:
+    if b'PASS COMMON SPI:' not in output or b'\x00' in output:
         raise RuntimeError('Missing PASS marker or damaged transcript')
     if hashes != {str(path.relative_to(root)): digest(path) for path in inputs}:
         raise RuntimeError('Inputs changed during simulation')

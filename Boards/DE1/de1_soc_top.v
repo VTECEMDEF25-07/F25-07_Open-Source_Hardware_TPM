@@ -36,12 +36,11 @@ module de1_soc_top
 	assign	LEDR[9:1] = 9'b0;
 	
 	
-	wire	CLOCK_100;
-	PLL_100 PLL0( .refclk(CLOCK_50), .rst(~RESET_N), .outclk_0(CLOCK_100) );
+// Common SPI and TPM state run directly at the board 50 MHz clock.
 	
 	tpm_top tpm
 	(
-		.CLOCK_50(CLOCK_50), .CLOCK_100(CLOCK_100),
+		.CLOCK_50(CLOCK_50),
 		.RESET_n(RESET_N),
 		.SPI_CLOCK(GPIO_1_2),
 		.SPI_CS_n(GPIO_1_5),

@@ -51,7 +51,6 @@ set_global_assignment -name VERILOG_FILE "../../Management Module/management_mod
 set_global_assignment -name VERILOG_FILE "../../Execution Engine/execution_engine.v"
 set_global_assignment -name VERILOG_FILE "../../IO Interface/fifo_buffer.v"
 set_global_assignment -name VERILOG_FILE "../../IO Interface/spi_slave.v"
-set_global_assignment -name VERILOG_FILE "../../IO Interface/de25_spi_slave.v"
 set_global_assignment -name VERILOG_FILE "../../IO Interface/tpm_crb.v"
 set_global_assignment -name VERILOG_FILE "../../IO Interface/tpm_io.v"
 set_global_assignment -name VERILOG_FILE "../../IO Interface/tpm_reg_space.v"
@@ -69,9 +68,9 @@ set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOU
 set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to {board_release_reg[*]}
 set_global_assignment -name LAST_QUARTUS_VERSION "26.1.0 Pro Edition"
 set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS INPUT TRI-STATED"
-set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to {tpm|io|de25_serializer.spi_serializer|spi_clock_meta_reg}
-set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to {tpm|io|de25_serializer.spi_serializer|spi_clock_sync_reg}
-set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to {tpm|io|de25_serializer.spi_serializer|spi_mosi_meta_reg}
-set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to {tpm|io|de25_serializer.spi_serializer|spi_mosi_sync_reg}
-set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to {tpm|io|de25_serializer.spi_serializer|chip_select_meta_reg}
-set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to {tpm|io|de25_serializer.spi_serializer|chip_select_sync_reg}
+set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to {tpm|io|spi_serializer|spi_clock_meta_reg}
+set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to {tpm|io|spi_serializer|spi_clock_sync_reg}
+set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to {tpm|io|spi_serializer|spi_mosi_meta_reg}
+set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to {tpm|io|spi_serializer|spi_mosi_sync_reg}
+set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to {tpm|io|spi_serializer|chip_select_meta_reg}
+set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to {tpm|io|spi_serializer|chip_select_sync_reg}

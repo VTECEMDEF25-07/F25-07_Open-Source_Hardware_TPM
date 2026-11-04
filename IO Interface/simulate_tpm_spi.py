@@ -1,4 +1,4 @@
-"""Replay Phase 1's checked-in SPI vectors against the DE25 top (Questa).
+"""Replay Phase 1's checked-in SPI vectors against either board top (Questa).
 
 Clock/configuration/fan models are test-only. This is NOT PLL or fan validation.
 Current TPM RTL and original assertions are copied into a fresh snapshot.
@@ -21,7 +21,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--questa-bin', type=Path, required=True)
     parser.add_argument('--board', choices=('DE1','DE25'), default='DE25')
-    parser.add_argument('--repo', type=Path, default=Path(__file__).resolve().parents[2])
+    parser.add_argument('--repo', type=Path, default=Path(__file__).resolve().parents[1])
     parser.add_argument('--models', type=Path, default=None)
     parser.add_argument('--build', type=Path, required=True)
     parser.add_argument('--spi-hz', type=int, choices=(100000, 500000, 1000000), default=1000000)
@@ -32,8 +32,6 @@ def main():
     paths = [repo / ('Boards/DE25/de25_soc_top.v' if args.board == 'DE25' else 'Boards/DE1/de1_soc_top.v'), repo / 'TPM_TOP.v',
              repo / 'Management Module/management_module.v',
              repo / 'Execution Engine/execution_engine.v']
-    if args.board == 'DE1':
-        paths.append(repo / 'Boards/DE1/PLL_100.v')
     paths += sorted((repo / 'IO Interface').glob('*.v'))
     hashes = {}
     sources = []
@@ -64,8 +62,7 @@ def main():
     prefix = prefix.replace('$stop;', '$fatal(1, "PHASE1 EXECUTION TIMEOUT");')
     bench = prefix + 'if (errors) $fatal(1, "PHASE1 ASSERTIONS FAILED");\n\t\t$display("PASS PHASE1 LEGACY VECTORS");\n\t\t$finish;' + suffix
     (build / 'tb_test.sv').write_text(bench)
-    models = (args.models or Path(__file__).resolve().parent / 'tests' /
-              ('phase1_board_models.sv' if args.board == 'DE25' else 'de1_board_models.sv')).resolve()
+    models = (args.models or repo / 'Boards' / args.board / 'tests/spi_board_model.sv').resolve()
     (build / models.name).write_bytes(models.read_bytes())
     hashes['test_only/phase1_board_models.sv'] = hashlib.sha256(models.read_bytes()).hexdigest()
     tools = args.questa_bin.resolve()

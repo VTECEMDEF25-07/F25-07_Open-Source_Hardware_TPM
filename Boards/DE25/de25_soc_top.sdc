@@ -4,7 +4,7 @@
 # General Description: Connects the original Phase 1 TPM to DE25 pins, related clocks, reset and independent cooling.
 # AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
 
-# DE25 uses the opt-in, single-50-MHz-domain SPI serializer.
+# DE25 uses the common single-50-MHz-domain SPI serializer.
 create_clock -name board_clock -period 20.000 [get_ports clock_i]
 # Both TPM clocks use the same physical PLL compensation network.
 # C0=64 produces50MHz; C1=32 produces100MHz from50MHz*N(1)^-1*M(64).
@@ -34,7 +34,7 @@ foreach {port first_stage} {
     spi_mosi_i spi_mosi_meta_reg
     spi_cs_n_i chip_select_meta_reg
 } {
-    set stage [get_registers "tpm|io|de25_serializer.spi_serializer|$first_stage"]
+    set stage [get_registers "tpm|io|spi_serializer|$first_stage"]
     if {[get_collection_size $stage] != 1} { error "Expected one SPI synchronizer first stage: $first_stage" }
     set_false_path -from [get_ports $port] -to $stage
 }

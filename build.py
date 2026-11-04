@@ -45,8 +45,9 @@ def validate_fit(folder, top):
     output = folder / "output_files"
     summary = (output / (top + ".fit.summary")).read_text()
     match = re.search(r"Total PLLs\s*:\s*(\d+)", summary)
-    if "Fitter Status : Successful" not in summary or not match or int(match[1]) < 1:
-        raise ValueError("Fit did not retain the required hardware PLL")
+    expected_plls = 1 if top == "de25_soc_top" else 0
+    if "Fitter Status : Successful" not in summary or not match or int(match[1]) != expected_plls:
+        raise ValueError(f"Expected {expected_plls} PLLs for {top}; inspect fitter summary")
     for suffix in (".fit.rpt", ".map.rpt", ".syn.rpt"):
         report = output / (top + suffix)
         if report.exists():
@@ -89,7 +90,7 @@ def main(argv=None):
         if result.returncode:
             return result.returncode
         validate_fit(folder, top)
-        print("Compile complete; required PLL and pin assignments verified. Timing/hardware acceptance remains separate.")
+        print("Compile complete; board clock resources and pin assignments verified. Timing/hardware acceptance remains separate.")
         return 0
     except (OSError, ValueError, KeyError, TypeError, subprocess.CalledProcessError) as error:
         print(f"Build selection failed: {error}", file=sys.stderr)

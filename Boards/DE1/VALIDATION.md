@@ -1,13 +1,43 @@
-# DE1 validation (October 23, 2026)
+# DE1 common-SPI validation — November 3, 2026
 
-The DE1 project uses unchanged shared TPM logic from main `4fd41b608554deaa0c3b520933bcabafc4755e92`.
+Both boards use the same portable `IO Interface/spi_slave.v`. This supersedes
+the parent board-support baseline and the initial DE25-only opt-in revision.
+The transaction controller, FIFO/registers, execution, management and crypto
+behavior are unchanged. PR #37 still targets PR #36's branch.
 
-- Existing TPM SPI vectors at 1 MHz pass with an ideal test PLL. This is functional simulation, not vendor-model or physical-board validation.
-- Quartus Prime Lite 24.1 full compilation/bitstream succeeds: 912 ALMs (3%), 4 RAM blocks, 0 DSPs, 1 hardware PLL.
-- Timing reports confirm the generated PLL output is 100 MHz. All 18 physical pin assignments match the QSF, including clock AF14 and reset AA14. The root build script checks the PLL and complete pin map after a successful compile.
-- The first full build exposed two issues in the old, uncompiled project: brace-wrapped pin targets were interpreted as invalid names, and PLL type `auto` generated no clock. Pin targets now use quotes; ALTERA_PLL uses its supported General mode to map onto the selected Cyclone V device. Family-specific low-level mode is not used because it requires generated analog parameters.
-- Reported constrained paths have positive slack (for example 100 MHz setup +1.229 ns at slow 85 C). Whole-board signoff is NOT established: existing SPI clock-domain crossings, logic-generated transmit clock and incomplete I/O constraints remain. No new physical-board testing was performed.
+| Check | Result |
+|---|---|
+| Full board build and bitstream | PASS; expected 0 PLL(s) and complete physical pin map verified |
+| Original TPM protocol vectors | PASS at 100k, 500k and 1MHz with ideal test-only board models; 21 inherited top-level warnings |
+| Common serializer unit regression | PASS; all rates, 20 phase offsets, duplex, back-to-back/delayed TX, stopped SCK, CS abort, reset/replay |
+| Four-corner worst setup | **+8.648 ns** |
+| Four-corner worst hold | **+0.128 ns** |
+| Four-corner worst pulse width | **+8.434 ns** |
+| Three SPI synchronizer chains | Recognized; two registers per chain; all interstage setup paths timed and positive at every corner |
+| UCP summary | Zero unconstrained clocks, ports or path pairs for setup/hold |
+| Physical-board acceptance | Not performed for this revision |
 
-SOF SHA256: `747b69643ad80e1bac69eed2744bfda71288fed8ff06773ab20b82f3343d31c1`.
+Quartus Lite 24.1 build: 924 ALMs, 4 RAM blocks, **zero PLLs**, 18 physical
+pins verified. SPI and TPM state now run directly from the board 50 MHz input;
+the old 100 MHz-only serializer and PLL are removed. Worst overall setup margin
+was +1.229 ns in the parent baseline; the common implementation reports +8.648 ns.
 
-Local evidence: `AI/tmp/dual-board-DE1-corrected-compile.log`, `dual-board-DE1-corrected-result.json`, `dual-board-de1-final-sim/`, and this checkout's ignored `Boards/DE1/output_files/`. The earlier zero-PLL build is rejected evidence, not a valid hardware implementation.
+The first candidate used brace-wrapped synchronizer assignment targets that
+Quartus Lite ignored. Quoted targets fixed those warnings; only the final,
+recompiled result is current evidence. Lite lacks Pro's structural CDC and
+ignored-exception reporting options. The common audit exports the supported
+exception and metastability reports and verifies each SPI chain's actual timing.
+External reset inputs retain the inherited timing exceptions; no recovery or
+removal paths are analyzed, so those checks are N/A rather than claimed passes.
+
+Only pad-to-first-synchronizer paths are excepted; functional/interstage timing
+remains enabled. External SPI setup/hold and host timing require physical
+adapter acceptance. No whole-board CDC/reset signoff, TPM certification or ASIC
+physical signoff is claimed. The common SPI has no vendor primitives; FPGA
+clock/reset/debug support remains in board wrappers.
+
+See [common SPI documentation](../../IO%20Interface/SPI.md) for limits and
+reproduction commands, and [validation hashes](../spi_validation.json) for
+source/report/SOF and transcript hashes. Detailed evidence is retained in class
+`AI/tmp/common-spi-*` and the ignored board build/report directories. Historical
+baseline evidence remains in Git history and the earlier local evidence folders.

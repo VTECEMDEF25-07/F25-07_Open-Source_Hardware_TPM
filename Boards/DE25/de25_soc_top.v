@@ -6,7 +6,7 @@
 // AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
 
 // Phase 1 TPM board wrapper for the DE25 Standard RevD.
-// Uses the opt-in synchronous SPI transport; command processing is unchanged.
+// Uses the common synchronous SPI transport; command processing is unchanged.
 module de25_soc_top (
     input clock_i,
     input board_reset_n_i,
@@ -58,9 +58,8 @@ module de25_soc_top (
     end
 
     // Instantiate the existing Phase 1 top without changing its implementation.
-    tpm_top #(.DE25_SPI(1)) tpm (
+    tpm_top tpm (
         .CLOCK_50(clock_50),
-        .CLOCK_100(clock_100),
         .RESET_n(tpm_release_reg[1]),
         .SPI_CLOCK(spi_clock_i),
         .SPI_CS_n(spi_cs_n_i),

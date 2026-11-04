@@ -1,5 +1,5 @@
 `timescale 1ns/1ps
-module tb_de25_spi;
+module tb_spi_slave;
     reg clock=0; always #10 clock=~clock;
     reg reset_n=0, sck=0, cs_n=1, mosi=0;
     wire miso, selected_n, rx_valid, tx_request, tx_received;
@@ -11,7 +11,7 @@ module tb_de25_spi;
     reg [7:0] expected_rx[0:15];
     reg [7:0] observed;
     reg previous_rx_valid=0;
-    de25_spi_slave dut (
+    spi_slave dut (
         .clock_i(clock), .reset_n_i(reset_n),
         .rx_valid_o(rx_valid), .rx_data_o(rx_data),
         .tx_valid_i(tx_valid), .tx_data_i(tx_data),
@@ -103,7 +103,7 @@ module tb_de25_spi;
         transfer(8'hc3,observed,-1);if(observed!==0)$fatal(1,"stale TX after reset");
         transfer(8'h7e,observed,-1);if(observed!==reply(0))$fatal(1,"replay TX");
         #100;if(received!=2)$fatal(1,"reset replay RX count");end_frame();
-        $display("PASS DE25 SPI: mode0 100k/500k/1MHz, 20 asynchronous phase offsets at 1MHz, full duplex, back-to-back bytes, delayed TX ack, high-clock pause, CS partial abort, mid-bit reset and replay");
+        $display("PASS COMMON SPI: mode0 100k/500k/1MHz, 20 asynchronous phase offsets at 1MHz, full duplex, back-to-back bytes, delayed TX ack, high-clock pause, CS partial abort, mid-bit reset and replay");
         $finish;
     end
 endmodule

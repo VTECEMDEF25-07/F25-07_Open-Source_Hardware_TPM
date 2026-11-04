@@ -160,4 +160,4 @@ __pycache__/
 /Boards/*/dni/
 /Boards/*/tmp-clearbox/
 /Boards/*/c5_pin_model_dump.txt
-/Boards/DE25/spi_timing_reports/
+/Boards/*/spi_timing_reports/
