@@ -22,7 +22,7 @@ After proven completion, reads are local high/low (0x00,0x10), remote1 high/low 
 
 ## Verification
 
-Run `simulate_fan.py` and `simulate_fan_bus.py` under Linux/WSL with Verilator, passing an absolute `--build` directory. The first injects decoded sensor values; the second uses a serial I2C slave model without forcing DUT internals. Tests cover conversion progression, ACK/ID/configuration errors, invalid readings, staleness and recovery.
+Run `Simulation/DE25/simulate_fan.py` and `Simulation/DE25/simulate_fan_bus.py` from the repository root under Linux/WSL with Verilator, passing an absolute `--build` directory. The first injects decoded sensor values; the second uses a serial I2C slave model without forcing DUT internals. Tests cover conversion progression, ACK/ID/configuration errors, invalid readings, staleness and recovery.
 
 The management block retains diagnostic outputs for optional observation, but this board project does not include the keygen demo or its SPI diagnostic register protocol. Cooling runs independently of TPM SPI reset.
 

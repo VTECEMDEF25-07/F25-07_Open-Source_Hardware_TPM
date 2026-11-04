@@ -10,4 +10,4 @@ The DE1 project uses unchanged shared TPM logic from main `4fd41b608554deaa0c3b5
 
 SOF SHA256: `747b69643ad80e1bac69eed2744bfda71288fed8ff06773ab20b82f3343d31c1`.
 
-Local evidence: `AI/tmp/dual-board-DE1-corrected-compile.log`, `dual-board-DE1-corrected-result.json`, `dual-board-de1-final-sim/`, and this checkout's ignored `Boards/DE1/output_files/`. The earlier zero-PLL build is rejected evidence, not a valid hardware implementation.
+Local evidence: `AI/tmp/dual-board-DE1-corrected-compile.log`, `dual-board-DE1-corrected-result.json`, `dual-board-de1-final-sim/`, and this checkout's ignored `Project/DE1/output_files/`. The earlier zero-PLL build is rejected evidence, not a valid hardware implementation.

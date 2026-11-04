@@ -43,7 +43,7 @@ tables 3-5, 3-7, 3-8 and 3-11. Software support:
 
 ## Validation
 
-See [VALIDATION.md](VALIDATION.md) for fresh simulation/build results. Both boards are selected through the root `board_config.json` and `build.py`; [board setup](../README.md) describes the common commands.
+See [VALIDATION.md](VALIDATION.md) for fresh simulation/build results. Both boards are selected through `Project/board_config.json` and `Project/build.py`; [board setup](../README.md) describes the common commands.
 
 PLL_100.v uses the supported General mode so Quartus maps its 50-to-100 MHz request to the selected Cyclone V device. QSF pin targets use quoted names accepted by Quartus Lite; the first full build exposed and corrected the earlier uncompiled project's invalid brace-wrapped targets and unsupported PLL type.
 
