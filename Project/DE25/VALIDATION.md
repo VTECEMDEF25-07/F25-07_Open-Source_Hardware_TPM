@@ -53,3 +53,13 @@ Compiled SOF SHA256: `461f305a6d28c91b44185ff9b8df61ed57abe428a1351de1e5f0d183cf
 ## Dual-board organization follow-up
 
 The DE25 top now lives beside its QPF/QSF in `Project/DE25/`. A fresh compile through the root board selector completed successfully after relocation; 1 PLL and assigned physical pins were verified. Existing main TPM vectors also pass with the relocated top. Fan RTL is unchanged from the fault simulations above. Fresh SOF SHA256: `430011d4fe8c718b40cb8da9bf5e8a8524dbd7d51e586d7ac7b99591d7bb3a98`. The -2.700 ns SPI timing limitation remains. Local evidence: `AI/tmp/dual-board-DE25-compile.log`, `dual-board-de25-sim/`, and this checkout's ignored `Project/DE25/output_files/`.
+
+
+## Main/RNG merge follow-up - November 4, 2026
+
+Merged main `847341411dae1319951a0198ed7ce99630b6bf65`, preserving its `TPM_TOP` module name under `Source Code/` and updating the board instantiation to match. The unchanged standalone RNG sources, hardware capture assets and benches were moved into the agreed folders; they are not instantiated by this TPM project.
+
+Fresh full compilation PASS; required PLL, physical pins and SOF verified with the local-only helper. Local build evidence: class-workspace `AI/tmp/pr36-rng-merge-de25-build.log`.
+SOF SHA256: `be470db28c323c0c6e5ec19dfec73c85874fb36de6963f85333502277eafb6ed`.
+
+Both relocated RNG benches also print `ALL TESTS PASSED` in Questa using their new source paths. Evidence: `AI/tmp/pr36-rng-relocation-tests/`. They use behavioral entropy simulation and do not establish physical entropy quality or TPM integration.

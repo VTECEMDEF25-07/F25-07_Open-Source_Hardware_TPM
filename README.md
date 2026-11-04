@@ -6,8 +6,9 @@ Virginia Tech Lenovo-sponsored senior design project.
 
 - `Project/DE1/`: DE1-SoC Quartus project, board wrapper, PLL, pins and constraints.
 - `Project/DE25/`: DE25 Quartus project, board wrapper, PLL, pins, constraints and Fan Controller.
-- `Source Code/`: shared TPM top and folders for each reusable module.
-- `Simulation/`: module testbenches and DE25 cooling regression scripts/models.
+- `Source Code/`: shared TPM top and reusable module folders, including the standalone RNG sources.
+- `Simulation/`: module testbenches, RNG benches and DE25 cooling regression scripts/models.
+- `Project/DE25/Entropy Capture/`: standalone physical-board entropy capture top, pin script and PC serial tool.
 
 ## Open and compile
 

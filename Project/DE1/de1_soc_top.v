@@ -37,7 +37,7 @@ module de1_soc_top
 	wire	CLOCK_100;
 	PLL_100 PLL0( .refclk(CLOCK_50), .rst(~RESET_N), .outclk_0(CLOCK_100) );
 	
-	tpm_top tpm
+	TPM_TOP tpm
 	(
 		.CLOCK_50(CLOCK_50), .CLOCK_100(CLOCK_100),
 		.RESET_n(RESET_N),

@@ -13,3 +13,13 @@ The DE1 project uses unchanged shared TPM logic from main `4fd41b608554deaa0c3b5
 SOF SHA256: `747b69643ad80e1bac69eed2744bfda71288fed8ff06773ab20b82f3343d31c1`.
 
 Local evidence: `AI/tmp/dual-board-DE1-corrected-compile.log`, `dual-board-DE1-corrected-result.json`, `dual-board-de1-final-sim/`, and this checkout's ignored `Project/DE1/output_files/`. The earlier zero-PLL build is rejected evidence, not a valid hardware implementation.
+
+
+## Main/RNG merge follow-up - November 4, 2026
+
+Merged main `847341411dae1319951a0198ed7ce99630b6bf65`, preserving its `TPM_TOP` module name under `Source Code/` and updating the board instantiation to match. The unchanged standalone RNG sources, hardware capture assets and benches were moved into the agreed folders; they are not instantiated by this TPM project.
+
+Fresh full compilation PASS; required PLL, physical pins and SOF verified with the local-only helper. Local build evidence: class-workspace `AI/tmp/pr36-rng-merge-de1-build.log`.
+SOF SHA256: `b42e389471b2796a385ebcea3333b9c7b83ab2b4f6bc232db2afc44527ba55bd`.
+
+Both relocated RNG benches also print `ALL TESTS PASSED` in Questa using their new source paths. Evidence: `AI/tmp/pr36-rng-relocation-tests/`. They use behavioral entropy simulation and do not establish physical entropy quality or TPM integration.
