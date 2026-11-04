@@ -2,6 +2,8 @@
 
 Author: Aaron Grossman
 
+Historical record: the custom fan implementation tested below has since been replaced by the original Terasic example. Its fault/guard results and bitstream hashes do not validate the vendor-example revision. See `Project/DE25/Fan Controller/README.md` from the repository root for the current source contract.
+
 The Project / Source Code / Simulation reorganization changes paths, runners, documentation and ignore rules. All 50 relocated HDL, testbench, C/header and PDF reference files match their previous Git blobs byte for byte. No hardware logic was changed.
 
 - Both board selectors resolve every listed source and timing input.

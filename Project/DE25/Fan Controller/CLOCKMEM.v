@@ -1,9 +1,3 @@
-// Filename: CLOCKMEM.v
-// Modules: CLOCKMEM
-// Authors: Original upstream authors; Aaron Grossman for local changes.
-// Date: 2026-10-13
-// General Description: Divides the board clock for management timing, including project-local parameterization.
-
 
 
 module CLOCKMEM ( 

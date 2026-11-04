@@ -11,4 +11,6 @@ python3 Simulation/DE25/simulate_fan.py --build /absolute/scratch/fan
 python3 Simulation/DE25/simulate_fan_bus.py --build /absolute/scratch/fan-bus
 ```
 
+These runners now check the unmodified vendor AutoFan behavior and normal serial I2C configuration/telemetry. Previous custom staleness, one-shot conversion and fault/recovery tests were replaced with these example-compatible checks.
+
 The scripts reference board hardware under Project/DE25/Fan Controller. Keep generated results outside source folders. Required test models and fixtures are tracked.

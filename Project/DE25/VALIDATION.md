@@ -2,6 +2,22 @@
 
 Author: Aaron Grossman
 
+## Current vendor-example revision - November 4, 2026
+
+- All seven fan-example modules match the RevD v1.2.0 Board_Info_RTL ZIP entries byte for byte. Reset-release source differs only by `output logic` -> `output wire` and `.sv` -> `.v`; see [source provenance](Fan%20Controller/README.md).
+- Full Quartus Pro 26.1 compile PASS: 1,501 ALMs, 2 RAM blocks, 0 DSPs, 1 PLL. Build selector verifies all 10 physical pins and the programming file.
+- AutoFan normal-operation simulation PASS: startup speed, cold/hot ramp and the original invalid-temperature input behavior.
+- Serial I2C simulation PASS: continuous-conversion configuration, three temperature channels, RPM readback and fan-speed writes.
+- Existing 1 MHz TPM SPI acceptance vectors PASS with local ideal board/PLL adapters.
+- Worst setup slack is -2.611 ns. Full timing/CDC signoff remains incomplete; no physical-board test was performed.
+
+SOF SHA256: `af04d3f762c37f30e3cca76c14fc8d438544ecd1f73c2800622ab1824fc9d4f3`.
+Local evidence: class-workspace `AI/tmp/pr36-vendor-de25-build.log`, `pr36-vendor-fan-test/`, `pr36-vendor-fan-bus-test-v2/`, and `pr36-vendor-spi-DE25/`.
+
+## Historical custom implementation
+
+Historical record: the custom fan implementation tested below has since been replaced by the original Terasic example. Its fault/guard results and bitstream hashes do not validate the vendor-example revision. See `Project/DE25/Fan Controller/README.md` from the repository root for the current source contract.
+
 Base: `4fd41b608554deaa0c3b520933bcabafc4755e92` (October 23, 2026). Existing TPM, execution, management and SPI sources are unchanged from this base. No key-generation/demo source is in the project source list.
 
 | Check | Result |

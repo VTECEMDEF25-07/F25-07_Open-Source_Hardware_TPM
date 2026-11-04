@@ -25,7 +25,7 @@ module de25_soc_top (
     reg [1:0] board_release_reg;
     reg [1:0] tpm_release_reg;
     wire [15:0] fpga_temperature, board_temperature, fan_speed;
-    wire fan_ready, temperature_valid, fan_fail_safe;
+    wire fan_ready, temperature_valid;
 
     assign board_reset_n = board_reset_n_i && !configuration_reset;
     assign tpm_reset_n = board_reset_n && spi_reset_n_i && clock_locked;
@@ -70,7 +70,7 @@ module de25_soc_top (
     );
 
     // Cooling remains autonomous during SPI reset.
-    // Reuse the verified board-management implementation and its failsafe.
+    // Use the unmodified Terasic Board_Info_RTL management example.
     BOARD_MANAGEMENT fan_control (
         .clk_50(clock_i),
         .reset_n(board_release_reg[1]),
@@ -81,7 +81,6 @@ module de25_soc_top (
         .Fan_Speed(fan_speed),
         .I2C_READY(fan_ready),
         .TEMP_VALID(temperature_valid),
-        .FAN_FAILSAFE(fan_fail_safe),
         .Auto_Fan_Speed(1'b1),
         .Set_Fan_Speed(16'd4000),
         .BUSY_GO_HI(1'b0)
@@ -96,7 +95,7 @@ module de25_soc_top (
             fan_meta_reg <= 56'b0;
             fan_sync_reg <= 56'b0;
         end else begin
-            fan_meta_reg <= {5'b0, fan_fail_safe, temperature_valid, fan_ready,
+            fan_meta_reg <= {6'b0, temperature_valid, fan_ready,
                             fan_speed, fpga_temperature, board_temperature};
             fan_sync_reg <= fan_meta_reg;
         end

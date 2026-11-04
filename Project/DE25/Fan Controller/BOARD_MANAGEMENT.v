@@ -1,13 +1,5 @@
-// Filename: BOARD_MANAGEMENT.v
-// Modules: BOARD_MANAGEMENT
-// Authors: Original upstream authors; Aaron Grossman for local changes.
-// Date: 2026-10-13
-// General Description: Communicates with the DE25 temperature/fan controller and implements local cooling-safety changes.
-
-module BOARD_MANAGEMENT #(parameter SENSOR_STALE_TICKS=1953125, parameter MANAGEMENT_SECOND_TICKS=400000, parameter MANAGEMENT_CLOCK_DIVIDE=125, parameter CONVERSION_TIMEOUT_TICKS=800000) (
+module BOARD_MANAGEMENT (	
     output reg I2C_READY,
-    output FAN_FAILSAFE,
-    output [95:0] FAN_DIAGNOSTIC,
     input clk_50,
     input reset_n,
 
@@ -85,56 +77,7 @@ begin
 end
 
 //--------Auto FAN -----------------
-wire invalid_temp;
-wire CLK_400K;
-wire read_no_ack, pointer_no_ack, write_no_ack;
-reg write_error_reg, shot_error_reg;
-reg [7:0] config1_reg, config2_reg;
-reg preflight_error_reg;
-reg conversion_wait_reg, conversion_seen_reg, conversion_good_reg, conversion_timeout_reg;
-reg [31:0] conversion_ticks_reg;
-wire [15:0] read_data_full;
-reg [7:0] local_low_reg, remote1_low_reg, remote2_low_reg;
-reg cycle_error_reg;
-wire sensor_sample = ST == 10 && CNT == READ_MAX;
-wire sensor_good = conversion_good_reg && !cycle_error_reg && !A_STATUS[7] && A_MFG_ID == 8'h55 && A_DEV_ID == 8'h42 &&
-    !local_low_reg[1] && !(|remote1_low_reg[1:0]) && !(|remote2_low_reg[1:0]) &&
-    !A_LOCT1_H[7] && !A_REMT1_H[7] && !A_REMT2_H[7];
-// Below-zero values include the TMP442 shorted-diode sentinel (-64C).
-// This room-temperature demonstration treats them conservatively as invalid.
-de25_fan_guard #(.STALE_TICKS(SENSOR_STALE_TICKS)) sensor_guard (
-    .clock_i(CLK_400K),.reset_n_i(reset_n),.sample_valid_i(sensor_sample),
-    .sample_good_i(sensor_good),.fail_safe_o(invalid_temp)
-);
-assign FAN_FAILSAFE = invalid_temp;
-// Last sampled reasons plus raw values: diagnostic only, never a control bypass.
-reg [7:0] sample_reason_reg;
-assign FAN_DIAGNOSTIC = {A_MFG_ID,A_DEV_ID,local_low_reg,remote1_low_reg,
-    remote2_low_reg,A_REMT2_H,A_STATUS,8'b0,
-    16'b0,7'b0,conversion_wait_reg,sample_reason_reg | {1'b0,invalid_temp,6'b0}};
-// A fresh one-shot must be observed running and then finished. Missing BUSY,
-// stuck BUSY and a stopped management sequence all reach a finite deadline.
-always @(posedge CLK_400K or negedge reset_n) begin
-    if (!reset_n) begin
-        conversion_wait_reg<=0;conversion_seen_reg<=0;conversion_good_reg<=0;
-        conversion_timeout_reg<=0;conversion_ticks_reg<=0;
-    end else if (ST==37 || (ST==34 && W_WORD_END && WCNT==10)) begin
-        conversion_wait_reg<=1;conversion_seen_reg<=0;conversion_good_reg<=0;
-        conversion_timeout_reg<=0;conversion_ticks_reg<=0;
-    end else if (conversion_wait_reg) begin
-        if (conversion_ticks_reg>=CONVERSION_TIMEOUT_TICKS-1) begin
-            conversion_timeout_reg<=1;conversion_wait_reg<=0;
-        end else begin
-            conversion_ticks_reg<=conversion_ticks_reg+1'b1;
-            if (ST==9 && R_END && CNT==6 && !read_no_ack && R_DATA[7])
-                conversion_seen_reg<=1;
-            if (ST==10 && CNT==7 && conversion_seen_reg && !A_STATUS[7] && !cycle_error_reg) begin
-                conversion_good_reg<=1;conversion_wait_reg<=0;
-            end
-        end
-    end
-end
-assign R_DATA = read_data_full[7:0]; 
+wire invalid_temp ; 
 wire [7:0]auto_ktach ;           
 AutoFan AutoFan_inst(
 	.clk         ( CLK_400K     ),
@@ -166,7 +109,8 @@ assign  Board2_Temperature = A_REMT2_H ;
 
 
 //----400KHZ generater-----
-CLOCKMEM CLOCKMEM_inst2(  .RESET_n(reset_n), .CLK    (clk_50),.CLK_FREQ(MANAGEMENT_CLOCK_DIVIDE) ,.CK_1HZ (CLK_400K)) ;
+wire CLK_400K;
+CLOCKMEM CLOCKMEM_inst2(  .RESET_n(1), .CLK    (clk_50),.CLK_FREQ(125) ,.CK_1HZ (CLK_400K)) ;
 
 //=======================================================
 //  WIRE /REGISETER 
@@ -193,8 +137,8 @@ wire        R_SDAO;
 //  Parameter  
 //=======================================================
 // I2C  W/R NUMBER 
-parameter    WRITE_MAX      = 11;
-parameter    READ_MAX       = 13; 
+parameter    WRITE_MAX      = 10; 
+parameter    READ_MAX       = 10; 
     
 //--- Temperature-Sensor IC (TMP442) Register -----    
 parameter    SLAVE_ADDR_TA = 8'h98;
@@ -238,7 +182,7 @@ parameter    COUNT          = 8'h01;//0.5s count
 
 
 //--TIME 
-parameter    SEC=MANAGEMENT_SECOND_TICKS;
+parameter    SEC=400_000;
 parameter    SEC0d1=SEC/10;
 parameter    SEC0d5=SEC/2;
 
@@ -273,11 +217,6 @@ if (!reset_n  ) begin
 	 DELY <=0 ; 
     do_config   <=0;//<--
 	 I2C_READY   <=0;
-    TEMP_VALID<=0;ALARM<=0;TACH0<=0;TACH1<=0;DAC<=0;
-    A_MFG_ID<=0;A_DEV_ID<=0;A_STATUS<=0;
-    A_LOCT1_H<=0;A_REMT1_H<=0;A_REMT2_H<=0;
-    local_low_reg<=8'hff;remote1_low_reg<=8'hff;remote2_low_reg<=8'hff;
-    cycle_error_reg<=0;write_error_reg<=0;shot_error_reg<=0;sample_reason_reg<=0;config1_reg<=0;config2_reg<=0;preflight_error_reg<=0;
 end 
 else 
 case (ST)
@@ -296,7 +235,6 @@ case (ST)
     ST<=2; 
 	end	
 2: begin
-        if (CNT==0) cycle_error_reg<=shot_error_reg;
         // FAN READ 
 	          if ( CNT==0)      {SLAVE_ADDR[7:0] ,W_POINTER_REG}<= {SLAVE_ADDR_F[7:0] ,P_ALARM };
 		  else if ( CNT==1)      {SLAVE_ADDR[7:0] ,W_POINTER_REG}<= {SLAVE_ADDR_F[7:0] ,P_TACH0 };
@@ -307,14 +245,11 @@ case (ST)
 		  else if ( CNT==5)      {SLAVE_ADDR[7:0] ,W_POINTER_REG}<= {SLAVE_ADDR_TA[7:0] ,PA_DEV_ID  };
 		  else if ( CNT==6)      {SLAVE_ADDR[7:0] ,W_POINTER_REG}<= {SLAVE_ADDR_TA[7:0] ,PA_STATUS };		  
 		  else if ( CNT==7)      {SLAVE_ADDR[7:0] ,W_POINTER_REG}<= {SLAVE_ADDR_TA[7:0] ,PA_LOCT1_H };
-          else if ( CNT==8)  {SLAVE_ADDR,W_POINTER_REG}<={SLAVE_ADDR_TA,PA_LOCT1_L};
-          else if ( CNT==9)  {SLAVE_ADDR,W_POINTER_REG}<={SLAVE_ADDR_TA,PA_REMT1_H};
-          else if ( CNT==10) {SLAVE_ADDR,W_POINTER_REG}<={SLAVE_ADDR_TA,PA_REMT1_L};
-          else if ( CNT==11) {SLAVE_ADDR,W_POINTER_REG}<={SLAVE_ADDR_TA,PA_REMT2_H};
-          else if ( CNT==12) {SLAVE_ADDR,W_POINTER_REG}<={SLAVE_ADDR_TA,PA_REMT2_L};
-          else if (CNT==13) {SLAVE_ADDR,W_POINTER_REG}<={SLAVE_ADDR_TA,PA_CONF1};
-          else if (CNT==14) {SLAVE_ADDR,W_POINTER_REG}<={SLAVE_ADDR_TA,PA_CONF2};
-          else if (CNT==15) {SLAVE_ADDR,W_POINTER_REG}<={SLAVE_ADDR_TA,PA_STATUS};
+		  else if ( CNT==8)      {SLAVE_ADDR[7:0] ,W_POINTER_REG}<= {SLAVE_ADDR_TA[7:0] ,PA_REMT1_H};		                
+		  else if ( CNT==9)      {SLAVE_ADDR[7:0] ,W_POINTER_REG}<= {SLAVE_ADDR_TA[7:0] ,PA_REMT2_H};	
+		  		  
+		  		  
+		                
 	if ( W_POINTER_END ) begin  
 	   W_POINTER_GO  <=0; 
 		ST<=3 ; 
@@ -330,7 +265,7 @@ case (ST)
 	 end
 	end       
 4: begin 
-    if (W_POINTER_END) begin ST<=5; if(pointer_no_ack) cycle_error_reg<=1;end 	
+    if  ( W_POINTER_END ) ST<=5 ; 	
 	end              
 5: begin 
     ST<=6 ; 
@@ -356,8 +291,7 @@ case (ST)
 9: begin 
    if  ( R_END ) 
 	 begin 		
-	      if(read_no_ack) cycle_error_reg<=1;
-          //---FAN READ  
+	      //---FAN READ  
 		        if ( CNT==0) 	ALARM<=R_DATA ; 
 		   else if ( CNT==1) 	TACH0<=R_DATA ;
 			else if ( CNT==2) 	TACH1<=R_DATA ;
@@ -367,43 +301,24 @@ case (ST)
 		   else if ( CNT==5) 	A_DEV_ID <=R_DATA ; 
 		   else if ( CNT==6) 	A_STATUS <=R_DATA ; ///6
 		   else if ( CNT==7) 	A_LOCT1_H<=R_DATA ; 
-           else if (CNT==8) local_low_reg<=R_DATA;
-           else if (CNT==9) A_REMT1_H<=R_DATA;
-           else if (CNT==10) remote1_low_reg<=R_DATA;
-           else if (CNT==11) A_REMT2_H<=R_DATA;
-           else if (CNT==12) remote2_low_reg<=R_DATA;
-           else if (CNT==13) config1_reg<=R_DATA;
-           else if (CNT==14) config2_reg<=R_DATA;
-           else if (CNT==15) A_STATUS<=R_DATA;
+		   else if ( CNT==8)    A_REMT1_H<=R_DATA ; 
+		   else if ( CNT==9)    A_REMT2_H<=R_DATA ; 
 	      CNT<=CNT+1 ;
 	      ST<=10 ; 	
 	 end 
   end	
-10: begin
-     if (CNT==16) begin
-         if (!conversion_timeout_reg && !cycle_error_reg && A_STATUS[7]) begin CNT<=15;ST<=1;end
-         else begin
-             preflight_error_reg<=conversion_timeout_reg || cycle_error_reg || config1_reg!=8'h40 || config2_reg!=8'h3c;
-             ST<=31;
-         end
-     end else if ( CNT == READ_MAX)
+10: begin   
+     if ( CNT == READ_MAX) 
 	   begin
-		 TEMP_VALID <= sensor_good;
-         sample_reason_reg <= {preflight_error_reg,1'b0,
-             (A_LOCT1_H[7] | A_REMT1_H[7] | A_REMT2_H[7]),
-             (remote1_low_reg[0] | remote2_low_reg[0]),
-             (local_low_reg[1] | remote1_low_reg[1] | remote2_low_reg[1]),
-             (conversion_timeout_reg | !conversion_good_reg),
-             (A_MFG_ID!=8'h55 || A_DEV_ID!=8'h42),cycle_error_reg};
+		 TEMP_VALID <= 1;	
 	    CNT <= 2 ; 
 		 ST  <= 11; 
-		 I2C_READY <= sensor_good;
+		 I2C_READY   <=1;
 		end
 	  else if ( ( CNT==2) &&  (!do_config)) 	ST<=30; //write
 	  else begin   
 	        ST<=1;
-			  if (CNT==7 && !cycle_error_reg && !conversion_timeout_reg &&
-                  (!conversion_seen_reg || A_STATUS[7])) CNT<=6;
+			  if ( (CNT == 7) && TEMP_BUSY    ) CNT <= 6 ; // TMP441_A read check busy again
 		end 	
 		  DELY <=0;
 	     W_POINTER_GO <=1;
@@ -415,7 +330,7 @@ case (ST)
 	  DELY   <=DELY+1; 
      if (DELY == 20) begin  
 	      ST         <= 29; 
-			// TEMP_VALID holds the last complete sample health. FAN_FAILSAFE also covers staleness.
+			TEMP_VALID <= 0;
 	  end 	 
  end	
 //----  READ END ----
@@ -431,9 +346,9 @@ case (ST)
 31: begin 
       //TEMP WRITE 
            if ( WCNT==0) begin {SLAVE_ADDR ,W_POINTER_REG ,W_WORD_DATA} <= { SLAVE_ADDR_TA ,PA_SFRESET, 8'hff} ;  end //RESET
-      else if ( WCNT==1) begin {SLAVE_ADDR ,W_POINTER_REG ,W_WORD_DATA} <= { SLAVE_ADDR_TA ,PA_CONF1, 8'h40  } ;  end // Shutdown between explicit one-shot conversions; range (–55°C to +127°C)
+      else if ( WCNT==1) begin {SLAVE_ADDR ,W_POINTER_REG ,W_WORD_DATA} <= { SLAVE_ADDR_TA ,PA_CONF1, 8'h00  } ;  end //onvert continuouslyeasurement range (–55°C to +127°C)
       else if ( WCNT==2) begin {SLAVE_ADDR ,W_POINTER_REG ,W_WORD_DATA} <= { SLAVE_ADDR_TA ,PA_CONF2, 8'h3c  } ;  end //1 = External channel 2 enabled//1 = External channel 1 enabled//1 = Local channel enabled// = Resistance correction enabled
-      else if ( WCNT==3) begin {SLAVE_ADDR ,W_POINTER_REG ,W_WORD_DATA} <= { SLAVE_ADDR_TA ,PA_RATE , 8'h06  } ;  end // 110:ONVERSIONS/SEC=4, 0.25 sec
+      else if ( WCNT==3) begin {SLAVE_ADDR ,W_POINTER_REG ,W_WORD_DATA} <= { SLAVE_ADDR_TA ,PA_RATE , 8'h0b  } ;  end // 110:ONVERSIONS/SEC=4, 0.25 sec
 
 
       //FAN WRITE 
@@ -444,10 +359,9 @@ case (ST)
 		   {SLAVE_ADDR ,W_POINTER_REG ,W_WORD_DATA} <= { SLAVE_ADDR_F ,P_ALARM_ENABLE,ALARM_ENABLE}; 			
 		end	
 			//<--
-      else if ( WCNT==7 ) begin {SLAVE_ADDR ,W_POINTER_REG ,W_WORD_DATA} <= { SLAVE_ADDR_F ,P_CONFIG, (invalid_temp ? (CONFIG & 8'hcf) : CONFIG) };  end
+      else if ( WCNT==7 ) begin {SLAVE_ADDR ,W_POINTER_REG ,W_WORD_DATA} <= { SLAVE_ADDR_F ,P_CONFIG      ,CONFIG };  end
       else if ( WCNT==8 ) begin {SLAVE_ADDR ,W_POINTER_REG ,W_WORD_DATA} <= { SLAVE_ADDR_F ,P_GPIO_DEF,    GPIO_DEF}; end		 						  		
-	   else if ( WCNT==9 ) begin {SLAVE_ADDR ,W_POINTER_REG ,W_WORD_DATA} <= { SLAVE_ADDR_F ,P_SPEED       ,KTACH  };  end
-      else if (WCNT==10) begin {SLAVE_ADDR,W_POINTER_REG,W_WORD_DATA}<={SLAVE_ADDR_TA,8'h0f,8'h00};end
+	   else if ( WCNT==9 ) begin {SLAVE_ADDR ,W_POINTER_REG ,W_WORD_DATA} <= { SLAVE_ADDR_F ,P_SPEED       ,KTACH  };  end	
 		       
 	 if (  W_WORD_END ) begin  
 	   W_WORD_GO  <=0; 
@@ -468,9 +382,7 @@ case (ST)
 	end       	
 34: begin 
      if  ( W_WORD_END )  begin 	
-			 WCNT<=WCNT+1 ;
-            write_error_reg<=write_error_reg | write_no_ack;
-            if (WCNT==10) begin shot_error_reg<=write_error_reg | write_no_ack | preflight_error_reg;write_error_reg<=0;end
+			 WCNT<=WCNT+1 ;			 
 			 ST   <=35 ; 
 	  end
 	end              
@@ -480,12 +392,11 @@ case (ST)
 				WCNT  <= 5;
 				CNT   <= 0; 
 	  end 
-	 else if (WCNT==10) begin ST<=36;DELY<=0;end
-     else  if ( WCNT != WRITE_MAX )  ST<=31 ;
+	 else  if ( WCNT != WRITE_MAX )  ST<=31 ; 	  
 	 else  
 		begin 
-             ST       <= 1;
-                 WCNT <= preflight_error_reg ? 0 : 7; // Revisit mode/GPIO/speed after every temperature frame.
+	         ST       <= 36; 
+	 			WCNT     <= WRITE_MAX-1;  
 				CNT      <= 0; 
 				DELY     <= 0;
 				I2C_LO0P <= 0;
@@ -498,8 +409,8 @@ case (ST)
 	 end 	
 	 else DELY  <= DELY +1;
 	 end 
-37: begin
-        CNT<=13;ST<=1;cycle_error_reg<=0;preflight_error_reg<=0;
+37: begin 
+		 ST <=1;
 	 end  
 endcase
 end
@@ -512,13 +423,12 @@ end
 //========================================================
 wire   const_zero_sig/* synthesis keep */ ; 
 assign I2C_SDA        = (SDAO)?1'bz :1'b0;
-assign I2C_SCL        = (SCLO)?1'bz :1'b0;
+assign I2C_SCL        = (SCLO)?1'bz :1'b0;;
 assign SCLO           = W_POINTER_SCL  & R_SCL   & W_WORD_SCL;
 assign SDAO           = W_POINTER_SDAO & R_SDAO  & W_WORD_SDAO;
 
 //==== I2C WRITE WORD ===
 I2C_WRITE_BYTE  wrd(
-   .NO_ACK(write_no_ack),
    .RESET_N      ( reset_n),
 	.PT_CK        ( CLK_400K),
 	.GO           ( W_WORD_GO),
@@ -533,7 +443,6 @@ I2C_WRITE_BYTE  wrd(
 
 //==== I2C WRITE POINTER ===
 I2C_WRITE_POINTER  wpt(
-   .NO_ACK(pointer_no_ack),
    .RESET_N      (reset_n   ),
 	.PT_CK        ( CLK_400K ),
 	.GO           ( W_POINTER_GO ),
@@ -546,20 +455,18 @@ I2C_WRITE_POINTER  wpt(
 );
 
 //-----I2C TO READ---- 
-I2C_READ_DATA rd(
-   .NO_ACK(read_no_ack), 
+I2C_READ_DATA rd( 
    .RESET_N      ( reset_n    ),
 	.PT_CK        ( CLK_400K   ),
 	.GO           ( R_GO       ),
 	.SLAVE_ADDRESS( SLAVE_ADDR ),
- 	.BYTE_NUM     ( 8'd0       ) , // I2C read 8 bit data 
+ 	.BYTE_NUM     ( 0          ) , // I2C read 8 bit data 
 	.SDAI         ( I2C_SDA),
 	.SDAO         ( R_SDAO ),
 	.SCLO         ( R_SCL  ),
 	.END_OK       ( R_END  ),
-	.DATA         ( read_data_full )
+	.DATA         ( R_DATA )
 );
 	
 endmodule
 	
-

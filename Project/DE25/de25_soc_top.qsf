@@ -62,7 +62,6 @@ set_global_assignment -name VERILOG_FILE "Fan Controller/fan_timer.v"
 set_global_assignment -name VERILOG_FILE "Fan Controller/I2C_READ_DATA.v"
 set_global_assignment -name VERILOG_FILE "Fan Controller/I2C_WRITE_BYTE.v"
 set_global_assignment -name VERILOG_FILE "Fan Controller/I2C_WRITE_POINTER.v"
-set_global_assignment -name VERILOG_FILE "Fan Controller/de25_fan_guard.v"
 set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to {tpm_release_reg[*]}
 set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to {board_release_reg[*]}
 set_global_assignment -name LAST_QUARTUS_VERSION "26.1.0 Pro Edition"

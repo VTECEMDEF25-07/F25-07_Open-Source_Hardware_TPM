@@ -1,9 +1,3 @@
-// Filename: fan_timer.v
-// Modules: fan_timer
-// Authors: Original upstream authors; Aaron Grossman for local changes.
-// Date: 2026-10-13
-// General Description: Provides management timer events, including project-local timing configuration.
-
 module fan_timer ( 
 input RESET_N,
 input CLK     , // 400KHz
