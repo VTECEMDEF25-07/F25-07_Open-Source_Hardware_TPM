@@ -13,4 +13,4 @@ Fan control uses the raw 50 MHz board clock and remains active during SPI reset.
 
 Pin assignments and electrical standards are explicit in the QSF. The existing SPI serializer has inherited asynchronous crossings and a logic-generated transmit clock; full SPI timing/CDC signoff is not established. SDC documents these limitations. This change does not claim TPM certification or physical-board acceptance.
 
-Use the `Project/board_config.json` / `Project/build.py` selector for this target or DE1; see [board setup](../README.md). The top is board-local at `Project/DE25/de25_soc_top.v`.
+In Quartus, open `de25_soc_top.qpf` and select **Processing > Start Compilation**. See [board setup](../README.md) for both boards. The top is board-local at `Project/DE25/de25_soc_top.v`.

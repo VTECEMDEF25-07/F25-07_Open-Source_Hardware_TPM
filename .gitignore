@@ -55,3 +55,7 @@ Desktop.ini
 *.out
 *.ipcache
 *.qsys_edit
+
+# Personal board-selection helpers; teammates open the QPF files directly.
+/Project/build.py
+/Project/board_config.json
