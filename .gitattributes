@@ -1,0 +1,6 @@
+# Preserve existing HDL and fixture bytes during checkout and moves.
+*.v -text
+*.vh -text
+*.sv -text
+*.c -text
+*.h -text

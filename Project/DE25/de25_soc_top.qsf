@@ -23,7 +23,7 @@ set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
 set_global_assignment -name NUM_PARALLEL_PROCESSORS 2
 set_global_assignment -name RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"
 set_global_assignment -name SDC_FILE de25_soc_top.sdc
-set_global_assignment -name SDC_FILE "../../IO Interface/spi_timing.sdc"
+set_global_assignment -name SDC_FILE "../spi_timing.sdc"
 set_location_assignment PIN_CH128 -to clock_i
 set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to clock_i
 set_location_assignment PIN_BW59 -to board_reset_n_i
@@ -44,27 +44,27 @@ set_location_assignment PIN_BF120 -to fan_i2c_scl
 set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to fan_i2c_scl
 set_location_assignment PIN_BH118 -to fan_i2c_sda
 set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to fan_i2c_sda
-set_global_assignment -name SEARCH_PATH "../../IO Interface"
+set_global_assignment -name SEARCH_PATH "../../Source Code/IO Interface"
 set_global_assignment -name VERILOG_FILE "de25_soc_top.v"
 set_global_assignment -name VERILOG_FILE "de25_phase1_clock.v"
-set_global_assignment -name VERILOG_FILE "../../TPM_TOP.v"
-set_global_assignment -name VERILOG_FILE "../../Management Module/management_module.v"
-set_global_assignment -name VERILOG_FILE "../../Execution Engine/execution_engine.v"
-set_global_assignment -name VERILOG_FILE "../../IO Interface/fifo_buffer.v"
-set_global_assignment -name VERILOG_FILE "../../IO Interface/spi_slave.v"
-set_global_assignment -name VERILOG_FILE "../../IO Interface/tpm_crb.v"
-set_global_assignment -name VERILOG_FILE "../../IO Interface/tpm_io.v"
-set_global_assignment -name VERILOG_FILE "../../IO Interface/tpm_reg_space.v"
-set_global_assignment -name VERILOG_FILE "../../IO Interface/tpm_spi_ctrl.v"
-set_global_assignment -name VERILOG_FILE "support/altera_s10_user_rst_clkgate.v"
-set_global_assignment -name VERILOG_FILE "support/auto_fan.v"
-set_global_assignment -name VERILOG_FILE "support/BOARD_MANAGEMENT.v"
-set_global_assignment -name VERILOG_FILE "support/CLOCKMEM.v"
-set_global_assignment -name VERILOG_FILE "support/fan_timer.v"
-set_global_assignment -name VERILOG_FILE "support/I2C_READ_DATA.v"
-set_global_assignment -name VERILOG_FILE "support/I2C_WRITE_BYTE.v"
-set_global_assignment -name VERILOG_FILE "support/I2C_WRITE_POINTER.v"
-set_global_assignment -name VERILOG_FILE "support/de25_fan_guard.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/TPM_TOP.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/Management Module/management_module.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/Execution Engine/execution_engine.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/IO Interface/fifo_buffer.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/IO Interface/spi_slave.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/IO Interface/tpm_crb.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/IO Interface/tpm_io.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/IO Interface/tpm_reg_space.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/IO Interface/tpm_spi_ctrl.v"
+set_global_assignment -name VERILOG_FILE "Fan Controller/altera_s10_user_rst_clkgate.v"
+set_global_assignment -name VERILOG_FILE "Fan Controller/auto_fan.v"
+set_global_assignment -name VERILOG_FILE "Fan Controller/BOARD_MANAGEMENT.v"
+set_global_assignment -name VERILOG_FILE "Fan Controller/CLOCKMEM.v"
+set_global_assignment -name VERILOG_FILE "Fan Controller/fan_timer.v"
+set_global_assignment -name VERILOG_FILE "Fan Controller/I2C_READ_DATA.v"
+set_global_assignment -name VERILOG_FILE "Fan Controller/I2C_WRITE_BYTE.v"
+set_global_assignment -name VERILOG_FILE "Fan Controller/I2C_WRITE_POINTER.v"
+set_global_assignment -name VERILOG_FILE "Fan Controller/de25_fan_guard.v"
 set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to {tpm_release_reg[*]}
 set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to {board_release_reg[*]}
 set_global_assignment -name LAST_QUARTUS_VERSION "26.1.0 Pro Edition"
@@ -79,4 +79,5 @@ set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOU
 set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to "tpm|io|spi_serializer|ack_sync_reg"
 set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to "tpm|io|spi_serializer|offer_meta_reg"
 set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to "tpm|io|spi_serializer|offer_sync_reg"
+set_instance_assignment -name FAST_INPUT_REGISTER ON -to "spi_mosi_i"
 set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to "spi_miso_o"

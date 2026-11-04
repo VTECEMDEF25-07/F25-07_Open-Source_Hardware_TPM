@@ -20,7 +20,7 @@ def select(board):
     if board not in TARGETS:
         raise ValueError("board must be DE1 or DE25")
     top, device, edition = TARGETS[board]
-    folder = ROOT / "Boards" / board
+    folder = ROOT / board
     project = folder / (top + ".qpf")
     settings = folder / (top + ".qsf")
     if not project.is_file():

@@ -15,13 +15,13 @@ def main():
     parser.add_argument('--build', type=Path, required=True)
     parser.add_argument('--questa-bin', type=Path, required=True)
     args = parser.parse_args()
-    root = Path(__file__).resolve().parents[1]
+    root = Path(__file__).resolve().parents[2]
     build = args.build.resolve()
     build.mkdir(parents=True, exist_ok=False)
     tools = args.questa_bin.resolve()
     executable_suffix = '.exe' if (tools / 'vsim.exe').exists() else ''
-    rtl = root / 'IO Interface/spi_slave.v'
-    bench = root / 'IO Interface/Testbenches/tb_spi_slave.sv'
+    rtl = root / 'Source Code/IO Interface/spi_slave.v'
+    bench = root / 'Simulation/IO Interface/tb_spi_slave.sv'
     inputs = [rtl, bench, Path(__file__).resolve()]
     digest = lambda path: hashlib.sha256(path.read_bytes()).hexdigest()
     hashes = {str(path.relative_to(root)): digest(path) for path in inputs}

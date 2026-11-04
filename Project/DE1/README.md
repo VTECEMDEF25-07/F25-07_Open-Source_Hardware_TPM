@@ -43,7 +43,7 @@ tables 3-5, 3-7, 3-8 and 3-11. Software support:
 
 ## Validation
 
-See [VALIDATION.md](VALIDATION.md) for fresh simulation/build results. Both boards are selected through the root `board_config.json` and `build.py`; [board setup](../README.md) describes the common commands.
+See [VALIDATION.md](VALIDATION.md) for fresh simulation/build results. Both boards are selected through `Project/board_config.json` and `Project/build.py`; [board setup](../README.md) describes the common commands.
 
 QSF pin targets use quoted names accepted by Quartus Lite. The build selector
 requires zero PLLs for this direct-clock target and checks the physical pin map.

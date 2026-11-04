@@ -1,8 +1,28 @@
-# F25-07_Open-Source_Hardware_TPM
-This repo holds the contents of the Lenovo sponsored Virginia Tech Major Design Experience project to build an open-source hardware TPM. This repo holds all information from the development of this TPM, since the beginning of this project in 2025.
+# Open-source hardware TPM
 
-## Board selection
+Virginia Tech Lenovo-sponsored senior design project.
 
-Set `board_config.json` to DE1 or DE25 and run `python build.py` to check the selected project. Add `--compile --quartus PATH_TO_QUARTUS_SH` to build it. [Board setup](Boards/README.md) explains tool editions, layout and command-line overrides.
+## Layout
 
-Both board targets use the [common portable SPI transport](IO%20Interface/SPI.md).
+- `Project/DE1/`: DE1-SoC Quartus project, board wrapper, PLL, pins and constraints.
+- `Project/DE25/`: DE25 Quartus project, board wrapper, PLL, pins, constraints and Fan Controller.
+- `Source Code/`: shared TPM top and folders for each reusable module.
+- `Simulation/`: module testbenches and DE25 cooling regression scripts/models.
+
+## Open or build
+
+Open `Project/DE1/de1_soc_top.qpf` in Quartus Lite/Standard with Cyclone V support, or `Project/DE25/de25_soc_top.qpf` in Quartus Pro 26.1 with Agilex 5 support.
+
+From the repository root:
+
+```text
+python Project/build.py --board DE1
+python Project/build.py --board DE25
+python Project/build.py --board DE25 --compile --quartus C:/altera_pro/26.1/quartus/bin64/quartus_sh.exe
+```
+
+`Project/board_config.json` supplies the default board. Keep the complete repository together: project source paths are relative. Generated outputs are ignored; source, constraints, project settings and required test inputs remain tracked.
+
+See [board setup](Project/README.md) and each board's VALIDATION.md for evidence and timing/hardware limitations. See [simulation instructions](Simulation/README.md) for cooling regressions and legacy testbenches.
+
+The shared SPI transport and ASIC portability boundary are described in [SPI documentation](Source%20Code/IO%20Interface/SPI.md).

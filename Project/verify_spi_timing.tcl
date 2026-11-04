@@ -1,4 +1,4 @@
-# Run from repo root: quartus_sta -t Boards/verify_spi_timing.tcl DE1|DE25
+# Run from repo root: quartus_sta -t Project/verify_spi_timing.tcl DE1|DE25
 # Checks every available timing corner and the three SPI synchronizer chains.
 package require ::quartus::project
 package require ::quartus::sta
@@ -45,7 +45,7 @@ foreach corner $corners {
         }
         report_timing -$check -npaths 5 -detail full_path -file "$report_dir/${corner}_${check}.rpt"
     }
-    foreach signal {spi_clock spi_mosi chip_select} {
+    foreach signal {rx request ack offer chip_select} {
         set prefix {tpm|io|spi_serializer|}
         set first [get_registers "${prefix}${signal}_meta_reg"]
         set second [get_registers "${prefix}${signal}_sync_reg"]
