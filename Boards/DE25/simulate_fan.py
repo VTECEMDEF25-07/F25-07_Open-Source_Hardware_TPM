@@ -10,7 +10,7 @@ from pathlib import Path
 import subprocess
 p=argparse.ArgumentParser();p.add_argument('--build',type=Path,required=True);a=p.parse_args()
 here=Path(__file__).resolve().parent;build=a.build.resolve();obj=build/'obj';build.mkdir(parents=True,exist_ok=True)
-sources=[here/'support/de25_fan_guard.v',here/'tests/tb_keygen_fan.sv']+sorted((here/'support').glob('*.v'))
+sources=[here/'Fan Controller/de25_fan_guard.v',here/'tests/tb_keygen_fan.sv']+sorted((here/'Fan Controller').glob('*.v'))
 sources=list(dict.fromkeys(sources))
 sources=[s for s in sources if s.name not in ('altera_s10_user_rst_clkgate.v','de25_fan_guard.v') or s == sources[0]]
 command=['verilator','--cc','--exe','--main','--timing','--top-module','tb_keygen_fan','--Mdir',str(obj),'-Wno-fatal','+1364-2001ext+v','+1800-2017ext+sv']+[str(s) for s in sources]
