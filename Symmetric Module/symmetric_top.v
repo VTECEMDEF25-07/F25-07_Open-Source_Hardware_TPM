@@ -1,373 +1,173 @@
-////////////////////////////////////////////////////////////////////////////////////////
-// Filename:     symm_top.v
-// Author:       Makeda Solomon
-// Date Created: 14/04/26
-// Version:      1
-// Description:  Single-block AES-256 CFB with a session key/IV preparation step.
-// Session CFB flow: supplied session value/nonces -> KDFa -> FAKE HMAC -> AES.
-// The HMAC placeholder makes this a practice integration, not a complete TPM.
-///////////////////////////////////////////////////////////////////////////////////////
-
-
+// Filename: symmetric_top.v
+// Author: Makeda Solomon; refactor assisted by Codex
+// Date: October 13, 2026
+// Description: Route each internal job to session protection OR EncryptDecrypt2. Both CFB paths share one worker; session XOR bypasses AES. One chunk/job, fake HMAC, fixed session lengths.
+`default_nettype none
 module symm_top
 (
-    input wire       clock_i, // 50 MHz clock
-    input wire       reset_n_i,
-    input wire       start_i, // Module is ready to begin
+    input wire clock_i, // 50 MHz clock
+    input wire reset_n_i,
+    input wire start_i, // Caller requests a job; present inputs while wait_o is low.
 
     // Command context from execution engine
     input wire [15:0] command_code_i, // TPM command sent from the Execution Engine
-    input wire       snession_protect_i, // Status signal that indicates whether to take the session-based path or the primitive path
-    input wire       session_decrypt_i, // Status signal to enable the module to decrypt incoming command parameters
-    input wire       session_encrypt_i, // Status signal to enable the module to encrypt incoming command parameters
-    input wire       session_use_xor_i,  // Select XOR Obfuscation within session protection instead of block ciphers
+    input wire session_protect_i, // Status signal that indicates whether to take the session - based path or the primitive path
+    input wire session_decrypt_i, // Status signal to enable the module to decrypt incoming command parameters
+    input wire session_encrypt_i, // Status signal to enable the module to encrypt incoming command parameters
+    input wire session_use_xor_i, // Select XOR Obfuscation within session protection instead of block ciphers
 
     // Input validity and cryptography context
-    input wire       key_valid_i, // Caller confirms the primitive key OR session value is valid.
-    input wire       session_valid_i, // Status signal to indicate a valid session creation for session-based protection
-    input wire [2:0] mode_i, // Cipher-block mode selected for the primitive path
-    input wire       decrypt_i, // Decrypt status signal 
+    input wire key_valid_i, // Caller confirms the primitive key OR session value is valid.
+    input wire session_valid_i, // Status signal to indicate a valid session creation for session - based protection
+    input wire [2:0] mode_i, // Cipher - block mode selected for the primitive path
+    input wire decrypt_i, // Decrypt status signal 
     input wire [4:0] data_bytes_i, // Valid byte count
     input wire [255:0] key_i, // Supplied AES key for the primitive path.
     input wire [127:0] iv_i, // Primitive IV; also passed through unchanged on the XOR path.
     input wire [127:0] data_in_i, // Data to be encrypted or decrypted from Execution Engine
-    input wire [127:0] session_mask_i,   // KDFa calcualted mask used in the session-based path
+    input wire [127:0] session_mask_i, // Legacy compatibility input; ignored. XOR mask is derived inside.
 
-    // Session CFB inputs from the caller (eventually the execution engine).
+    // Session CFB/XOR inputs from the caller (eventually the execution engine).
     // These are supplied values: this module does not create sessions or nonces.
     input wire [255:0] session_value_i, // Secret passed to the HMAC service.
     input wire [255:0] nonce_newer_i, // Caller supplies the correctly ordered newer nonce.
     input wire [255:0] nonce_older_i, // Caller supplies the correctly ordered older nonce.
 
     // Outputs back to execution engine
-    output reg            wait_o, // Signal indicating the AES cipher is still computing cipher
-    output reg            done_o, // Signal indicating the completion of the symmetric module execution
-    output reg   [11:0]   tpm_rc_o, // Error handling output
-    output reg   [127:0]  data_out_o, // Plaintext or cipher output
-    output reg   [127:0]  iv_out_o, // Final initialization vector
-    output reg            primitive_path_o, // Plaintext or cipher output of the primitive path
-    output reg            session_path_o // Plaintext or cipher output of the session-based path
+    output wire wait_o, // Signal indicating the AES cipher is still computing cipher
+    output wire done_o, // Signal indicating the completion of the symmetric module execution
+    output wire [11:0] tpm_rc_o, // Error handling output
+    output wire [127:0] data_out_o, // Plaintext or cipher output
+    output wire [127:0] iv_out_o, // Final initialization vector
+    output wire primitive_path_o, // Last accepted job selected EncryptDecrypt2.
+    output wire session_path_o // Last accepted job selected session protection.
 );
 
-    // Local constants
-    localparam TPM_CC_ENCRYPT_DECRYPT_2 = 16'h0193; // Determined by the TPM 2.0 Specifications by the TCG
-    
-    // Arbitary numberset representing different possible block cipher modes
-   // localparam SYM_MODE_NULL = 3'd0;
-    localparam SYM_MODE_CFB  = 3'd1;
-   // localparam SYM_MODE_CTR  = 3'd2;
-   // localparam SYM_MODE_OFB  = 3'd3;
-   // localparam SYM_MODE_CBC  = 3'd4;
-   // localparam SYM_MODE_ECB  = 3'd5;
+    // session_mask_i retained for old callers; XOR masks are now derived internally.
 
-    // Error handling constants. Double check with how Emma Wallace defined the constants
-    // TODO: Will likely have to include all of these as output varables as well
-    localparam TPM_RC_SUCCESS      = 12'h000;
-    localparam TPM_RC_COMMAND_CODE = 12'h143;
-    localparam TPM_RC_MODE         = 12'h089;
-    localparam TPM_RC_SIZE         = 12'h095;
-    localparam TPM_RC_KEY          = 12'h09C;
-    localparam TPM_RC_HANDLE       = 12'h08B;
-    localparam TPM_RC_ATTRIBUTES   = 12'h082;
-    localparam TPM_RC_FAILURE      = 12'h101;
+    // Wrapper states: accept a job, wait for its controller, then release.
+    localparam IDLE = 0, WAIT_JOB = 1, RELEASE = 2;
+    reg [1:0] state_r;
+    reg selected_session_r;
+    wire accept_w = reset_n_i && state_r == IDLE && start_i;
 
-    // FSM states
-    localparam ST_IDLE    = 4'd0;
-    localparam ST_EXECUTE = 4'd1;
-    localparam ST_KEY_BUSY = 4'd2;
-    localparam ST_KEY_READY = 4'd3;
-    localparam ST_BLOCK_BUSY = 4'd4;
-    localparam ST_BLOCK_DONE = 4'd5;
-    localparam ST_DONE = 4'd6;
-    localparam ST_RELEASE = 4'd7;
-    localparam ST_KDFA_WAIT = 4'd8; // Wait for the session AES key and IV before AES starts.
-    reg [3:0] state_r;
+    // s_* signals belong to session protection; p_* belong to EncryptDecrypt2. These are the two encryption/decryption paths
+    wire s_start, p_start, s_wait, p_wait, s_done, p_done;
+    wire [255:0] s_key, p_key;
+    wire [127:0] s_iv, p_iv, s_data, p_data, s_result, p_result, s_iv_result, p_iv_result;
+    wire [4:0] s_bytes, p_bytes;
+    wire s_decrypt, p_decrypt;
+    wire [11:0] s_rc, p_rc, cfb_rc;
+    wire cfb_done, cfb_wait;
+    wire [127:0] cfb_result, cfb_iv_result;
 
+    // Return only the selected controller's result to the caller.
+    assign wait_o = reset_n_i && state_r != IDLE;
+    assign done_o = reset_n_i && state_r == WAIT_JOB && (selected_session_r ? s_done : p_done);
+    assign tpm_rc_o = selected_session_r ? s_rc : p_rc;
+    assign data_out_o = selected_session_r ? s_result : p_result;
+    assign iv_out_o = selected_session_r ? s_iv_result : p_iv_result;
+    assign session_path_o = selected_session_r;
+    assign primitive_path_o = !selected_session_r;
 
-    // Combinational decode/validation ("management unit" behavior)
-    reg        request_valid_r;
-    reg [11:0] validation_rc_r; //Validation register that tells us the status of the TPM regarding errors. TPM errors are determined by the TPM 2.0 Specifications
-    reg [127:0] byte_mask_w;
+    // Remember the selected path even if caller inputs change after acceptance.
 
-    reg aes_init_r;
-    reg aes_next_r;
-    reg [255:0] aes_key_r;
-    reg [127:0] aes_feedback_r;
-    wire aes_ready_w;
-    wire aes_result_valid_w;
-    wire [127:0] cipher_stream_block_w;
-
-    reg [127:0] data_r;
-    reg [127:0] data_mask_r;
-    reg [127:0] xor_mask_r;
-    reg use_xor_r;
-    reg decrypt_r;
-    wire [127:0] cfb_result_w;
-    wire [127:0] cfb_feedback_w;
-    assign cfb_result_w = (data_r ^ cipher_stream_block_w) & data_mask_r;
-    assign cfb_feedback_w = (decrypt_r ? data_r : cfb_result_w) & data_mask_r;
-
-    // Top <-> KDFa: request a derivation, then receive its key/IV or error.
-    wire kdfa_req_valid_w, kdfa_req_ready_w;
-    wire kdfa_rsp_valid_w, kdfa_rsp_ready_w, kdfa_error_w;
-    wire [255:0] kdfa_key_w;
-    wire [127:0] kdfa_iv_w;
-
-    // KDFa <-> HMAC: send the secret/message and receive one 32-byte digest.
-    wire hmac_req_valid_w, hmac_req_ready_w;
-    wire hmac_rsp_valid_w, hmac_rsp_ready_w, hmac_error_w;
-    wire [255:0] hmac_key_w, hmac_digest_w;
-    wire [607:0] hmac_message_w;
-
-    // KDFa captures these inputs on the SAME edge that this top captures the data.
-    // Primitive requests and externally supplied XOR masks do not use this KDFa.
-    assign kdfa_req_valid_w = reset_n_i && (state_r == ST_IDLE) && start_i &&
-                              request_valid_r && session_protect_i && !session_use_xor_i;
-    assign kdfa_rsp_ready_w = reset_n_i && (state_r == ST_KDFA_WAIT);
-
-    kdfa_control KDFA_CONTROLLER (
-        .clk_i(clock_i), .reset_n_i(reset_n_i),
-        .req_valid_i(kdfa_req_valid_w), .req_ready_o(kdfa_req_ready_w),
-        .rsp_valid_o(kdfa_rsp_valid_w), .rsp_ready_i(kdfa_rsp_ready_w),
-        .error_o(kdfa_error_w),
-        .session_value_i(session_value_i), .label_i(32'h43464200), // "CFB" + zero.
-        .context_u_i(nonce_newer_i), .context_v_i(nonce_older_i),
-        .aes_key_o(kdfa_key_w), .aes_iv_o(kdfa_iv_w),
-        .hmac_req_valid_o(hmac_req_valid_w), .hmac_req_ready_i(hmac_req_ready_w),
-        .hmac_key_o(hmac_key_w), .hmac_message_o(hmac_message_w),
-        .hmac_rsp_valid_i(hmac_rsp_valid_w), .hmac_rsp_ready_o(hmac_rsp_ready_w),
-        .hmac_digest_i(hmac_digest_w), .hmac_error_i(hmac_error_w)
-    );
-
-    // PRACTICE ONLY: replace this instance with the teammate's real HMAC service.
-    // The fake service only copies bytes; AES below still performs real AES.
-    hmac_sha256_placeholder HMAC_PLACEHOLDER (
-        .clk_i(clock_i), .reset_n_i(reset_n_i),
-        .req_valid_i(hmac_req_valid_w), .req_ready_o(hmac_req_ready_w),
-        .key_i(hmac_key_w), .message_i(hmac_message_w),
-        .rsp_valid_o(hmac_rsp_valid_w), .rsp_ready_i(hmac_rsp_ready_w),
-        .digest_o(hmac_digest_w), .error_o(hmac_error_w)
-    );
-
-    always @(*) begin
-        if (data_bytes_i == 5'd0)
-            byte_mask_w = 128'b0;
-        else if (data_bytes_i >= 5'd16)
-            byte_mask_w = 128'hFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
-        else
-            byte_mask_w = 128'hFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF <<
-                        ((5'd16 - data_bytes_i) * 8);
-        end
-
-// Command/session validation:
-    always @(*) begin
-        request_valid_r          = 1'b0; // Initialize the register that determines whether the command is valid or not to zero
-        validation_rc_r          = TPM_RC_SUCCESS; // Assume initial success of the TPM's functionality?
-
-        if ((command_code_i != TPM_CC_ENCRYPT_DECRYPT_2) && !session_protect_i) begin
-            validation_rc_r = TPM_RC_COMMAND_CODE; // The TPM can't NOT take the primitive path while also not being session-based. There are two options. Either primitive or session based. One should be selected.
-        end
-
-        // Does the session-based protection path have priority when enabled. How is this determined?
-        // Session-Based Path Validation:
-        else if (session_protect_i) begin
-            if (!session_valid_i) // If the session is invalid, then:
-                validation_rc_r = TPM_RC_HANDLE; // ... send the following error handle
-            else if (!(session_encrypt_i ^ session_decrypt_i)) // If the session toggles neither an encryption or decryption, then:
-                validation_rc_r = TPM_RC_ATTRIBUTES; // ... send the following error handle
-            else if (data_bytes_i > 5'd16) // The size must be within the specified size, otherwise:
-                validation_rc_r = TPM_RC_SIZE; //... send the following error handle
-            // TPM session rule: if block cipher is selected, mode must be CFB.
-            else if (!session_use_xor_i && (mode_i != SYM_MODE_CFB))
-                validation_rc_r = TPM_RC_MODE; // ... otherwise, send a mode error
-            else if (!session_use_xor_i && !key_valid_i)
-                validation_rc_r = TPM_RC_KEY;
-            else
-                request_valid_r = 1'b1; // If none of the above error conditions are true, set the valid command request to TRUE
-        end
-        // Primitive TPM2_EncryptDecrypt2 Path Validation:
-        else begin
-            if (!key_valid_i) // key_valid_i is set to a value that is pre-determined
-                validation_rc_r = TPM_RC_KEY; // If the key is invalid, then send the following error handle
-            else if (mode_i != SYM_MODE_CFB)
-                validation_rc_r = TPM_RC_MODE; // If the mode is none of the option cipher blocks, or the NULL path, then send the following error handle.
-            else if (data_bytes_i > 5'd16)
-                validation_rc_r = TPM_RC_SIZE;
-            else
-                request_valid_r = 1'b1; // If none of the above error conditions are true, set the valid command request to TRUE
-        end
-    end
-
-    aes AES_IMPLEMENT (
-        .clock_i (clock_i),
-        .reset_n_i (reset_n_i),
-
-        .init_i (aes_init_r),
-        .next_i (aes_next_r),
-        // Initial implementation: AES-256
-        .keylen_i (1'b1),
-        .key_i (aes_key_r),
-        .block_i (aes_feedback_r),
-        .ready_o (aes_ready_w),
-        .result_valid_o (aes_result_valid_w),
-        .block_o (cipher_stream_block_w)
-    );
-   
-    // Sequential control + execution datapath
-    // Use <= in clocked logic for non-blocking updates for registers. All registers will update together at a time step
     always @(posedge clock_i or negedge reset_n_i) begin
         if (!reset_n_i) begin
-            state_r           <= ST_IDLE;
-            aes_init_r        <= 1'b0;
-            aes_next_r        <= 1'b0;
-            aes_key_r         <= 256'b0;
-            aes_feedback_r    <= 128'b0;
-            data_r            <= 128'b0;
-            data_mask_r       <= 128'b0;
-            xor_mask_r        <= 128'b0;
-            use_xor_r         <= 1'b0;
-            decrypt_r         <= 1'b0;
-            wait_o            <= 1'b0;
-            done_o            <= 1'b0;
-            tpm_rc_o          <= TPM_RC_SUCCESS;
-            data_out_o        <= 128'b0;
-            iv_out_o          <= 128'b0;
-            primitive_path_o  <= 1'b0;
-            session_path_o    <= 1'b0;
+            state_r <= IDLE;
+            selected_session_r <= 0;
         end
-        else begin
-            done_o <= 1'b0;
-            aes_init_r <= 1'b0;
-            aes_next_r <= 1'b0;
-
-             case (state_r)
-                ST_IDLE: begin
-                    wait_o <= 1'b0;
-                    if (start_i) begin
-                        wait_o           <= 1'b1;
-                        tpm_rc_o         <= validation_rc_r;
-                        data_out_o       <= 128'b0;
-                        iv_out_o         <= 128'b0;
-                        primitive_path_o <= 1'b0;
-                        session_path_o   <= 1'b0;
-
-                        if (!request_valid_r)
-                            state_r <= ST_DONE;
-                        else if (session_protect_i && !session_use_xor_i && !kdfa_req_ready_w) begin
-                            // A dedicated, acknowledged KDFa should be idle for each new job.
-                            tpm_rc_o <= TPM_RC_FAILURE;
-                            state_r <= ST_DONE;
-                        end
-                        else begin
-                            data_r           <= data_in_i;
-                            data_mask_r      <= byte_mask_w;
-                            xor_mask_r       <= session_mask_i;
-                            use_xor_r        <= session_protect_i && session_use_xor_i;
-                            decrypt_r        <= session_protect_i ? session_decrypt_i : decrypt_i;
-                            primitive_path_o <= !session_protect_i;
-                            session_path_o   <= session_protect_i;
-                            if (session_protect_i && !session_use_xor_i) begin
-                                // KDFa accepted the supplied session inputs on this edge.
-                                aes_key_r      <= 0;
-                                aes_feedback_r <= 0;
-                                state_r        <= ST_KDFA_WAIT;
-                            end else begin
-                                aes_key_r      <= key_i;
-                                aes_feedback_r <= iv_i;
-                                state_r        <= ST_EXECUTE;
-                            end
-                        end
-                    end
-                end
-
-                ST_KDFA_WAIT: begin
-                    if (kdfa_rsp_valid_w) begin
-                        if (kdfa_error_w) begin
-                            tpm_rc_o <= TPM_RC_FAILURE;
-                            state_r <= ST_DONE; // Failed derivation must never start AES.
-                        end else begin
-                            // Capture before KDFa clears its outputs on this acknowledgement.
-                            aes_key_r <= kdfa_key_w;
-                            aes_feedback_r <= kdfa_iv_w;
-                            state_r <= ST_EXECUTE;
-                        end
-                    end
-                end
-
-                ST_EXECUTE: begin
-                    if (data_mask_r == 128'b0) begin
-                        // Empty operation: return the supplied/derived IV without starting AES.
-                        data_out_o <= 128'b0;
-                        iv_out_o   <= aes_feedback_r;
-                        state_r    <= ST_DONE;
-                    end
-                    else if (use_xor_r) begin
-                        // Mask has already been derived by the session/KDF service.
-                        data_out_o <= (data_r ^ xor_mask_r) & data_mask_r;
-                        iv_out_o   <= aes_feedback_r;
-                        state_r    <= ST_DONE;
-                    end
-                    else if (aes_ready_w) begin
-                        aes_init_r <= 1'b1;
-                        state_r    <= ST_KEY_BUSY;
-                    end
-                    // Otherwise hold this state until the core can accept init.
-                end
-
-                ST_KEY_BUSY: begin
-                    // Do not mistake the pre-init ready=1 for completion.
-                    if (!aes_ready_w)
-                        state_r <= ST_KEY_READY;
-                end
-
-                ST_KEY_READY: begin
-                    if (aes_ready_w) begin
-                        // Key expansion completed; start E_key(feedback_IV).
-                        aes_next_r <= 1'b1;
-                        state_r    <= ST_BLOCK_BUSY;
-                    end
-                end
-
-                ST_BLOCK_BUSY: begin
-                    // Qualify this new launch before looking at result_valid.
-                    if (!aes_ready_w)
-                        state_r <= ST_BLOCK_DONE;
-                end
-
-                ST_BLOCK_DONE: begin
-                    if (aes_ready_w && aes_result_valid_w) begin
-                        data_out_o     <= cfb_result_w;
-                        iv_out_o       <= cfb_feedback_w;
-                        aes_feedback_r <= cfb_feedback_w;
-                        state_r        <= ST_DONE;
-                    end
-                end
-
-                ST_DONE: begin
-                    done_o  <= 1'b1;
-                    state_r <= ST_RELEASE;
-                    // wait_o remains high through the result pulse.
-                end
-
-                ST_RELEASE: begin
-                    // A held legacy start must not retrigger the same job.
-                    if (!start_i) begin
-                        wait_o  <= 1'b0;
-                        state_r <= ST_IDLE;
-                    end
-                end
-
-                default: begin
-                    wait_o           <= 1'b1;
-                    tpm_rc_o         <= TPM_RC_FAILURE;
-                    data_out_o       <= 128'b0;
-                    iv_out_o         <= 128'b0;
-                    primitive_path_o <= 1'b0;
-                    session_path_o   <= 1'b0;
-                    state_r          <= ST_DONE;
-                end
-            endcase
-        end
+        else case (state_r)
+            IDLE: if (accept_w) begin
+                selected_session_r <= session_protect_i;
+                state_r <= WAIT_JOB;
+            end
+            WAIT_JOB: if (selected_session_r ? s_done : p_done) state_r <= RELEASE;
+            RELEASE: if (!start_i && !s_wait && !p_wait && !cfb_wait) state_r <= IDLE;
+            default: state_r <= IDLE;
+        endcase
     end
 
+    // Session path: derive CFB key/IV or XOR mask using KDFa and HMAC.
+    session_parameter_controller SESSION_CONTROLLER (
+        .clock_i(clock_i),
+        .reset_n_i(reset_n_i),
+        .start_i(accept_w && session_protect_i),
+        .session_valid_i(session_valid_i),
+        .key_valid_i(key_valid_i),
+        .session_decrypt_i(session_decrypt_i),
+        .session_encrypt_i(session_encrypt_i),
+        .session_use_xor_i(session_use_xor_i),
+        .mode_i(mode_i),
+        .data_bytes_i(data_bytes_i),
+        .session_value_i(session_value_i),
+        .nonce_newer_i(nonce_newer_i),
+        .nonce_older_i(nonce_older_i),
+        .data_in_i(data_in_i),
+        .iv_i(iv_i),
+        .cfb_start_o(s_start),
+        .cfb_key_o(s_key),
+        .cfb_iv_o(s_iv),
+        .cfb_data_o(s_data),
+        .cfb_bytes_o(s_bytes),
+        .cfb_decrypt_o(s_decrypt),
+        .cfb_done_i(cfb_done),
+        .cfb_rc_i(cfb_rc),
+        .cfb_data_i(cfb_result),
+        .cfb_iv_i(cfb_iv_result),
+        .wait_o(s_wait),
+        .done_o(s_done),
+        .tpm_rc_o(s_rc),
+        .data_out_o(s_result),
+        .iv_out_o(s_iv_result)
+    );
+
+    // Command path: use the AES object key and IV supplied by upstream logic.
+    encrypt_decrypt2_controller ENCRYPT_DECRYPT_CONTROLLER (
+        .clock_i(clock_i),
+        .reset_n_i(reset_n_i),
+        .start_i(accept_w && !session_protect_i),
+        .command_code_i(command_code_i),
+        .key_valid_i(key_valid_i),
+        .decrypt_i(decrypt_i),
+        .mode_i(mode_i),
+        .data_bytes_i(data_bytes_i),
+        .key_i(key_i),
+        .iv_i(iv_i),
+        .data_in_i(data_in_i),
+        .cfb_start_o(p_start),
+        .cfb_key_o(p_key),
+        .cfb_iv_o(p_iv),
+        .cfb_data_o(p_data),
+        .cfb_bytes_o(p_bytes),
+        .cfb_decrypt_o(p_decrypt),
+        .cfb_done_i(cfb_done),
+        .cfb_rc_i(cfb_rc),
+        .cfb_data_i(cfb_result),
+        .cfb_iv_i(cfb_iv_result),
+        .wait_o(p_wait),
+        .done_o(p_done),
+        .tpm_rc_o(p_rc),
+        .data_out_o(p_result),
+        .iv_out_o(p_iv_result)
+    );
+
+    // Shared CFB worker: the remembered path selects its key, IV and data.
+    cfb_block CFB_BLOCK (
+        .clock_i(clock_i),
+        .reset_n_i(reset_n_i),
+        .start_i(s_start || p_start),
+        .key_i(selected_session_r ? s_key : p_key),
+        .iv_i(selected_session_r ? s_iv : p_iv),
+        .data_in_i(selected_session_r ? s_data : p_data),
+        .data_bytes_i(selected_session_r ? s_bytes : p_bytes),
+        .decrypt_i(selected_session_r ? s_decrypt : p_decrypt),
+        .wait_o(cfb_wait),
+        .done_o(cfb_done),
+        .tpm_rc_o(cfb_rc),
+        .data_out_o(cfb_result),
+        .iv_out_o(cfb_iv_result)
+    );
 endmodule
+
+`default_nettype wire

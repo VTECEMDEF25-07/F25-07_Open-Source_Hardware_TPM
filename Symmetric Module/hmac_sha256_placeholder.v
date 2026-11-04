@@ -1,19 +1,25 @@
 // Filename: hmac_sha256_placeholder.v
+// Author: Makeda Solomon
+// Date: 10/01/2026
+// Version 1: Template
+// Description: FAKE HMAC FOR PRACTICE ONLY. This does NOT calculate HMAC or SHA-256.
+// It mixes inputs with XOR, delays its valid signal, and holds the result for you.
+// Filename: hmac_sha256_placeholder.v
 // Practice only: return the first 32 message bytes as a pretend digest.
 // This does NOT calculate HMAC or SHA-256.
 `default_nettype none
 
 module hmac_sha256_placeholder (
-    input wire clk_i,                 // Same clock as kdfa_control.
-    input wire reset_n_i,             // Reset together with kdfa_control.
-    input wire req_valid_i,           // Sender has a key/message ready.
-    output wire req_ready_o,          // Placeholder can accept it.
-    input wire [255:0] key_i,         // Real HMAC needs this; this fake ignores it.
-    input wire [607:0] message_i,     // Fixed 76-byte message from kdfa_control.
-    output reg [255:0] digest_o,      // FAKE 32-byte result; read only when valid.
-    output reg rsp_valid_o,           // 1 means a fake result is waiting to be read.
-    input wire rsp_ready_i,           // Sender is accepting our result.
-    output wire error_o              // This simple placeholder never reports an error.
+    input wire clk_i, // Same clock as kdfa_control.
+    input wire reset_n_i, // Reset together with kdfa_control.
+    input wire req_valid_i, // Sender has a key/message ready.
+    output wire req_ready_o, // Placeholder can accept it.
+    input wire [255:0] key_i, // Real HMAC needs this; this fake ignores it.
+    input wire [607:0] message_i, // Fixed 76-byte message from kdfa_control.
+    output reg [255:0] digest_o, // FAKE 32-byte result; read only when valid.
+    output reg rsp_valid_o, // 1 means a fake result is waiting to be read.
+    input wire rsp_ready_i, // Sender is accepting our result.
+    output wire error_o // This simple placeholder never reports an error.
 );
     // Accept a message only when no previous result is waiting.
     assign req_ready_o = reset_n_i && !rsp_valid_o;
