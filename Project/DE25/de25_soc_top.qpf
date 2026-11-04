@@ -1,6 +1,6 @@
 # Filename: de25_soc_top.qpf
 # Author: Aaron Grossman
 # Date: 2026-10-14
-# General Description: Connects the original Phase 1 TPM to DE25 pins, related clocks, reset and independent cooling.
+# General Description: Connects the TPM to DE25 pins, related clocks, reset and independent cooling.
 
 PROJECT_REVISION = "de25_soc_top"

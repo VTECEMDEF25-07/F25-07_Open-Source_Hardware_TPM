@@ -6,7 +6,7 @@ Author: Aaron Grossman
 
 - Optional JTAG probe, telemetry registers, enabling macro and probe timing constraints removed. The synthesized report has no `altsource_probe`/`phase1_monitor` instance.
 - Clock wrapper renamed to `de25_clock.v` / `de25_clock`; PLL parameters and TPM port connections are unchanged. Board descriptions call the design TPM.
-- Full Quartus Pro 26.1 compile PASS: 1,325 ALMs, 2 RAM blocks, 0 DSPs, 1 PLL. Build selector verifies all 10 pins and SOF generation.
+- Full Quartus Pro 26.1 compile PASS: 1,325 ALMs, 2 RAM blocks, 0 DSPs, 1 PLL. The local-only build helper verified all 10 pins and SOF generation.
 - TPM 1 MHz SPI acceptance vectors PASS with the local ideal board/PLL adapters.
 - The seven vendor fan files still match the archive byte for byte; fan-mode/reset/I2C inputs are unchanged. Their previously passed normal-operation tests remain applicable.
 - Worst setup slack remains negative (-2.790 ns); full timing/CDC signoff is incomplete. No physical-board test performed.

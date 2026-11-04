@@ -14,7 +14,7 @@
 //	Command data is parsed into a set of output busses, and reponse data is fed to the FIFO buffer.
 
 // this includes defined TPM constants (command codes, etc.)
-`include "TPM_TYPES.vh"
+`include "tpm_types.vh"
 
 module	tpm_crb
 (
