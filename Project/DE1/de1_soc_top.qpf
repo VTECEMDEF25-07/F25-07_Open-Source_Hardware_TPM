@@ -1,0 +1,6 @@
+# Filename: de1_soc_top.qpf
+# Author: Aaron Grossman
+# Date: 2026-10-14
+# General Description: Selects the board project revision.
+
+PROJECT_REVISION = "de1_soc_top"
