@@ -16,3 +16,5 @@ These runners now check the unmodified vendor AutoFan behavior and normal serial
 The scripts reference board hardware under Project/DE25/Fan Controller. Keep generated results outside source folders. Required test models and fixtures are tracked.
 
 See [RNG simulations](RNG%20Module/README.md) for the two relocated PR #38 benches. Their serial capture hardware assets are under `Testing/Hardware/RNG Module/`.
+
+See [Asymmetric Module simulations](Asymmetric%20Module/README.md) for PR #40 testbenches and Python vector runners.
