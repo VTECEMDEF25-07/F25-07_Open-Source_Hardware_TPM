@@ -59,3 +59,7 @@ Desktop.ini
 # Personal board-selection helpers; teammates open the QPF files directly.
 /Project/build.py
 /Project/board_config.json
+
+# Generated raw entropy capture datasets.
+raw_seq.bin
+raw_restart.bin
