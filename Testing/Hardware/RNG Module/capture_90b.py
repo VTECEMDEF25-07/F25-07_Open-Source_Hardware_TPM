@@ -13,12 +13,21 @@ Both files hold one sample per byte (0x00 or 0x01), which is what the tool
 expects for 1-bit samples. The restart file is row by row: the first 1000
 bytes are restart 1, the next 1000 are restart 2, and so on.
  
+Target hardware: Terasic DE25-Standard RevD (Agilex 5).
+This is a PC-side serial collector for an already-programmed FPGA.
+The positional argument is a SERIAL PORT, not a path to HDL/design files.
+It does not compile or program the FPGA. Output files are written in the
+current working directory.
+
 Setup:   pip install pyserial
-Usage:   python capture_90b.py COM5            (Windows)
-         python capture_90b.py /dev/ttyUSB0    (Linux)
+Run from the repository root:
+  python "Testing/Hardware/RNG Module/capture_90b.py" COM5
+  python "Testing/Hardware/RNG Module/capture_90b.py" /dev/ttyUSB0
+
+Use the actual serial port connected to the FPGA's UART adapter.
 Options: --baud 115200  must match BAUD in entropy_test_top.v
          --seq-only / --restart-only
- 
+
 Written by Jungyeon Won with the help of generative AI
 """
  

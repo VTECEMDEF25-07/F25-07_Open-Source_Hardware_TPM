@@ -6,11 +6,18 @@
 //   Part B drives tpm2_get_random alone with a known DRBG block, so the
 //   exact payload bytes, TPM_RC_INITIALIZE and TPM_RC_FAILURE can be checked.
 //
-// Run (Icarus):
-//   iverilog -g2005 -DSIMULATION -s tb_tpm2_get_random -o sim \
-//       tb_tpm2_get_random.v RNG.v tpm2_get_random.v \
-//       random_number_generation.v entropy_source.v ring_osc.v
-//   vvp sim
+// Run from the repository root (Icarus; OUTPUT is a scratch executable path):
+//   iverilog -g2005 -DSIMULATION -s tb_tpm2_get_random -o OUTPUT \
+//       "Testing/Simulation/RNG Module/tb_tpm2_get_random.v" \
+//       "Source Code/RNG Module/RNG.v" \
+//       "Source Code/RNG Module/tpm2_get_random.v" \
+//       "Source Code/RNG Module/random_number_generation.v" \
+//       "Source Code/RNG Module/entropy_source.v" \
+//       "Source Code/RNG Module/ring_osc.v"
+//   vvp -n OUTPUT
+//
+// Questa: compile the same files with +define+SIMULATION and load
+// work.tb_tpm2_get_random. See Testing/Simulation/RNG Module/README.md.
 //
 // Written by Jungyeon Won with the help of generative AI
 // ===========================================================================

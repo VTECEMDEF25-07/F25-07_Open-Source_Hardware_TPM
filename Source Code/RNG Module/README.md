@@ -12,4 +12,4 @@ These sources were added to main by PR #38 (merge commit `847341411dae1319951a01
 
 Hash conditioning and Hash_DRBG remain placeholders in the supplied code. The existing DE1/DE25 TPM projects do not yet instantiate this standalone RNG wrapper. Moving these sources does not integrate them into the TPM command path.
 
-See [RNG simulations](../../Testing/Simulation/RNG%20Module/README.md) and [DE25 entropy capture](../../Testing/Hardware/DE25/Entropy%20Capture/README.md).
+See [RNG simulations](../../Testing/Simulation/RNG%20Module/README.md) and [DE25 entropy capture](../../Testing/Hardware/RNG%20Module/README.md).

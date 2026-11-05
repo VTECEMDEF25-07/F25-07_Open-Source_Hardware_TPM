@@ -7,7 +7,7 @@
 // Connects entropy_source's raw-sample tap to entropy_capture, which stores
 // samples in on-chip RAM and sends them to a PC over UART.
 //
-// Set up for the Terasic DE25-Standard (Agilex 5 A5ED013BB32A):
+// Set up for the Terasic DE25-Standard RevD (Agilex 5 A5ED013BB32A):
 //   clk       CLOCK_50 (50 MHz)
 //   rst_n     KEY[0]   (pressed = 0 = reset)
 //   uart_rx   GPIO[0]  on the 3.3 V DE-GPIO header, from adapter TX

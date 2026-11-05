@@ -2,7 +2,7 @@
 
 Author: Aaron Grossman (organization notes; original source authorship preserved).
 
-Both benches are preserved unchanged from PR #38. Their module interfaces and original comments are retained; the old co-located compile examples in the source headers predate this repository layout.
+Both benches retain PR #38's executable test logic and original author notices. Their header compile examples now match the current repository layout.
 
 From the repository root, use an empty scratch directory outside tracked source for the simulator outputs. With Icarus Verilog installed, substitute an absolute scratch path for OUTPUT:
 

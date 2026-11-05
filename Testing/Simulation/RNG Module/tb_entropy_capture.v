@@ -8,12 +8,17 @@
 //   - 'R' does the right number of restarts, records the right number of
 //     samples after each one (only after warm-up), and sends them in order
 //
-// Run (Icarus):
-//   iverilog -g2005 -s tb_entropy_capture -o simcap tb_entropy_capture.v \
-//       entropy_capture.v uart.v entropy_source.v ring_osc.v
-//   vvp -n simcap
-// In Quartus: same NativeLink setup as tb_tpm2_get_random, with this file
-// and tb_entropy_capture as the test bench.
+// Run from the repository root (Icarus; OUTPUT is a scratch executable path):
+//   iverilog -g2005 -DSIMULATION -s tb_entropy_capture -o OUTPUT \
+//       "Testing/Simulation/RNG Module/tb_entropy_capture.v" \
+//       "Source Code/RNG Module/entropy_capture.v" \
+//       "Source Code/RNG Module/uart.v" \
+//       "Source Code/RNG Module/entropy_source.v" \
+//       "Source Code/RNG Module/ring_osc.v"
+//   vvp -n OUTPUT
+//
+// Questa: compile the same files with +define+SIMULATION and load
+// work.tb_entropy_capture. See Testing/Simulation/RNG Module/README.md.
 //
 // Written by Jungyeon Won with the help of generative AI
 // ===========================================================================

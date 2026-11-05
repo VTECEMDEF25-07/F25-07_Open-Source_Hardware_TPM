@@ -1,7 +1,7 @@
 # ===========================================================================
 # DE25_entropy_test_pins.tcl
 #
-# Pin assignments for entropy_test_top on the Terasic DE25-Standard
+# Pin assignments for entropy_test_top on the Terasic DE25-Standard RevD
 # (Agilex 5 A5ED013BB32A). Pin numbers are from the DE25-Standard user
 # manual (tables 3-9, 3-12, 3-13, 3-16).
 #
