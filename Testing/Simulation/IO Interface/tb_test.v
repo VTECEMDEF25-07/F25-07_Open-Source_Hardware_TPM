@@ -15275,7 +15275,7 @@ module	tb_test();
 
 endmodule
 
-module	PLL_100
+module	de1_clock
 (
 	input		refclk, rst,
 	output	reg	outclk_0
