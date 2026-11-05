@@ -13,11 +13,12 @@ module	tb_test();
 	reg		SPI_cs_n;
 	reg		SPI_rst_n;
 	wire		SPI_PIRQ_n;
+	wire [9:0]	LEDR;
 
-	test0_top	dut
+	de1_soc_top	dut
 	(
 		.CLOCK_50(clock), .RESET_N(reset_n),
-		.GPIO_1_2(SPI_clock), .GPIO_1_3(SPI_mosi),
+		.GPIO_1_2(SPI_clock), .GPIO_1_3(SPI_mosi), .LEDR(LEDR),
 		.GPIO_1_4(SPI_miso), .GPIO_1_5(SPI_cs_n),
 		.GPIO_1_6(SPI_rst_n), .GPIO_1_7(SPI_PIRQ_n)
 	);
@@ -15277,14 +15278,14 @@ endmodule
 
 module	PLL_100
 (
-	input		refclk, rst,
-	output	reg	outclk_0
+	input		refclk_i, rst_i,
+	output	reg	outclk_0_o
 );
 
 	initial
 	begin : pll_clock_100
-		outclk_0 = 1'b0;
-		forever outclk_0 = #5 ~outclk_0;
+		outclk_0_o = 1'b0;
+		forever outclk_0_o = #5 ~outclk_0_o;
 	end
 
 endmodule
