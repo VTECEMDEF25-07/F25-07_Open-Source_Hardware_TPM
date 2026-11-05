@@ -458,7 +458,7 @@ void close_verilog_gen(void)
 		"\n"
 		"endmodule\n"
 		"\n"
-		"module\tPLL_100\n"
+		"module\tde1_clock\n"
 		"(\n"
 		"\tinput\t\trefclk, rst,\n"
 		"\toutput\treg\toutclk_0\n"

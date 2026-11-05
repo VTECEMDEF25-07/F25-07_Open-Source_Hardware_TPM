@@ -23,3 +23,9 @@ Fresh full compilation PASS; required PLL, physical pins and SOF verified with t
 SOF SHA256: `b42e389471b2796a385ebcea3333b9c7b83ab2b4f6bc232db2afc44527ba55bd`.
 
 Both relocated RNG benches also print `ALL TESTS PASSED` in Questa using their new source paths. Evidence: `AI/tmp/pr36-rng-relocation-tests/`. They use behavioral entropy simulation and do not establish physical entropy quality or TPM integration.
+
+
+## Clock wrapper naming - November 5, 2026
+
+Renamed the board PLL wrapper file/module to `de1_clock.v` / `de1_clock` and updated project, top, legacy simulation model and generator references. PLL parameters and ports are unchanged. A fresh Quartus Lite 24.1 full compile passes; the local-only build check verifies the required PLL, physical pin assignments and SOF. Evidence: class-workspace `AI/tmp/pr36-de1-clock-rename-build.log`.
+SOF SHA256: `3d69e01ab017d1dfcf75be9cbe503907589ad58802e5af2a182b104a0f0829bf`.

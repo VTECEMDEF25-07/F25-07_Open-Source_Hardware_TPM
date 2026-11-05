@@ -1,5 +1,5 @@
-// Filename: PLL_100.v
-// Modules: PLL_100
+// Filename: de1_clock.v
+// Modules: de1_clock
 // Author: Aaron Grossman
 // Date: 2026-10-14
 // General Description: Supplies the original DE1-SoC top with a 100 MHz clock from its 50 MHz reference.
@@ -7,7 +7,7 @@
 // Supplies the clock module referenced by the TPM board top.
 // ALTERA_PLL General mode lets Quartus map 50-to-100 MHz to the target Cyclone V.
 // Family-specific low-level mode requires generated analog/counter settings.
-module PLL_100 (
+module de1_clock (
     input refclk,
     input rst,
     output outclk_0

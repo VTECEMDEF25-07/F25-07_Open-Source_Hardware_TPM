@@ -16,7 +16,7 @@ quartus_sh --flow compile de1_soc_top
 ```
 
 This project uses the board-local `de1_soc_top.v` and TPM
-and SPI modules. `PLL_100.v` supplies the previously missing 50-to-100 MHz
+and SPI modules. `de1_clock.v` supplies the previously missing 50-to-100 MHz
 clock module through the Cyclone V `altera_pll` macro. There is no DE25 fan
 controller or new keygen integration in this project. LED0 shows the original
 active-low interrupt signal; the remaining LEDs are off.
