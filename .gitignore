@@ -1,148 +1,65 @@
-################################################################################
-# Chat GPT 4o Generated File
-#
-# This .gitignore file was generated with the assistance of an AI tool.
-# It is intended as a general-purpose ignore configuration for Intel Quartus
-# FPGA projects and associated simulation environments.
-#
-# Review and modify as necessary to fit the specific needs of your project.
-################################################################################
-
-
-################################################################################
-# Quartus Prime Build Files
-################################################################################
-
-# Main output directories
+# Generated Quartus outputs; hand-authored project/IP files stay tracked.
 db/
 incremental_db/
 output_files/
 greybox_tmp/
-simulation/modelsim/
-sim/
 qdb/
-
-# Quartus compilation reports
+dni/
+tmp-clearbox/
+ip_user_files/
 *.rpt
 *.summary
 *.smsg
 *.qws
-*.sta.rpt
-*.fit.rpt
-*.asm.rpt
-*.map.rpt
-*.flow.rpt
-
-#Quartus project files
-*.qpf
-*.qsf
-*.sdc 
-# ^ Timing constraints this might be important to keep, review before ignoring
-
-# Programming files (usually regenerated)
+*.qdb
+*.ddb
+*.qdf
+*.qpg
 *.sof
 *.pof
 *.jic
 *.rbf
-
-# Database files
-*.ddb
-*.qdb
-*.qdf
-*.qpg
-
-# Temporary files
-*.bak
-*.tmp
-*.temp
-
-################################################################################
-# IP Generated Files
-################################################################################
-
-# Quartus IP cache
-ip_cores/
-ip_user_files/
-*.ipregen.rpt
-*.ipcache
-
-# Platform Designer / Qsys
-*.qsys_edit
-*.qsys_simdir/
-*.sopcinfo
-
-################################################################################
-# Simulation Files (ModelSim / Questa)
-################################################################################
-
-# ModelSim work libraries
+c5_pin_model_dump.txt
+# Simulation products; never ignore Simulation source or fixtures.
 work/
-vsim.wlf
+obj_dir/
+build/
+modelsim.ini
 transcript
-
-# Simulation generated files
 *.vcd
 *.wlf
-*.log
-
-# ModelSim directories
-modelsim.ini
-simulation/
-
-################################################################################
-# Waveform Files
-################################################################################
-
-*.vwf
 *.vpd
-
-################################################################################
-# Editor Files
-################################################################################
-
-# VSCode
+*.fst
+*.log
+*.jou
+__pycache__/
+*.pyc
 .vscode/
-
-# Windows
+.idea/
 Thumbs.db
 Desktop.ini
-
-# Mac
 .DS_Store
-
-################################################################################
-# Backup Files
-################################################################################
-
+*.bak
+*.tmp
 *~
 *.orig
 *.rej
+/local_scripts/
 
-################################################################################
-# Python Scripts (if using automation)
-################################################################################
+# Compiler and simulator binaries.
+*.o
+*.a
+*.exe
+*.dll
+*.vvp
+*.out
+*.ipcache
+*.qsys_edit
 
-__pycache__/
-*.pyc
+# Personal board-selection helpers; teammates open the QPF files directly.
+/Project/build.py
+/Project/board_config.json
 
-################################################################################
-# Logs
-################################################################################
-
-*.log
-
-
-################################################################################
-# Keep Important Source Files
-################################################################################
-
-# DO NOT IGNORE:
-# *.v
-# *.sv
-# *.vhd
-# *.qsf
-# *.sdc
-# *.tcl
-# *.qip
-# *.bsf
-# testbenches/
+# Generated raw entropy capture datasets.
+raw_seq.bin
+raw_restart.bin
