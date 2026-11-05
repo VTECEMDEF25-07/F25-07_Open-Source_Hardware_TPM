@@ -1,3 +1,11 @@
+<!--
+Filename: CODING_STANDARDS.md
+Authors: Project contributors; see Git history.
+Date: 2026-10-13
+General Description: Documents Coding and HDL language rules.
+AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+-->
+
 # Coding and HDL language rules
 
 Effective October 13, 2026. Aaron's supplied naming/commenting/wiring conventions apply to contributed HDL.
