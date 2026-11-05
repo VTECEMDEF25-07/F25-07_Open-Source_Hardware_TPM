@@ -1,8 +1,5 @@
 # Asymmetric Module simulations
 
-The five original PR #40 Verilog testbenches are preserved unchanged here.
-RTL is in [Source Code/Asymmetric Module](../../../Source%20Code/Asymmetric%20Module/README.md).
-
 ## Python vector tests
 
 Requires Python 3.9 or newer, Verilator with `--binary` and `--timing` support,
