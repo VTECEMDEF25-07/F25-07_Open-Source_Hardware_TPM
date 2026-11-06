@@ -6,3 +6,14 @@
 
 # WSL/Linux runners must remain executable after Windows Git checkouts.
 *.sh text eol=lf
+
+# Shared project organization.
+# Preserve existing HDL and fixture bytes during checkout and moves.
+*.v -text
+*.vh -text
+*.sv -text
+*.c -text
+*.h -text
+# Preserve RNG hardware-tool file bytes on checkout.
+"Testing/Hardware/RNG Module/capture_90b.py" -text
+"Testing/Hardware/RNG Module/DE25_entropy_test_pins.tcl" -text

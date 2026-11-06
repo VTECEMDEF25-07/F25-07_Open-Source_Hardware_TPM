@@ -48,7 +48,7 @@ transcript
 *.elf
 *.map
 *.d
-/Key Generation/firmware/generated/
+/Source Code/Key Generation/firmware/generated/
 
 # Tool caches and local environments.
 __pycache__/
@@ -70,3 +70,21 @@ Desktop.ini
 
 # Personal verification utilities, excluded from the review.
 /local_scripts/
+
+# Shared project organization.
+# Generated Quartus outputs; hand-authored project/IP files stay tracked.
+c5_pin_model_dump.txt
+# Simulation products; never ignore Simulation source or fixtures.
+obj_dir/
+*.pyc
+# Compiler and simulator binaries.
+*.exe
+*.dll
+*.vvp
+*.out
+# Personal board-selection helpers; teammates open the QPF files directly.
+/Project/build.py
+/Project/board_config.json
+# Generated raw entropy capture datasets.
+raw_seq.bin
+raw_restart.bin
