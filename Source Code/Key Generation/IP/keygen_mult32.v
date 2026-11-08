@@ -5,7 +5,7 @@
 // General Description: Selects the generic or Altera 32-bit multiplier resource with a common interface.
 // AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
 
-`include "keygen_ip_types.vh"
+`include "ip_types.vh"
 
 module keygen_mult32 #(parameter IP_TYPE = `IP_GENERIC) (
     input clock_i,
@@ -35,8 +35,7 @@ module keygen_mult32 #(parameter IP_TYPE = `IP_GENERIC) (
             // The installed Verilator 5.020 resolves unknown cells before pruning branches.
             // Stop before any transfers; runners must require their explicit PASS marker.
             initial begin
-                $display("ERROR: KEYGEN_INVALID_IP_TYPE: use IP_GENERIC or IP_ALTERA");
-                $finish;
+                $display("KEYGEN_INVALID_IP_TYPE: use IP_GENERIC or IP_ALTERA"); $stop;
             end
 `else
             KEYGEN_INVALID_IP_TYPE__USE_IP_GENERIC_OR_IP_ALTERA invalid_selection ();

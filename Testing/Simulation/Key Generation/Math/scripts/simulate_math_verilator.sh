@@ -12,7 +12,7 @@ build_dir=$1
 mkdir -p "$build_dir"
 python3 "$source_root/Math/scripts/generate_vectors.py" "$build_dir/vectors.txt" --full --max-limbs 32
 cd "$build_dir"
-verilator -I"$source_root/../../../Source Code/Key Generation/IP" --cc --exe --main --timing -Wno-fatal --top-module tb_keygen_math \
+verilator -I"$source_root/../../../Source Code" --cc --exe --main --timing -Wno-fatal --top-module tb_keygen_math \
   -DKEYGEN_MATH_SMALL --Mdir obj \
   "$source_root/../../../Source Code/Key Generation/IP/"*.v "$source_root/../../../Source Code/Key Generation/rtl/arithmetic/keygen_math.v" \
   "$source_root/Math/tests/tb_keygen_math.sv" > "$build_dir/build.log" 2>&1

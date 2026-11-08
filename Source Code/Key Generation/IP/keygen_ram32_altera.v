@@ -6,7 +6,7 @@
 // AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
 
 // One enabled-edge read, new data on collision. Reset never clears memory.
-module keygen_ram32_altera #(parameter ADDRESS_WIDTH = 8) (
+module keygen_ram32_altera #(parameter ADDRESS_WIDTH = 8, parameter DEVICE_FAMILY = "Agilex 5") (
     input clock_i,
     input reset_n_i,
     input clock_en_i,
@@ -18,6 +18,15 @@ module keygen_ram32_altera #(parameter ADDRESS_WIDTH = 8) (
     output read_valid_o,
     output [31:0] read_data_o
 );
+    // Family is fixed by the board wrapper; never map an unknown family to RAM.
+    generate if (DEVICE_FAMILY != "Agilex 5" && DEVICE_FAMILY != "Cyclone V") begin : invalid_family
+`ifdef VERILATOR
+        initial begin $display("PROJECT_UNSUPPORTED_DEVICE_FAMILY"); $stop; end
+`else
+        PROJECT_UNSUPPORTED_DEVICE_FAMILY invalid_selection ();
+`endif
+    end endgenerate
+    localparam RAM_BLOCK_TYPE = (DEVICE_FAMILY == "Cyclone V") ? "M10K" : "M20K";
     reg read_valid_reg;
     always @(posedge clock_i or negedge reset_n_i) begin
         if (!reset_n_i) read_valid_reg <= 1'b0;
@@ -40,7 +49,7 @@ module keygen_ram32_altera #(parameter ADDRESS_WIDTH = 8) (
     assign read_data_o = forward_reg ? forward_data_reg : memory_data;
     // Explicit forwarding defines collisions independently of vendor RAM mode.
     altsyncram #(
-        .operation_mode("DUAL_PORT"), .intended_device_family("Agilex 5"),
+        .operation_mode("DUAL_PORT"), .intended_device_family(DEVICE_FAMILY),
         .width_a(32), .width_b(32),
         .widthad_a(ADDRESS_WIDTH), .widthad_b(ADDRESS_WIDTH),
         .numwords_a(1 << ADDRESS_WIDTH), .numwords_b(1 << ADDRESS_WIDTH),
@@ -48,7 +57,7 @@ module keygen_ram32_altera #(parameter ADDRESS_WIDTH = 8) (
         .outdata_reg_b("UNREGISTERED"),
         .clock_enable_input_a("NORMAL"), .clock_enable_input_b("NORMAL"),
         .read_during_write_mode_mixed_ports("DONT_CARE"),
-        .ram_block_type("M20K"), .power_up_uninitialized("TRUE")
+        .ram_block_type(RAM_BLOCK_TYPE), .power_up_uninitialized("TRUE")
     ) memory (
         .clock0(clock_i), .clock1(),
         .clocken0(clock_en_i && reset_n_i), .clocken1(1'b1),

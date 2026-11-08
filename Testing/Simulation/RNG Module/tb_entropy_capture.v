@@ -9,7 +9,7 @@
 //     samples after each one (only after warm-up), and sends them in order
 //
 // Run from the repository root (Icarus; OUTPUT is a scratch executable path):
-//   iverilog -g2005 -DSIMULATION -s tb_entropy_capture -o OUTPUT \
+//   iverilog -g2005 -I"Source Code" -s tb_entropy_capture -o OUTPUT \
 //       "Testing/Simulation/RNG Module/tb_entropy_capture.v" \
 //       "Source Code/RNG Module/entropy_capture.v" \
 //       "Source Code/RNG Module/uart.v" \
@@ -17,14 +17,15 @@
 //       "Source Code/RNG Module/ring_osc.v"
 //   vvp -n OUTPUT
 //
-// Questa: compile the same files with +define+SIMULATION and load
+// Questa: compile the same files with the Source Code include path and load
 // work.tb_entropy_capture. See Testing/Simulation/RNG Module/README.md.
 //
 // Written by Jungyeon Won with the help of generative AI
 // ===========================================================================
 `timescale 1ns/1ps
  
-module tb_entropy_capture;
+`include "ip_types.vh"
+module tb_entropy_capture #(parameter IP_TYPE = `IP_GENERIC);
  
     localparam integer CPB       = 8;    // clocks per UART bit (fast sim)
     localparam integer SEQ_BYTES = 64;
@@ -40,7 +41,7 @@ module tb_entropy_capture;
     wire fpga_tx;            // FPGA -> PC
     wire src_en, raw, raw_v, busy;
  
-    entropy_source u_src (
+    entropy_source #(.IP_TYPE(IP_TYPE)) u_src (
         .clk(clk), .rst_n(rst_n), .enable(src_en),
         .entropy_output(), .entropy_valid(),
         .raw_sample(raw), .raw_sample_valid(raw_v)

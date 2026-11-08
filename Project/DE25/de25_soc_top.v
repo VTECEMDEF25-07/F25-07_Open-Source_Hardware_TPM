@@ -5,10 +5,10 @@
 // General Description: Connects the TPM to DE25 pins, related clocks, reset and independent cooling.
 
 // TPM board wrapper for the DE25 Standard RevD.
-// This top preserves TPM_TOP's command path; it does not instantiate keygen.
-`include "keygen_ip_types.vh"
+// This top preserves TPM_TOP's command path; resource placeholders remain inactive.
+`include "ip_types.vh"
 
-module de25_soc_top (
+module de25_soc_top #(parameter IP_TYPE = `IP_ALTERA) (
     input clock_i,
     input board_reset_n_i,
     input spi_clock_i,
@@ -20,6 +20,13 @@ module de25_soc_top (
     inout fan_i2c_scl,
     inout fan_i2c_sda
 );
+    generate if (IP_TYPE != `IP_ALTERA) begin : invalid_board_backend
+`ifdef VERILATOR
+        initial begin $display("PROJECT_UNSUPPORTED_BOARD_BACKEND: this board requires IP_ALTERA"); $stop; end
+`else
+        PROJECT_UNSUPPORTED_BOARD_BACKEND__REQUIRES_IP_ALTERA invalid_selection ();
+`endif
+    end endgenerate
     wire clock_50, clock_100, clock_locked;
     wire configuration_reset;
     wire board_reset_n;
@@ -57,7 +64,7 @@ module de25_soc_top (
     end
 
     // Select the FPGA resource backend at the TPM boundary.
-    TPM_TOP #(.IP_TYPE(`IP_ALTERA)) tpm (
+    TPM_TOP #(.IP_TYPE(IP_TYPE), .DEVICE_FAMILY("Agilex 5")) tpm (
         .CLOCK_50(clock_50),
         .CLOCK_100(clock_100),
         .RESET_n(tpm_release_reg[1]),

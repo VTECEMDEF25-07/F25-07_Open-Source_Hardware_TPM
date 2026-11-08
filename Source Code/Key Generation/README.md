@@ -25,7 +25,7 @@ AES returns four or eight 32-bit words. RSA uses exponent 65537 and returns n, e
 
 ## Resource selection
 
-Include `IP/keygen_ip_types.vh` and add `Source Code/Key Generation/IP/` to the compiler's include/search path. The header names two values: `IP_GENERIC` (0, default) and `IP_ALTERA` (1). They are constants, not global backend selectors; the former `KEYGEN_ALTERA` build define is removed.
+Include `ip_types.vh` and add the repository's `Source Code/` directory to the compiler's include/search path. Supported keygen values are `IP_GENERIC` (0, default) and `IP_ALTERA` (1); reserved `IP_XILINX` (2) is explicitly rejected. See [the shared implementation contract](../README.md). The former `KEYGEN_ALTERA` build define is removed.
 
 ```verilog
 TPM_TOP #(.IP_TYPE(`IP_ALTERA)) tpm (...);
@@ -33,9 +33,9 @@ TPM_TOP #(.IP_TYPE(`IP_ALTERA)) tpm (...);
 keygen_core #(.IP_TYPE(`IP_GENERIC)) keygen (...);
 ```
 
-`TPM_TOP` passes the parameter through an inactive `keygen_placeholder` instance to the RSA engine, math/pair checker and each RAM/multiplier wrapper. Generate blocks elaborate the selected implementation independently per instance. Invalid values fail elaboration in Questa/Quartus; the older Verilator path stops at time zero with an error message and without a completed-suite PASS. There is no Xilinx value; adding its wrappers is future work.
+`TPM_TOP` passes the same parameter through its inactive keygen and RNG placeholders. Keygen propagates it through the RSA engine, math/pair checker and each RAM/multiplier wrapper. Generate blocks elaborate the selected implementation independently per instance. Invalid values fail elaboration in Questa/Quartus and cause a fatal error in Verilator. Xilinx implementations remain future work.
 
-DE25 selects Altera. The current Altera RAM implementation targets Agilex 5/M20K, so DE1 selects Generic. This parameter does not select board PLLs, pins or fan hardware, or establish that an active full keygen fits either board.
+DE1 and DE25 both select Altera at their board top. Fixed `DEVICE_FAMILY` metadata propagates to keygen memories: Cyclone V/M10K for DE1 and Agilex 5/M20K for DE25. Unknown RAM families are rejected. Board wrappers reject non-Altera choices because their PLL/reset/fan circuitry is board-specific. This does not establish that an active full keygen fits either board.
 
 ## Where to start
 

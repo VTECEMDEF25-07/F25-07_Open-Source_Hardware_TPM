@@ -15,8 +15,9 @@
  
 // Simulation time units (ignored by synthesis).
 `timescale 1ns/1ps
+`include "ip_types.vh"
  
-module entropy_source (
+module entropy_source #(parameter IP_TYPE = `IP_GENERIC) (
     input  wire         clk,             // system clock; sets the sampling rate
     input  wire         rst_n,           // active-low reset (0 = reset)
     input  wire         enable,          // 1 = run the rings and collect bits
@@ -55,10 +56,10 @@ module entropy_source (
     // likely to lock onto each other through the shared power supply.
     // -----------------------------------------------------------------------
     wire [3:0] ro_out;  // one output bit per ring
-    ring_osc #(.STAGES(5))  u_ro0 (.enable(enable), .out(ro_out[0]));
-    ring_osc #(.STAGES(7))  u_ro1 (.enable(enable), .out(ro_out[1]));
-    ring_osc #(.STAGES(11)) u_ro2 (.enable(enable), .out(ro_out[2]));
-    ring_osc #(.STAGES(13)) u_ro3 (.enable(enable), .out(ro_out[3]));
+    ring_osc #(.STAGES(5), .IP_TYPE(IP_TYPE))  u_ro0 (.enable(enable), .out(ro_out[0]));
+    ring_osc #(.STAGES(7), .IP_TYPE(IP_TYPE))  u_ro1 (.enable(enable), .out(ro_out[1]));
+    ring_osc #(.STAGES(11), .IP_TYPE(IP_TYPE)) u_ro2 (.enable(enable), .out(ro_out[2]));
+    ring_osc #(.STAGES(13), .IP_TYPE(IP_TYPE)) u_ro3 (.enable(enable), .out(ro_out[3]));
  
     // -----------------------------------------------------------------------
     // Combine the rings by XORing their outputs together.

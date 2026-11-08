@@ -21,7 +21,7 @@ clock module through the Cyclone V `altera_pll` macro. There is no DE25 fan
 controller or functional keygen command integration in this project. LED0 shows the original
 active-low interrupt signal; the remaining LEDs are off.
 
-`TPM_TOP.IP_TYPE` is passed through an inactive keygen placeholder. The DE1 wrapper selects `IP_GENERIC` (0), because the current Altera RAM wrapper targets Agilex 5/M20K rather than Cyclone V. Request/data inputs are tied inactive and outputs unused; synthesis can remove this instance. The QSF includes its source files and header search path. This is configuration wiring, not TPM key-generation support or full-core resource-fit acceptance.
+`de1_soc_top.IP_TYPE` defaults to `IP_ALTERA` (1), propagating through `TPM_TOP` to both keygen and RNG. Fixed Cyclone V family metadata selects M10K RAM. Non-Altera board settings fail explicitly. Request/enable inputs to both resource placeholders are inactive and their outputs unused; synthesis can remove them. The QSF includes their sources and shared header search path. This establishes configuration wiring, not TPM command integration or full-core resource-fit acceptance.
 
 | Signal | Connection | FPGA pin |
 |---|---|---|

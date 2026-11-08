@@ -12,7 +12,7 @@ root=a.source_root.resolve();here=Path(__file__).resolve().parents[1];build=a.bu
 subprocess.run([sys.executable,str(here/'scripts/generate_small_vectors.py'),str(build/'small_vectors.txt')],check=True)
 sources=list((root/'IP').glob('keygen_*.v'))+[root/'rtl/arithmetic/keygen_math.v',here/'tests/tb_keygen_math_small.sv']
 models=[a.altera_models/name for name in ['220model.v','altera_mf.v']]
-inputs=[root/'IP/keygen_ip_types.vh']+sources+models+[Path(__file__).resolve(),here/'scripts/generate_small_vectors.py',build/'small_vectors.txt',build/'small_vectors.hex']
+inputs=[root.parent/'ip_types.vh']+sources+models+[Path(__file__).resolve(),here/'scripts/generate_small_vectors.py',build/'small_vectors.txt',build/'small_vectors.hex']
 def hashes():return {str(p):hashlib.sha256(p.read_bytes()).hexdigest() for p in inputs}
 manifest=hashes();(build/'inputs.json').write_text(json.dumps(manifest,indent=2))
 def run(tool,args,name):
@@ -20,8 +20,8 @@ def run(tool,args,name):
 for lib in ['work','vendor']:
  if not (build/lib).exists():run('vlib',[lib],lib+'.log')
 run('vlog',['-work','vendor']+list(map(str,models)),'vendor_compile.log')
-run('vlog',['-vlog01compat','+incdir+'+str(root/'IP')]+[str(p) for p in sources if p.suffix=='.v'],'rtl_compile.log')
-run('vlog',['-sv','+incdir+'+str(root/'IP'),'+define+KEYGEN_MATH_SMALL',str(sources[-1])],'test_compile.log')
+run('vlog',['-vlog01compat','+incdir+'+str(root.parent)]+[str(p) for p in sources if p.suffix=='.v'],'rtl_compile.log')
+run('vlog',['-sv','+incdir+'+str(root.parent),'+define+KEYGEN_MATH_SMALL',str(sources[-1])],'test_compile.log')
 assert hashes()==manifest
 print('PASS actual-Altera small-domain source compile',flush=True)
 if a.compile_only:raise SystemExit

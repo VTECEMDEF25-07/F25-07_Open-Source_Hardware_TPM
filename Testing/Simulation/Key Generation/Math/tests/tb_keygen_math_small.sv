@@ -6,7 +6,7 @@
 // AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
 
 `timescale 1ns/1ps
-`include "keygen_ip_types.vh"
+`include "ip_types.vh"
 
 module tb_keygen_math_small #(parameter IP_TYPE = `IP_GENERIC);
     reg clock_reg=0; always #5 clock_reg=~clock_reg;

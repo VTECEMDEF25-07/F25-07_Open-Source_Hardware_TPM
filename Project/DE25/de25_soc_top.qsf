@@ -66,8 +66,8 @@ set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOU
 set_global_assignment -name LAST_QUARTUS_VERSION "26.1.0 Pro Edition"
 set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS INPUT TRI-STATED"
 
-# Keygen placeholder dependencies; IP_TYPE is passed from the board TPM instance.
-set_global_assignment -name SEARCH_PATH "../../Source Code/Key Generation/IP"
+# Project-wide implementation choice; keygen placeholder dependencies below.
+set_global_assignment -name SEARCH_PATH "../../Source Code"
 set_global_assignment -name VERILOG_FILE "../../Source Code/Key Generation/IP/keygen_mult32.v"
 set_global_assignment -name VERILOG_FILE "../../Source Code/Key Generation/IP/keygen_mult32_altera.v"
 set_global_assignment -name VERILOG_FILE "../../Source Code/Key Generation/IP/keygen_mult32_generic.v"
@@ -81,3 +81,10 @@ set_global_assignment -name VERILOG_FILE "../../Source Code/Key Generation/rtl/c
 set_global_assignment -name VERILOG_FILE "../../Source Code/Key Generation/rtl/rsa_rtl/keygen_rsa_controller.v"
 set_global_assignment -name VERILOG_FILE "../../Source Code/Key Generation/rtl/rsa_rtl/keygen_rsa_engine.v"
 set_global_assignment -name VERILOG_FILE "../../Source Code/Key Generation/rtl/rsa_rtl/keygen_rsa_services.v"
+
+# RNG uses the same board IP_TYPE parameter as keygen.
+set_global_assignment -name VERILOG_FILE "../../Source Code/RNG Module/RNG.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/RNG Module/entropy_source.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/RNG Module/ring_osc.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/RNG Module/random_number_generation.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/RNG Module/tpm2_get_random.v"

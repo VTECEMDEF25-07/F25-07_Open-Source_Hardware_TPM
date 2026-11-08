@@ -8,7 +8,7 @@ AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
 
 # Private scratch arithmetic engine
 
-`../rtl/arithmetic/keygen_math.v` supplies the arithmetic service used by the dedicated RTL RSA controller. Its `IP_TYPE` parameter is passed to both portable resource wrappers: `IP_GENERIC` (0, default) or `IP_ALTERA` (1), named in `IP/keygen_ip_types.vh`. It is not a complete RSA key generator or an entropy source.
+`../rtl/arithmetic/keygen_math.v` supplies the arithmetic service used by the dedicated RTL RSA controller. Its `IP_TYPE` parameter is passed to both portable resource wrappers: `IP_GENERIC` (0, default) or `IP_ALTERA` (1), named in `Source Code/ip_types.vh`. It is not a complete RSA key generator or an entropy source.
 
 ## Review order
 
@@ -16,7 +16,7 @@ Read this command table, then the RAM/command boundary in `keygen_math.v`, the `
 
 ## Interface
 
-All words are unsigned little-endian limbs: address zero of an operand contains its least-significant 32 bits. Scratch has 4,096 words (16 KiB); a numeric operand has 1Ã¢â‚¬â€œMAX_LIMBS words. MAX_LIMBS defaults to 64; the RSA board integration selects 32 to reduce operand-cache muxes while retaining 1024-bit prime arithmetic and 2048-bit full products. Multiplication produces 2N words. Inputs use `cmd_valid_i/cmd_ready_o`, an 8-bit opcode and four 32-bit arguments. One command may be outstanding. `rsp_valid_o/rsp_ready_i` holds an 8-bit terminal status until accepted. No new command is accepted while responding.
+All words are unsigned little-endian limbs: address zero of an operand contains its least-significant 32 bits. Scratch has 4,096 words (16 KiB); a numeric operand has 1-MAX_LIMBS words. MAX_LIMBS defaults to 64; the RSA board integration selects 32 to reduce operand-cache muxes while retaining 1024-bit prime arithmetic and 2048-bit full products. Multiplication produces 2N words. Inputs use `cmd_valid_i/cmd_ready_o`, an 8-bit opcode and four 32-bit arguments. One command may be outstanding. `rsp_valid_o/rsp_ready_i` holds an 8-bit terminal status until accepted. No new command is accepted while responding.
 
 The private `mem_*` port is available only when `mem_ready_o=1`, which requires IDLE and no presented command. A read or write is accepted on that rising edge; read-valid/data appear just after it. `mem_read_valid_o` is one cycle long. The command interface takes priority over the private port. This private port must never be connected to CPU data reads or external transport in production.
 
@@ -56,7 +56,7 @@ Status 00 means success; 01 bad opcode; 02 out of bounds/invalid length; 03 rese
 
 The engine reuses a pipelined 32x32 multiplier. Schoolbook multiplication accumulates one product at a time. Montgomery multiplication uses the coarsely integrated operand scanning algorithm with an extra carry word and a final conditional subtraction. Modulus setup uses five low-word Newton iterations and repeated modular doubling for R-squared. Exponentiation converts to Montgomery representation, performs a left-to-right square/multiply sequence, and converts back. These operations have data-dependent duration and are not a side-channel hardening claim.
 
-`Math/scripts/generate_vectors.py` computes expected results using Python integer multiplication, modular inverse and `pow(base, exponent, modulus)`, independently of the RTL algorithm. The test includes 32Ã¢â‚¬â€œ2048-bit Montgomery and full products, 1024-bit modular exponentiation, exponent zero/one, maximal/carry values, response backpressure, invalid commands/contexts, overlapping COPY, and reset during operation followed by reading every scrubbed RAM word.
+`Math/scripts/generate_vectors.py` computes expected results using Python integer multiplication, modular inverse and `pow(base, exponent, modulus)`, independently of the RTL algorithm. The test includes 32-2048-bit Montgomery and full products, 1024-bit modular exponentiation, exponent zero/one, maximal/carry values, response backpressure, invalid commands/contexts, overlapping COPY, and reset during operation followed by reading every scrubbed RAM word.
 
 ```powershell
 

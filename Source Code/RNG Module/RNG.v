@@ -16,8 +16,9 @@
 // Written by Jungyeon Won with the help of generative AI
  
 `timescale 1ns/1ps
+`include "ip_types.vh"
  
-module RNG (
+module RNG #(parameter IP_TYPE = `IP_GENERIC) (
     input  wire        clk,
     input  wire        rst_n,
     input  wire        enable,
@@ -43,7 +44,7 @@ module RNG (
     wire [255:0] random_output_internal;
     wire         random_valid_internal;
  
-    entropy_source u_entropy_source (
+    entropy_source #(.IP_TYPE(IP_TYPE)) u_entropy_source (
         .clk           (clk),
         .rst_n         (rst_n),
         .enable        (enable),

@@ -7,7 +7,7 @@
 //   exact payload bytes, TPM_RC_INITIALIZE and TPM_RC_FAILURE can be checked.
 //
 // Run from the repository root (Icarus; OUTPUT is a scratch executable path):
-//   iverilog -g2005 -DSIMULATION -s tb_tpm2_get_random -o OUTPUT \
+//   iverilog -g2005 -I"Source Code" -s tb_tpm2_get_random -o OUTPUT \
 //       "Testing/Simulation/RNG Module/tb_tpm2_get_random.v" \
 //       "Source Code/RNG Module/RNG.v" \
 //       "Source Code/RNG Module/tpm2_get_random.v" \
@@ -16,14 +16,15 @@
 //       "Source Code/RNG Module/ring_osc.v"
 //   vvp -n OUTPUT
 //
-// Questa: compile the same files with +define+SIMULATION and load
+// Questa: compile the same files with the Source Code include path and load
 // work.tb_tpm2_get_random. See Testing/Simulation/RNG Module/README.md.
 //
 // Written by Jungyeon Won with the help of generative AI
 // ===========================================================================
 `timescale 1ns/1ps
  
-module tb_tpm2_get_random;
+`include "ip_types.vh"
+module tb_tpm2_get_random #(parameter IP_TYPE = `IP_GENERIC);
  
     reg clk = 1'b0;
     always #5 clk = ~clk;                 // 100 MHz
@@ -41,7 +42,7 @@ module tb_tpm2_get_random;
     wire       a_rsp_valid, a_rsp_last;
     reg        a_rsp_ready = 1'b0;
  
-    RNG dut_top (
+    RNG #(.IP_TYPE(IP_TYPE)) dut_top (
         .clk(clk), .rst_n(rst_n), .enable(1'b1),
         .cmd_data(a_cmd_data), .cmd_valid(a_cmd_valid),
         .cmd_last(a_cmd_last), .cmd_ready(a_cmd_ready),

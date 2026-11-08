@@ -10,7 +10,7 @@ AI Disclosure: Codex assisted with consolidation; see docs/AI_DISCLOSURE.md in t
 
 Run the commands below from `Testing/Simulation/Key Generation`. Keep the repository together: runners locate reusable HDL under [`Source Code/Key Generation`](../../../Source%20Code/Key%20Generation/README.md). Source is Verilog-2001; SystemVerilog is used for tests. Generic resources are the default; `IP_TYPE=1` selects Altera. There is no firmware compiler/ROM dependency.
 
-The header `IP/keygen_ip_types.vh` names `IP_GENERIC=0` and `IP_ALTERA=1`. Runners supply its include path. Questa tops use `-gIP_TYPE=0`/`1`; Verilator parameter overrides use `-GIP_TYPE=0`/`1`; Quartus fit runners emit `set_parameter -name IP_TYPE ...`. The genuine-Altera full-key runner explicitly selects 1 and hashes the header as a build input. There is no global backend define or Xilinx choice.
+The header `Source Code/ip_types.vh` names `IP_GENERIC=0` and `IP_ALTERA=1`. Runners supply its include path. Questa tops use `-gIP_TYPE=0`/`1`; Verilator parameter overrides use `-GIP_TYPE=0`/`1`; Quartus fit runners emit `set_parameter -name IP_TYPE ...`. The genuine-Altera full-key runner explicitly selects 1 and hashes the header as a build input. There is no global backend define or Xilinx choice.
 
 `testbench/` contains core benches and a deterministic test-only stream. `reference/` contains the independent oracle and public corpus. `scripts/`, `IP/` and `Math/` contain runners, resource/math tests and vector generators. Products stay in ignored `build/` or explicitly supplied scratch directories.
 
@@ -83,3 +83,28 @@ November 8 IP_TYPE validation: both Generic and Altera pass the 28-case lifecycl
 The integrated results above were recorded November 6, 2026, before later author-comment changes. The full-RSA source-manifest SHA256 was `720cb2a74cd28d7826fc321ed91dbb9a09a36fb7377789a67df40ec87ce9678c`; it identifies that tested snapshot, not the later comment-edited bytes. Reference/hygiene/syntax checks were rerun November 8. Documentation consolidation does not constitute a new HDL run.
 
 Detailed historical development ledgers remain in Git at `6b92b8b`; a local copy is retained in the class workspace's `AI/tmp/keygen-docs-history-6b92b8b/`. Logs/manifests remain under ignored build directories. Historical vendor full-RSA and isolated math/pair fits apply only to their recorded inputs; no claim of fresh source-matched fit, physical acceptance, twenty-seed hardware performance, production entropy quality or certification is made here. Demo/packaging and old local SPI utilities are not distributed by this PR. See the source [README](../../../Source%20Code/Key%20Generation/README.md#integration-limits-and-remaining-work) for remaining work and [AI statement](../../../Source%20Code/Key%20Generation/docs/AI_DISCLOSURE.md) for attribution and course disclosure.
+
+## Project-wide vendor follow-up (November 8, 2026)
+
+The top-level IP_TYPE selection now reaches both keygen and RNG. DE1 and DE25
+both select Altera, using fixed Cyclone V/M10K and Agilex 5/M20K metadata. Xilinx
+is a reserved identity that current wrappers reject. Generic RNG is simulation
+only; synthesis rejects a Generic physical oscillator. Verilator invalid
+selections use a fatal error rather than successful early termination.
+
+`../Project Vendor/` contains the unified regression and actual-board Quartus
+elaboration runners. These supersede the keygen-only propagation scope above;
+historical full-RSA/fit results still apply only to their recorded inputs.
+
+Final November 8 review: strict Verilog-2001 generic complete RSA with directed
+candidates and external stalls matched all 129 output words, consumed 384 input
+words and completed in 136,232,057 cycles. Source-manifest SHA256:
+`c4576f6e57ddb4074b1968c9fd08de793b101e37e5bd26df0bf1714427636b1f`.
+Reference tests (13), AES (51 operations/five reset phases), RSA services (49)
+and strict Verilator RNG accepted/rejected selections pass. The audit replaced
+SystemVerilog-only failure tasks in `.v` rejection guards with Verilog-compatible
+failure handling; Verilator reports a nonzero fatal stop for invalid settings.
+The project-vendor suites cover both backend lifecycles, both RAM families,
+all RNG paths, legacy vendor-define rejection, actual board elaboration and
+synthesis rejection. Active Cyclone V RAM maps to M10K (131,072 memory bits).
+No new physical-board or full-core fitted timing/capacity claim is made.

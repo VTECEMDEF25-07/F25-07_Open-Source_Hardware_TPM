@@ -8,7 +8,7 @@
 `timescale 1ns/1ps
 // Fast integration checks use the real engine and storage. Successful RSA
 // arithmetic is covered by tb_keygen_full, not substituted by this test.
-`include "keygen_ip_types.vh"
+`include "ip_types.vh"
 
 module tb_keygen_lifecycle #(parameter IP_TYPE = `IP_GENERIC);
  reg clock_i=0;always #10 clock_i=~clock_i;

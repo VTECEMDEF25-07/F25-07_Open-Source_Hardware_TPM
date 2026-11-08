@@ -17,6 +17,7 @@ $ErrorActionPreference = 'Stop'
 $taskSource = (Resolve-Path "$PSScriptRoot/..").Path.Replace('\','/')
 if (!$IpDirectory) { $IpDirectory = "$taskSource/../../../Source Code/Key Generation/IP" }
 $taskIp = (Resolve-Path $IpDirectory).Path.Replace('\','/')
+$taskShared = (Resolve-Path "$taskIp/../..").Path.Replace('\','/')
 $taskBackends = if ($Backend -eq 'both') { @('generic','altera') } else { @($Backend) }
 if (!$Corpus) { $Corpus = "$taskSource/reference/expected_keys.json" }
 foreach ($taskBackend in $taskBackends) {
@@ -32,8 +33,8 @@ foreach ($taskBackend in $taskBackends) {
         $taskCommands += @('vlib vendor', "vlog -work vendor {$VendorModelDirectory/220model.v} {$VendorModelDirectory/altera_mf.v}")
     }
     $taskCommands += @(
-        "vlog {+incdir+$taskIp} -vlog01compat {$taskIp/keygen_mult32.v} {$taskIp/keygen_mult32_$taskBackend.v} {$taskIp/keygen_ram32.v} {$taskIp/keygen_ram32_$taskBackend.v} {$taskSource/../../../Source Code/Key Generation/rtl/arithmetic/keygen_pair_check.v}",
-        "vlog {+incdir+$taskIp} -sv {$taskSource/testbench/tb_keygen_pair_check.sv}",
+        "vlog {+incdir+$taskShared} -vlog01compat {$taskIp/keygen_mult32.v} {$taskIp/keygen_mult32_$taskBackend.v} {$taskIp/keygen_ram32.v} {$taskIp/keygen_ram32_$taskBackend.v} {$taskSource/../../../Source Code/Key Generation/rtl/arithmetic/keygen_pair_check.v}",
+        "vlog {+incdir+$taskShared} -sv {$taskSource/testbench/tb_keygen_pair_check.sv}",
         "vsim -gIP_TYPE=$taskIpType -L vendor work.tb_keygen_pair_check", 'run -all', 'quit -code 0 -force'
     )
     if ($taskBackend -eq 'generic') { $taskCommands = $taskCommands -replace ' -L vendor', '' }

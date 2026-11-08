@@ -29,3 +29,11 @@ Both relocated RNG benches also print `ALL TESTS PASSED` in Questa using their n
 
 Renamed the board PLL wrapper file/module to `de1_clock.v` / `de1_clock` and updated project, top, legacy simulation model and generator references. PLL parameters and ports are unchanged. A fresh Quartus Lite 24.1 full compile passes; the local-only build check verifies the required PLL, physical pin assignments and SOF. Evidence: class-workspace `AI/tmp/pr36-de1-clock-rename-build.log`.
 SOF SHA256: `3d69e01ab017d1dfcf75be9cbe503907589ad58802e5af2a182b104a0f0829bf`.
+
+## Project-wide vendor follow-up - November 8, 2026
+
+The board IP_TYPE parameter now feeds both inactive keygen and RNG placeholders.
+Altera is the supported physical-board selection; other values are rejected.
+Current source elaboration/rejection evidence is recorded by
+`Testing/Simulation/Project Vendor/test_project_vendor_quartus.py`.
+Historical bitstream hashes above do not identify this updated source snapshot.

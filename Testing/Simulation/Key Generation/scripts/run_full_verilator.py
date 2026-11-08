@@ -95,7 +95,7 @@ sources=[
 def digest(path):return hashlib.sha256(path.read_bytes()).hexdigest()
 manifest_path=build/'source_manifest.json'
 inputs={s:digest(root/s) for s in sources}
-inputs['../../../Source Code/Key Generation/IP/keygen_ip_types.vh']=digest(root/'../../../Source Code/Key Generation/IP/keygen_ip_types.vh')
+inputs['../../../Source Code/ip_types.vh']=digest(root/'../../../Source Code/ip_types.vh')
 inputs['reference/expected_keys.json']=digest(root/'reference/expected_keys.json')
 inputs['scripts/run_full_verilator.py']=digest(Path(__file__))
 manifest={'inputs_sha256':inputs,'controller':'dedicated',
@@ -111,7 +111,7 @@ if not a.reuse_build:
     if obj.exists():
         if obj.resolve().parent!=build.resolve():raise RuntimeError('Object directory escaped its build directory')
         shutil.rmtree(obj)
-    command=['verilator','-I'+str((root/'../../../Source Code/Key Generation/IP').resolve()),'--cc','--exe','--main','--timing','--top-module','tb_keygen_full',
+    command=['verilator','-I'+str((root/'../../../Source Code').resolve()),'--cc','--exe','--main','--timing','--top-module','tb_keygen_full',
              '--Mdir',str(obj),'-Wno-fatal','+1364-2001ext+v','+1800-2017ext+sv']
     command += [str(root/s) for s in sources]
     with (build/'elaborate.log').open('w') as log:

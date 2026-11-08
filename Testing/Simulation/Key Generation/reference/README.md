@@ -11,7 +11,7 @@ AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
 Read [RSA_ALGORITHM.md](../../../../Source%20Code/Key%20Generation/docs/RSA_ALGORITHM.md) first for the procedure and standards mapping. This directory contains Python verification infrastructure; none of it is synthesizable source or production key-generation software.
 
 - `keygen_reference.py`: exact accepted-word procedure, SHA-256 counter test provider and optional event transcript.
-- `key_checker.py`: independent mathematical validation and 64 fresh Millerâ€“Rabin witnesses for each factor.
+- `key_checker.py`: independent mathematical validation and 64 fresh Miller-Rabin witnesses for each factor.
 - `seeds.json`: twenty fixed public seeds. Do not substitute faster seeds to satisfy board performance.
 - `expected_keys.json`: public test keys and exact accepted-word counts for those seeds. Useful for matching generic/Altera outputs without requiring equal cycle counts.
 - `test_reference.py`: branch and full-size regression tests.

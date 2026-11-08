@@ -7,9 +7,9 @@
 
 // RSA pair validation with 32-bit arithmetic and 2 KiB private RAM.
 // Primality is checked by the caller. RAM and multiplier scrub before handoff.
-`include "keygen_ip_types.vh"
+`include "ip_types.vh"
 
-module keygen_pair_check #(parameter IP_TYPE = `IP_GENERIC) (
+module keygen_pair_check #(parameter IP_TYPE = `IP_GENERIC, parameter DEVICE_FAMILY = "Agilex 5") (
     input clock_i, input reset_n_i,
     input start_valid_i, output start_ready_o,
     input [1023:0] p_i, input [1023:0] q_i,
@@ -130,7 +130,7 @@ module keygen_pair_check #(parameter IP_TYPE = `IP_GENERIC) (
     assign result_valid_o=reset_n_i && state_reg==RESULT;
     assign n_o=result_valid_o && status_reg==VALID?n_reg:2048'd0;
     assign status_o=result_valid_o?status_reg:4'd0;
-    keygen_ram32 #(.ADDRESS_WIDTH(9), .IP_TYPE(IP_TYPE)) private_ram(
+    keygen_ram32 #(.ADDRESS_WIDTH(9), .IP_TYPE(IP_TYPE), .DEVICE_FAMILY(DEVICE_FAMILY)) private_ram(
         .clock_i(clock_i),.reset_n_i(reset_n_i),.clock_en_i(1'b1),
         .write_en_i(ram_write_en),.write_address_i(ram_write_address),.write_data_i(ram_write_data),
         .read_en_i(ram_read_en),.read_address_i(ram_read_address),.read_valid_o(),.read_data_o(ram_read_data)

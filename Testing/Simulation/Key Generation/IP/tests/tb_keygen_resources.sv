@@ -6,9 +6,9 @@
 // AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
 
 `timescale 1ns/1ps
-`include "keygen_ip_types.vh"
+`include "ip_types.vh"
 
-module tb_keygen_resources;
+module tb_keygen_resources #(parameter DEVICE_FAMILY = "Agilex 5");
     reg clock_reg = 0;
     always #5 clock_reg = ~clock_reg;
     reg reset_n_reg = 0;
@@ -39,7 +39,7 @@ module tb_keygen_resources;
         .valid_i(valid_reg), .left_i(left_reg), .right_i(right_reg),
         .valid_o(altera_valid), .product_o(altera_product)
     );
-    keygen_ram32 #(.ADDRESS_WIDTH(6), .IP_TYPE(`IP_ALTERA)) altera_ram (
+    keygen_ram32 #(.ADDRESS_WIDTH(6), .IP_TYPE(`IP_ALTERA), .DEVICE_FAMILY(DEVICE_FAMILY)) altera_ram (
         .clock_i(clock_reg), .reset_n_i(reset_n_reg), .clock_en_i(clock_en_reg),
         .write_en_i(write_en_reg), .write_address_i(write_address_reg),
         .write_data_i(write_data_reg), .read_en_i(read_en_reg),

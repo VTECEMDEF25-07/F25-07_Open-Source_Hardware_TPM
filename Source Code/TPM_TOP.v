@@ -15,11 +15,10 @@
 //	and the execution engine.
 // 
 
-`include "keygen_ip_types.vh"
+`include "ip_types.vh"
 
-// DE1-SoC: use IP_GENERIC. The current IP_ALTERA backend does not support DE1;
-// its RAM wrapper targets the DE25's Agilex 5/M20K resources, not Cyclone V/M10K.
-module	TPM_TOP #(parameter IP_TYPE = `IP_GENERIC)
+// IP_TYPE is the sole implementation selector; DEVICE_FAMILY is fixed board metadata.
+module	TPM_TOP #(parameter IP_TYPE = `IP_GENERIC, parameter DEVICE_FAMILY = "Agilex 5")
 (
 	input		CLOCK_50,	// 50 MHz sysclock
 	input		CLOCK_100,	// 100 MHz clock (used for sampling SPI_CLOCK)
@@ -41,7 +40,7 @@ module	TPM_TOP #(parameter IP_TYPE = `IP_GENERIC)
 	// Temporary hierarchy only: keygen is not connected to TPM commands, entropy,
 	// protected storage or response handling. Keep admission/data inputs inactive;
 	// outputs are deliberately unused. Synthesis may remove this entire instance.
-	keygen_core #(.IP_TYPE(IP_TYPE)) keygen_placeholder (
+	keygen_core #(.IP_TYPE(IP_TYPE), .DEVICE_FAMILY(DEVICE_FAMILY)) keygen_placeholder (
 		.clock_i(CLOCK_50), .reset_n_i(rst_n), .peers_ready_i(1'b0),
 		.request_valid_i(1'b0), .request_ready_o(),
 		.request_profile_i(2'd0), .request_id_i(32'd0),
@@ -55,6 +54,14 @@ module	TPM_TOP #(parameter IP_TYPE = `IP_GENERIC)
 		.status_code_o(), .status_id_o()
 	);
 	
+    // Propagate the same selection into the RNG hierarchy. Command/entropy
+    // integration remains inactive until the TPM command path is implemented.
+    RNG #(.IP_TYPE(IP_TYPE)) rng_placeholder (
+        .clk(CLOCK_50), .rst_n(rst_n), .enable(1'b0),
+        .cmd_data(8'd0), .cmd_valid(1'b0), .cmd_last(1'b0), .cmd_ready(),
+        .rsp_data(), .rsp_valid(), .rsp_last(), .rsp_ready(1'b0)
+    );
+
 	wire	[31:0]	commandCode;
 	wire	[31:0]	responseCode;
 	wire	[31:0]	commandSize;

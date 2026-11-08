@@ -11,6 +11,7 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $taskSource = (Resolve-Path "$PSScriptRoot/../../../../Source Code/Key Generation/IP").Path.Replace('\','/')
+$taskShared = (Resolve-Path "$taskSource/../..").Path.Replace('\','/')
 $taskMath = (Resolve-Path "$PSScriptRoot/../../../../Source Code/Key Generation/rtl/arithmetic/keygen_pair_check.v").Path.Replace('\','/')
 if (!$BuildDirectory) { throw 'Pass an absolute scratch BuildDirectory outside the source checkout.' }
 New-Item -ItemType Directory -Force -Path $BuildDirectory | Out-Null
@@ -25,7 +26,7 @@ $taskSettings = @(
     'set_global_assignment -name VERILOG_INPUT_VERSION VERILOG_2001',
     'set_instance_assignment -name VIRTUAL_PIN ON -to *'
 )
-$taskSettings += "set_global_assignment -name SEARCH_PATH `"$taskSource`""
+$taskSettings += "set_global_assignment -name SEARCH_PATH `"$taskShared`""
 $taskSettings += "set_parameter -name IP_TYPE $(if ($Generic) {0} else {1})"
 foreach ($taskFile in Get-ChildItem "$taskSource/*.v") {
     $taskSettings += "set_global_assignment -name VERILOG_FILE `"$($taskFile.FullName.Replace('\','/'))`""

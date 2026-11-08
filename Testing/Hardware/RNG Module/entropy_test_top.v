@@ -22,8 +22,10 @@
 // Written by Jungyeon Won with the help of generative AI
 // ===========================================================================
 `timescale 1ns/1ps
+`include "ip_types.vh"
  
 module entropy_test_top #(
+    parameter IP_TYPE = `IP_ALTERA,
     parameter integer CLK_HZ = 50_000_000,    // DE25-Standard CLOCK_50
     parameter integer BAUD   = 115_200
 ) (
@@ -42,7 +44,7 @@ module entropy_test_top #(
  
     // The same entropy_source used by RNG.v, so the data reflects the real
     // design. Its 256-bit output isn't needed here.
-    entropy_source u_entropy_source (
+    entropy_source #(.IP_TYPE(IP_TYPE)) u_entropy_source (
         .clk             (clk),
         .rst_n           (rst_n),
         .enable          (source_enable),

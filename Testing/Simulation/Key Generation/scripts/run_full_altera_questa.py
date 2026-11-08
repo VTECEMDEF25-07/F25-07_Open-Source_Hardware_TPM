@@ -137,7 +137,7 @@ if not a.reuse_build:
     for library in ('work','vendor'):
         if not (build/library).exists():run_tool('vlib',[library],library+'_create.log')
     run_tool('vlog',['-work','vendor']+[str(a.altera_models/s) for s in ('220model.v','altera_mf.v')],'vendor_compile.log')
-    defines=['+incdir+'+str((root/'../../../Source Code/Key Generation/IP').resolve())]
+    defines=['+incdir+'+str((root/'../../../Source Code').resolve())]
     run_tool('vlog',['-vlog01compat']+defines+[str(root/s) for s in sources if s.endswith('.v')],'rtl_compile.log')
     run_tool('vlog',['-sv']+defines+[str(root/s) for s in sources if s.endswith('.sv')],'test_compile.log')
     if input_hashes(root,sources,models)!=manifest['inputs']:raise RuntimeError('Sources changed during compilation')
