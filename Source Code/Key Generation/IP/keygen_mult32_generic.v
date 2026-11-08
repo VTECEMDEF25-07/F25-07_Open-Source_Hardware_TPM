@@ -1,6 +1,6 @@
 // Filename: keygen_mult32_generic.v
 // Modules: keygen_mult32_generic
-// Authors: Project contributors; see Git history.
+// Authors: Aaron Grossman; Project contributors; see Git history.
 // Date: 2026-10-13
 // General Description: Implements the portable pipelined 32-bit multiplier resource.
 // AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.

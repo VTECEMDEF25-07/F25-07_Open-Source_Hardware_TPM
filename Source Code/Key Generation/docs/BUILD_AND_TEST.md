@@ -1,6 +1,6 @@
 <!--
 Filename: BUILD_AND_TEST.md
-Authors: Project contributors; see Git history.
+Authors: Aaron Grossman; Project contributors; see Git history.
 Date: 2026-10-13
 General Description: Documents Build and test the portable key generator.
 AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.

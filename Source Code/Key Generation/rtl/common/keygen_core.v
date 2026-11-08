@@ -1,6 +1,6 @@
 // Filename: keygen_core.v
 // Modules: keygen_core
-// Authors: Project contributors; see Git history.
+// Authors: Aaron Grossman; Project contributors; see Git history.
 // Date: 2026-10-13
 // General Description: Connects AES and selectable RSA workers to the request, generation, result and cleanup interfaces.
 // AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.

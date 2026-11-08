@@ -1,6 +1,6 @@
 // Filename: keygen_test_source.v
 // Modules: keygen_test_source
-// Authors: Project contributors; see Git history.
+// Authors: Aaron Grossman; Project contributors; see Git history.
 // Date: 2026-10-13
 // General Description: Produces deterministic generation words for test keys; it is not a production entropy source.
 // AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.

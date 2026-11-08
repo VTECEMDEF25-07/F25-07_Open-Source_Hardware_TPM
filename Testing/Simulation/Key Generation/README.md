@@ -1,3 +1,4 @@
+<!-- Authors: Aaron Grossman (changes in this PR); existing project contributors; see Git history. -->
 # Key-generation simulations
 
 Run commands from this directory (`Testing/Simulation/Key Generation`).

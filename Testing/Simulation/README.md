@@ -1,3 +1,4 @@
+<!-- Authors: Aaron Grossman (changes in this PR); existing project contributors; see Git history. -->
 # Simulation
 
 Author: Aaron Grossman

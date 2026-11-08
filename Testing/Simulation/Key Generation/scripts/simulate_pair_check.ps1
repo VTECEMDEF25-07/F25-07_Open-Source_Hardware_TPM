@@ -1,5 +1,5 @@
 # Filename: simulate_pair_check.ps1
-# Authors: Project contributors; see Git history.
+# Authors: Aaron Grossman; Project contributors; see Git history.
 # Date: 2026-10-13
 # General Description: Provides simulate pair check support for the key-generation implementation and verification.
 # AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.

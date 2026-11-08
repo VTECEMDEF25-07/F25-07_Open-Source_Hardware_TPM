@@ -1,3 +1,4 @@
+<!-- Authors: Aaron Grossman (changes in this PR); existing project contributors; see Git history. -->
 # Open-source hardware TPM
 
 Virginia Tech Lenovo-sponsored senior design project.

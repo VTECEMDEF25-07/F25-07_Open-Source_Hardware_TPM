@@ -1,6 +1,6 @@
 // Filename: keygen_aes_core.v
 // Modules: keygen_aes_core
-// Authors: Project contributors; see Git history.
+// Authors: Aaron Grossman; Project contributors; see Git history.
 // Date: 2026-10-13
 // General Description: Assembles AES-128 and AES-256 keys from generation words and manages result ownership and clearing.
 // AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.

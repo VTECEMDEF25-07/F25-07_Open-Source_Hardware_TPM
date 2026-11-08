@@ -1,6 +1,6 @@
 // Filename: keygen_pair_check.v
 // Modules: keygen_pair_check
-// Authors: Project contributors; see Git history.
+// Authors: Aaron Grossman; Project contributors; see Git history.
 // Date: 2026-10-13
 // General Description: Validates RSA key-pair relationships and clears private intermediate arithmetic state.
 // AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.

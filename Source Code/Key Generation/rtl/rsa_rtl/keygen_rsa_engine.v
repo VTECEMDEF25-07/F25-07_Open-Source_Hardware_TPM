@@ -1,6 +1,6 @@
 // Filename: keygen_rsa_engine.v
 // Modules: keygen_rsa_engine
-// Authors: Project contributors; see Git history.
+// Authors: Aaron Grossman; Project contributors; see Git history.
 // Date: 2026-10-13
 // General Description: Connects the dedicated RSA controller to candidate services and shared arithmetic.
 // AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.

@@ -1,6 +1,6 @@
 // Filename: tb_keygen_math_small.sv
 // Modules: tb_keygen_math_small
-// Authors: Project contributors; see Git history.
+// Authors: Aaron Grossman; Project contributors; see Git history.
 // Date: 2026-10-13
 // General Description: Checks keygen math small behavior and reports failures.
 // AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.

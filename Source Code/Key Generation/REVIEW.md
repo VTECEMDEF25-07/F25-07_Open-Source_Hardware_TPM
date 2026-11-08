@@ -1,6 +1,6 @@
 <!--
 Filename: REVIEW.md
-Authors: Project contributors; see Git history.
+Authors: Aaron Grossman; Project contributors; see Git history.
 Date: 2026-09-30
 General Description: Provides the faculty advisor reading order and review scope.
 AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.

@@ -1,3 +1,4 @@
+<!-- Authors: Aaron Grossman (changes in this PR); existing project contributors; see Git history. -->
 # Senior design TPM review guidance
 
 Review changes in this open-source FPGA TPM project against existing module documentation and approved interfaces. Apply conventions to new or changed HDL, avoiding unrelated rewrites of inherited code.
