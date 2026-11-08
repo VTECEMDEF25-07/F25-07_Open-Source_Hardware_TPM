@@ -42,7 +42,7 @@ DE1 and DE25 both select Altera at their board top. Fixed `DEVICE_FAMILY` metada
 - **Integrating the module:** [interface and lifecycle](docs/INTERFACE.md).
 - **Reviewing RSA correctness:** [algorithm and implementation](docs/RSA_ALGORITHM.md).
 - **Running checks:** [simulation instructions and validation summary](../../Testing/Simulation/Key%20Generation/README.md).
-- **Attribution:** [Aaron Grossman's contribution, AI use and course disclosure](docs/AI_DISCLOSURE.md), [dependencies and notices](CREDITS.md), [coding standards](CODING_STANDARDS.md).
+- **Attribution:** [Aaron Grossman's contribution, AI use and course disclosure](docs/AI_DISCLOSURE.md), [coding standards](CODING_STANDARDS.md).
 
 The implementation lives in `rtl/common/`, `rtl/aes/`, `rtl/rsa_rtl/`, `rtl/arithmetic/` and `IP/`. The [resource](IP/README.md) and [math](Math/README.md) READMEs are optional detailed references. Benches, the independent Python oracle, fixtures and runners live under `Testing/Simulation/Key Generation/`.
 
