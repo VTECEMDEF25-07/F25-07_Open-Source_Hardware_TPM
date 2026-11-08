@@ -28,40 +28,14 @@ See [waveform guidance](WAVEFORM_GUIDE.md) and the [software-HMAC demonstration]
 
 ## RAM-backed multi-block suite
 
-Requires Python `cryptography` and Questa on PATH. Choose a scratch output
-folder; all generated vectors, simulation libraries and logs go there:
+Requires Python `cryptography` and Questa on PATH; `--questa <directory>` can
+select its installation. All generated files go to the scratch directory.
 
 ```powershell
 python 'Testing/Simulation/Symmetric Module/check_symmetric_ram.py' --output '<scratch-directory>'
-# If needed, add: --questa 'C:/intelFPGA_lite/24.1std/questa_fse/win64'
-```
-
-This drives the real AES worker through `symmetric_ram_top` and a byte-addressed
-simulation-only RAM. It compares independent encryption/decryption results and
-TPM final IVs for capacities 1, 17, 31, 1024, 2049 and 4096, using address widths
-5, 7, 8, 12, 14 and 12 respectively. Coverage includes every final partial-block
-length, empty/exact/oversized requests, full address-space capacity, exact-end
-addresses, disjoint/adjacent/in-place operation, both invalid overlap directions,
-overflow, descriptor capture, held-start suppression, result retention,
-request stalls, variable response latency, RAM/worker errors, acknowledged-byte
-counts, reset in five execution phases and reuse after failures/resets. The
-bench checks all RAM bytes, so unrelated bytes and unread input are preserved.
-The RAM model retains storage while jointly flushing pending traffic on reset.
-
-`run_symmetric_ram.do` is the underlying portable runner. Its capacity, address
-width and vector file come from `TPM_RAM_CAPACITY`, `TPM_RAM_ADDR_WIDTH` and
-`TPM_RAM_VECTORS`; the Python driver sets these and `TPM_TEST_RUN_ROOT`.
-Questa sources compile as Verilog separately from the SystemVerilog testbench.
-Run suites sequentially if the local license permits only one simulator session.
-
-For standalone Quartus analysis/synthesis with virtual top-level pins:
-
-```powershell
 quartus_sh -t 'Testing/Simulation/Symmetric Module/synthesize_symmetric_ram.tcl' '<scratch-directory>' 1024 12
 ```
 
-The optional last arguments select capacity and address width. This is a resource
-and synthesizability check for Cyclone V 5CSEMA5F31C6; it does not fit a board,
-constrain clocks, establish timing closure or produce a validated bitstream.
-See [validation results](RAM_VALIDATION.md) and the
-[RAM contract](../../../Source%20Code/Symmetric%20Module/RAM_INTERFACE.md).
+The suite checks independent AES-CFB results across six capacities, bounds/overlap,
+partial IVs, stalls, errors, reset and reuse. Quartus runs analysis/synthesis with
+virtual pins, not board fitting or timing checks. See the [RAM contract](../../../Source%20Code/Symmetric%20Module/RAM_INTERFACE.md).

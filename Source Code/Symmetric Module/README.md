@@ -84,17 +84,9 @@ by the wrapper and their CFB requests are issued only when its worker is idle.
 
 ## RAM-backed multi-block primitive
 
-`symmetric_ram_top` is a separate integration top for resolved AES-256/CFB
-EncryptDecrypt2 descriptors. It propagates `MAX_SYM_DATA_BYTES` (default 1024)
-and `RAM_ADDR_WIDTH` (default 12) to `encrypt_decrypt2_ram_controller`, which
-streams 16-byte chunks through the existing `cfb_block`. Payload storage is
-external; this top contains no production RAM. The legacy `symm_top`, session
-path and worker behavior remain unchanged.
-
-Read [RAM_INTERFACE.md](RAM_INTERFACE.md) for the ready/valid contract, bounds,
-partial-block IV rules, reset obligations and future execution-engine handoff.
-The simulated RAM and independent-reference suite are in
-[Testing/Simulation/Symmetric Module](../../Testing/Simulation/Symmetric%20Module/README.md).
+`symmetric_ram_top` streams configurable-length jobs through the existing CFB
+worker using `encrypt_decrypt2_ram_controller` and external byte RAM.
+See [RAM_INTERFACE.md](RAM_INTERFACE.md) for the interface and integration limits.
 
 ## Command scheduling
 
