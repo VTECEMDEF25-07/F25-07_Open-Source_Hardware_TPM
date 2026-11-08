@@ -5,10 +5,12 @@
 # GUI keeps results open. Batch returns failure if compile or assertions fail.
 if {[batch_mode]} {onerror {quit -force -code 1}} else {onerror {abort}}
 onbreak {resume}
-set project_root {C:/MDE/F25-07_Open-Source_Hardware_TPM}
+set runner_root [file dirname [file normalize [status file]]]
+set project_root [file normalize [file join $runner_root .. .. ..]]
 if {[info exists env(TPM_PROJECT_ROOT)]} {set project_root $env(TPM_PROJECT_ROOT)}
-set sym_root [file join $project_root {Symmetric Module}]
-set run_base {C:/MDE/review_work/symmetric_module_tests_20261013}
+set sym_root [file join $project_root {Source Code} {Symmetric Module}]
+set bench_root [file join $project_root Testing Simulation {Symmetric Module}]
+set run_base [file join $project_root build symmetric-module]
 if {[info exists env(TPM_TEST_RUN_ROOT)]} {set run_base $env(TPM_TEST_RUN_ROOT)}
 set run_root [file join $run_base $module_test "run_[clock clicks]_[pid]"]
 file mkdir $run_root
@@ -30,9 +32,9 @@ switch $module_test {
     }
     default {error "Unknown module test $module_test"}
 }
-foreach name $sources {vlog -work work_module [file join $sym_root $name]}
+foreach name $sources {vlog -vlog01compat -work work_module [file join $sym_root $name]}
 set bench tb_$module_test
-vlog -sv -work work_module [file join $sym_root Testbenches ${bench}.sv]
+vlog -sv -work work_module [file join $bench_root ${bench}.sv]
 vsim -voptargs=+acc -onfinish stop -wlf [file join $run_root vsim.wlf] -lib work_module $bench
 set root sim:/$bench
 log -r $root/*

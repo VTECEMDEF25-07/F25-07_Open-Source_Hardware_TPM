@@ -4,6 +4,5 @@
 # Description: Compile/test the CFB worker and display its AES/feedback waveforms.
 if {[batch_mode]} {onerror {quit -force -code 1}} else {onerror {abort}}
 set module_test cfb_block
-set test_project_root {C:/MDE/F25-07_Open-Source_Hardware_TPM}
-if {[info exists env(TPM_PROJECT_ROOT)]} {set test_project_root $env(TPM_PROJECT_ROOT)}
-do [file join $test_project_root {Symmetric Module} Testbenches run_module_common.do]
+set runner_root [file dirname [file normalize [status file]]]
+do [file join $runner_root run_module_common.do]

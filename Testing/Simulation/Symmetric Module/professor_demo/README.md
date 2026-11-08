@@ -42,17 +42,19 @@ is checked against RFC 4231 test case 1 before any simulation.
 - Each case checks final data/feedback/status, HMAC/AES call counts,
   KDFa request contents, the AES key/IV, and a completion deadline.
 
-## Run from PowerShell
+## Run from PowerShell at the repository root
 
 Requires the installed Questa license, Python stdlib, and OpenSSL on PATH.
 No Python packages need to be installed.
 
 ```powershell
-python "C:\MDE\F25-07_Open-Source_Hardware_TPM\Symmetric Module\Testbenches\professor_demo\run_demo.py"
+python "Testing/Simulation/Symmetric Module/professor_demo/run_demo.py"
 ```
 
+Use `--output-dir "<scratch directory>"` to choose another output location.
+
 The command creates a fresh run directory under
-`C:\MDE\review_work\professor_demo_20261014`, executes Questa, and generates
+`build/symmetric-module/professor-demo`, executes Questa, and generates
 `report.html`, `results.json`, `vectors.json`, source hashes, a transcript,
 and `vsim.wlf`. A failed or incomplete simulation must not be presented as
 a passing result.
@@ -65,7 +67,7 @@ second simulator. Use the current window:
 1. Prepare the test in PowerShell:
 
    ```powershell
-   python "C:\MDE\F25-07_Open-Source_Hardware_TPM\Symmetric Module\Testbenches\professor_demo\run_demo.py" --prepare
+   python "Testing/Simulation/Symmetric Module/professor_demo/run_demo.py" --prepare
    ```
 
 2. The command prints a new run directory. In Questa Transcript enter
@@ -78,7 +80,7 @@ second simulator. Use the current window:
 To regenerate a report after a run:
 
 ```powershell
-python "C:\MDE\F25-07_Open-Source_Hardware_TPM\Symmetric Module\Testbenches\professor_demo\run_demo.py" --report "<run directory>"
+python "Testing/Simulation/Symmetric Module/professor_demo/run_demo.py" --report "<run directory>"
 ```
 
 ## Sources

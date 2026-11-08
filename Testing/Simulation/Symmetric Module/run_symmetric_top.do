@@ -2,20 +2,23 @@
 # GUI: keep waveforms open. Batch: report failures through the process exit code.
 if {[batch_mode]} {onerror {quit -force -code 1}} else {onerror {abort}}
 onbreak {resume}
-set project_root {C:/MDE/F25-07_Open-Source_Hardware_TPM}
+set runner_root [file dirname [file normalize [status file]]]
+set project_root [file normalize [file join $runner_root .. .. ..]]
 if {[info exists env(TPM_PROJECT_ROOT)]} {set project_root $env(TPM_PROJECT_ROOT)}
-set sym_root [file join $project_root {Symmetric Module}]
-set run_base {C:/MDE/review_work/symmetric_integration_20261012}
+set sym_root [file join $project_root {Source Code} {Symmetric Module}]
+set bench_root [file join $project_root Testing Simulation {Symmetric Module}]
+set run_base [file join $project_root build symmetric-module symmetric_top]
 if {[info exists env(TPM_TEST_RUN_ROOT)]} {set run_base [file join $env(TPM_TEST_RUN_ROOT) symmetric_top]}
 set run_root [file join $run_base "run_[clock clicks]_[pid]"]
 file mkdir $run_root
 cd $run_root
 transcript file [file join $run_root transcript.log]
 vlib work_symmetric
-foreach name {aes_sbox.v aes_inv_sbox.v aes_key_mem.v aes_encipher_block.v aes_decipher_block.v aes_core.v aes.v kdfa_control.v hmac_sha256_placeholder.v cfb_block.v session_parameter_controller.v encrypt_decrypt2_controller.v symmetric_top.v symmetric_demo_top.v} {
-    vlog -work work_symmetric [file join $sym_root $name]
+foreach name {aes_sbox.v aes_inv_sbox.v aes_key_mem.v aes_encipher_block.v aes_decipher_block.v aes_core.v aes.v kdfa_control.v hmac_sha256_placeholder.v cfb_block.v session_parameter_controller.v encrypt_decrypt2_controller.v symmetric_top.v} {
+    vlog -vlog01compat -work work_symmetric [file join $sym_root $name]
 }
-vlog -sv -work work_symmetric [file join $sym_root Testbenches tb_symmetric_top.sv]
+vlog -vlog01compat -work work_symmetric [file join $project_root Project DE1 {Symmetric Demo} symmetric_demo_top.v]
+vlog -sv -work work_symmetric [file join $bench_root tb_symmetric_top.sv]
 vsim -voptargs=+acc -onfinish stop -wlf [file join $run_root vsim.wlf] -lib work_symmetric tb_symmetric_top
 log -r sim:/tb_symmetric_top/*
 

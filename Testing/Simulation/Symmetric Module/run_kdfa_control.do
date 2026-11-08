@@ -3,18 +3,19 @@
 # In the GUI, leave the simulation and waveforms open after the tests finish.
 if {[batch_mode]} {onerror {quit -force -code 1}} else {onerror {abort}}
 onbreak {resume}
-set project_root {C:/MDE/F25-07_Open-Source_Hardware_TPM}
+set runner_root [file dirname [file normalize [status file]]]
+set project_root [file normalize [file join $runner_root .. .. ..]]
 if {[info exists env(TPM_PROJECT_ROOT)]} {set project_root $env(TPM_PROJECT_ROOT)}
-set sym_root [file join $project_root {Symmetric Module}]
-set bench_root [file join $sym_root Testbenches]
-set run_base {C:/MDE/review_work/kdfa_practice_20261001}
+set sym_root [file join $project_root {Source Code} {Symmetric Module}]
+set bench_root [file join $project_root Testing Simulation {Symmetric Module}]
+set run_base [file join $project_root build symmetric-module kdfa_practice]
 if {[info exists env(TPM_TEST_RUN_ROOT)]} {set run_base [file join $env(TPM_TEST_RUN_ROOT) kdfa_practice]}
 set run_root [file join $run_base "run_[clock clicks]_[pid]"]
 file mkdir $run_root
 cd $run_root
 transcript file [file join $run_root transcript.log]
 vlib work_practice
-vlog -work work_practice [file join $sym_root kdfa_control.v] [file join $sym_root hmac_sha256_placeholder.v]
+vlog -vlog01compat -work work_practice [file join $sym_root kdfa_control.v] [file join $sym_root hmac_sha256_placeholder.v]
 vlog -sv -work work_practice [file join $bench_root tb_kdfa_control.sv]
 vsim -voptargs=+acc -onfinish stop -wlf [file join $run_root vsim.wlf] -lib work_practice tb_kdfa_control
 # Preserve handshakes, message counters, and digests in this run's vsim.wlf.

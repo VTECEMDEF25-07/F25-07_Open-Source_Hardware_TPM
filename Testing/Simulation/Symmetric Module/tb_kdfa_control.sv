@@ -4,7 +4,7 @@
 // Description: ?
 `timescale 1ns/1ps
 // Practice control-flow tests only: the placeholder is NOT real HMAC/SHA-256.
-// In Questa/ModelSim, run: do {path/to/Testbenches/run_kdfa_control.do}
+// In Questa/ModelSim, run: do {path/to/Testing/Simulation/Symmetric Module/run_kdfa_control.do}
 // This testbench is the parent that instantiates and connects BOTH modules.
 module tb_kdfa_control;
     localparam [255:0] SECRET = 256'h000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f;

@@ -16,8 +16,9 @@ import sys
 from zoneinfo import ZoneInfo
 
 HERE = Path(__file__).resolve().parent
-SYM = HERE.parent.parent
-OUT = Path('C:/MDE/review_work/professor_demo_20261014')
+REPO = HERE.parents[3]
+SYM = REPO / 'Source Code' / 'Symmetric Module'
+OUT = REPO / 'build' / 'symmetric-module' / 'professor-demo'
 NIST = 'https://nvlpubs.nist.gov/nistpubs/legacy/sp/nistspecialpublication800-38a.pdf#page=58'
 TCG = 'https://trustedcomputinggroup.org/wp-content/uploads/TPM-2.0-1.83-Part-1-Architecture.pdf#page=179'
 RFC = 'https://www.rfc-editor.org/rfc/rfc4231.html#section-4.2'
@@ -80,7 +81,7 @@ def prepare():
     (run/'vectors.json').write_text(json.dumps(dict(cases=cases,rfc_hmac=dict(expected=expected,actual=got)),indent=2))
     (run/'tb_professor_demo.sv').write_text(make_bench(cases),encoding='utf-8')
     sources=['aes_sbox.v','aes_inv_sbox.v','aes_key_mem.v','aes_encipher_block.v','aes_decipher_block.v','aes_core.v','aes.v','kdfa_control.v','cfb_block.v','session_parameter_controller.v','encrypt_decrypt2_controller.v','symmetric_top.v']
-    compile_lines='\n'.join(f'vlog -work work_demo {{{(SYM/n).as_posix()}}}' for n in sources)
+    compile_lines='\n'.join(f'vlog -vlog01compat -work work_demo {{{(SYM/n).as_posix()}}}' for n in sources)
     script=f'''# Simulation-only Python HMAC replacement; original placeholder is NOT compiled.
 if {{[batch_mode]}} {{onerror {{quit -force -code 1}}}} else {{onerror {{abort}}}}
 onbreak {{resume}}
@@ -250,9 +251,12 @@ def build_html(run,m,hm):
 
 if __name__=='__main__':
     parser=argparse.ArgumentParser()
+    parser.add_argument('--output-dir',type=Path,help='Directory for generated runs and reports')
     parser.add_argument('--prepare',action='store_true')
     parser.add_argument('--report',type=Path)
     args=parser.parse_args()
+    if args.output_dir: OUT=args.output_dir.resolve()
+    elif args.report: OUT=args.report.resolve().parent
     if args.report: sys.exit(0 if report(args.report) else 1)
     run=prepare()
     print('RUN:',run,flush=True)

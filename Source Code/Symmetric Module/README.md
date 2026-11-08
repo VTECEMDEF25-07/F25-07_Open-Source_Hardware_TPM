@@ -3,6 +3,12 @@
 Author: Makeda Solomon 
 Date: October 13, 2026
 
+## Project layout
+
+This directory contains reusable symmetric RTL. Testbenches, Questa runners and the software-HMAC demonstration are in [Testing/Simulation/Symmetric Module](../../Testing/Simulation/Symmetric%20Module/README.md). The standalone DE1 board wrapper is in [Project/DE1/Symmetric Demo](../../Project/DE1/Symmetric%20Demo/README.md).
+
+The existing DE1 and DE25 TPM projects do not yet instantiate this symmetric module. This relocation preserves the current RTL behavior and does not add TPM command integration.
+
 `symm_top` accepts one internal job at a time. It does not parse SPI packets; it assumes
 the execution engine will handle the host's incoming bytes and organizing that information for the 
 symmetric module. This module does not take a TPM handle, such as the key's handle, to identify 
@@ -94,10 +100,10 @@ session protection. Part 3, clause 15.3, defines EncryptDecrypt2 inputs.
 - https://trustedcomputinggroup.org/wp-content/uploads/TPM-2.0-1.83-Part-1-Architecture.pdf
 - https://trustedcomputinggroup.org/wp-content/uploads/TPM-2.0-1.83-Part-3-Commands.pdf
 
-Run `Testbenches/run_symmetric_top.do` in Questa for integration coverage.
-Run `Testbenches/run_kdfa_control.do` for the existing CFB KDFa handshake suite.
+Run `../../Testing/Simulation/Symmetric Module/run_symmetric_top.do` in Questa for integration coverage.
+Run `../../Testing/Simulation/Symmetric Module/run_kdfa_control.do` for the existing CFB KDFa handshake suite.
 
 For separate module tests and waveform instructions, start with
-`Testbenches/WAVEFORM_GUIDE.md`. The standalone suites cover real CFB (7 cases),
+`../../Testing/Simulation/Symmetric Module/WAVEFORM_GUIDE.md`. The standalone suites cover real CFB (7 cases),
 session preparation with fake HMAC/mock CFB (12 cases), and cipher-command
 control with mock CFB (9 cases).

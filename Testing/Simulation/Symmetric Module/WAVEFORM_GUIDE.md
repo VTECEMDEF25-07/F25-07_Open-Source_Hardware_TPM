@@ -13,7 +13,7 @@ matter.
 ## 1. Start with the CFB block
 
 ```tcl
-do {C:/MDE/F25-07_Open-Source_Hardware_TPM/Symmetric Module/Testbenches/run_cfb_block.do}
+do {<repository>/Testing/Simulation/Symmetric Module/run_cfb_block.do}
 ```
 
 This uses real AES and checks a NIST AES-256/CFB128 example.
@@ -43,7 +43,7 @@ Case 2 expects plaintext `6bc1bee22e409f96e93d7e117393172a`.
 ## 2. Test the EncryptDecrypt2 controller
 
 ```tcl
-do {C:/MDE/F25-07_Open-Source_Hardware_TPM/Symmetric Module/Testbenches/run_encrypt_decrypt2_controller.do}
+do {<repository>/Testing/Simulation/Symmetric Module/run_encrypt_decrypt2_controller.do}
 ```
 
 This isolates the controller using a **mock CFB worker**. Its distinctive
@@ -71,7 +71,7 @@ States: 0=IDLE, 1=ISSUE, 2=WAIT_CFB, 3=DONE, 4=RELEASE.
 ## 3. Test the session parameter controller
 
 ```tcl
-do {C:/MDE/F25-07_Open-Source_Hardware_TPM/Symmetric Module/Testbenches/run_session_parameter_controller.do}
+do {<repository>/Testing/Simulation/Symmetric Module/run_session_parameter_controller.do}
 ```
 
 This uses the existing **fake HMAC** and a **mock CFB worker**. It verifies
@@ -105,7 +105,7 @@ States: 0=IDLE, 1=DERIVE, 2=WAIT_KDF, 3=ISSUE, 4=WAIT_CFB,
 ## 4. Existing KDFa test
 
 ```tcl
-do {C:/MDE/F25-07_Open-Source_Hardware_TPM/Symmetric Module/Testbenches/run_kdfa_control.do}
+do {<repository>/Testing/Simulation/Symmetric Module/run_kdfa_control.do}
 ```
 
 Six cases inspect message construction, handshake backpressure, held results,
@@ -115,7 +115,7 @@ is additionally checked in the session-controller test above.
 ## 5. Everything connected through symm_top
 
 ```tcl
-do {C:/MDE/F25-07_Open-Source_Hardware_TPM/Symmetric Module/Testbenches/run_symmetric_top.do}
+do {<repository>/Testing/Simulation/Symmetric Module/run_symmetric_top.do}
 ```
 
 Fourteen cases exercise both controllers connected to real AES/CFB, with the
@@ -130,7 +130,7 @@ existing fake HMAC. This checks the integration after the isolated tests.
   alone cannot establish correctness.
 - Each run creates its own directory and prints its `vsim.wlf` and transcript
   locations. The three new module tests save under
-  `C:/MDE/review_work/symmetric_module_tests_20261013/`.
+  `<repository>/build/symmetric-module/`.
 - To reopen a recording, use Questa **File > Open** and select its `.wlf` file.
   The signal values are preserved; you may need to add the desired signals
   from the recorded hierarchy to the Wave window again.
