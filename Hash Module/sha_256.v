@@ -1,3 +1,13 @@
+// sha_256.v
+// modules:
+//	sha_256
+//
+// Authors:
+//	Kyra Warncke
+//
+// Date: 11/4/26
+//
+// General Description:
 // SHA-256 Top Level Module
 // Pulse start_en_i while !busy_o, then wait for data_ready_o before sending bytes.
 // Bytes transfer on rising edges when data_valid_i && data_ready_o.

@@ -1,3 +1,13 @@
+// hash_arbiter.v
+// modules:
+//	hash_arbiter
+//
+// Authors:
+//	Kyra Warncke
+//
+// Date: 11/4/26
+//
+// General Description:
 // Hash Arbiter Module
 // Routes each SHA-256 result back to the requester that owns the operation.
 // Requester indices are 0..REQUESTERS-1; lower indices have priority.

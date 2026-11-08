@@ -1,3 +1,13 @@
+// hash_engine.v
+// modules:
+//	hash_engine
+//
+// Authors:
+//	Kyra Warncke
+//
+// Date: 11/4/26
+//
+// General Description:
 // Shared SHA-256 engine. Requester i owns data_in_i[i*8 +: 8],
 // data_valid_i[i], message_end_i[i], data_ready_o[i], and digest_valid_o[i].
 // REQUESTERS must be >= 1. Index assignments (HMAC/PCR/host/etc.) are

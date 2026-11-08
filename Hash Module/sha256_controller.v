@@ -1,3 +1,13 @@
+// sha256_controller.v
+// modules:
+//	sha256_controller
+//
+// Authors:
+//	Kyra Warncke
+//
+// Date: 11/4/26
+//
+// General Description:
 // SHA 256 Controller Module
 // Control-only FSM. sha_256 owns the datapath instances and storage.
 // Capture/select outputs are clock enables for registers in sha_256.

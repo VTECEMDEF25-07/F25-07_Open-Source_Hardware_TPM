@@ -1,3 +1,13 @@
+// hash_subsystem.v
+// modules:
+//	hash_subsystem
+//
+// Authors:
+//	Kyra Warncke
+//
+// Date: 11/4/26
+//
+// General Description:
 // Shared SHA-256, HMAC-SHA256 and PCR bank integration.
 // Requester priority: PCR (0), HMAC (1), raw hash (2).
 // Starts are one-cycle pulses accepted only while the respective busy_o is
