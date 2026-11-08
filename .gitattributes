@@ -1,10 +1,19 @@
+# Filename: .gitattributes
+# Authors: Aaron Grossman; Project contributors; see Git history.
+# Date: 2026-10-13
+# General Description: Defines repository text and line-ending handling.
+# AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
+# Preserve LF line endings for WSL/Linux shell runners after Windows checkouts.
+*.sh text eol=lf
+
+# Shared project organization.
 # Preserve existing HDL and fixture bytes during checkout and moves.
 *.v -text
 *.vh -text
 *.sv -text
 *.c -text
 *.h -text
-
 # Preserve RNG hardware-tool file bytes on checkout.
 "Testing/Hardware/RNG Module/capture_90b.py" -text
 "Testing/Hardware/RNG Module/DE25_entropy_test_pins.tcl" -text

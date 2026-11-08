@@ -5,6 +5,8 @@
 //
 // Authors:
 //	Ian Sizemore (idsizemore@vt.edu)
+//	Aaron Grossman (keygen IP_TYPE selection)
+// AI Disclosure: Codex assisted with the IP_TYPE selection change.
 //
 // Date: 11/6/25
 //
@@ -13,7 +15,13 @@
 //	Other top level modules for different devices will likely look similar.
 //	This module targets the Terasic DE1-SoC development board.
 
-module de1_soc_top
+
+// Select the implementation here for this board. This default propagates through
+// TPM_TOP to keygen and its RAM/multiplier wrappers.
+// 0 = Generic, 1 = Altera, 2 = Xilinx (not implemented).
+`define FPGA_IP_TYPE 1
+
+module de1_soc_top #(parameter IP_TYPE = `FPGA_IP_TYPE)
 (
 	input		CLOCK_50,
 	input		RESET_N,
@@ -37,7 +45,8 @@ module de1_soc_top
 	wire	CLOCK_100;
 	de1_clock PLL0( .refclk(CLOCK_50), .rst(~RESET_N), .outclk_0(CLOCK_100) );
 	
-	TPM_TOP tpm
+	// One vendor setting feeds all TPM resources; Cyclone V selects M10K RAM.
+	TPM_TOP #(.IP_TYPE(IP_TYPE), .DEVICE_FAMILY("Cyclone V")) tpm
 	(
 		.CLOCK_50(CLOCK_50), .CLOCK_100(CLOCK_100),
 		.RESET_n(RESET_N),
@@ -50,3 +59,6 @@ module de1_soc_top
 	);
 	
 endmodule
+
+// Keep this board default local to this source file.
+`undef FPGA_IP_TYPE

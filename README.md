@@ -1,3 +1,4 @@
+<!-- Authors: Aaron Grossman (changes in this PR); existing project contributors; see Git history. -->
 # Open-source hardware TPM
 
 Virginia Tech Lenovo-sponsored senior design project.
@@ -20,3 +21,5 @@ Virginia Tech Lenovo-sponsored senior design project.
 Keep the complete repository together: project source paths are relative. Generated outputs are ignored; source, constraints, project settings and required test inputs remain tracked.
 
 See [board setup](Project/README.md) for board details and [simulation instructions](Testing/Simulation/README.md) for simulations. Each board's VALIDATION.md records build results and timing/hardware limitations.
+
+Key generation: [design and review](Source%20Code/Key%20Generation/README.md), [simulation runners](Testing/Simulation/Key%20Generation/README.md). The portable core remains separate from TPM command integration.

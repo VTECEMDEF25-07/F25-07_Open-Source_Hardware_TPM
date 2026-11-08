@@ -5,8 +5,14 @@
 // General Description: Connects the TPM to DE25 pins, related clocks, reset and independent cooling.
 
 // TPM board wrapper for the DE25 Standard RevD.
-// This top preserves TPM_TOP's command path; it does not instantiate keygen.
-module de25_soc_top (
+// This top preserves TPM_TOP's command path; resource placeholders remain inactive.
+
+// Select the implementation here for this board. This default propagates through
+// TPM_TOP to keygen and its RAM/multiplier wrappers.
+// 0 = Generic, 1 = Altera, 2 = Xilinx (not implemented).
+`define FPGA_IP_TYPE 1
+
+module de25_soc_top #(parameter IP_TYPE = `FPGA_IP_TYPE) (
     input clock_i,
     input board_reset_n_i,
     input spi_clock_i,
@@ -54,8 +60,8 @@ module de25_soc_top (
             tpm_release_reg <= {tpm_release_reg[0], 1'b1};
     end
 
-    // Instantiate the TPM top without changing its implementation.
-    TPM_TOP tpm (
+    // Select the FPGA resource backend at the TPM boundary.
+    TPM_TOP #(.IP_TYPE(IP_TYPE), .DEVICE_FAMILY("Agilex 5")) tpm (
         .CLOCK_50(clock_50),
         .CLOCK_100(clock_100),
         .RESET_n(tpm_release_reg[1]),
@@ -80,3 +86,6 @@ module de25_soc_top (
     );
 
 endmodule
+
+// Keep this board default local to this source file.
+`undef FPGA_IP_TYPE

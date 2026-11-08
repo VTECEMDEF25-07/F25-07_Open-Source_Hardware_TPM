@@ -1,3 +1,4 @@
+<!-- Authors: Aaron Grossman (changes in this PR); existing project contributors; see Git history. -->
 # Simulation
 
 Author: Aaron Grossman
@@ -16,3 +17,7 @@ These runners now check the unmodified vendor AutoFan behavior and normal serial
 The scripts reference board hardware under Project/DE25/Fan Controller. Keep generated results outside source folders. Required test models and fixtures are tracked.
 
 See [RNG simulations](RNG%20Module/README.md) for the two relocated PR #38 benches. Their serial capture hardware assets are under `Testing/Hardware/RNG Module/`.
+
+## Key generation
+
+See [Key Generation/README.md](Key%20Generation/README.md) for the independent reference, core/resource/arithmetic benches and runners. Reusable HDL stays under `Source Code/Key Generation/`; fixtures here are test-only.
