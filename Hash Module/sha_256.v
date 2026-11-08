@@ -1,26 +1,26 @@
 // SHA-256 Top Level Module
-// Pulse start while !busy, then wait for data_ready before sending bytes.
-// Bytes transfer on rising edges when data_valid && data_ready.
-// message_end is accepted only while data_ready and may accompany the last
+// Pulse start_en_i while !busy_o, then wait for data_ready_o before sending bytes.
+// Bytes transfer on rising edges when data_valid_i && data_ready_o.
+// message_end_i is accepted only while data_ready_o and may accompany the last
 // byte or be sent alone (also used for an empty message).
-// Hold unaccepted inputs until ready. hash_valid pulses for one clock;
-// hash_out stays stable until the next completed message. reset_n aborts.
+// Hold unaccepted inputs until ready. hash_valid_o pulses for one clock;
+// hash_out_reg_o stays stable until the next completed message. reset_n_i aborts.
 
 module sha_256 (
-    input  wire         clk,
-    input  wire         reset_n,
-    input  wire         start,
-    input  wire [7:0]   data_in,
-    input  wire         data_valid,
-    input  wire         message_end,
-    output wire         data_ready,
-    output wire         busy,
-    output reg  [255:0] hash_out,
-    output wire         hash_valid
+    input  wire         clk_i,
+    input  wire         reset_n_i,
+    input  wire         start_en_i,
+    input  wire [7:0]   data_in_i,
+    input  wire         data_valid_i,
+    input  wire         message_end_i,
+    output wire         data_ready_o,
+    output wire         busy_o,
+    output reg  [255:0] hash_out_reg_o,
+    output wire         hash_valid_o
 );
-    wire child_reset_n, buffer_data_valid, buffer_message_end, launch;
-    wire capture_full, capture_padding, capture_second, select_second;
-    wire capture_hash;
+    wire child_reset_n, buffer_data_valid, buffer_message_end, launch_en;
+    wire capture_full_en, capture_padding_en, capture_second_en, select_second_en;
+    wire capture_hash_en;
     wire [511:0] full_block, partial_data, padded_block;
     wire [6:0] partial_bytes;
     wire [63:0] message_length;
@@ -30,59 +30,59 @@ module sha_256 (
     wire schedule_valid, schedule_done, schedule_busy;
     wire [255:0] round_hash;
     wire round_valid, round_busy;
-    reg [511:0] active_block, second_block;
+    reg [511:0] active_block_reg, second_block_reg;
 
     sha256_controller u_controller (
-        .clk(clk), .reset_n(reset_n), .start(start),
-        .data_valid(data_valid), .message_end(message_end),
-        .full_valid(full_valid), .padded_valid(padded_valid),
-        .padding_busy(padding_busy), .round_valid(round_valid),
-        .data_ready(data_ready), .busy(busy),
-        .child_reset_n(child_reset_n), .buffer_data_valid(buffer_data_valid),
-        .buffer_message_end(buffer_message_end), .launch(launch),
-        .capture_full(capture_full), .capture_padding(capture_padding),
-        .capture_second(capture_second), .select_second(select_second),
-        .capture_hash(capture_hash), .hash_valid(hash_valid)
+        .clk_i(clk_i), .reset_n_i(reset_n_i), .start_en_i(start_en_i),
+        .data_valid_i(data_valid_i), .message_end_i(message_end_i),
+        .full_valid_i(full_valid), .padded_valid_i(padded_valid),
+        .padding_busy_i(padding_busy), .round_valid_i(round_valid),
+        .data_ready_o(data_ready_o), .busy_o(busy_o),
+        .child_reset_n_o(child_reset_n), .buffer_data_valid_o(buffer_data_valid),
+        .buffer_message_end_o(buffer_message_end), .launch_en_o(launch_en),
+        .capture_full_en_o(capture_full_en), .capture_padding_en_o(capture_padding_en),
+        .capture_second_en_o(capture_second_en), .select_second_en_o(select_second_en),
+        .capture_hash_en_o(capture_hash_en), .hash_valid_reg_o(hash_valid_o)
     );
     input_buffer u_input_buffer (
-        .clk(clk), .reset_n(child_reset_n), .data_in(data_in),
+        .clk(clk_i), .reset_n(child_reset_n), .data_in(data_in_i),
         .data_valid(buffer_data_valid), .message_end(buffer_message_end),
         .block_out(full_block), .block_valid(full_valid),
         .partial_data(partial_data), .partial_bytes(partial_bytes),
         .partial_valid(partial_valid), .message_length(message_length)
     );
     padding u_padding (
-        .clk(clk), .reset_n(child_reset_n),
+        .clk(clk_i), .reset_n(child_reset_n),
         .partial_data(partial_data), .partial_bytes(partial_bytes),
         .partial_valid(partial_valid), .message_length(message_length),
         .block_out(padded_block), .block_valid(padded_valid),
         .busy(padding_busy)
     );
     message_schedule u_message_schedule (
-        .clk(clk), .reset_n(child_reset_n), .block_in(active_block),
-        .block_valid(launch), .word_out(schedule_word),
+        .clk(clk_i), .reset_n(child_reset_n), .block_in(active_block_reg),
+        .block_valid(launch_en), .word_out(schedule_word),
         .word_index(schedule_index), .word_valid(schedule_valid),
         .schedule_done(schedule_done), .busy(schedule_busy)
     );
     round_operations u_round_operations (
-        .clk(clk), .reset_n(child_reset_n), .word_in(schedule_word),
-        .word_valid(schedule_valid), .start(launch),
+        .clk(clk_i), .reset_n(child_reset_n), .word_in(schedule_word),
+        .word_valid(schedule_valid), .start(launch_en),
         .hash_out(round_hash), .hash_valid(round_valid), .busy(round_busy)
     );
 
     // Save both padding blocks because padding has no backpressure input.
     // Keep the published digest separate from intermediate block hashes.
-    always @(posedge clk or negedge reset_n) begin
-        if (!reset_n) begin
-            active_block <= 512'b0;
-            second_block <= 512'b0;
-            hash_out <= 256'b0;
+    always @(posedge clk_i or negedge reset_n_i) begin
+        if (!reset_n_i) begin
+            active_block_reg <= 512'b0;
+            second_block_reg <= 512'b0;
+            hash_out_reg_o <= 256'b0;
         end else begin
-            if (capture_full) active_block <= full_block;
-            else if (capture_padding) active_block <= padded_block;
-            else if (select_second) active_block <= second_block;
-            if (capture_second) second_block <= padded_block;
-            if (capture_hash) hash_out <= round_hash;
+            if (capture_full_en) active_block_reg <= full_block;
+            else if (capture_padding_en) active_block_reg <= padded_block;
+            else if (select_second_en) active_block_reg <= second_block_reg;
+            if (capture_second_en) second_block_reg <= padded_block;
+            if (capture_hash_en) hash_out_reg_o <= round_hash;
         end
     end
 endmodule
