@@ -80,7 +80,7 @@ acknowledgment. Source gaps and result stalls cannot change this result.
 
 ## Resource and build contracts
 
-`IP_TYPE` is the project-wide elaboration-time implementation parameter: Generic (0, default) or Altera (1), using the documented values directly. Reserved Xilinx (2) is rejected. The board top passes one choice through `TPM_TOP` to both RNG and keygen. Keygen propagates it through the core, RSA engine, math/pair checker and resource wrappers. Fixed `DEVICE_FAMILY` board metadata reaches private Altera RAMs (Cyclone V/M10K or Agilex 5/M20K); other families fail. The inactive placeholders do not enable TPM key-generation or RNG commands. Unsigned 32x32 multiplication has two enabled-cycle pipeline latency;
+`IP_TYPE` is the project-wide elaboration-time implementation parameter: Generic (0, default) or Altera (1), using the documented values directly. Reserved Xilinx (2) is rejected. The board top passes one choice through `TPM_TOP` to keygen. Keygen propagates it through the core, RSA engine, math/pair checker and resource wrappers. Fixed `DEVICE_FAMILY` board metadata reaches private Altera RAMs (Cyclone V/M10K or Agilex 5/M20K); other families fail. The inactive placeholder does not enable TPM key-generation commands. Unsigned 32x32 multiplication has two enabled-cycle pipeline latency;
 enable freezes data and valid together. Scratch RAM has one-cycle synchronous
 read and explicit forwarding for new-data same-address write/read. Reset does
 not clear RAM contents: its owner sweeps all slots before reuse.

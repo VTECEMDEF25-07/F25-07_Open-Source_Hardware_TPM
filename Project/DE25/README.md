@@ -4,7 +4,7 @@ Author: Aaron Grossman
 
 This project targets DE25 Standard RevD (A5ED013BB32AE4SCS) and integrates the existing main-branch TPM without changing its command path. Open de25_soc_top.qpf in Quartus Pro 26.1, or run `quartus_sh --flow compile de25_soc_top` here.
 
-The board wrapper's single `IP_TYPE` parameter defaults to Altera (1). It reaches both keygen resources and RNG through inactive placeholders: clock/reset are connected, request/enable inputs are inactive and outputs unused. Fixed Agilex 5/M20K family metadata reaches keygen RAM. The QSF includes all required module sources. Unsupported resource backends fail in their implementation wrappers. Synthesis may remove the placeholders; this does not enable TPM crypto commands or establish active full-core fit/performance.
+The board wrapper's single `IP_TYPE` parameter defaults to Altera (1). It reaches both keygen resources and RNG through an inactive keygen placeholder: clock/reset are connected, request/source inputs are inactive and outputs unused. Fixed Agilex 5/M20K family metadata reaches keygen RAM. The QSF includes all required module sources. Unsupported resource backends fail in their implementation wrappers. Synthesis may remove the placeholder; this does not enable TPM crypto commands or establish active full-core fit/performance.
 
 - `de25_soc_top.v`: TPM wiring, reset separation and autonomous cooling.
 - `de25_clock.v`: related 50/100 MHz PLL outputs for the existing TPM.
@@ -17,5 +17,5 @@ Pin assignments and electrical standards are explicit in the QSF. The existing S
 
 In Quartus, open `de25_soc_top.qpf` and select **Processing > Start Compilation**. See [board setup](../README.md) for both boards. The top is board-local at `Project/DE25/de25_soc_top.v`.
 
-See [shared implementation selection](../../Source%20Code/README.md) and the
-[vendor verification suite](../../Testing/Simulation/Project%20Vendor/README.md).
+See [shared implementation selection](../../Source%20Code/Key%20Generation/README.md#resource-selection) and the
+[vendor verification suite](../../Testing/Simulation/Key%20Generation/Vendor/README.md).

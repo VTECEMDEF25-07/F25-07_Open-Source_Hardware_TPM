@@ -22,7 +22,7 @@ build.mkdir(parents=True,exist_ok=True)
 shared=source.parent
 files=sorted((source/'IP').glob('*.v'))+sorted((source/'rtl').rglob('*.v'))
 files+=[shared/'TPM_TOP.v']
-for directory in ['IO Interface','Execution Engine','Management Module','RNG Module']:
+for directory in ['IO Interface','Execution Engine','Management Module']:
     files+=sorted((shared/directory).glob('*.v'))
 bench=root/'testbench/tb_keygen_lifecycle.sv'
 tpm_bench=root/'testbench/tb_tpm_ip_type.sv'
@@ -59,9 +59,9 @@ for ip_type in [0,1]:
 text=run('vsim',['-c','-L','vendor','work.tb_tpm_ip_type','-do',
                  'onerror {quit -code 1}; onbreak {quit -code 1}; run -all; quit -code 0'],
          'tpm-placeholder.log')
-if 'PASS TPM_IP_TYPE backends=2 families=2 rng_rings=4 inactive_cycles=6000' not in text:
+if 'PASS TPM_IP_TYPE backends=2 families=2 inactive_cycles=6000' not in text:
     raise RuntimeError('Missing TPM placeholder acceptance: '+text[-2000:])
-print('PASS TPM_IP_TYPE backends=2 families=2 rng_rings=4 inactive_cycles=6000',flush=True)
+print('PASS TPM_IP_TYPE backends=2 families=2 inactive_cycles=6000',flush=True)
 for ip_type in [2,-1]:
     run('vsim',['-c','-L','vendor','-gIP_TYPE='+str(ip_type),'work.tb_keygen_lifecycle','-do','quit -code 0'],
         'invalid-'+str(ip_type)+'.log',expected_failure=True)

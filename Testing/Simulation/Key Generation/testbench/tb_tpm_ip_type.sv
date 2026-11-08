@@ -26,13 +26,6 @@ module tb_tpm_ip_type;
                 dut.keygen_placeholder.engine.pair_check.multiplier.IP_TYPE != SELECTED_IP ||
                 dut.keygen_placeholder.engine.pair_check.private_ram.IP_TYPE != SELECTED_IP)
                 $fatal(1,"TPM IP_TYPE did not reach all keygen resources");
-            if (dut.rng_placeholder.IP_TYPE != SELECTED_IP ||
-                dut.rng_placeholder.u_entropy_source.IP_TYPE != SELECTED_IP ||
-                dut.rng_placeholder.u_entropy_source.u_ro0.IP_TYPE != SELECTED_IP ||
-                dut.rng_placeholder.u_entropy_source.u_ro1.IP_TYPE != SELECTED_IP ||
-                dut.rng_placeholder.u_entropy_source.u_ro2.IP_TYPE != SELECTED_IP ||
-                dut.rng_placeholder.u_entropy_source.u_ro3.IP_TYPE != SELECTED_IP)
-                $fatal(1,"TPM IP_TYPE did not reach all RNG oscillators");
             if (dut.keygen_placeholder.engine.math.scratch.DEVICE_FAMILY != SELECTED_FAMILY ||
                 dut.keygen_placeholder.engine.pair_check.private_ram.DEVICE_FAMILY != SELECTED_FAMILY)
                 $fatal(1,"Board family did not reach both private memories");
@@ -51,18 +44,13 @@ module tb_tpm_ip_type;
                  dut.keygen_placeholder.generation_valid_i, dut.keygen_placeholder.result_valid_o,
                  dut.keygen_placeholder.status_valid_o} !== 5'b0)
                 $fatal(1,"Inactive TPM keygen placeholder admitted work");
-            if (dut.rng_placeholder.enable !== 1'b0 ||
-                dut.rng_placeholder.cmd_valid !== 1'b0 ||
-                dut.rng_placeholder.rsp_valid !== 1'b0 ||
-                dut.rng_placeholder.u_entropy_source.entropy_valid !== 1'b0)
-                $fatal(1,"Inactive TPM RNG placeholder admitted work");
         end
     end endgenerate
     initial begin
         repeat(4) @(negedge clock_50);
         reset_n=1;
         repeat(6000) @(negedge clock_50);
-        $display("PASS TPM_IP_TYPE backends=2 families=2 rng_rings=4 inactive_cycles=6000");
+        $display("PASS TPM_IP_TYPE backends=2 families=2 inactive_cycles=6000");
         $finish;
     end
 endmodule

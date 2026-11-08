@@ -66,8 +66,8 @@ Both relocated RNG benches also print `ALL TESTS PASSED` in Questa using their n
 
 ## Project-wide vendor follow-up - November 8, 2026
 
-The board IP_TYPE parameter now feeds both inactive keygen and RNG placeholders.
+The board IP_TYPE parameter now feeds the inactive keygen placeholder.
 Altera is the supported physical-board selection; other values are rejected.
 Current source elaboration/rejection evidence is recorded by
-`Testing/Simulation/Project Vendor/test_project_vendor_quartus.py`.
+`Testing/Simulation/Key Generation/Vendor/test_vendor_quartus.py`.
 Historical bitstream hashes above do not identify this updated source snapshot.

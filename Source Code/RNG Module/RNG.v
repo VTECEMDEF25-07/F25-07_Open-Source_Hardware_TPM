@@ -17,8 +17,7 @@
  
 `timescale 1ns/1ps
  
-// IP_TYPE: 0 = Generic, 1 = Altera, 2 = reserved Xilinx (unsupported).
-module RNG #(parameter IP_TYPE = 0) (
+module RNG (
     input  wire        clk,
     input  wire        rst_n,
     input  wire        enable,
@@ -44,7 +43,7 @@ module RNG #(parameter IP_TYPE = 0) (
     wire [255:0] random_output_internal;
     wire         random_valid_internal;
  
-    entropy_source #(.IP_TYPE(IP_TYPE)) u_entropy_source (
+    entropy_source u_entropy_source (
         .clk           (clk),
         .rst_n         (rst_n),
         .enable        (enable),

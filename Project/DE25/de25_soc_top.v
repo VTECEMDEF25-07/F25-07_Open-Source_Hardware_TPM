@@ -8,8 +8,8 @@
 // This top preserves TPM_TOP's command path; resource placeholders remain inactive.
 
 // Select the implementation here for this board. This default propagates through
-// TPM_TOP to keygen and RNG (or to the standalone entropy capture hierarchy).
-// 0 = Generic (RNG simulation only), 1 = Altera, 2 = Xilinx (not implemented).
+// TPM_TOP to keygen and its RAM/multiplier wrappers.
+// 0 = Generic, 1 = Altera, 2 = Xilinx (not implemented).
 `define FPGA_IP_TYPE 1
 
 module de25_soc_top #(parameter IP_TYPE = `FPGA_IP_TYPE) (

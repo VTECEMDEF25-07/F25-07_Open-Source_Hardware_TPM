@@ -23,7 +23,7 @@ All contributed reusable RTL and the compile-only smoke top are Verilog-2001. Te
 
 IP_TYPE uses 0 for Generic and 1 for Altera. The commented FPGA_IP_TYPE define at the top of each board source supplies the default passed through TPM_TOP/keygen_core. Standalone instances set the numeric parameter directly, e.g. `.IP_TYPE(1)`. Unsupported values, including reserved Xilinx value 2, are rejected in each resource wrapper. No shared header or compile-order-dependent module macro is required.
 
-The Altera RAM wrapper accepts explicit `DEVICE_FAMILY` metadata: Agilex 5/M20K or Cyclone V/M10K. It rejects other families. Both board wrappers select Altera once and propagate their fixed family; the same vendor selection also reaches the RNG. Board clock/reset/fan circuitry stays fixed to the physical board. There is no extra board-level vendor check. All ports have named connections.
+The Altera RAM wrapper accepts explicit `DEVICE_FAMILY` metadata: Agilex 5/M20K or Cyclone V/M10K. It rejects other families. Both board wrappers select Altera once and propagate their fixed family. Board clock/reset/fan circuitry stays fixed to the physical board. There is no extra board-level vendor check. All ports have named connections.
 
 ### Unsigned 32 by 32 multiplier
 

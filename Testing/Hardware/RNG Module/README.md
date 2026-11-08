@@ -23,9 +23,3 @@ python "Testing/Hardware/RNG Module/capture_90b.py" COM5
 ```
 
 Run from the repository root and replace `COM5` with the actual serial port (`/dev/ttyUSB0`, for example, on Linux). The collector does not load HDL files or program the FPGA. It writes `raw_seq.bin` and `raw_restart.bin` into the directory where you run it. The tool documentation in the file describes its sample/restart formats. The corresponding simulation bench is under `Testing/Simulation/RNG Module/`.
-
-Vendor selection: `entropy_test_top.IP_TYPE` defaults to Altera and propagates
-to every oscillator. Its commented `FPGA_IP_TYPE` define supplies the default;
-no vendor header is required. Do not set legacy RO_* macros. Generic is only
-available for functional RNG simulation; synthesis rejects it and unsupported
-backends instead of building a generic logic-loop fallback.

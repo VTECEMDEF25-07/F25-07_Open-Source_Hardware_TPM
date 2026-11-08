@@ -54,14 +54,6 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5")
 		.status_code_o(), .status_id_o()
 	);
 	
-    // Propagate the same selection into the RNG hierarchy. Command/entropy
-    // integration remains inactive until the TPM command path is implemented.
-    RNG #(.IP_TYPE(IP_TYPE)) rng_placeholder (
-        .clk(CLOCK_50), .rst_n(rst_n), .enable(1'b0),
-        .cmd_data(8'd0), .cmd_valid(1'b0), .cmd_last(1'b0), .cmd_ready(),
-        .rsp_data(), .rsp_valid(), .rsp_last(), .rsp_ready(1'b0)
-    );
-
 	wire	[31:0]	commandCode;
 	wire	[31:0]	responseCode;
 	wire	[31:0]	commandSize;

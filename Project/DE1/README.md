@@ -21,7 +21,7 @@ clock module through the Cyclone V `altera_pll` macro. There is no DE25 fan
 controller or functional keygen command integration in this project. LED0 shows the original
 active-low interrupt signal; the remaining LEDs are off.
 
-The commented `FPGA_IP_TYPE` define near the top of `de1_soc_top.v` sets its IP_TYPE default to Altera (1), propagating through `TPM_TOP` to both keygen and RNG. Fixed Cyclone V family metadata selects M10K RAM. Unsupported resource settings fail in their implementation wrappers. Request/enable inputs to both resource placeholders are inactive and their outputs unused; synthesis can remove them. The QSF includes all required module sources. This establishes configuration wiring, not TPM command integration or full-core resource-fit acceptance.
+The commented `FPGA_IP_TYPE` define near the top of `de1_soc_top.v` sets its IP_TYPE default to Altera (1), propagating through `TPM_TOP` to keygen. Fixed Cyclone V family metadata selects M10K RAM. Unsupported resource settings fail in their implementation wrappers. Request/enable inputs to the keygen placeholder are inactive and their outputs unused; synthesis can remove them. The QSF includes all required module sources. This establishes configuration wiring, not TPM command integration or full-core resource-fit acceptance.
 
 | Signal | Connection | FPGA pin |
 |---|---|---|
