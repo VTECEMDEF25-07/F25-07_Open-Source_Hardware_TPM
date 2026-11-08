@@ -17,6 +17,8 @@
 
 `include "keygen_ip_types.vh"
 
+// DE1-SoC: use IP_GENERIC. The current IP_ALTERA backend does not support DE1;
+// its RAM wrapper targets the DE25's Agilex 5/M20K resources, not Cyclone V/M10K.
 module	TPM_TOP #(parameter IP_TYPE = `IP_GENERIC)
 (
 	input		CLOCK_50,	// 50 MHz sysclock
