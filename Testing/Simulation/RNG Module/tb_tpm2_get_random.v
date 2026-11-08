@@ -2,22 +2,13 @@
 // tb_tpm2_get_random.v
 //
 // Testbench for TPM2_GetRandom.
-//   Part A drives the full RNG top level (ring oscillators -> DRBG -> command).
+//   Part A drives RNG with a simulation-only SHA-256 byte-stream service.
+//   SHA model integration/test fixes: Aaron Grossman with Codex assistance.
 //   Part B drives tpm2_get_random alone with a known DRBG block, so the
 //   exact payload bytes, TPM_RC_INITIALIZE and TPM_RC_FAILURE can be checked.
 //
-// Run from the repository root (Icarus; OUTPUT is a scratch executable path):
-//   iverilog -g2005 -DSIMULATION -s tb_tpm2_get_random -o OUTPUT \
-//       "Testing/Simulation/RNG Module/tb_tpm2_get_random.v" \
-//       "Source Code/RNG Module/RNG.v" \
-//       "Source Code/RNG Module/tpm2_get_random.v" \
-//       "Source Code/RNG Module/random_number_generation.v" \
-//       "Source Code/RNG Module/entropy_source.v" \
-//       "Source Code/RNG Module/ring_osc.v"
-//   vvp -n OUTPUT
-//
-// Questa: compile the same files with +define+SIMULATION and load
-// work.tb_tpm2_get_random. See Testing/Simulation/RNG Module/README.md.
+// Run with run_getrandom.py; see the adjacent README for source lists.
+// The SHA model is test-only and does not establish production integration.
 //
 // Written by Jungyeon Won with the help of generative AI
 // ===========================================================================
@@ -41,7 +32,20 @@ module tb_tpm2_get_random;
     wire       a_rsp_valid, a_rsp_last;
     reg        a_rsp_ready = 1'b0;
  
+    wire [7:0] hash_msg_data;
+    wire hash_msg_valid, hash_msg_last, hash_msg_ready, hash_digest_valid;
+    wire [255:0] hash_digest;
+    sha256_test_model hash_service (
+        .clk_i(clk), .reset_n_i(rst_n),
+        .data_i(hash_msg_data), .valid_i(hash_msg_valid), .last_i(hash_msg_last),
+        .ready_o(hash_msg_ready), .digest_reg_o(hash_digest),
+        .digest_valid_reg_o(hash_digest_valid)
+    );
+
     RNG dut_top (
+        .hash_msg_data(hash_msg_data), .hash_msg_valid(hash_msg_valid),
+        .hash_msg_last(hash_msg_last), .hash_msg_ready(hash_msg_ready),
+        .hash_digest(hash_digest), .hash_digest_valid(hash_digest_valid),
         .clk(clk), .rst_n(rst_n), .enable(1'b1),
         .cmd_data(a_cmd_data), .cmd_valid(a_cmd_valid),
         .cmd_last(a_cmd_last), .cmd_ready(a_cmd_ready),
@@ -62,13 +66,14 @@ module tb_tpm2_get_random;
     reg          b_init      = 1'b1;
     reg          b_fault     = 1'b0;
  
+    wire b_rng_req;
     tpm2_get_random dut_unit (
         .clk(clk), .rst_n(rst_n),
         .cmd_data(b_cmd_data), .cmd_valid(b_cmd_valid),
         .cmd_last(b_cmd_last), .cmd_ready(b_cmd_ready),
         .rsp_data(b_rsp_data), .rsp_valid(b_rsp_valid),
         .rsp_last(b_rsp_last), .rsp_ready(b_rsp_ready),
-        .rng_data(b_rng_data), .rng_valid(b_rng_valid),
+        .rng_data(b_rng_data), .rng_valid(b_rng_valid), .rng_req(b_rng_req),
         .tpm_initialized(b_init), .rng_fault(b_fault)
     );
  
@@ -291,13 +296,13 @@ module tb_tpm2_get_random;
  
         // ===================================================================
         if (errors == 0) $display("\nALL TESTS PASSED");
-        else             $display("\n%0d TEST(S) FAILED", errors);
+        else             $fatal(1, "%0d TEST(S) FAILED", errors);
         $finish;
     end
  
     initial begin
         #5_000_000;
-        $display("GLOBAL TIMEOUT"); $finish;
+        $fatal(1, "GLOBAL TIMEOUT");
     end
  
 endmodule
