@@ -18,6 +18,7 @@ module cfb_block (
     reg [127:0] byte_mask_w;
     reg aes_init_r;
     reg aes_next_r;
+    reg aes_reset_n_reg;
     reg [255:0] aes_key_r;
     reg [127:0] aes_feedback_r;
     wire aes_ready_w;
@@ -50,7 +51,7 @@ module cfb_block (
 
     aes AES_IMPLEMENT (
         .clock_i (clock_i),
-        .reset_n_i (reset_n_i),
+        .reset_n_i (reset_n_i && aes_reset_n_reg),
 
         .init_i (aes_init_r),
         .next_i (aes_next_r),
@@ -71,6 +72,7 @@ module cfb_block (
             state_r <= ST_IDLE;
             aes_init_r <= 1'b0;
             aes_next_r <= 1'b0;
+            aes_reset_n_reg <= 1'b0;
             aes_key_r <= 256'b0;
             aes_feedback_r <= 128'b0;
             data_r <= 128'b0;
@@ -108,6 +110,7 @@ module cfb_block (
                             decrypt_r <= decrypt_i;
                             aes_key_r <= key_i;
                             aes_feedback_r <= iv_i;
+                            aes_reset_n_reg <= (data_bytes_i != 0);
                             state_r <= ST_EXECUTE;
                         end
                     end
@@ -158,6 +161,13 @@ module cfb_block (
                 end
 
                 ST_DONE: begin
+                    // Results are already latched; reset clears the AES round keys.
+                    aes_reset_n_reg <= 1'b0;
+                    aes_key_r <= 256'b0;
+                    aes_feedback_r <= 128'b0;
+                    data_r <= 128'b0;
+                    data_mask_r <= 128'b0;
+                    decrypt_r <= 1'b0;
                     done_o <= 1'b1;
                     state_r <= ST_RELEASE;
                     // wait_o remains high through the result pulse.

@@ -52,12 +52,19 @@ module tb_cfb_block;
         end
     endtask
     task check_result(input [11:0] rc,input [127:0] data,input [127:0] iv,input integer calls);
-        integer cycles;
+        integer cycles, round_index;
         begin
             cycles=0;
             while(!done_o && cycles<300) begin @(negedge clock_i); cycles++; end
             if(!done_o || tpm_rc_o!==rc || data_out_o!==data || iv_out_o!==iv || aes_calls!=calls)
                 $fatal(1,"Case %0d: rc=%h data=%h iv=%h AES=%0d",test_case,tpm_rc_o,data_out_o,iv_out_o,aes_calls);
+            if(dut.aes_key_r!==0 || dut.aes_feedback_r!==0 || dut.data_r!==0 ||
+               dut.AES_IMPLEMENT.UNIT_AES_CORE.keymem.prev_key0_reg!==0 ||
+               dut.AES_IMPLEMENT.UNIT_AES_CORE.keymem.prev_key1_reg!==0)
+                $fatal(1,"Completed worker retained temporary secrets");
+            for(round_index=0;round_index<15;round_index++)
+                if(dut.AES_IMPLEMENT.UNIT_AES_CORE.keymem.key_mem[round_index]!==0)
+                    $fatal(1,"Completed worker retained AES round key %0d",round_index);
             if(start_i) repeat(4) begin
                 @(negedge clock_i);
                 if(done_o || !wait_o || aes_calls!=calls || data_out_o!==data)
