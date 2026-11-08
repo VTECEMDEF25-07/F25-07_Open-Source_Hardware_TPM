@@ -25,7 +25,7 @@ if a.suite == 'lifecycle':
                 '../../../Source Code/Key Generation/rtl/aes/keygen_aes_core.v', '../../../Source Code/Key Generation/rtl/arithmetic/keygen_math.v',
                 '../../../Source Code/Key Generation/rtl/arithmetic/keygen_pair_check.v', '../../../Source Code/Key Generation/rtl/rsa_rtl/keygen_rsa_controller.v',
                 '../../../Source Code/Key Generation/rtl/rsa_rtl/keygen_rsa_engine.v', '../../../Source Code/Key Generation/rtl/common/keygen_core.v']
-command = ['verilator', '--cc', '--exe', '--main', '--timing', '--top-module', top,
+command = ['verilator', '-I'+str((root/'../../../Source Code/Key Generation/IP').resolve()), '--cc', '--exe', '--main', '--timing', '--top-module', top,
            '--Mdir', str(obj), '-Wno-fatal', '+1364-2001ext+v', '+1800-2017ext+sv']
 command += [str(root / s) for s in sources]
 with (build / 'elaborate.log').open('w') as log:

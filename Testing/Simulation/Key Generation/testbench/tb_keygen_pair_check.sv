@@ -6,7 +6,9 @@
 // AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
 
 `timescale 1ns/1ps
-module tb_keygen_pair_check;
+`include "keygen_ip_types.vh"
+
+module tb_keygen_pair_check #(parameter IP_TYPE = `IP_GENERIC);
     reg clock_i = 0;
     always #10 clock_i = ~clock_i;
     reg reset_n_i = 0, start_valid_i = 0, result_ready_i = 0;
@@ -19,7 +21,7 @@ module tb_keygen_pair_check;
     reg [3:0] expected_status;
     integer case_index, cycles;
     reg check_d = 0;
-    keygen_pair_check dut (
+    keygen_pair_check #(.IP_TYPE(IP_TYPE)) dut (
         .clock_i(clock_i), .reset_n_i(reset_n_i), .start_valid_i(start_valid_i),
         .start_ready_o(start_ready_o), .p_i(p_i), .q_i(q_i),
         .result_valid_o(result_valid_o), .result_ready_i(result_ready_i),

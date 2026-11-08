@@ -80,8 +80,7 @@ acknowledgment. Source gaps and result stalls cannot change this result.
 
 ## Resource and build contracts
 
-Default resources are generic; `KEYGEN_ALTERA` selects real Altera macros. Xilinx
-is deferred. Unsigned 32x32 multiplication has two enabled-cycle pipeline latency;
+`IP_TYPE` is an elaboration-time module parameter: `IP_GENERIC` (0, default) or `IP_ALTERA` (1), named in `IP/keygen_ip_types.vh`. It passes from `TPM_TOP` through its inactive keygen placeholder, then through the core, RSA engine, math/pair checker and resource wrappers. No Xilinx choice exists yet. The placeholder does not enable TPM key-generation commands. Unsigned 32x32 multiplication has two enabled-cycle pipeline latency;
 enable freezes data and valid together. Scratch RAM has one-cycle synchronous
 read and explicit forwarding for new-data same-address write/read. Reset does
 not clear RAM contents: its owner sweeps all slots before reuse.

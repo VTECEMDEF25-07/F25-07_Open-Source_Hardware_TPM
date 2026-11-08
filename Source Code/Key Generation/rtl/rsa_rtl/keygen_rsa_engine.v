@@ -6,7 +6,9 @@
 // AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
 
 // Shared protected arithmetic/services fabric for either RSA controller.
-module keygen_rsa_engine (
+`include "keygen_ip_types.vh"
+
+module keygen_rsa_engine #(parameter IP_TYPE = `IP_GENERIC) (
     input wire clock_i, input wire reset_n_i, output wire ready_o,
     input wire cmd_valid_i, output wire cmd_ready_o,
     input wire [7:0] cmd_op_i,
@@ -41,7 +43,7 @@ module keygen_rsa_engine (
         else if(cmd_valid_i && cmd_ready_o) target_reg<=service_select ? 2:1;
         else if(rsp_valid_o && rsp_ready_i) target_reg<=0;
     end
-    keygen_math #(.MAX_LIMBS(32)) math (
+    keygen_math #(.MAX_LIMBS(32), .IP_TYPE(IP_TYPE)) math (
         .clock_i(clock_i),.reset_n_i(reset_n_i),
         .cmd_valid_i(cmd_valid_i && target_reg==0 && !service_select),.cmd_ready_o(math_cmd_ready),
         .cmd_op_i(cmd_op_i),.cmd_arg0_i(cmd_arg0_i),.cmd_arg1_i(cmd_arg1_i),.cmd_arg2_i(cmd_arg2_i),.cmd_arg3_i(cmd_arg3_i),
@@ -65,7 +67,7 @@ module keygen_rsa_engine (
         .pair_start_valid_o(pair_start_valid),.pair_start_ready_i(pair_start_ready),.pair_p_o(pair_p),.pair_q_o(pair_q),
         .pair_result_valid_i(pair_result_valid),.pair_result_ready_o(pair_result_ready),.pair_n_i(pair_n),.pair_status_i(pair_status)
     );
-    keygen_pair_check pair_check (
+    keygen_pair_check #(.IP_TYPE(IP_TYPE)) pair_check (
         .clock_i(clock_i),.reset_n_i(reset_n_i),.start_valid_i(pair_start_valid),.start_ready_o(pair_start_ready),
         .p_i(pair_p),.q_i(pair_q),.result_valid_o(pair_result_valid),.result_ready_i(pair_result_ready),
         .n_o(pair_n),.status_o(pair_status)

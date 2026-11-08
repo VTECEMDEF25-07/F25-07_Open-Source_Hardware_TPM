@@ -8,7 +8,7 @@ AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
 
 # Private scratch arithmetic engine
 
-`../rtl/arithmetic/keygen_math.v` supplies the arithmetic service used by the dedicated RTL RSA controller. It uses the portable IP wrappers, so defining `KEYGEN_ALTERA` selects real multiplier and RAM macros; the default selects generic Verilog. It is not a complete RSA key generator or an entropy source.
+`../rtl/arithmetic/keygen_math.v` supplies the arithmetic service used by the dedicated RTL RSA controller. Its `IP_TYPE` parameter is passed to both portable resource wrappers: `IP_GENERIC` (0, default) or `IP_ALTERA` (1), named in `IP/keygen_ip_types.vh`. It is not a complete RSA key generator or an entropy source.
 
 ## Review order
 

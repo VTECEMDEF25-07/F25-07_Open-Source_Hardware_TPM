@@ -6,6 +6,8 @@
 
 // TPM board wrapper for the DE25 Standard RevD.
 // This top preserves TPM_TOP's command path; it does not instantiate keygen.
+`include "keygen_ip_types.vh"
+
 module de25_soc_top (
     input clock_i,
     input board_reset_n_i,
@@ -54,8 +56,8 @@ module de25_soc_top (
             tpm_release_reg <= {tpm_release_reg[0], 1'b1};
     end
 
-    // Instantiate the TPM top without changing its implementation.
-    TPM_TOP tpm (
+    // Select the FPGA resource backend at the TPM boundary.
+    TPM_TOP #(.IP_TYPE(`IP_ALTERA)) tpm (
         .CLOCK_50(clock_50),
         .CLOCK_100(clock_100),
         .RESET_n(tpm_release_reg[1]),

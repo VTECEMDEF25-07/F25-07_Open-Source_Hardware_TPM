@@ -6,7 +6,9 @@
 // AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
 
 `timescale 1ns/1ps
-module tb_keygen_math_small;
+`include "keygen_ip_types.vh"
+
+module tb_keygen_math_small #(parameter IP_TYPE = `IP_GENERIC);
     reg clock_reg=0; always #5 clock_reg=~clock_reg;
     reg reset_n_reg=0, cmd_valid_reg=0, rsp_ready_reg=0;
     reg [7:0] op_reg=0;
@@ -16,9 +18,9 @@ module tb_keygen_math_small;
     reg [11:0] address_reg=0; reg [31:0] data_reg=0;
     wire mem_ready,read_valid; wire [31:0] read_data;
 `ifdef KEYGEN_MATH_SMALL
-    keygen_math #(.MAX_LIMBS(32)) dut(
+    keygen_math #(.MAX_LIMBS(32), .IP_TYPE(IP_TYPE)) dut(
 `else
-    keygen_math dut(
+    keygen_math #(.IP_TYPE(IP_TYPE)) dut(
 `endif
         .clock_i(clock_reg),.reset_n_i(reset_n_reg),
         .cmd_valid_i(cmd_valid_reg),.cmd_ready_o(cmd_ready),.cmd_op_i(op_reg),

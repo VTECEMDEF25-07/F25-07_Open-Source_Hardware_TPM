@@ -4,6 +4,8 @@ Author: Aaron Grossman
 
 This project targets DE25 Standard RevD (A5ED013BB32AE4SCS) and integrates the existing main-branch TPM without changing its command path. Open de25_soc_top.qpf in Quartus Pro 26.1, or run `quartus_sh --flow compile de25_soc_top` here.
 
+The board wrapper selects `TPM_TOP.IP_TYPE = IP_ALTERA` (1). That parameter reaches keygen RAM/multiplier wrappers through an inactive placeholder: its clock/reset are connected, requests/data are tied inactive and outputs unused. The QSF includes the keygen sources and header search path. Synthesis may remove the placeholder; this does not enable TPM key-generation commands or establish active keygen fit/performance.
+
 - `de25_soc_top.v`: TPM wiring, reset separation and autonomous cooling.
 - `de25_clock.v`: related 50/100 MHz PLL outputs for the existing TPM.
 - `Fan Controller/`: original Terasic example I2C, temperature and fan logic, plus the configuration-reset wrapper. No keygen or demo dependency.

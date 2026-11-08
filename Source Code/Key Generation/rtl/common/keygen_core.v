@@ -6,7 +6,9 @@
 // AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
 
 // Portable AES/RSA core. No board transport, hierarchy seed or production RNG.
-module keygen_core (
+`include "keygen_ip_types.vh"
+
+module keygen_core #(parameter IP_TYPE = `IP_GENERIC) (
     input wire clock_i,input wire reset_n_i,input wire peers_ready_i,
     input wire request_valid_i,output wire request_ready_o,
     input wire [1:0] request_profile_i,input wire [31:0] request_id_i,
@@ -98,7 +100,7 @@ module keygen_core (
         .cmd_arg0_o(cmd_arg0),.cmd_arg1_o(cmd_arg1),.cmd_arg2_o(cmd_arg2),.cmd_arg3_o(cmd_arg3),
         .rsp_valid_i(rsp_valid),.rsp_ready_o(rsp_ready),.rsp_status_i(rsp_status)
     );
-    keygen_rsa_engine engine (
+    keygen_rsa_engine #(.IP_TYPE(IP_TYPE)) engine (
         .clock_i(clock_i),.reset_n_i(engine_reset_n),.ready_o(engine_ready),
         .cmd_valid_i(cmd_valid),.cmd_ready_o(cmd_ready),.cmd_op_i(cmd_op),
         .cmd_arg0_i(cmd_arg0),.cmd_arg1_i(cmd_arg1),.cmd_arg2_i(cmd_arg2),.cmd_arg3_i(cmd_arg3),

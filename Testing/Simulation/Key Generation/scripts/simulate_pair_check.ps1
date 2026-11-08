@@ -25,16 +25,16 @@ foreach ($taskBackend in $taskBackends) {
     $taskBuild = (Resolve-Path $taskBuild).Path
     & $Python "$taskSource/reference/pair_vectors.py" "$taskBuild/pair_vectors.mem" --corpus $Corpus
     if ($LASTEXITCODE -ne 0 -or !(Test-Path "$taskBuild/pair_vectors.mem")) { throw 'Vector generation failed.' }
-    $taskDefine = if ($taskBackend -eq 'altera') {'+define+KEYGEN_ALTERA'} else {''}
+    $taskIpType = if ($taskBackend -eq 'altera') {1} else {0}
     $taskCommands = @('onerror {quit -code 1 -force}', 'onbreak {quit -code 1 -force}', 'vlib work')
     if ($taskBackend -eq 'altera') {
         if (!(Test-Path "$VendorModelDirectory/220model.v")) { throw 'Actual Altera lpm_mult model missing.' }
         $taskCommands += @('vlib vendor', "vlog -work vendor {$VendorModelDirectory/220model.v} {$VendorModelDirectory/altera_mf.v}")
     }
     $taskCommands += @(
-        "vlog -vlog01compat $taskDefine {$taskIp/keygen_mult32.v} {$taskIp/keygen_mult32_$taskBackend.v} {$taskIp/keygen_ram32.v} {$taskIp/keygen_ram32_$taskBackend.v} {$taskSource/../../../Source Code/Key Generation/rtl/arithmetic/keygen_pair_check.v}",
-        "vlog -sv {$taskSource/testbench/tb_keygen_pair_check.sv}",
-        'vsim -L vendor work.tb_keygen_pair_check', 'run -all', 'quit -code 0 -force'
+        "vlog {+incdir+$taskIp} -vlog01compat {$taskIp/keygen_mult32.v} {$taskIp/keygen_mult32_$taskBackend.v} {$taskIp/keygen_ram32.v} {$taskIp/keygen_ram32_$taskBackend.v} {$taskSource/../../../Source Code/Key Generation/rtl/arithmetic/keygen_pair_check.v}",
+        "vlog {+incdir+$taskIp} -sv {$taskSource/testbench/tb_keygen_pair_check.sv}",
+        "vsim -gIP_TYPE=$taskIpType -L vendor work.tb_keygen_pair_check", 'run -all', 'quit -code 0 -force'
     )
     if ($taskBackend -eq 'generic') { $taskCommands = $taskCommands -replace ' -L vendor', '' }
     $taskCommands | Set-Content -Encoding ascii "$taskBuild/simulate.do"

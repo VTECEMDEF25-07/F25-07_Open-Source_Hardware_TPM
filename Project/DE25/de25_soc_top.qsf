@@ -65,3 +65,19 @@ set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOU
 set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to {board_release_reg[*]}
 set_global_assignment -name LAST_QUARTUS_VERSION "26.1.0 Pro Edition"
 set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS INPUT TRI-STATED"
+
+# Keygen placeholder dependencies; IP_TYPE is passed from the board TPM instance.
+set_global_assignment -name SEARCH_PATH "../../Source Code/Key Generation/IP"
+set_global_assignment -name VERILOG_FILE "../../Source Code/Key Generation/IP/keygen_mult32.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/Key Generation/IP/keygen_mult32_altera.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/Key Generation/IP/keygen_mult32_generic.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/Key Generation/IP/keygen_ram32.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/Key Generation/IP/keygen_ram32_altera.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/Key Generation/IP/keygen_ram32_generic.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/Key Generation/rtl/aes/keygen_aes_core.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/Key Generation/rtl/arithmetic/keygen_math.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/Key Generation/rtl/arithmetic/keygen_pair_check.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/Key Generation/rtl/common/keygen_core.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/Key Generation/rtl/rsa_rtl/keygen_rsa_controller.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/Key Generation/rtl/rsa_rtl/keygen_rsa_engine.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/Key Generation/rtl/rsa_rtl/keygen_rsa_services.v"

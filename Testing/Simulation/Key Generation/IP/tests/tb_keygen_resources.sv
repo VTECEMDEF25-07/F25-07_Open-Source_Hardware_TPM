@@ -6,6 +6,8 @@
 // AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
 
 `timescale 1ns/1ps
+`include "keygen_ip_types.vh"
+
 module tb_keygen_resources;
     reg clock_reg = 0;
     always #5 clock_reg = ~clock_reg;
@@ -20,24 +22,24 @@ module tb_keygen_resources;
     reg [31:0] write_data_reg = 0;
     wire generic_read_valid, altera_read_valid;
     wire [31:0] generic_read_data, altera_read_data;
-    keygen_mult32_generic generic_mult (
+    keygen_mult32 #(.IP_TYPE(`IP_GENERIC)) generic_mult (
         .clock_i(clock_reg), .reset_n_i(reset_n_reg), .clock_en_i(clock_en_reg),
         .valid_i(valid_reg), .left_i(left_reg), .right_i(right_reg),
         .valid_o(generic_valid), .product_o(generic_product)
     );
-    keygen_ram32_generic #(.ADDRESS_WIDTH(6)) generic_ram (
+    keygen_ram32 #(.ADDRESS_WIDTH(6), .IP_TYPE(`IP_GENERIC)) generic_ram (
         .clock_i(clock_reg), .reset_n_i(reset_n_reg), .clock_en_i(clock_en_reg),
         .write_en_i(write_en_reg), .write_address_i(write_address_reg),
         .write_data_i(write_data_reg), .read_en_i(read_en_reg),
         .read_address_i(read_address_reg), .read_valid_o(generic_read_valid),
         .read_data_o(generic_read_data)
     );
-    keygen_mult32_altera altera_mult (
+    keygen_mult32 #(.IP_TYPE(`IP_ALTERA)) altera_mult (
         .clock_i(clock_reg), .reset_n_i(reset_n_reg), .clock_en_i(clock_en_reg),
         .valid_i(valid_reg), .left_i(left_reg), .right_i(right_reg),
         .valid_o(altera_valid), .product_o(altera_product)
     );
-    keygen_ram32_altera #(.ADDRESS_WIDTH(6)) altera_ram (
+    keygen_ram32 #(.ADDRESS_WIDTH(6), .IP_TYPE(`IP_ALTERA)) altera_ram (
         .clock_i(clock_reg), .reset_n_i(reset_n_reg), .clock_en_i(clock_en_reg),
         .write_en_i(write_en_reg), .write_address_i(write_address_reg),
         .write_data_i(write_data_reg), .read_en_i(read_en_reg),

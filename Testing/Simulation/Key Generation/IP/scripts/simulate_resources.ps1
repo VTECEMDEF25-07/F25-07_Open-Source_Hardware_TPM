@@ -26,10 +26,10 @@ $taskCommands = @(
     "vlog -work vendor {$VendorModelDirectory/220model.v} {$VendorModelDirectory/altera_mf.v}"
 )
 foreach ($taskFile in Get-ChildItem "$taskSource/*.v") {
-    $taskCommands += "vlog -work work -vlog01compat {$($taskFile.FullName.Replace('\','/'))}"
+    $taskCommands += "vlog {+incdir+$taskSource} -work work -vlog01compat {$($taskFile.FullName.Replace('\','/'))}"
 }
 $taskCommands += @(
-    "vlog -sv {$taskTests/tests/tb_keygen_resources.sv}",
+    "vlog {+incdir+$taskSource} -sv {$taskTests/tests/tb_keygen_resources.sv}",
     'vsim -L vendor work.tb_keygen_resources',
     'run -all',
     'quit -code 0 -force'

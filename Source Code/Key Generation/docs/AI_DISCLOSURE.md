@@ -20,11 +20,11 @@ This summary uses the saved instructor-page and syllabus extracts observed Octob
 
 | Required field | Record |
 |---|---|
-| Tool | OpenAI Codex. Existing file headers identify Codex and GPT-6 Astra assistance; this consolidation used GPT-6. Earlier exact tool versions are not independently established by this statement. |
+| Tool | OpenAI Codex. Existing file headers identify Codex and GPT-6 Astra assistance; the current documentation/parameter refactor used GPT-6. Earlier exact tool versions are not independently established by this statement. |
 | Purpose | HDL implementation/revision, debugging, reference/test and runner development, technical documentation, repository organization, author attribution and documentation consolidation. |
-| Extent | Material AI assistance covers project-authored keygen RTL/resource wrappers under `Source Code/Key Generation/`, its docs and supporting READMEs, and reference code, fixtures, benches and runners under `Testing/Simulation/Key Generation/`. The current cleanup changes documentation only. Unchanged vendor sources are excluded. |
+| Extent | Material AI assistance covers project-authored keygen RTL/resource wrappers under `Source Code/Key Generation/`, its docs and supporting READMEs, and reference code, fixtures, benches and runners under `Testing/Simulation/Key Generation/`. The latest work also adds `TPM_TOP.IP_TYPE`, an inactive keygen placeholder, board selections/source lists and parameter-validation tests. Unchanged vendor sources are excluded. |
 | Method | Iterative user-directed drafting and revision, inspection of repository sources and course materials, comparison with independent arithmetic/reference checks, and execution of documented automated checks. Representative prompts are recorded below; these are examples, not a complete transcript of earlier development. |
-| Verification | Historical checks include 13 Python reference tests; AES, RSA services, lifecycle and generic directed/stalled complete-RSA regressions; and a resource regression using unchanged installed Altera models. The documented November 6 full-core run matched 129 output words and consumed 384 words in 136,232,057 cycles. This cleanup checks link/anchor targets, preserved technical sections, unchanged non-documentation files and attribution. It does not rerun HDL or certify new bitstreams. Aaron remains responsible for reviewing and understanding the submitted work. |
+| Verification | Historical reference/AES/services checks and the documentation-only cleanup are distinguished from new parameter validation. The current IP_TYPE work runs lifecycle tests for both backends, checks propagation through the inactive TPM placeholder and invalid selections, and reruns generic directed/stalled complete RSA. Board analysis/elaboration/synthesis checks validate source dependencies, not fitted timing, active keygen capacity or physical acceptance. The simulation README records the exact tested scopes. Aaron remains responsible for reviewing and understanding the submitted work. |
 
 Representative user prompts, November 6–8, 2026:
 
@@ -32,6 +32,8 @@ Representative user prompts, November 6–8, 2026:
 - “you need to go through and credit me with these changed files Aaron Grossman”
 - “do that cleanup, keep the important technical details and my author credits, update all the links, then commit and push”
 - “U should keep the AI disclosure one and look at the course policy for what I need to cite and write down”
+- “implement IP_TYPE through keygen like that just ignore XILINX its not a choice but leave a comment for the future implementation”
+- “it should be at the top level can we just do a temporary wiring of the keygen module as an instanchiation and leave it unconnected”
 
 These document the organization/attribution/cleanup phase. Earlier substantive RTL assistance is acknowledged above and in file headers; its exact original prompts are not reconstructed here. Add the actual relevant earlier prompts or a verified method summary to a submission if needed for its scope.
 

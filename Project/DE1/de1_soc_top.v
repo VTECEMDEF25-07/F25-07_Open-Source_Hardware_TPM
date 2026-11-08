@@ -5,6 +5,8 @@
 //
 // Authors:
 //	Ian Sizemore (idsizemore@vt.edu)
+//	Aaron Grossman (keygen IP_TYPE selection)
+// AI Disclosure: Codex assisted with the IP_TYPE selection change.
 //
 // Date: 11/6/25
 //
@@ -12,6 +14,8 @@
 //	Top level module for our physical fpga testing.
 //	Other top level modules for different devices will likely look similar.
 //	This module targets the Terasic DE1-SoC development board.
+
+`include "keygen_ip_types.vh"
 
 module de1_soc_top
 (
@@ -37,7 +41,8 @@ module de1_soc_top
 	wire	CLOCK_100;
 	de1_clock PLL0( .refclk(CLOCK_50), .rst(~RESET_N), .outclk_0(CLOCK_100) );
 	
-	TPM_TOP tpm
+	// The current Altera RAM wrapper targets Agilex 5/M20K; DE1 uses Generic.
+	TPM_TOP #(.IP_TYPE(`IP_GENERIC)) tpm
 	(
 		.CLOCK_50(CLOCK_50), .CLOCK_100(CLOCK_100),
 		.RESET_n(RESET_N),

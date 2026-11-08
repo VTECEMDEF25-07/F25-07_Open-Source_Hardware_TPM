@@ -8,7 +8,9 @@ AI Disclosure: Codex assisted with consolidation; see docs/AI_DISCLOSURE.md in t
 
 # Key-generation simulations
 
-Run the commands below from `Testing/Simulation/Key Generation`. Keep the repository together: runners locate reusable HDL under [`Source Code/Key Generation`](../../../Source%20Code/Key%20Generation/README.md). Source is Verilog-2001; SystemVerilog is used for tests. Generic resources are the default; `KEYGEN_ALTERA` selects vendor resources. There is no firmware compiler/ROM dependency.
+Run the commands below from `Testing/Simulation/Key Generation`. Keep the repository together: runners locate reusable HDL under [`Source Code/Key Generation`](../../../Source%20Code/Key%20Generation/README.md). Source is Verilog-2001; SystemVerilog is used for tests. Generic resources are the default; `IP_TYPE=1` selects Altera. There is no firmware compiler/ROM dependency.
+
+The header `IP/keygen_ip_types.vh` names `IP_GENERIC=0` and `IP_ALTERA=1`. Runners supply its include path. Questa tops use `-gIP_TYPE=0`/`1`; Verilator parameter overrides use `-GIP_TYPE=0`/`1`; Quartus fit runners emit `set_parameter -name IP_TYPE ...`. The genuine-Altera full-key runner explicitly selects 1 and hashes the header as a build input. There is no global backend define or Xilinx choice.
 
 `testbench/` contains core benches and a deterministic test-only stream. `reference/` contains the independent oracle and public corpus. `scripts/`, `IP/` and `Math/` contain runners, resource/math tests and vector generators. Products stay in ignored `build/` or explicitly supplied scratch directories.
 
@@ -45,12 +47,15 @@ Windows/Questa, from this directory:
 ```powershell
 ./scripts/test_aes.ps1
 ./scripts/test_rsa_services.ps1
+python scripts/test_lifecycle_questa.py --build '<absolute scratch>'
 ./scripts/simulate_pair_check.ps1 -BuildDirectory '<absolute scratch>' -Backend generic
 ./IP/scripts/simulate_resources.ps1 -BuildDirectory '<absolute scratch>'
 ./Math/scripts/simulate_math.ps1 -BuildDirectory '<absolute scratch>' -Full -Small
 ```
 
 Use a different scratch directory for each configuration. Pair/resource runners support installed genuine Altera models; pair `-Backend both` runs both configurations. Scripts with exposed `-QuestaBin`/vendor-path arguments support installation overrides; math's PowerShell runner retains its explicit installed-tool paths. Coordinate the installed Questa license rather than running vendor sessions concurrently.
+
+The Questa lifecycle runner checks all 28 existing cases for both parameter values, verifies propagation to all resources, runs both TPM parameter values together with the placeholder inactive for 6,000 cycles, and rejects invalid values 2 and -1. The resource differential test also instantiates Generic and Altera wrappers side by side in one compilation, checking actual behavior rather than assuming a parameter value selects the right implementation.
 
 Linux/WSL examples (invoke shell runners with `bash`):
 
@@ -64,6 +69,8 @@ python3 Math/scripts/simulate_small_verilator.py '<absolute scratch>' --source-r
 Fit helpers are `scripts/fit_pair_check.ps1`, `IP/scripts/fit_resources.ps1` and `Math/scripts/fit_math.ps1`. They use explicit scratch directories and virtual pins; they do not program hardware or establish full-board fit/timing. See the [resource](../../../Source%20Code/Key%20Generation/IP/README.md) and [math](../../../Source%20Code/Key%20Generation/Math/README.md) contracts for their detailed test scopes.
 
 ## Validation and limits
+
+November 8 IP_TYPE validation: both Generic and Altera pass the 28-case lifecycle suite with explicit propagation checks; both TPM configurations keep the placeholder inactive for 6,000 cycles; invalid values 2 and -1 are rejected in Questa. Generic directed/stalled full RSA again matches all 129 output words with 384 input words and 136,232,057 cycles (manifest SHA256 `79f7efc4c7749cfc3eacf14d6b0e963e231b02752f32efce59c6ea8ae08b5eb0`). The resource differential suite passes using Generic and Altera parameterized wrappers together. DE1 Quartus Analysis & Elaboration and DE25 Quartus synthesis pass; the unused placeholder may be optimized away. No new place-and-route, timing closure, physical-board or active full-keygen-fit claim is made.
 
 | Retained result | Scope |
 |---|---|

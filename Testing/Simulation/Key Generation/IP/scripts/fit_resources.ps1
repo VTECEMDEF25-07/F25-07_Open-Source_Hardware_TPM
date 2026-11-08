@@ -24,7 +24,8 @@ $taskSettings = @(
     'set_global_assignment -name VERILOG_INPUT_VERSION VERILOG_2001',
     'set_instance_assignment -name VIRTUAL_PIN ON -to *'
 )
-if (!$Generic) { $taskSettings += 'set_global_assignment -name VERILOG_MACRO "KEYGEN_ALTERA=1"' }
+$taskSettings += "set_global_assignment -name SEARCH_PATH `"$taskSource`""
+$taskSettings += "set_parameter -name IP_TYPE $(if ($Generic) {0} else {1})"
 foreach ($taskFile in Get-ChildItem "$taskSource/*.v") {
     $taskSettings += "set_global_assignment -name VERILOG_FILE `"$($taskFile.FullName.Replace('\','/'))`""
 }

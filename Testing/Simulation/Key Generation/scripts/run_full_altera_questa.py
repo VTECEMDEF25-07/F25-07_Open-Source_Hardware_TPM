@@ -121,7 +121,7 @@ models=[(a.altera_models/name).resolve() for name in ('220model.v','altera_mf.v'
 simulator=subprocess.run([str(a.questa_bin/'vsim.exe'),'-version'],capture_output=True,text=True,check=True).stdout.strip()
 manifest_path=build/'build-manifest.json'
 manifest={'inputs':input_hashes(root,sources,models),'simulator':simulator,
-          'configuration':{'controller':'rtl','backend':'KEYGEN_ALTERA','top':'tb_keygen_full',
+          'configuration':{'controller':'rtl','IP_TYPE':1,'top':'tb_keygen_full',
                            'rtl_language':'Verilog2001','test_language':'SystemVerilog'},'commands':[]}
 if a.reuse_build:
     manifest=validate_reuse(manifest_path,manifest)
@@ -137,7 +137,7 @@ if not a.reuse_build:
     for library in ('work','vendor'):
         if not (build/library).exists():run_tool('vlib',[library],library+'_create.log')
     run_tool('vlog',['-work','vendor']+[str(a.altera_models/s) for s in ('220model.v','altera_mf.v')],'vendor_compile.log')
-    defines=['+define+KEYGEN_ALTERA']
+    defines=['+incdir+'+str((root/'../../../Source Code/Key Generation/IP').resolve())]
     run_tool('vlog',['-vlog01compat']+defines+[str(root/s) for s in sources if s.endswith('.v')],'rtl_compile.log')
     run_tool('vlog',['-sv']+defines+[str(root/s) for s in sources if s.endswith('.sv')],'test_compile.log')
     if input_hashes(root,sources,models)!=manifest['inputs']:raise RuntimeError('Sources changed during compilation')
@@ -154,7 +154,7 @@ for seed in a.seeds:
         words += [(value>>(32*i))&0xffffffff for i in reversed(range(count))]
     path=build/f'expected-{seed}.hex'
     path.write_text(''.join(f'{w:08x}\n' for w in words))
-    command=[str(a.questa_bin/'vsim.exe'),'-c','-L','vendor','work.tb_keygen_full',f'+SEED={seed}',f'+EXPECTED={path}',f'+WORDS={fixture["words_consumed"]}']
+    command=[str(a.questa_bin/'vsim.exe'),'-c','-L','vendor','-gIP_TYPE=1','work.tb_keygen_full',f'+SEED={seed}',f'+EXPECTED={path}',f'+WORDS={fixture["words_consumed"]}']
     if a.directed:
         stimulus=[]
         for prime in ('p','q'):
@@ -162,7 +162,7 @@ for seed in a.seeds:
                 stimulus += [(value>>(32*i))&0xffffffff for i in reversed(range(32))]
         stimulus_path=build/f'stimulus-{seed}.hex'
         stimulus_path.write_text(''.join(f'{w:08x}\n' for w in stimulus))
-        command=[str(a.questa_bin/'vsim.exe'),'-c','-L','vendor','work.tb_keygen_full',f'+SEED={seed}',f'+EXPECTED={path}','+WORDS=384',
+        command=[str(a.questa_bin/'vsim.exe'),'-c','-L','vendor','-gIP_TYPE=1','work.tb_keygen_full',f'+SEED={seed}',f'+EXPECTED={path}','+WORDS=384',
                  '+DIRECTED',f'+STIMULUS={stimulus_path}']
     if a.stalls:command+=['+STALLS']
     command+=['-do','onerror {quit -code 1}; onbreak {quit -code 1}; run -all; quit -code 0']

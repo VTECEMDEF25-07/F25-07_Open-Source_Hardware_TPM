@@ -18,8 +18,10 @@ quartus_sh --flow compile de1_soc_top
 This project uses the board-local `de1_soc_top.v` and TPM
 and SPI modules. `de1_clock.v` supplies the previously missing 50-to-100 MHz
 clock module through the Cyclone V `altera_pll` macro. There is no DE25 fan
-controller or new keygen integration in this project. LED0 shows the original
+controller or functional keygen command integration in this project. LED0 shows the original
 active-low interrupt signal; the remaining LEDs are off.
+
+`TPM_TOP.IP_TYPE` is passed through an inactive keygen placeholder. The DE1 wrapper selects `IP_GENERIC` (0), because the current Altera RAM wrapper targets Agilex 5/M20K rather than Cyclone V. Request/data inputs are tied inactive and outputs unused; synthesis can remove this instance. The QSF includes its source files and header search path. This is configuration wiring, not TPM key-generation support or full-core resource-fit acceptance.
 
 | Signal | Connection | FPGA pin |
 |---|---|---|

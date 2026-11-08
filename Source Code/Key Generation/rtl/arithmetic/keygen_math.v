@@ -7,7 +7,9 @@
 
 // Private-scratch arithmetic service. Words are little-endian 32-bit limbs.
 // Reset invalidates immediately, then sweeps all RAM and operand registers.
-module keygen_math #(parameter MAX_LIMBS = 64) (
+`include "keygen_ip_types.vh"
+
+module keygen_math #(parameter MAX_LIMBS = 64, parameter IP_TYPE = `IP_GENERIC) (
     input clock_i, input reset_n_i,
     input cmd_valid_i, output cmd_ready_o,
     input [7:0] cmd_op_i,
@@ -81,12 +83,12 @@ module keygen_math #(parameter MAX_LIMBS = 64) (
         if (!reset_n_i) private_read_valid_reg <= 1'b0;
         else private_read_valid_reg <= mem_ready_o && mem_read_en_i;
     end
-    keygen_mult32 multiply (
+    keygen_mult32 #(.IP_TYPE(IP_TYPE)) multiply (
         .clock_i(clock_i), .reset_n_i(reset_n_i), .clock_en_i(1'b1),
         .valid_i(state_reg == MULT_START), .left_i(mult_left_reg),
         .right_i(mult_right_reg), .valid_o(mult_valid), .product_o(product)
     );
-    keygen_ram32 #(.ADDRESS_WIDTH(12)) scratch (
+    keygen_ram32 #(.ADDRESS_WIDTH(12), .IP_TYPE(IP_TYPE)) scratch (
         .clock_i(clock_i), .reset_n_i(reset_n_i), .clock_en_i(1'b1),
         .write_en_i(ram_write_en), .write_address_i(ram_write_address),
         .write_data_i(ram_write_data), .read_en_i(ram_read_en),

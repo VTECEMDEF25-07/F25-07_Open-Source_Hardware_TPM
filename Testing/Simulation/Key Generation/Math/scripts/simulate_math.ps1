@@ -15,13 +15,13 @@ $taskExtra=@();if($Full){$taskExtra+='--full'};if($Small){$taskExtra+=@('--max-l
 & 'C:/Python314/python.exe' "$taskSource/scripts/generate_vectors.py" "$taskBuild/vectors.txt" @taskExtra
 if($LASTEXITCODE -ne 0){throw 'Vector generation failed'}
 $taskCommands=@('onerror {quit -code 1 -force}','onbreak {quit -code 1 -force}','if {![file isdirectory work]} {vlib work}')
-$taskDefine=''
+$taskIpType=0
 if($Altera){
- $taskDefine='+define+KEYGEN_ALTERA'
+ $taskIpType=1
  $taskCommands+=@('if {![file isdirectory vendor]} {vlib vendor}', 'vlog -work vendor C:/intelFPGA_lite/24.1std/quartus/eda/sim_lib/220model.v C:/intelFPGA_lite/24.1std/quartus/eda/sim_lib/altera_mf.v')
 }
-foreach($taskFile in Get-ChildItem "$taskIp/*.v"){$taskCommands+="vlog -vlog01compat $taskDefine {$($taskFile.FullName.Replace('\','/'))}"}
-$taskCommands+=@("vlog -vlog01compat $taskDefine {$taskSource/../../../../Source Code/Key Generation/rtl/arithmetic/keygen_math.v}","vlog -sv $(if($Small){'+define+KEYGEN_MATH_SMALL'}) {$taskSource/tests/tb_keygen_math.sv}","vsim $(if($Altera){'-L vendor'}) work.tb_keygen_math",'run -all','quit -code 0 -force')
+foreach($taskFile in Get-ChildItem "$taskIp/*.v"){$taskCommands+="vlog {+incdir+$taskIp} -vlog01compat {$($taskFile.FullName.Replace('\','/'))}"}
+$taskCommands+=@("vlog {+incdir+$taskIp} -vlog01compat {$taskSource/../../../../Source Code/Key Generation/rtl/arithmetic/keygen_math.v}","vlog {+incdir+$taskIp} -sv $(if($Small){'+define+KEYGEN_MATH_SMALL'}) {$taskSource/tests/tb_keygen_math.sv}","vsim -gIP_TYPE=$taskIpType $(if($Altera){'-L vendor'}) work.tb_keygen_math",'run -all','quit -code 0 -force')
 $taskCommands|Set-Content -Encoding ascii "$taskBuild/simulate.do"
 Push-Location $taskBuild
 try{
