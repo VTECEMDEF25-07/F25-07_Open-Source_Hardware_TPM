@@ -12,9 +12,9 @@
 //	It is referred to as "frs" in comments ("fifo register space", from the spec).
 //	This module contains the state machine for the I/O module, a state machine for handling locality,
 //	handles the fifo register space, handles interrupts, and contains the instantiation of the fifo buffer.
-//	Note: comments and net names containing "IDS" are debug features (a 'todo' which needs change/removal in the future).
-//		Some of these have already been removed, and other that remain may not serve any debug purpose anymore.
-//		Since the project is working and ready for submission, I'm going to leave these debug features present to
+//	Note: comments and net names containing "IDS" are debug_o features (a 'todo' which needs change/removal in the future).
+//		Some of these have already been removed, and other that remain may not serve any debug_o purpose anymore.
+//		Since the project is working and ready for submission, I'm going to leave these debug_o features present to
 //		avoid breaking something on accident.
 
 `define READ 1
@@ -22,42 +22,42 @@
 
 module	tpm_reg_space
 (
-	input			clock,
-	input			reset_n,
+	input			clock_i,
+	input			reset_n_i,
 	
 	// connections to transaction handler
-	input			t_req,		// SPI transaction request
-	input			t_dir,		// SPI transaction direction (READ = 1; WRITE = 0)
-	input		[5:0]	t_size,		// SPI transaction size
-	input		[15:0]	t_address,	// SPI transaction address
-	input		[15:0]	t_baseAddr,	// SPI transaction starting address
-	input		[7:0]	t_writeByte,	// SPI transaction write byte
-	output	reg	[7:0]	t_readByte,	// SPI transaction read byte
-	input			updateAddr,	// singal to update address, used for timing fifo buffer accesses
+	input			t_req_i,		// SPI transaction request
+	input			t_dir_i,		// SPI transaction direction (READ = 1; WRITE = 0)
+	input		[5:0]	t_size_i,		// SPI transaction size
+	input		[15:0]	t_address_i,	// SPI transaction address
+	input		[15:0]	t_baseAddr_i,	// SPI transaction starting address
+	input		[7:0]	t_writeByte_i,	// SPI transaction write byte
+	output	reg	[7:0]	t_readByte_o,	// SPI transaction read byte
+	input			updateAddr_i,	// singal to update address, used for timing fifo buffer accesses
 	
-	input			e_execDone,	// execution done, from CRB
-	output			e_execStart,	// UNUSED
+	input			e_execDone_i,	// execution done, from CRB
+	output			e_execStart_o,	// UNUSED
 	
-	output			SPI_PIRQ_n,	// SPI IRQ to host
+	output			SPI_PIRQ_n_o,	// SPI IRQ to host
 	
-	output		[2:0]	debug,		// may be removed
-	output			dbg,		// may be removed
+	output		[2:0]	debug_o,		// may be removed
+	output			dbg_o,		// may be removed
 		
-	output	reg	[7:0]	locality_out,	// active locality
+	output	reg	[7:0]	locality_out_o,	// active locality
 	
 	// command response buffer connections
-	output		[31:0]	c_cmdSize,	// command size
-	input		[31:0]	c_rspSize,	// response size
-	output			c_cmdSend,	// command send
-	input			c_rspSend,	// response send
-	input			c_cmdDone,	// command send done
-	input			c_rspDone,	// response send done
-	input		[11:0]	c_cmdInAddr,	// command send address
-	input		[11:0]	c_rspInAddr,	// response send address
-	output		[7:0]	c_cmdByteOut,	// command send byte
-	input		[7:0]	c_rspByteIn,	// response send byte
-	input			c_execDone,	// execution done
-	output			c_execAck	// ack execution done
+	output		[31:0]	c_cmdSize_o,	// command size
+	input		[31:0]	c_rspSize_i,	// response size
+	output			c_cmdSend_o,	// command send
+	input			c_rspSend_i,	// response send
+	input			c_cmdDone_i,	// command send done
+	input			c_rspDone_i,	// response send done
+	input		[11:0]	c_cmdInAddr_i,	// command send address
+	input		[11:0]	c_rspInAddr_i,	// response send address
+	output		[7:0]	c_cmdByteOut_o,	// command send byte
+	input		[7:0]	c_rspByteIn_i,	// response send byte
+	input			c_execDone_i,	// execution done
+	output			c_execAck_o	// ack execution done
 );
 	
 	// fifo reg names (r_ prefix for regs, w_ for wires; _e postfix for external, _i for internal)
@@ -140,7 +140,7 @@ module	tpm_reg_space
 	reg		r_IDS_EXEC;
 	reg	[7:0]	r_IDS_OVERFLOW;
 	
-	assign	dbg = r_IDS_FIFO_W;
+	assign	dbg_o = r_IDS_FIFO_W;
 	
 	// Interrupts
 	reg		i_commandReadyInterrupt;
@@ -155,19 +155,19 @@ module	tpm_reg_space
 	wire	[7:0]	f_fifoOut;
 	
 	// fifo access is true during a transaction request to one of these addresses
-	assign	f_fifoAccess = t_req &
+	assign	f_fifoAccess = t_req_i &
 	(
-		t_baseAddr[11:0] == 12'h027 |
-		t_baseAddr[11:0] == 12'h026 |
-		t_baseAddr[11:0] == 12'h025 |
-		t_baseAddr[11:0] == 12'h024 |
-		t_baseAddr[11:0] == 12'h083 |
-		t_baseAddr[11:0] == 12'h082 |
-		t_baseAddr[11:0] == 12'h081 |
-		t_baseAddr[11:0] == 12'h080
+		t_baseAddr_i[11:0] == 12'h027 |
+		t_baseAddr_i[11:0] == 12'h026 |
+		t_baseAddr_i[11:0] == 12'h025 |
+		t_baseAddr_i[11:0] == 12'h024 |
+		t_baseAddr_i[11:0] == 12'h083 |
+		t_baseAddr_i[11:0] == 12'h082 |
+		t_baseAddr_i[11:0] == 12'h081 |
+		t_baseAddr_i[11:0] == 12'h080
 	);
-	assign	f_fifoRead = f_fifoAccess & t_dir;
-	assign	f_fifoWrite = f_fifoAccess & ~t_dir;
+	assign	f_fifoRead = f_fifoAccess & t_dir_i;
+	assign	f_fifoWrite = f_fifoAccess & ~t_dir_i;
 //	assign	f_fifoComplete = r_IDS_FIFO_W;
 //	assign	f_fifoEmpty = r_IDS_FIFO_R;
 	
@@ -216,24 +216,24 @@ module	tpm_reg_space
 	reg	[2:0]	loc_s, loc_next_s;
 	
 	// state machine register
-	always @(posedge clock, negedge reset_n)
+	always @(posedge clock_i, negedge reset_n_i)
 	begin
-		if (!reset_n)
+		if (!reset_n_i)
 			loc_s <= LocNull;
 		// only update when there is not an active transaction ; if l_trySeize, force transfer to reliquish
-		else if (~t_req | f_fifoAccess)
+		else if (~t_req_i | f_fifoAccess)
 			loc_s <= l_trySeize ? LocRel : loc_next_s;
 	end
 	
 	// combinational logic for active locality output
 	always @* case (loc_s)
 	
-	default:	locality_out = 8'h00;
-	Loc$0:		locality_out = 8'h01;
-	Loc$1:		locality_out = 8'h02;
-	Loc$2:		locality_out = 8'h04;
-	Loc$3:		locality_out = 8'h08;
-	Loc$4:		locality_out = 8'h10;
+	default:	locality_out_o = 8'h00;
+	Loc$0:		locality_out_o = 8'h01;
+	Loc$1:		locality_out_o = 8'h02;
+	Loc$2:		locality_out_o = 8'h04;
+	Loc$3:		locality_out_o = 8'h08;
+	Loc$4:		locality_out_o = 8'h10;
 	
 	endcase
 	
@@ -296,7 +296,7 @@ module	tpm_reg_space
 	
 	// determines if the transaction should be allowed ... only if the transaction's locality is that of the active locality
 	wire	l_allowAccess;
-	assign	l_allowAccess = l_activeLocality == t_baseAddr[15:12];
+	assign	l_allowAccess = l_activeLocality == t_baseAddr_i[15:12];
 	
 	// TPM Status State Machine (TPM_STS)
 	localparam
@@ -305,15 +305,15 @@ module	tpm_reg_space
 		Reception	= 2,
 		Execution	= 3,
 		Completion	= 4;
-	reg	[2:0]	sts_s, sts_next_s;	assign debug = sts_s;
+	reg	[2:0]	sts_s, sts_next_s;	assign debug_o = sts_s;
 	
 	// Status state machine 
-	always @(posedge clock, negedge reset_n)
+	always @(posedge clock_i, negedge reset_n_i)
 	begin
-		if (!reset_n)
+		if (!reset_n_i)
 			sts_s <= Idle;
 		// only update outside of transactions, return to Idle on a sucessful Seize
-		else if (~t_req | f_fifoAccess)
+		else if (~t_req_i | f_fifoAccess)
 			sts_s <= l_trySeize ? Idle : sts_next_s;
 	end
 	
@@ -334,7 +334,7 @@ module	tpm_reg_space
 // Return to Idle on receipt of 1 written to TPM_STS.commandReady
 // Transfer to Completion once Execution is done
 			Execution:
-				sts_next_s = r_commandReady_i ? Idle : e_execDone ? Completion : Execution;
+				sts_next_s = r_commandReady_i ? Idle : e_execDone_i ? Completion : Execution;
 // Return to Idle on receipt of 1 written to TPM_STS.commandReady
 			Completion:
 				sts_next_s = r_commandReady_i ? Idle : Completion;
@@ -350,9 +350,9 @@ module	tpm_reg_space
 	// Blocks are named to help document where individual register behaviors are implemented,
 	//	block names end with $x, where x represents the byte of the register.
 	//	I.e., block TPM_INT_ENABLE$3 implements read/write behavior of the TPM_INT_ENABLE register's fourth byte.
-	always @(posedge clock, negedge reset_n)
+	always @(posedge clock_i, negedge reset_n_i)
 	begin : REG_SPACE	
-		if (!reset_n) // default values for registers
+		if (!reset_n_i) // default values for registers
 		begin : REG_SPACE_RESET
 			
 			// TPM_ACCESS
@@ -415,11 +415,11 @@ module	tpm_reg_space
 			r_IDS_OVERFLOW <= 8'h00;
 		end
 		// status state machine sequential logic block (and locality fsm)
-		else if (~t_req | f_fifoAccess)
+		else if (~t_req_i | f_fifoAccess)
 		begin : STS_FSM_SEQ
-			// t_readByte is 0xFF unless the transaction is accessing the fifo buffer,
+			// t_readByte_o is 0xFF unless the transaction is accessing the fifo buffer,
 			// 	in the correct locality, and the fifo has data available
-			t_readByte <= f_fifoAccess & l_allowAccess & r_dataAvail ? f_fifoOut : 8'hFF;
+			t_readByte_o <= f_fifoAccess & l_allowAccess & r_dataAvail ? f_fifoOut : 8'hFF;
 			
 			case (sts_s) // TPM_STS status state machine
 			
@@ -498,55 +498,55 @@ module	tpm_reg_space
 			end
 		end
 		// The access register is the only register that may be accessed regardless of the active locality
-		else if (t_req & ~f_fifoAccess & t_address[11:0] == 12'h000)
+		else if (t_req_i & ~f_fifoAccess & t_address_i[11:0] == 12'h000)
 		begin : TPM_ACCESS$0
-			if (t_dir)
-				t_readByte <=
+			if (t_dir_i)
+				t_readByte_o <=
 				{
-					loc_s != LocRel, // r_tpmRegValidSts[t_address[15:12]],
+					loc_s != LocRel, // r_tpmRegValidSts[t_address_i[15:12]],
 					1'b0,
-					l_activeLocality[3:0] == t_address[15:12], // r_activeLocality_e[t_address[15:12]],
-					r_beenSeized[t_address[15:12]],
+					l_activeLocality[3:0] == t_address_i[15:12], // r_activeLocality_e[t_address_i[15:12]],
+					r_beenSeized[t_address_i[15:12]],
 					1'b0,
-					|l_requests, // r_pendingRequest[t_address[15:12]],
-					r_requestUse[t_address[15:12]],
-					1'b1 // IDS ??? r_tpmEstablishment[t_address[15:12]]
+					|l_requests, // r_pendingRequest[t_address_i[15:12]],
+					r_requestUse[t_address_i[15:12]],
+					1'b1 // IDS ??? r_tpmEstablishment[t_address_i[15:12]]
 				};
 			else
 			begin
-				r_activeLocality_i[t_address[15:12]] <= t_writeByte[5];
-				r_beenSeized[t_address[15:12]] <= r_beenSeized[t_address[15:12]] & ~t_writeByte[4];
-				r_Seize[t_address[15:12]] <= t_writeByte[3]; // IDS this WILL abort a command
-				r_requestUse[t_address[15:12]] <= t_writeByte[1] | t_writeByte[3];
+				r_activeLocality_i[t_address_i[15:12]] <= t_writeByte_i[5];
+				r_beenSeized[t_address_i[15:12]] <= r_beenSeized[t_address_i[15:12]] & ~t_writeByte_i[4];
+				r_Seize[t_address_i[15:12]] <= t_writeByte_i[3]; // IDS this WILL abort a command
+				r_requestUse[t_address_i[15:12]] <= t_writeByte_i[1] | t_writeByte_i[3];
 			end
 		end
 		// all other FIFO registers read and write behaviors
-		else if (t_req & ~f_fifoAccess & l_allowAccess) case (t_address[11:0])
+		else if (t_req_i & ~f_fifoAccess & l_allowAccess) case (t_address_i[11:0])
 		12'h00B:
 		begin : TPM_INT_ENABLE$3
-			if (t_dir)
-				t_readByte <=
+			if (t_dir_i)
+				t_readByte_o <=
 				{
 					r_globalIntEnable,
 					7'h00
 				};
 			else
-				r_globalIntEnable <= t_writeByte[7];
+				r_globalIntEnable <= t_writeByte_i[7];
 		end
 		12'h00A:
 		begin : TPM_INT_ENABLE$2
-			if (t_dir)
-				t_readByte <= 8'h00;
+			if (t_dir_i)
+				t_readByte_o <= 8'h00;
 		end
 		12'h009:
 		begin : TPM_INT_ENABLE$1
-			if (t_dir)
-				t_readByte <= 8'h00;
+			if (t_dir_i)
+				t_readByte_o <= 8'h00;
 		end
 		12'h008:
 		begin : TPM_INT_ENABLE$0
-			if (t_dir)
-				t_readByte <=
+			if (t_dir_i)
+				t_readByte_o <=
 				{
 					r_commandReadyEnable,
 					2'h0,
@@ -557,47 +557,47 @@ module	tpm_reg_space
 				};
 			else
 			begin
-				r_commandReadyEnable <= t_writeByte[7];
-				r_typePolarity <= t_writeByte[4:3];
-				r_localityChangeIntEnable <= t_writeByte[2];
-				r_stsValidIntEnable <= t_writeByte[1];
-				r_dataAvailIntEnable <= t_writeByte[0];
+				r_commandReadyEnable <= t_writeByte_i[7];
+				r_typePolarity <= t_writeByte_i[4:3];
+				r_localityChangeIntEnable <= t_writeByte_i[2];
+				r_stsValidIntEnable <= t_writeByte_i[1];
+				r_dataAvailIntEnable <= t_writeByte_i[0];
 			end
 		end
 		
 		12'h00c:
 		begin : TPM_INT_VECTOR$0
-			if (t_dir)
-				t_readByte <=
+			if (t_dir_i)
+				t_readByte_o <=
 				{
 					4'h0,
 					r_sIrqVec
 				};
 			else
 			begin
-				r_sIrqVec <= t_writeByte[3:0];
+				r_sIrqVec <= t_writeByte_i[3:0];
 			end
 		end
 		
 		12'h013:
 		begin : TPM_INT_STATUS$3
-			if (t_dir)
-				t_readByte <= 8'h00;
+			if (t_dir_i)
+				t_readByte_o <= 8'h00;
 		end
 		12'h012:
 		begin : TPM_INT_STATUS$2
-			if (t_dir)
-				t_readByte <= 8'h00;
+			if (t_dir_i)
+				t_readByte_o <= 8'h00;
 		end
 		12'h011:
 		begin : TPM_INT_STATUS$1
-			if (t_dir)
-				t_readByte <= 8'h00;
+			if (t_dir_i)
+				t_readByte_o <= 8'h00;
 		end
 		12'h010:
 		begin : TPM_INT_STATUS$0
-			if (t_dir)
-				t_readByte <=
+			if (t_dir_i)
+				t_readByte_o <=
 				{
 					r_commandReadyIntOccured,
 					4'h0,
@@ -607,17 +607,17 @@ module	tpm_reg_space
 				};
 			else
 			begin // write 0: no effect ; write 1: clear register
-				r_commandReadyIntOccured <= r_commandReadyIntOccured & ~t_writeByte[7];
-				r_localityChangeIntOccured <= r_localityChangeIntOccured & ~t_writeByte[2];
-				r_stsValidIntOccured <= r_stsValidIntOccured & ~t_writeByte[1];
-				r_dataAvailIntOccured <= r_dataAvailIntOccured & ~t_writeByte[0];
+				r_commandReadyIntOccured <= r_commandReadyIntOccured & ~t_writeByte_i[7];
+				r_localityChangeIntOccured <= r_localityChangeIntOccured & ~t_writeByte_i[2];
+				r_stsValidIntOccured <= r_stsValidIntOccured & ~t_writeByte_i[1];
+				r_dataAvailIntOccured <= r_dataAvailIntOccured & ~t_writeByte_i[0];
 			end
 		end
 		
 		12'h017:
 		begin : TPM_INTF_CAPABILITY$3
-			if (t_dir)
-				t_readByte <=
+			if (t_dir_i)
+				t_readByte_o <=
 				{
 					1'h0,
 					w_InterfaceVersion_cap,
@@ -626,13 +626,13 @@ module	tpm_reg_space
 		end
 		12'h016:
 		begin : TPM_INTF_CAPABILITY$2
-			if (t_dir)
-				t_readByte <= 8'h00;
+			if (t_dir_i)
+				t_readByte_o <= 8'h00;
 		end
 		12'h015:
 		begin : TPM_INTF_CAPABILITY$1
-			if (t_dir)
-				t_readByte <=
+			if (t_dir_i)
+				t_readByte_o <=
 				{
 					5'h00,
 					w_DataTransferSizeSupport,
@@ -641,8 +641,8 @@ module	tpm_reg_space
 		end
 		12'h014:
 		begin : TPM_INTF_CAPABILITY$0
-			if (t_dir)
-				t_readByte <=
+			if (t_dir_i)
+				t_readByte_o <=
 				{
 					w_CommandReadyIntSupport,
 					w_InterruptEdgeFalling,
@@ -657,8 +657,8 @@ module	tpm_reg_space
 		
 		12'h01B:
 		begin : TPM_STS$3
-			if (t_dir)
-				t_readByte <=
+			if (t_dir_i)
+				t_readByte_o <=
 				{
 					4'h0,
 					w_tpmFamily,
@@ -666,24 +666,24 @@ module	tpm_reg_space
 				};
 			else
 			begin
-				r_resetEstablishmentBit <= t_writeByte[1];
-				r_commandCancel <= t_writeByte[0]; // IDS todo
+				r_resetEstablishmentBit <= t_writeByte_i[1];
+				r_commandCancel <= t_writeByte_i[0]; // IDS todo
 			end
 		end
 		12'h01A:
 		begin : TPM_STS$2
-			if (t_dir)
-				t_readByte <= r_burstCount[15:8];
+			if (t_dir_i)
+				t_readByte_o <= r_burstCount[15:8];
 		end
 		12'h019:
 		begin : TPM_STS$1
-			if (t_dir)
-				t_readByte <= r_burstCount[7:0];
+			if (t_dir_i)
+				t_readByte_o <= r_burstCount[7:0];
 		end
 		12'h018:
 		begin : TPM_STS$0
-			if (t_dir)
-				t_readByte <=
+			if (t_dir_i)
+				t_readByte_o <=
 				{
 					1'b1, // r_stsValid, IDS .. always 1? no process delay
 					r_commandReady_e,
@@ -695,21 +695,21 @@ module	tpm_reg_space
 				};
 			else
 			begin
-				r_commandReady_i <= t_writeByte[6];
-				r_tpmGo <= t_writeByte[5];
-				r_responseRetry <= t_writeByte[1];
+				r_commandReady_i <= t_writeByte_i[6];
+				r_tpmGo <= t_writeByte_i[5];
+				r_responseRetry <= t_writeByte_i[1];
 			end
 		end
 		
 		12'h033:
 		begin : TPM_INTERFACE_ID$3
-			if (t_dir)
-				t_readByte <= 8'h00;
+			if (t_dir_i)
+				t_readByte_o <= 8'h00;
 		end
 		12'h032:
 		begin : TPM_INTERFACE_ID$2
-			if (t_dir)
-				t_readByte <=
+			if (t_dir_i)
+				t_readByte_o <=
 				{
 					4'h0,
 					r_IntfSelLock,
@@ -718,15 +718,15 @@ module	tpm_reg_space
 				};
 			else
 			begin
-				r_IntfSelLock <= r_IntfSelLock | t_writeByte[3];
+				r_IntfSelLock <= r_IntfSelLock | t_writeByte_i[3];
 				if (!r_IntfSelLock)
-					r_InterfaceSelector <= t_writeByte[2:1];
+					r_InterfaceSelector <= t_writeByte_i[2:1];
 			end
 		end
 		12'h031:
 		begin : TPM_INTERFACE_ID$1
-			if (t_dir)
-				t_readByte <=
+			if (t_dir_i)
+				t_readByte_o <=
 				{
 					w_CapIFRes[0],
 					w_CapCRB,
@@ -737,8 +737,8 @@ module	tpm_reg_space
 		end
 		12'h030:
 		begin : TPM_INTERFACE_ID$0
-			if (t_dir)
-				t_readByte <=
+			if (t_dir_i)
+				t_readByte_o <=
 				{
 					w_InterfaceVersion,
 					w_InterfaceType
@@ -747,40 +747,40 @@ module	tpm_reg_space
 		
 		12'hF03:
 		begin : TPM_DID_VID$3
-			if (t_dir)
-				t_readByte <= w_DID[15:8];
+			if (t_dir_i)
+				t_readByte_o <= w_DID[15:8];
 		end
 		12'hF02:
 		begin : TPM_DID_VID$2
-			if (t_dir)
-				t_readByte <= w_DID[7:0];
+			if (t_dir_i)
+				t_readByte_o <= w_DID[7:0];
 		end
 		12'hF01:
 		begin : TPM_DID_VID$1
-			if (t_dir)
-				t_readByte <= w_VID[15:8];
+			if (t_dir_i)
+				t_readByte_o <= w_VID[15:8];
 		end
 		12'hF00:
 		begin : TPM_DID_VID$0
-			if (t_dir)
-				t_readByte <= w_VID[7:0];
+			if (t_dir_i)
+				t_readByte_o <= w_VID[7:0];
 		end
 		
 		12'hF04:
 		begin : TPM_RID$0
-			if (t_dir)
-				t_readByte <= w_RID;
+			if (t_dir_i)
+				t_readByte_o <= w_RID;
 		end
 		
 		default:
-			t_readByte <= 8'hFF;
+			t_readByte_o <= 8'hFF;
 			
-		// addresses beyond this point are reserved by spec and are being used for some debug purposes
+		// addresses beyond this point are reserved by spec and are being used for some debug_o purposes
 		
 		12'hF29:
 		begin
-			if (t_dir)
-				t_readByte <=
+			if (t_dir_i)
+				t_readByte_o <=
 				{
 					2'h0,
 					sts_s,
@@ -788,52 +788,52 @@ module	tpm_reg_space
 				};
 			else
 			begin
-				r_IDS_EXEC <= t_writeByte[2];
-				r_IDS_FIFO_R <= t_writeByte[1];
-				r_IDS_FIFO_W <= t_writeByte[0];
+				r_IDS_EXEC <= t_writeByte_i[2];
+				r_IDS_FIFO_R <= t_writeByte_i[1];
+				r_IDS_FIFO_W <= t_writeByte_i[0];
 			end
 		end
 		
 		12'hF28:
 		begin
-			if (t_dir)
-				t_readByte <= r_IDS_OVERFLOW;
+			if (t_dir_i)
+				t_readByte_o <= r_IDS_OVERFLOW;
 			else
-				r_IDS_OVERFLOW <= t_writeByte;
+				r_IDS_OVERFLOW <= t_writeByte_i;
 		end
 		12'hF27:
 		begin
-			if (t_dir)
-				t_readByte <= r_IDS_TEST[31:24];
+			if (t_dir_i)
+				t_readByte_o <= r_IDS_TEST[31:24];
 			else
-				r_IDS_TEST[31:24] <= t_writeByte;
+				r_IDS_TEST[31:24] <= t_writeByte_i;
 		end
 		12'hF26:
 		begin
-			if (t_dir)
-				t_readByte <= r_IDS_TEST[23:16];
+			if (t_dir_i)
+				t_readByte_o <= r_IDS_TEST[23:16];
 			else
-				r_IDS_TEST[23:16] <= t_writeByte;
+				r_IDS_TEST[23:16] <= t_writeByte_i;
 		end
 		12'hF25:
 		begin
-			if (t_dir)
-				t_readByte <= r_IDS_TEST[15:8];
+			if (t_dir_i)
+				t_readByte_o <= r_IDS_TEST[15:8];
 			else
-				r_IDS_TEST[15:8] <= t_writeByte;
+				r_IDS_TEST[15:8] <= t_writeByte_i;
 		end
 		12'hF24:
 		begin
-			if (t_dir)
-				t_readByte <= r_IDS_TEST[7:0];
+			if (t_dir_i)
+				t_readByte_o <= r_IDS_TEST[7:0];
 			else
-				r_IDS_TEST[7:0] <= t_writeByte;
+				r_IDS_TEST[7:0] <= t_writeByte_i;
 		end
 		
 		endcase
 		else
 			// read 0xFF on bad address
-			t_readByte <= 8'hFF;
+			t_readByte_o <= 8'hFF;
 	end
 	
 	// STATIC ASSIGNMENTS
@@ -872,7 +872,7 @@ module	tpm_reg_space
 	assign	w_RID = 8'hFF;
 	
 	// PIRQ is low while any interrupt is active
-	assign	SPI_PIRQ_n = 
+	assign	SPI_PIRQ_n_o = 
 	~(
 		r_commandReadyIntOccured |
 		r_localityChangeIntOccured |
@@ -880,27 +880,27 @@ module	tpm_reg_space
 		r_dataAvailIntOccured
 	);
 	
-	assign	c_execAck = sts_s == Completion;
+	assign	c_execAck_o = sts_s == Completion;
 	
 	// instantiation of the fifo buffer
 	fifo_buffer io_fifo
 	(
-		.clock(clock), .reset_n(reset_n),
-		.cmdByteIn(t_writeByte), .cmdByteOut(c_cmdByteOut),
-		.rspByteIn(c_rspByteIn), .rspByteOut(f_fifoOut),
-		.f_fifoAccess(f_fifoAccess & l_allowAccess), .t_size(t_size),
-		.f_fifoRead(f_fifoRead & l_allowAccess), .f_fifoWrite(f_fifoWrite & l_allowAccess & r_Expect),
-		.f_fifoEmpty(f_fifoEmpty), .f_fifoComplete(f_fifoComplete),
-		.r_tpmGo(r_tpmGo & ~t_req), .r_commandReady(r_commandReady_i & ~t_req), .r_responseRetry(r_responseRetry & ~t_req),
-		.e_execDone(c_execDone), .f_abort(1'b0),
-		.t_address(t_address), .t_baseAddr(t_baseAddr),
-		.t_updateAddr(updateAddr),
-		.c_cmdSize(c_cmdSize), .c_rspSize(c_rspSize),
-		.c_cmdSend(c_cmdSend), .c_rspSend(c_rspSend),
-		.c_cmdDone(c_cmdDone), .c_rspDone(c_rspDone),
-		.c_cmdInAddr(c_cmdInAddr), .c_rspInAddr(c_rspInAddr)
+		.clock_i(clock_i), .reset_n_i(reset_n_i),
+		.cmdByteIn_i(t_writeByte_i), .cmdByteOut_o(c_cmdByteOut_o),
+		.rspByteIn_i(c_rspByteIn_i), .rspByteOut_o(f_fifoOut),
+		.f_fifoAccess_i(f_fifoAccess & l_allowAccess), .t_size_i(t_size_i),
+		.f_fifoRead_i(f_fifoRead & l_allowAccess), .f_fifoWrite_i(f_fifoWrite & l_allowAccess & r_Expect),
+		.f_fifoEmpty_o(f_fifoEmpty), .f_fifoComplete_o(f_fifoComplete),
+		.r_tpmGo_i(r_tpmGo & ~t_req_i), .r_commandReady_i(r_commandReady_i & ~t_req_i), .r_responseRetry_i(r_responseRetry & ~t_req_i),
+		.e_execDone_i(c_execDone_i), .f_abort_i(1'b0),
+		.t_address_i(t_address_i), .t_baseAddr_i(t_baseAddr_i),
+		.t_updateAddr_i(updateAddr_i),
+		.c_cmdSize_o(c_cmdSize_o), .c_rspSize_i(c_rspSize_i),
+		.c_cmdSend_o(c_cmdSend_o), .c_rspSend_i(c_rspSend_i),
+		.c_cmdDone_i(c_cmdDone_i), .c_rspDone_i(c_rspDone_i),
+		.c_cmdInAddr_i(c_cmdInAddr_i), .c_rspInAddr_i(c_rspInAddr_i)
 	);
 	
-//	assign	c_execDone = r_IDS_EXEC;
+//	assign	c_execDone_i = r_IDS_EXEC;
 
 endmodule
