@@ -51,6 +51,6 @@ TPM commands, authorization, hierarchy seeds, production randomness, object wrap
 - `rtl/common`, `rtl/aes`, `rtl/rsa_rtl`: public lifecycle and dedicated controllers.
 - `rtl/arithmetic`: arithmetic and pair-check logic; `Math/README.md` documents the service.
 - `IP`: resource wrappers; `KEYGEN_ALTERA` selects actual Altera primitives.
-- `../../../Testing/Simulation/Key Generation/`: independent `reference/`, `testbench/`, and `scripts/`, plus `IP/` and `Math/` regressions. All simulation products stay in ignored build or explicit scratch directories.
+- [Testing/Simulation/Key Generation](../../Testing/Simulation/Key%20Generation/README.md): independent `reference/`, `testbench/`, and `scripts/`, plus `IP/` and `Math/` regressions. All simulation products stay in ignored build or explicit scratch directories.
 
 The CPU-controlled implementation is preserved on [aaron/keygen-cpu](https://github.com/VTECEMDEF25-07/F25-07_Open-Source_Hardware_TPM/tree/aaron/keygen-cpu), starting at `c90610165605cac55243522847c5e5f50f60ef08`. It is outside this PR's final diff. The existing PR history is retained; no force push is required.
