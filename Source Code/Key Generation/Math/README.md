@@ -12,7 +12,7 @@ AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
 
 ## Review order
 
-Read this command table, then the RAM/command boundary in `keygen_math.v`, the `MULT_WAIT` accumulator and Montgomery states, and finally the independent Python-vector test. Every operation first captures metadata and operands; source and destination overlap is safe because all source limbs are captured before destination writes. Nothing on the CPU command interface exposes a key limb.
+Read this command table, then the RAM/command boundary in `keygen_math.v`, the `MULT_WAIT` accumulator and Montgomery states, and finally the independent Python-vector test. Every operation first captures metadata and operands; source and destination overlap is safe because all source limbs are captured before destination writes. The command response returns status, not key limbs; there is no CPU interface in the dedicated implementation.
 
 ## Interface
 

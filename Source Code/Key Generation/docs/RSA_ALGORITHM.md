@@ -1,14 +1,14 @@
 <!--
 Filename: RSA_ALGORITHM.md
 Authors: Aaron Grossman; Project contributors; see Git history.
-Date: 2026-10-13
-General Description: Documents RSA-2048 generation procedure, RSA-2048-v1-trial251.
-AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+Date: 2026-11-08
+General Description: Preserves the exact RSA procedure and private implementation contracts.
+AI Disclosure: Codex assisted with consolidation; see docs/AI_DISCLOSURE.md in the keygen source folder.
 -->
 
 # RSA-2048 generation procedure, RSA-2048-v1-trial251
 
-This is the executable algorithm contract for the dedicated controller. The Python oracle is test infrastructure, not synthesizable HDL or a production random generator. The controller consumes accepted 32-bit words in this order and must produce identical keys when only handshake timing differs.
+This is the executable algorithm contract for the dedicated controller. The Python oracle is test infrastructure, not synthesizable HDL or a production random generator. The controller consumes accepted 32-bit words in this order and must produce identical keys when only handshake timing differs. References to `reference/` and simulation commands below refer to `Testing/Simulation/Key Generation/` in the repository.
 
 ## Selected profile
 
@@ -65,10 +65,111 @@ python 'Testing/Simulation/Key Generation/reference/keygen_reference.py' --seed 
 
 The tests generate a real RSA-2048 pair and independently check it, replay the same stream, test byte order, reject illegal words, exercise exact p/q retry limits, range/separation/witness rejection, composites, and mutate every key component. The low-d branch is exceptionally rare: its unit test injects that arithmetic outcome with mocks, then proves both prime searches restart. The production reference has no test-only reduced counter/prime-width/primality option.
 
-## Standards audit, October 13, 2026
+## Standards references
 
-Primary sources: [FIPS 186-5 publication](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.186-5.pdf), [NIST publication status](https://csrc.nist.gov/pubs/fips/186-5/final), [potential-updates spreadsheet](https://csrc.nist.gov/files/pubs/fips/186-5/final/docs/fips186-5-potential-updates.xlsx).
+The retained procedure mapping is FIPS 186-5 A.1.3/A.1.1, B.3.1 and Table B.1. Primary sources: [FIPS 186-5](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.186-5.pdf), [NIST publication page](https://csrc.nist.gov/pubs/fips/186-5/final), and [potential updates](https://csrc.nist.gov/files/pubs/fips/186-5/final/docs/fips186-5-potential-updates.xlsx). The October 13 standards audit is historical, not a fresh audit of later NIST updates; see Git history before changing the procedure or standard revision. An algorithm mapping and test results do not establish production DRBG quality, TPM compliance or FIPS validation.
 
-The spreadsheet was downloaded and all four populated issue rows inspected. Its SHA-256 is `306e356009813225152609c6b1361202268f2df834f7f2ec55a8898eb1ddd679`. Two rows address deterministic ECDSA octet lengths in A.3.3. Two address B.10 provable-prime references and missing square-root notation. None alters the selected A.1.3/B.3.1/Table B.1 procedure. NIST labels these potential corrections rather than official changes; the B.10 table-reference wording is internally inconsistent but is outside this selected method. Re-audit when changing the procedure or standard revision.
+## Implementation reference
 
-This establishes an algorithm mapping and executable test evidence. It does not establish production DRBG quality, TPM command compliance, FPGA timing, or FIPS validation.
+`rtl/rsa_rtl/keygen_rsa_controller.v` issues held descriptors to `keygen_rsa_engine.v`; `keygen_rsa_services.v` implements candidate/witness/pair services and borrows the arithmetic memory port only while arithmetic is idle. Result reads require both command owners to be idle. This implementation has no CPU/MMIO/ROM allocation. Arithmetic and pair operations are variable-time; no physical side-channel resistance is claimed.
+
+## Private memory layout
+
+All addresses below identify 32-bit words. Integers use little-endian limbs.
+
+| Start | Length | Contents |
+|---:|---:|---|
+| 0 | 32 | Current candidate W |
+| 32 | 32 | W minus one |
+| 64 | 32 | Odd part of W minus one |
+| 96 | 32 | Witness |
+| 128 | 32 | Modular exponentiation result |
+| 160 | 32 | Retained p |
+| 192 | 32 | Retained q |
+| 224 | 64 | Validated n |
+| 288 | 32 | Constant one |
+| 320 | 32 | Constant two |
+| 352 | 32 | Temporary square result |
+| 512 | bounded by arithmetic command | Montgomery workspace |
+
+The accelerator owns all 4096 words. It clears the full allocation, its operand
+caches and its synchronous RAM output before declaring reset cleanup complete.
+Private operands are not exported through the keygen interface.
+The area-optimized pair checker has an additional 512-word private RAM, also
+scrubbed with its read latch. Total private arithmetic storage is therefore
+18 KiB (16 KiB shared scratch plus 2 KiB pair scratch). This small memory increase replaces thousands of registers
+and wide arithmetic paths; it does not remove any key-pair validation.
+
+## Service descriptors
+
+The engine serializes a command and its held response. Commands 0x30–0x34 use
+the services below; other commands go to the arithmetic block. Services borrow
+the accelerator's private memory port while arithmetic is idle. Result reads
+are possible only with neither command owner active.
+
+| Opcode | Arguments | Behavior |
+|---|---|---|
+| 30 | destination, 32, force-odd, 0 | Draw exactly 32 MSW-first words; reverse limb order; optionally set only bit zero. |
+| 31 | 0, 32, 64, q-mode | Apply range, optional p/q separation, exponent compatibility and trial-prime checks; prepare W−1 and its odd part. |
+| 32 | 96, 0, 0, 0 | Accept witness only in [2,W−2]. |
+| 33 | first-check, 0, 0, 0 | Check the exponentiation/square result and bound the remaining squarings. |
+| 34 | 0, 0, 0, 0 | Validate the p/q pair, compute and check d, clear d, then retain n. |
+
+Malformed descriptors return an error before memory mutation. Service status
+0x10 is context-specific (redraw, square again or restart pair); controllers
+interpret it only in the phase that requested it. See source for the complete
+status mapping. Unexpected responses become arithmetic errors.
+
+The dedicated controller counts only candidate failures specified by the
+algorithm. It permits 10,240 failures for p and 20,480 for q. Accepted DRAW
+commands may wait indefinitely for external data. Internal command admission
+and non-DRAW execution have a 50-million-cycle watchdog; expiry reports code 7.
+Outer cleanup runs before terminal failure becomes visible to the caller.
+
+
+### Pair-check implementation
+
+`keygen_pair_check` captures two already-tested 1024-bit prime candidates on `start_valid_i && start_ready_o`, validates their RSA relationships, and holds a public 2048-bit modulus/status until accepted. Primality remains the caller's responsibility. Ports are unchanged by the RAM-based implementation.
+
+#### Pair status and cleanup
+
+Only status 0 exposes n. Other statuses are 1 for invalid bounds/parity/separation or exponent incompatibility, 2 for a canonical private exponent that is too small, and 3 for arithmetic inconsistency. Status 2 requires restarting both prime searches. There is no private-exponent output. The caller retains and ultimately scrubs its own p/q copies.
+
+Reset immediately invalidates outputs and clears captured-input/public-output staging and scalar registers. It then sweeps all 512 private RAM words and performs a separate read of the last zeroed word to clear the RAM output latch. Ready returns after 514 rising edges. Success and failure use the same sweep before result-valid; only a successful public modulus remains in staging. The multiplier's actual pipeline reset is held throughout cleanup. RAM contents are never asynchronously reset.
+
+#### Pair memory layout
+
+The pair service uses one 512x32 RAM (2 KiB; one M20K) and the shared generic/Altera wrapper contract, plus a 32x32 multiplier. This explicitly increases the accelerator's private RAM allocation from 16 KiB to **18 KiB**, using nine M20Ks total for math and pair scratch out of the board's 358. Public transport storage is a separate allocation. The extra 2 KiB replaces thousands of private register bits and parallel wide arithmetic units.
+
+| Word addresses | Contents |
+| --- | --- |
+| 0–31, 32–63 | Captured p, q |
+| 64–95, 96–127 | Binary GCD working operands |
+| 128–191 | Public product n |
+| 192–255 | First phi, then lambda |
+| 256–319 | Restoring-division remainder |
+| 320–384 | Numerator, then canonical d with an overflow word |
+| 385–511 | Reserved; still scrubbed |
+
+Inputs are captured atomically in the 2048-bit staging register before serial RAM writes, so callers may change p/q immediately after the handshake. Staging is then cleared and reused for final n. The internal limb ALU reads private RAM synchronously and performs compare, subtraction and shifts over 32-bit words. There is no CPU control/read interface in this implementation.
+
+#### Pair arithmetic sequence
+
+1. Require odd p/q at least `ceil(sqrt(2)*2^1023)` and absolute separation strictly greater than `2^924`.
+2. Form n and phi=(p-1)*(q-1) with schoolbook limb multiplication. Verify exactly 2048 modulus bits.
+3. Find gcd(p-1,q-1) with binary GCD and restore common powers of two. All shifts and subtractions use the shared 32-bit ALU.
+4. Restore-divide phi by the GCD over 2048 quotient bits, check zero remainder/nonzero lambda, and compute lambda modulo 65537 from emitted quotient bits.
+5. Reject zero residue. Search k=1..65536 for k*lambda congruent to -1 modulo 65537. A scalar limb multiply forms 1+k*lambda.
+6. Exactly divide this numerator by 65537 using a 17-bit remainder. Verify zero remainder, no quotient overflow, and `2^1024 < d < lambda`. Exact division establishes `65537*d = 1+k*lambda`.
+7. Assemble only successful public n, then scrub before releasing the result.
+
+The implementation is variable-time and does not claim physical side-channel resistance.
+
+
+### Implementation checks
+
+The pair oracle independently computes n, lambda and d with Python integer arithmetic. Its eight fixtures include valid pairs, a small-d outcome, exponent incompatibility and range/parity/separation failures. Tests inspect private arithmetic before scrub, verify all 512 zero writes and RAM output-latch cleanup, check multiplier/scalar state, stall results, change captured inputs, reset twelve busy phases and reset a held result. Primality remains the caller's responsibility; an intentionally nonprime low-d fixture isolates pair arithmetic.
+
+The controller regression checks descriptor arguments, exact candidate retry limits, witness rejection without round consumption, low-d restart of both primes, held command/response behavior, source/arithmetic faults, reset and real watchdog boundaries. The service regression checks filtering, draw order, malformed descriptors, witness/square/separation boundaries and final-word failure. Full-core tests compare all 129 output words, source consumption, ownership and cleanup against the independent corpus. These are complementary scopes; no single unit regression establishes full TPM or physical acceptance.
+
+See [simulation commands](../../../Testing/Simulation/Key%20Generation/README.md), [math commands and memory contract](../Math/README.md), and [multiplier/RAM contracts](../IP/README.md) for deeper implementation details.

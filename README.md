@@ -22,4 +22,4 @@ Keep the complete repository together: project source paths are relative. Genera
 
 See [board setup](Project/README.md) for board details and [simulation instructions](Testing/Simulation/README.md) for simulations. Each board's VALIDATION.md records build results and timing/hardware limitations.
 
-Key generation: [design and review](Source%20Code/Key%20Generation/REVIEW.md), [simulation runners](Testing/Simulation/Key%20Generation/README.md). The portable core remains separate from TPM command integration.
+Key generation: [design and review](Source%20Code/Key%20Generation/README.md), [simulation runners](Testing/Simulation/Key%20Generation/README.md). The portable core remains separate from TPM command integration.

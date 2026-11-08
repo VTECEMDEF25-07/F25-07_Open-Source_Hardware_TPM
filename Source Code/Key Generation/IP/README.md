@@ -14,7 +14,7 @@ This change adds two small reusable resources needed by the later RSA arithmetic
 
 1. Read the contracts below and the selector modules `keygen_mult32.v` and `keygen_ram32.v`.
 2. Compare each `_generic.v` implementation with its `_altera.v` partner. The Altera versions instantiate `lpm_mult` and `altsyncram` directly; no IP Catalog project is checked in.
-3. Read `tests/tb_keygen_resources.sv`: independent expected products and memory state are checked against both implementations, rather than using either implementation as the reference.
+3. Read [tb_keygen_resources.sv](../../../Testing/Simulation/Key%20Generation/IP/tests/tb_keygen_resources.sv): independent expected products and memory state are checked against both implementations, rather than using either implementation as the reference.
 4. Use the scripts to reproduce simulation and device mapping. Neither script programs the board.
 
 All contributed reusable RTL and the compile-only smoke top are Verilog-2001. Tests are SystemVerilog. Vendor simulation sources remain in the installed Quartus distribution and are not copied into this repository.

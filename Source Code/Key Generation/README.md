@@ -1,56 +1,43 @@
 <!--
 Filename: README.md
 Authors: Aaron Grossman; Project contributors; see Git history.
-Date: 2026-09-30
-General Description: Documents Portable key-generation core.
-AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+Date: 2026-11-08
+General Description: Introduces the portable key generator and its integration boundaries.
+AI Disclosure: Codex assisted with consolidation; see docs/AI_DISCLOSURE.md in the keygen source folder.
 -->
 
-# Portable key-generation core
+# Portable key generation
 
-Generate AES-128, AES-256 and RSA-2048 keys from an externally supplied generation stream using dedicated Verilog logic. The RSA controller is a hardware state machine; there is no CPU, instruction ROM or firmware dependency in this branch. Generic Verilog and hand-instantiated Altera resources remain available.
-
-**Faculty review entry point: [REVIEW.md](REVIEW.md).** This is a source/design review, not production TPM certification or final board acceptance. [Validation](docs/RTL_REVIEW_VALIDATION.md) records the checks performed for this split and their limits.
-
-## Architecture
+Generate AES-128, AES-256 and RSA-2048 keys using dedicated Verilog logic and an externally supplied generation stream. One operation runs at a time. The RSA controller is a hardware state machine; there is no CPU, firmware or instruction ROM dependency.
 
 ```text
-External coordinator + generation service
-             | requests + ordered 32-bit words
-        keygen_core (one operation at a time)
-          /                           \
- AES key assembler             RSA state machine
-                                     |
-                        Arithmetic services + scratch RAM
-          \                           /
-       Protected result + whole-key ownership handshake
-                     |
-             External TPM object service
+External coordinator + generation stream
+                  |
+             keygen_core
+          /               \
+ AES key assembly     RSA controller
+                      arithmetic + private RAM
+          \               /
+        Result words -> ownership decision -> clearing -> status
 ```
 
-The portable core uses one clock (50 MHz in the demo). AES returns four or eight key words. RSA uses exponent 65537 and returns n, e, p and q; it calculates and checks d internally, then clears it. External words are most significant first; arithmetic uses little-endian 32-bit limbs.
+AES returns four or eight 32-bit words. RSA uses exponent 65537 and returns n, e, p and q; d is calculated and checked internally, then cleared. External words are most significant first; private arithmetic uses little-endian 32-bit limbs. Generic resources are the default; `KEYGEN_ALTERA` selects the Altera multiplier/RAM implementations.
 
-Successful completion requires validation, whole-result acceptance and local clearing before held terminal status. Reset aborts unaccepted work and scrubs local storage before admission resumes. It cannot revoke a key already accepted by the receiver. External stalls are legal; internal watchdogs detect failed progress.
+## Where to start
 
-TPM commands, authorization, hierarchy seeds, production randomness, object wrapping and persistence remain external. Demonstration transport and board helpers are local-only under ignored `local_scripts/demo/`. DE1/DE25 board support is available under `Project/`. The deterministic source in `testbench/fixtures/` exists only to make core simulations reproducible; it is not production entropy.
+- **Integrating the module:** [interface and lifecycle](docs/INTERFACE.md).
+- **Reviewing RSA correctness:** [algorithm and implementation](docs/RSA_ALGORITHM.md).
+- **Running checks:** [simulation instructions and validation summary](../../Testing/Simulation/Key%20Generation/README.md).
+- **Attribution:** [Aaron Grossman's contribution, AI use and course disclosure](docs/AI_DISCLOSURE.md), [dependencies and notices](CREDITS.md), [coding standards](CODING_STANDARDS.md).
 
-## Read the design
+The implementation lives in `rtl/common/`, `rtl/aes/`, `rtl/rsa_rtl/`, `rtl/arithmetic/` and `IP/`. The [resource](IP/README.md) and [math](Math/README.md) READMEs are optional detailed references. Benches, the independent Python oracle, fixtures and runners live under `Testing/Simulation/Key Generation/`.
 
-| Document | Purpose |
-|---|---|
-| [Interface](docs/INTERFACE.md), [Core lifecycle](docs/CORE.md) | Handshakes, ordering, ownership, reset and faults |
-| [RSA algorithm](docs/RSA_ALGORITHM.md), [RSA engine](docs/RSA_ENGINE.md) | Procedure, bounds, retries, descriptors and controller |
-| [AES](docs/AES.md), [Pair validation](docs/PAIR_CHECK.md) | Key assembly and private arithmetic checks |
-| [Resources](IP/README.md), [Arithmetic](Math/README.md) | Generic/Altera implementations and independent vectors |
-| [Build and test](docs/BUILD_AND_TEST.md) | Reproducible commands |
-| [Completion matrix](docs/COMPLETION_MATRIX.md) | Review scope and outstanding board gates |
-| [Dependencies](docs/DEPENDENCIES.md), [Coding standards](CODING_STANDARDS.md) | Provenance, notices and Verilog rules |
+## Integration limits and remaining work
 
-## Source organization
+TPM command handling, authorization, production entropy/DRBG and hierarchy seeds, object wrapping, CRT preparation and protected storage remain external. The receiver must implement the whole-key ownership/discard contract; receiving the last word alone does not accept a key.
 
-- `rtl/common`, `rtl/aes`, `rtl/rsa_rtl`: public lifecycle and dedicated controllers.
-- `rtl/arithmetic`: arithmetic and pair-check logic; `Math/README.md` documents the service.
-- `IP`: resource wrappers; `KEYGEN_ALTERA` selects actual Altera primitives.
-- [Testing/Simulation/Key Generation](../../Testing/Simulation/Key%20Generation/README.md): independent `reference/`, `testbench/`, and `scripts/`, plus `IP/` and `Math/` regressions. All simulation products stay in ignored build or explicit scratch directories.
+The shared [DE1/DE25 projects](../../Project/README.md) build the existing TPM; this standalone keygen core is not yet connected to its command path. Demonstration transport and packaging are local-only. Public deterministic fixtures are not production entropy.
 
-The CPU-controlled implementation is preserved on [aaron/keygen-cpu](https://github.com/VTECEMDEF25-07/F25-07_Open-Source_Hardware_TPM/tree/aaron/keygen-cpu), starting at `c90610165605cac55243522847c5e5f50f60ef08`. It is outside this PR's final diff. The existing PR history is retained; no force push is required.
+Before claiming hardware release acceptance, resolve generic RAM inference/full-core fit, validate source-matched timing and reset/CDC, and run physical correctness, normal-stream multi-seed performance, recovery and cooling/soak tests. Directed known-candidate simulations establish functional behavior, not prime-search performance, side-channel resistance or certification.
+
+Historical CPU work remains on `aaron/keygen-cpu` at `c90610165605cac55243522847c5e5f50f60ef08`. Earlier review ledgers are retained in Git history; they are not additional required reading.
