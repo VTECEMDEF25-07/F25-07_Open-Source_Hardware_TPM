@@ -7,9 +7,9 @@
 
 // Private-scratch arithmetic service. Words are little-endian 32-bit limbs.
 // Reset invalidates immediately, then sweeps all RAM and operand registers.
-`include "ip_types.vh"
 
-module keygen_math #(parameter MAX_LIMBS = 64, parameter IP_TYPE = `IP_GENERIC, parameter DEVICE_FAMILY = "Agilex 5") (
+// IP_TYPE: 0 = Generic, 1 = Altera, 2 = reserved Xilinx (unsupported).
+module keygen_math #(parameter MAX_LIMBS = 64, parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5") (
     input clock_i, input reset_n_i,
     input cmd_valid_i, output cmd_ready_o,
     input [7:0] cmd_op_i,

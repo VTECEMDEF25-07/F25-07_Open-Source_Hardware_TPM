@@ -25,17 +25,17 @@ AES returns four or eight 32-bit words. RSA uses exponent 65537 and returns n, e
 
 ## Resource selection
 
-Include `ip_types.vh` and add the repository's `Source Code/` directory to the compiler's include/search path. Supported keygen values are `IP_GENERIC` (0, default) and `IP_ALTERA` (1); reserved `IP_XILINX` (2) is explicitly rejected. See [the shared implementation contract](../README.md). The former `KEYGEN_ALTERA` build define is removed.
+Set the commented `FPGA_IP_TYPE` define at the top of the board source. Its value becomes the board IP_TYPE default and propagates through TPM_TOP. Standalone modules use 0 (Generic) or 1 (Altera); 2 (reserved Xilinx) is rejected. There is no shared vendor header. See [the selection contract](../README.md).
 
 ```verilog
-TPM_TOP #(.IP_TYPE(`IP_ALTERA)) tpm (...);
+TPM_TOP #(.IP_TYPE(1)) tpm (...);
 // For standalone use:
-keygen_core #(.IP_TYPE(`IP_GENERIC)) keygen (...);
+keygen_core #(.IP_TYPE(0)) keygen (...);
 ```
 
 `TPM_TOP` passes the same parameter through its inactive keygen and RNG placeholders. Keygen propagates it through the RSA engine, math/pair checker and each RAM/multiplier wrapper. Generate blocks elaborate the selected implementation independently per instance. Invalid values fail elaboration in Questa/Quartus and cause a fatal error in Verilator. Xilinx implementations remain future work.
 
-DE1 and DE25 both select Altera at their board top. Fixed `DEVICE_FAMILY` metadata propagates to keygen memories: Cyclone V/M10K for DE1 and Agilex 5/M20K for DE25. Unknown RAM families are rejected. Board wrappers reject non-Altera choices because their PLL/reset/fan circuitry is board-specific. This does not establish that an active full keygen fits either board.
+DE1 and DE25 both select Altera at their board top. Fixed `DEVICE_FAMILY` metadata propagates to keygen memories: Cyclone V/M10K for DE1 and Agilex 5/M20K for DE25. Unknown RAM families are rejected. Board PLL/reset/fan circuitry remains board-specific; implementation wrappers reject unsupported resource backends. This does not establish that an active full keygen fits either board.
 
 ## Where to start
 

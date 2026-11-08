@@ -95,7 +95,6 @@ sources=[
 def digest(path):return hashlib.sha256(path.read_bytes()).hexdigest()
 manifest_path=build/'source_manifest.json'
 inputs={s:digest(root/s) for s in sources}
-inputs['../../../Source Code/ip_types.vh']=digest(root/'../../../Source Code/ip_types.vh')
 inputs['reference/expected_keys.json']=digest(root/'reference/expected_keys.json')
 inputs['scripts/run_full_verilator.py']=digest(Path(__file__))
 manifest={'inputs_sha256':inputs,'controller':'dedicated',

@@ -15,9 +15,13 @@
 //	Other top level modules for different devices will likely look similar.
 //	This module targets the Terasic DE1-SoC development board.
 
-`include "ip_types.vh"
 
-module de1_soc_top #(parameter IP_TYPE = `IP_ALTERA)
+// Select the implementation here for this board. This default propagates through
+// TPM_TOP to keygen and RNG (or to the standalone entropy capture hierarchy).
+// 0 = Generic (RNG simulation only), 1 = Altera, 2 = Xilinx (not implemented).
+`define FPGA_IP_TYPE 1
+
+module de1_soc_top #(parameter IP_TYPE = `FPGA_IP_TYPE)
 (
 	input		CLOCK_50,
 	input		RESET_N,
@@ -32,13 +36,6 @@ module de1_soc_top #(parameter IP_TYPE = `IP_ALTERA)
 	output/*purple*/GPIO_1_7	// SPI_PIRQ_n
 );
 	
-    generate if (IP_TYPE != `IP_ALTERA) begin : invalid_board_backend
-`ifdef VERILATOR
-        initial begin $display("PROJECT_UNSUPPORTED_BOARD_BACKEND: this board requires IP_ALTERA"); $stop; end
-`else
-        PROJECT_UNSUPPORTED_BOARD_BACKEND__REQUIRES_IP_ALTERA invalid_selection ();
-`endif
-    end endgenerate
 	wire	pirq_out;
 	assign	GPIO_1_7 = pirq_out;
 	assign	LEDR[0] = pirq_out;
@@ -62,3 +59,6 @@ module de1_soc_top #(parameter IP_TYPE = `IP_ALTERA)
 	);
 	
 endmodule
+
+// Keep this board default local to this source file.
+`undef FPGA_IP_TYPE

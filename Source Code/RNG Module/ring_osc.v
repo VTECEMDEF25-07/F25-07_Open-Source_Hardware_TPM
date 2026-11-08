@@ -5,12 +5,12 @@
 // Gated entropy oscillator. IP_TYPE comes from the project top, never a local
 // vendor define. The functional simulation model establishes no entropy quality.
 `timescale 1ns/1ps
-`include "ip_types.vh"
 
-module ro_inv #(parameter IP_TYPE = `IP_GENERIC) (
+// IP_TYPE: 0 = Generic, 1 = Altera, 2 = reserved Xilinx (unsupported).
+module ro_inv #(parameter IP_TYPE = 0) (
     input wire i, output wire o
 );
-    generate if (IP_TYPE == `IP_ALTERA) begin : altera_ip
+    generate if (IP_TYPE == 1) begin : altera_ip
         (* keep *) wire inverted_input = ~i;
         lcell cell_i (.in(inverted_input), .out(o));
     end else begin : invalid_ip
@@ -22,10 +22,10 @@ module ro_inv #(parameter IP_TYPE = `IP_GENERIC) (
     end endgenerate
 endmodule
 
-module ro_nand #(parameter IP_TYPE = `IP_GENERIC) (
+module ro_nand #(parameter IP_TYPE = 0) (
     input wire a, input wire b, output wire o
 );
-    generate if (IP_TYPE == `IP_ALTERA) begin : altera_ip
+    generate if (IP_TYPE == 1) begin : altera_ip
         (* keep *) wire gated_input = ~(a & b);
         lcell cell_i (.in(gated_input), .out(o));
     end else begin : invalid_ip
@@ -39,7 +39,7 @@ endmodule
 
 module ring_osc #(
     parameter integer STAGES = 5,
-    parameter IP_TYPE = `IP_GENERIC
+    parameter IP_TYPE = 0
 ) (
     input wire enable, output wire out
 );
@@ -70,7 +70,7 @@ module ring_osc #(
             RNG_LEGACY_VENDOR_DEFINE__USE_TOP_LEVEL_IP_TYPE invalid_selection ();
 `endif
         end
-        if (IP_TYPE != `IP_ALTERA && !(SIMULATION_BUILD && IP_TYPE == `IP_GENERIC)) begin : invalid_ip
+        if (IP_TYPE != 1 && !(SIMULATION_BUILD && IP_TYPE == 0)) begin : invalid_ip
 `ifdef VERILATOR
             initial begin $display("RNG_UNSUPPORTED_IP_TYPE: Generic is simulation-only; hardware requires Altera"); $stop; end
 `else

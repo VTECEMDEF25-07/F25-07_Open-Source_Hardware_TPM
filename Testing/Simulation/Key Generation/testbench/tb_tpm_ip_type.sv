@@ -4,14 +4,14 @@
 // General Description: Check TPM-level backend propagation and inactive placeholder admission.
 // AI Disclosure: Codex assisted with coding and verification.
 `timescale 1ns/1ps
-`include "ip_types.vh"
+// IP_TYPE: 0 = Generic, 1 = Altera, 2 = reserved Xilinx (unsupported).
 module tb_tpm_ip_type;
     reg clock_50=0, clock_100=0, reset_n=0;
     always #10 clock_50=~clock_50;
     always #5 clock_100=~clock_100;
     genvar backend;
     generate for (backend=0; backend<3; backend=backend+1) begin : configurations
-        localparam SELECTED_IP = backend == 0 ? `IP_GENERIC : `IP_ALTERA;
+        localparam SELECTED_IP = backend == 0 ? 0 : 1;
         localparam SELECTED_FAMILY = backend == 2 ? "Cyclone V" : "Agilex 5";
         TPM_TOP #(.IP_TYPE(SELECTED_IP), .DEVICE_FAMILY(SELECTED_FAMILY)) dut (
             .CLOCK_50(clock_50), .CLOCK_100(clock_100), .RESET_n(reset_n),

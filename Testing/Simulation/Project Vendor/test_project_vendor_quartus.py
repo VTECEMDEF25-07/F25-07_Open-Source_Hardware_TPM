@@ -46,11 +46,10 @@ for board,tool in [('DE1',a.lite_bin/'quartus_map.exe'),('DE25',a.pro_bin/'quart
     qsf=re.sub(pattern,lambda m:m[1]+'"'+(board_dir/(m[2] or m[3])).resolve().as_posix()+'"',original)
     elaborate(board+'-altera',qsf,tool)
     elaborate(board+'-reject-xilinx',qsf+'\nset_parameter -name IP_TYPE 2\n',tool,
-              'PROJECT_UNSUPPORTED_BOARD_BACKEND')
+              'KEYGEN_INVALID_IP_TYPE')
 
 probe=build/'vendor_entropy_probe.v'
-probe.write_text('''`include "ip_types.vh"
-module vendor_entropy_probe #(parameter IP_TYPE = `IP_ALTERA) (input enable, output sample);
+probe.write_text('''module vendor_entropy_probe #(parameter IP_TYPE = 1) (input enable, output sample);
     ring_osc #(.IP_TYPE(IP_TYPE)) oscillator (.enable(enable), .out(sample));
 endmodule
 ''')

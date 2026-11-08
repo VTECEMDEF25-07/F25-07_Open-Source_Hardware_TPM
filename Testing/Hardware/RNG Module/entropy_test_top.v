@@ -22,10 +22,14 @@
 // Written by Jungyeon Won with the help of generative AI
 // ===========================================================================
 `timescale 1ns/1ps
-`include "ip_types.vh"
  
+// Select the implementation here for this board. This default propagates through
+// TPM_TOP to keygen and RNG (or to the standalone entropy capture hierarchy).
+// 0 = Generic (RNG simulation only), 1 = Altera, 2 = Xilinx (not implemented).
+`define FPGA_IP_TYPE 1
+
 module entropy_test_top #(
-    parameter IP_TYPE = `IP_ALTERA,
+    parameter IP_TYPE = `FPGA_IP_TYPE,
     parameter integer CLK_HZ = 50_000_000,    // DE25-Standard CLOCK_50
     parameter integer BAUD   = 115_200
 ) (
@@ -68,4 +72,6 @@ module entropy_test_top #(
     );
  
 endmodule
- 
+
+// Keep this board default local to this source file.
+`undef FPGA_IP_TYPE

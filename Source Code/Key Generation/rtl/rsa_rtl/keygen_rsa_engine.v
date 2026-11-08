@@ -6,9 +6,9 @@
 // AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
 
 // Shared protected arithmetic/services fabric for either RSA controller.
-`include "ip_types.vh"
 
-module keygen_rsa_engine #(parameter IP_TYPE = `IP_GENERIC, parameter DEVICE_FAMILY = "Agilex 5") (
+// IP_TYPE: 0 = Generic, 1 = Altera, 2 = reserved Xilinx (unsupported).
+module keygen_rsa_engine #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5") (
     input wire clock_i, input wire reset_n_i, output wire ready_o,
     input wire cmd_valid_i, output wire cmd_ready_o,
     input wire [7:0] cmd_op_i,

@@ -10,7 +10,7 @@ AI Disclosure: Codex assisted with consolidation; see docs/AI_DISCLOSURE.md in t
 
 Run the commands below from `Testing/Simulation/Key Generation`. Keep the repository together: runners locate reusable HDL under [`Source Code/Key Generation`](../../../Source%20Code/Key%20Generation/README.md). Source is Verilog-2001; SystemVerilog is used for tests. Generic resources are the default; `IP_TYPE=1` selects Altera. There is no firmware compiler/ROM dependency.
 
-The header `Source Code/ip_types.vh` names `IP_GENERIC=0` and `IP_ALTERA=1`. Runners supply its include path. Questa tops use `-gIP_TYPE=0`/`1`; Verilator parameter overrides use `-GIP_TYPE=0`/`1`; Quartus fit runners emit `set_parameter -name IP_TYPE ...`. The genuine-Altera full-key runner explicitly selects 1 and hashes the header as a build input. There is no global backend define or Xilinx choice.
+Set `FPGA_IP_TYPE` at the top of the selected board source: 0 = Generic, 1 = Altera, 2 = reserved Xilinx. The board parameter passes that default through the hierarchy. Standalone tests set IP_TYPE directly: Questa `-gIP_TYPE=0`/`1`, Verilator `-GIP_TYPE=0`/`1`, and Quartus `set_parameter -name IP_TYPE ...`. No shared vendor header is required.
 
 `testbench/` contains core benches and a deterministic test-only stream. `reference/` contains the independent oracle and public corpus. `scripts/`, `IP/` and `Math/` contain runners, resource/math tests and vector generators. Products stay in ignored `build/` or explicitly supplied scratch directories.
 

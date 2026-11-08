@@ -1,22 +1,26 @@
-# Shared implementation selection
+# Board-local implementation selection
 
-`ip_types.vh` belongs to the whole TPM project. Vendor/backend identifiers must
-be defined here once, rather than owned or duplicated by an individual module.
-Add `Source Code/` to the HDL compiler's include/search path and include
-`ip_types.vh` by name. Both checked-in Quartus projects use this shared path.
+Set the commented define near the top of the selected board's top-level file:
 
-The board top has one implementation parameter, `IP_TYPE` (default `IP_ALTERA`
-on DE1 and DE25). Set that parameter once; it passes through `TPM_TOP` into both
+```verilog
+// 0 = Generic (RNG simulation only), 1 = Altera, 2 = Xilinx (not implemented).
+`define FPGA_IP_TYPE 1
+```
+
+This supplies the board's `IP_TYPE` parameter default. There is no shared vendor
+header. The macro is undefined at the end of the board file so compiling both
+board sources does not leak one board's default into another compilation unit.
+The parameter passes through `TPM_TOP` into both
 keygen and RNG, including every RAM/multiplier wrapper and entropy oscillator.
 Legacy RNG vendor macros are explicitly rejected. Portable logic does not need a vendor
 parameter. Selection remains explicit per instance so simulation can compare
 implementations in one compilation.
 
-| Identifier | Value | Meaning |
+| Implementation | Value | Meaning |
 | --- | --- | --- |
-| `IP_GENERIC` | 0 | Portable RTL implementation |
-| `IP_ALTERA` | 1 | Altera/Intel-specific implementation |
-| `IP_XILINX` | 2 | Reserved identity; currently rejected by all implementation wrappers |
+| Generic | 0 | Portable RTL implementation |
+| Altera | 1 | Altera/Intel-specific implementation |
+| Xilinx | 2 | Reserved identity; currently rejected by all implementation wrappers |
 
 These identify implementations, not support for every FPGA in a vendor's product
 range. Unsupported values fail elaboration in Questa/Quartus and terminate
@@ -24,15 +28,16 @@ Verilator with a fatal error. The behavioral RNG model still validates selection
 Generic is supported by portable keygen RTL and functional RNG simulation; a
 Generic **physical entropy source is rejected by synthesis**.
 
-Both physical board wrappers require Altera and reject Generic/Xilinx/unknown
-values, including their fixed clock/reset/fan circuitry. The board fixes
+Board wrappers contain no extra backend check; implementation wrappers reject
+unsupported resource selections. Board PLL/reset/fan circuitry remains specific
+to its physical board. The board fixes
 `DEVICE_FAMILY` metadata: DE1 passes `"Cyclone V"` for M10K and DE25 passes
 `"Agilex 5"` for M20K. This is not a second vendor selector. Other Altera RAM
 families are explicitly rejected. Pins, PLLs and cooling stay specific to the
 physical board and cannot become Xilinx circuitry by changing a parameter.
 
 Xilinx hardware support requires implemented/validated wrappers and a matching
-board build before `IP_XILINX` can be accepted. Legacy Xilinx/iCE40 oscillator
+board build before value 2 can be accepted. Legacy Xilinx/iCE40 oscillator
 branches are not offered as partial backend support.
 
 `TPM_TOP` contains inactive keygen and RNG resource placeholders. Selection

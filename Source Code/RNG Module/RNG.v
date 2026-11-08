@@ -16,9 +16,9 @@
 // Written by Jungyeon Won with the help of generative AI
  
 `timescale 1ns/1ps
-`include "ip_types.vh"
  
-module RNG #(parameter IP_TYPE = `IP_GENERIC) (
+// IP_TYPE: 0 = Generic, 1 = Altera, 2 = reserved Xilinx (unsupported).
+module RNG #(parameter IP_TYPE = 0) (
     input  wire        clk,
     input  wire        rst_n,
     input  wire        enable,

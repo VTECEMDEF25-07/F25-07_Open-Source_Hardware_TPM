@@ -25,8 +25,6 @@ def save_json(path, value):
 
 def input_hashes(root, sources, models):
     files = {str(root / name): file_hash(root / name) for name in sources}
-    header = (root / '../../../Source Code/ip_types.vh').resolve()
-    files[str(header)] = file_hash(header)
     files[str(root / 'reference/expected_keys.json')] = file_hash(root / 'reference/expected_keys.json')
     runners=[Path(__file__).resolve(),Path(sys.argv[0]).resolve()]
     return {'project_files': files,

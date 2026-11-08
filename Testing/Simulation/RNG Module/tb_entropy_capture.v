@@ -24,8 +24,8 @@
 // ===========================================================================
 `timescale 1ns/1ps
  
-`include "ip_types.vh"
-module tb_entropy_capture #(parameter IP_TYPE = `IP_GENERIC);
+// IP_TYPE: 0 = Generic, 1 = Altera, 2 = reserved Xilinx (unsupported).
+module tb_entropy_capture #(parameter IP_TYPE = 0);
  
     localparam integer CPB       = 8;    // clocks per UART bit (fast sim)
     localparam integer SEQ_BYTES = 64;

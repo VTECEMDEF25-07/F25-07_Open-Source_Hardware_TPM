@@ -17,7 +17,7 @@ IGNORED = [
     'Project/DE1/tmp-clearbox/generated.tdf',
 ]
 TRACKABLE = [
-    'Source Code/ip_types.vh',
+    'Source Code/TPM_TOP.v',
     'Project/DE1/de1_soc_top.qpf', 'Project/DE1/de1_soc_top.qsf',
     'Project/DE1/de1_soc_top.sdc', 'Source Code/Key Generation/IP/keygen_ram32_altera.v',
     'Source Code/Key Generation/IP/keygen_ram32_generic.v', 'Testing/Simulation/Key Generation/testbench/tb_keygen_full.sv',

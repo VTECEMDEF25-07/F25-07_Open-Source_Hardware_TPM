@@ -27,7 +27,7 @@ for directory in ['IO Interface','Execution Engine','Management Module','RNG Mod
 bench=root/'testbench/tb_keygen_lifecycle.sv'
 tpm_bench=root/'testbench/tb_tpm_ip_type.sv'
 models=[a.altera_models/n for n in ['220model.v','altera_mf.v']]
-inputs=files+[bench,tpm_bench,shared/'ip_types.vh',shared/'IO Interface/tpm_types.vh',Path(__file__).resolve()]+models
+inputs=files+[bench,tpm_bench,shared/'IO Interface/tpm_types.vh',Path(__file__).resolve()]+models
 def hashes():return {str(f):hashlib.sha256(f.read_bytes()).hexdigest() for f in inputs}
 before=hashes()
 commands=[]

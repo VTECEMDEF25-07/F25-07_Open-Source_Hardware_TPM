@@ -6,9 +6,9 @@
 // AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
 
 `timescale 1ns/1ps
-`include "ip_types.vh"
 
-module tb_keygen_full #(parameter IP_TYPE = `IP_GENERIC);
+// IP_TYPE: 0 = Generic, 1 = Altera, 2 = reserved Xilinx (unsupported).
+module tb_keygen_full #(parameter IP_TYPE = 0);
     reg clock_i=0; always #10 clock_i=~clock_i;
     reg reset_n_i=0,peers_ready_i=1,request_valid_i=0;
     wire request_ready_o;

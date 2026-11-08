@@ -15,9 +15,9 @@
  
 // Simulation time units (ignored by synthesis).
 `timescale 1ns/1ps
-`include "ip_types.vh"
  
-module entropy_source #(parameter IP_TYPE = `IP_GENERIC) (
+// IP_TYPE: 0 = Generic, 1 = Altera, 2 = reserved Xilinx (unsupported).
+module entropy_source #(parameter IP_TYPE = 0) (
     input  wire         clk,             // system clock; sets the sampling rate
     input  wire         rst_n,           // active-low reset (0 = reset)
     input  wire         enable,          // 1 = run the rings and collect bits

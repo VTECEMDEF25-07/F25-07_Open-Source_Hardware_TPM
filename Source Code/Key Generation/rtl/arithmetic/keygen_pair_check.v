@@ -7,9 +7,9 @@
 
 // RSA pair validation with 32-bit arithmetic and 2 KiB private RAM.
 // Primality is checked by the caller. RAM and multiplier scrub before handoff.
-`include "ip_types.vh"
 
-module keygen_pair_check #(parameter IP_TYPE = `IP_GENERIC, parameter DEVICE_FAMILY = "Agilex 5") (
+// IP_TYPE: 0 = Generic, 1 = Altera, 2 = reserved Xilinx (unsupported).
+module keygen_pair_check #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5") (
     input clock_i, input reset_n_i,
     input start_valid_i, output start_ready_o,
     input [1023:0] p_i, input [1023:0] q_i,

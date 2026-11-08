@@ -6,9 +6,13 @@
 
 // TPM board wrapper for the DE25 Standard RevD.
 // This top preserves TPM_TOP's command path; resource placeholders remain inactive.
-`include "ip_types.vh"
 
-module de25_soc_top #(parameter IP_TYPE = `IP_ALTERA) (
+// Select the implementation here for this board. This default propagates through
+// TPM_TOP to keygen and RNG (or to the standalone entropy capture hierarchy).
+// 0 = Generic (RNG simulation only), 1 = Altera, 2 = Xilinx (not implemented).
+`define FPGA_IP_TYPE 1
+
+module de25_soc_top #(parameter IP_TYPE = `FPGA_IP_TYPE) (
     input clock_i,
     input board_reset_n_i,
     input spi_clock_i,
@@ -20,13 +24,6 @@ module de25_soc_top #(parameter IP_TYPE = `IP_ALTERA) (
     inout fan_i2c_scl,
     inout fan_i2c_sda
 );
-    generate if (IP_TYPE != `IP_ALTERA) begin : invalid_board_backend
-`ifdef VERILATOR
-        initial begin $display("PROJECT_UNSUPPORTED_BOARD_BACKEND: this board requires IP_ALTERA"); $stop; end
-`else
-        PROJECT_UNSUPPORTED_BOARD_BACKEND__REQUIRES_IP_ALTERA invalid_selection ();
-`endif
-    end endgenerate
     wire clock_50, clock_100, clock_locked;
     wire configuration_reset;
     wire board_reset_n;
@@ -89,3 +86,6 @@ module de25_soc_top #(parameter IP_TYPE = `IP_ALTERA) (
     );
 
 endmodule
+
+// Keep this board default local to this source file.
+`undef FPGA_IP_TYPE

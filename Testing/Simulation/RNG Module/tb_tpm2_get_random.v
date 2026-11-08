@@ -23,8 +23,8 @@
 // ===========================================================================
 `timescale 1ns/1ps
  
-`include "ip_types.vh"
-module tb_tpm2_get_random #(parameter IP_TYPE = `IP_GENERIC);
+// IP_TYPE: 0 = Generic, 1 = Altera, 2 = reserved Xilinx (unsupported).
+module tb_tpm2_get_random #(parameter IP_TYPE = 0);
  
     reg clk = 1'b0;
     always #5 clk = ~clk;                 // 100 MHz

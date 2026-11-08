@@ -15,10 +15,10 @@
 //	and the execution engine.
 // 
 
-`include "ip_types.vh"
 
 // IP_TYPE is the sole implementation selector; DEVICE_FAMILY is fixed board metadata.
-module	TPM_TOP #(parameter IP_TYPE = `IP_GENERIC, parameter DEVICE_FAMILY = "Agilex 5")
+// IP_TYPE: 0 = Generic, 1 = Altera, 2 = reserved Xilinx (unsupported).
+module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5")
 (
 	input		CLOCK_50,	// 50 MHz sysclock
 	input		CLOCK_100,	// 100 MHz clock (used for sampling SPI_CLOCK)

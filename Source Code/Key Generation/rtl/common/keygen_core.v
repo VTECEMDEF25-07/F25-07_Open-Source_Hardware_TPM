@@ -6,9 +6,9 @@
 // AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
 
 // Portable AES/RSA core. No board transport, hierarchy seed or production RNG.
-`include "ip_types.vh"
 
-module keygen_core #(parameter IP_TYPE = `IP_GENERIC, parameter DEVICE_FAMILY = "Agilex 5") (
+// IP_TYPE: 0 = Generic, 1 = Altera, 2 = reserved Xilinx (unsupported).
+module keygen_core #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5") (
     input wire clock_i,input wire reset_n_i,input wire peers_ready_i,
     input wire request_valid_i,output wire request_ready_o,
     input wire [1:0] request_profile_i,input wire [31:0] request_id_i,

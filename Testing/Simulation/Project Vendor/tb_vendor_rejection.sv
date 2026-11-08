@@ -1,10 +1,10 @@
 // Authors: Aaron Grossman; Codex assisted with verification.
 // Unsupported choices must fail even with all request/enable inputs inactive.
 `timescale 1ns/1ps
-`include "ip_types.vh"
+// IP_TYPE: 0 = Generic, 1 = Altera, 2 = reserved Xilinx (unsupported).
 module tb_vendor_rejection #(
     parameter SCENARIO = 0,
-    parameter IP_TYPE = `IP_XILINX
+    parameter IP_TYPE = 2
 );
     generate
         if (SCENARIO == 0) begin : tpm_case
@@ -20,9 +20,9 @@ module tb_vendor_rejection #(
                 .rsp_data(), .rsp_valid(), .rsp_last(), .rsp_ready(1'b0)
             );
         end else if (SCENARIO == 2) begin : memory_case
-            keygen_ram32 #(.IP_TYPE(`IP_ALTERA), .DEVICE_FAMILY("unsupported")) dut ();
+            keygen_ram32 #(.IP_TYPE(1), .DEVICE_FAMILY("unsupported")) dut ();
         end else if (SCENARIO == 3) begin : stages_case
-            ring_osc #(.IP_TYPE(`IP_ALTERA), .STAGES(4)) dut (.enable(1'b0), .out());
+            ring_osc #(.IP_TYPE(1), .STAGES(4)) dut (.enable(1'b0), .out());
         end
     endgenerate
     initial begin

@@ -1,6 +1,6 @@
 # Project-wide vendor verification
 
-Select `IP_TYPE` once on the board top; see `Source Code/README.md` for the
+Set the commented `FPGA_IP_TYPE` define at the top of the selected board file; see `Source Code/README.md` for the
 support matrix. Run from the repository root with a fresh absolute scratch path:
 
 ```text
@@ -19,7 +19,7 @@ Legacy `RO_INTEL`, `RO_XILINX` and `RO_ICE40` build defines are rejected rather
 than ignored; migrate their selection to the board-top `IP_TYPE` parameter.
 
 The Quartus runner elaborates the actual DE1 and DE25 projects using their
-installed Lite/Pro toolchains. It requires each board to reject Xilinx. A live
+installed Lite/Pro toolchains. It verifies that Xilinx is rejected by the resource wrappers without an extra board-level guard. A live
 standalone entropy-ring elaboration must accept Altera and reject Generic and
 Xilinx in synthesis, where the behavioral simulation model is absent.
 It also maps an active standalone Cyclone V scratch RAM to validate the M10K

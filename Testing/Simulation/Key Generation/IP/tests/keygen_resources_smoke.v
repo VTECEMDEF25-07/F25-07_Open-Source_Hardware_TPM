@@ -6,9 +6,9 @@
 // AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
 
 // Compile-only resource top; no physical board programming.
-`include "ip_types.vh"
 
-module keygen_resources_smoke #(parameter IP_TYPE = `IP_GENERIC) (
+// IP_TYPE: 0 = Generic, 1 = Altera, 2 = reserved Xilinx (unsupported).
+module keygen_resources_smoke #(parameter IP_TYPE = 0) (
     input clock_i, input reset_n_i, input clock_en_i,
     input valid_i, input [31:0] left_i, input [31:0] right_i,
     input write_en_i, input read_en_i,
