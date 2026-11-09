@@ -1,3 +1,6 @@
+// Filename: session_parameter_controller.v
+// Author: Makeda Solomon; refactor assisted by Codex
+// Date: October 13, 2026
 // One complete session parameter. AES-256/CFB128 or SHA-256 KDFa XOR.
 // Derives once and chains CFB blocks over RAM-backed parameter bytes.
 // The execution engine supplies validated session settings and ordered nonces.

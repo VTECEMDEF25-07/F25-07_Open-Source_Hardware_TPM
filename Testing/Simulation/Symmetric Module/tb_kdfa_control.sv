@@ -24,18 +24,23 @@ module tb_kdfa_control;
     wire req_ready_o, rsp_valid_o, error_o;
     wire [255:0] aes_key_o;
     wire [127:0] aes_iv_o;
-    // These wires carry messages/results between the two instantiated modules.
-    wire hmac_req_ready_i, hmac_rsp_valid_i, hmac_error_i;
+    wire hmac_start_o, hmac_busy_i, hmac_digest_valid_i, hmac_digest_ready_o;
     wire [255:0] hmac_digest_i;
-    wire hmac_req_valid_o, hmac_rsp_ready_o;
-    wire [255:0] hmac_key_o;
-    wire [607:0] hmac_message_o;
+    wire [7:0] hmac_key_data_o, hmac_message_data_o;
+    wire hmac_key_valid_o, hmac_key_end_o, hmac_key_ready_i;
+    wire hmac_message_valid_o, hmac_message_end_o, hmac_message_ready_i;
+    wire [255:0] hmac_key_o = dut.hmac_key_r;
+    wire [607:0] hmac_message_o = dut.hmac_message_r;
+    reg accept_hmac=1, forbid_hmac=0;
+    reg [15:0] secret_length=32;
     // Simulation-only display helpers: current test and counter inside the message.
     integer test_case=0; // Matches the six numbered cases below and in the waveform.
     wire [31:0] message_counter = hmac_message_o[607:576];
 
     // Left of each pair = module port. Inside parentheses = testbench signal.
-    kdfa_control dut (
+    kdfa_control #(.MAX_SECRET_BYTES(32), .MAX_NONCE_BYTES(32), .MAX_OUTPUT_BYTES(48)) dut (
+        .session_value_bytes_i(secret_length), .context_u_bytes_i(16'd32), .context_v_bytes_i(16'd32),
+        .derived_o(),
         .clk_i(clk_i), .reset_n_i(reset_n_i),
         .req_valid_i(req_valid_i), .req_ready_o(req_ready_o),
         .rsp_valid_o(rsp_valid_o), .rsp_ready_i(rsp_ready_i),
@@ -43,30 +48,18 @@ module tb_kdfa_control;
         .session_value_i(session_value_i), .label_i(label_i), .xor_bits_i(32'd0),
         .context_u_i(context_u_i), .context_v_i(context_v_i),
         .aes_key_o(aes_key_o), .aes_iv_o(aes_iv_o),
-        .hmac_req_valid_o(hmac_req_valid_o), .hmac_req_ready_i(hmac_req_ready_i),
-        .hmac_key_o(hmac_key_o), .hmac_message_o(hmac_message_o),
-        .hmac_rsp_valid_i(hmac_rsp_valid_i), .hmac_rsp_ready_o(hmac_rsp_ready_o),
-        .hmac_digest_i(hmac_digest_i), .hmac_error_i(hmac_error_i)
+        .hmac_start_o(hmac_start_o), .hmac_busy_i(hmac_busy_i || !accept_hmac),
+        .hmac_key_data_o(hmac_key_data_o), .hmac_key_valid_o(hmac_key_valid_o),
+        .hmac_key_end_o(hmac_key_end_o), .hmac_key_ready_i(hmac_key_ready_i),
+        .hmac_message_data_o(hmac_message_data_o), .hmac_message_valid_o(hmac_message_valid_o),
+        .hmac_message_end_o(hmac_message_end_o), .hmac_message_ready_i(hmac_message_ready_i),
+        .hmac_digest_i(hmac_digest_i), .hmac_digest_valid_i(hmac_digest_valid_i),
+        .hmac_digest_ready_o(hmac_digest_ready_o)
     );
 
-    // Gate request acceptance to exercise backpressure. Inject one service error
-    // at the KDFa boundary; the unmodified placeholder always reports success.
-    reg accept_hmac=1, inject_second_error=0, forbid_hmac=0;
-    wire fake_ready, fake_error;
+    hmac_stream_test_service fake_hmac (.clock_i(clk_i), .*);
     integer hmac_calls=0, case_count=0;
     reg successfully_completed=0;
-    assign hmac_req_ready_i = fake_ready && accept_hmac;
-    assign hmac_error_i = fake_error ||
-        (inject_second_error && hmac_rsp_valid_i && hmac_calls==2);
-    // This is the actual HMAC instance. With accept_hmac=1 and
-    // inject_second_error=0, it connects directly to the controller's interface.
-    hmac_sha256_placeholder fake_hmac (
-        .clk_i(clk_i), .reset_n_i(reset_n_i),
-        .req_valid_i(hmac_req_valid_o && accept_hmac), .req_ready_o(fake_ready),
-        .key_i(hmac_key_o), .message_i(hmac_message_o),
-        .rsp_valid_o(hmac_rsp_valid_i), .rsp_ready_i(hmac_rsp_ready_o),
-        .digest_o(hmac_digest_i), .error_o(fake_error)
-    );
 
     // Check every accepted message, including counter order and the 384-bit size.
     wire [31:0] expected_counter = hmac_calls+1;
@@ -77,22 +70,22 @@ module tb_kdfa_control;
         if(!reset_n_i) begin
             hmac_calls<=0; was_stalled<=0;
         end else begin
-            if(forbid_hmac && hmac_req_valid_o)
+            if(forbid_hmac && hmac_start_o)
                 $fatal(1,"Invalid label launched HMAC");
-            if(was_stalled && (!hmac_req_valid_o || hmac_key_o!==held_key ||
+            if(was_stalled && (dut.state_r != dut.START_HMAC || hmac_key_o!==held_key ||
                               hmac_message_o!==held_message))
                 $fatal(1,"HMAC request changed while stalled");
-            if(hmac_req_valid_o && hmac_req_ready_i) begin
+            if(hmac_start_o) begin
                 if(hmac_calls>=2 || hmac_key_o!==SECRET ||
                    hmac_message_o!=={expected_counter,CFB,NEWER,OLDER,32'd384})
                     $fatal(1,"Incorrect HMAC key, message, or counter");
                 $display("%0t: HMAC accepted message %0d", $time, message_counter);
                 hmac_calls<=hmac_calls+1;
             end
-            if(hmac_rsp_valid_i && hmac_rsp_ready_o)
-                $display("%0t: KDFa received digest %0d = %064h (error=%b)",
-                         $time, message_counter, hmac_digest_i, hmac_error_i);
-            was_stalled<=hmac_req_valid_o && !hmac_req_ready_i;
+            if(hmac_digest_valid_i && hmac_digest_ready_o)
+                $display("%0t: KDFa received digest %0d = %064h",
+                         $time, message_counter, hmac_digest_i);
+            was_stalled<=dut.state_r == dut.START_HMAC && !hmac_start_o;
             held_key<=hmac_key_o; held_message<=hmac_message_o;
         end
     end
@@ -119,7 +112,7 @@ module tb_kdfa_control;
         integer cycles;
         begin
             cycles=0;
-            while(!rsp_valid_o && cycles<100) begin
+            while(!rsp_valid_o && cycles<500) begin
                 @(negedge clk_i); cycles=cycles+1;
             end
             if(!rsp_valid_o) $fatal(1,"Result timed out");
@@ -130,10 +123,10 @@ module tb_kdfa_control;
         integer cycles;
         begin
             cycles=0;
-            while(!hmac_req_valid_o && cycles<20) begin
+            while(dut.state_r != dut.START_HMAC && cycles<20) begin
                 @(negedge clk_i); cycles=cycles+1;
             end
-            if(!hmac_req_valid_o) $fatal(1,"HMAC request timed out");
+            if(dut.state_r != dut.START_HMAC) $fatal(1,"HMAC request timed out");
         end
     endtask
 
@@ -191,13 +184,13 @@ module tb_kdfa_control;
         acknowledge(); forbid_hmac=0;
         pass("invalid label performs no HMAC work");
 
-        // CASE 4: Pretend the second HMAC result failed; discard the first digest.
+        // CASE 4: Reject an oversize secret before starting HMAC.
         test_case=4;
-        inject_second_error=1; launch(0,0); wait_result();
-        if(!error_o || hmac_calls!=2 || aes_key_o!==0 || aes_iv_o!==0)
-            $fatal(1,"Second HMAC failure did not clear all output material");
-        acknowledge(); inject_second_error=0;
-        pass("HMAC failure after the first digest clears key and IV");
+        forbid_hmac=1; secret_length=33; launch(0,0); wait_result();
+        if(!error_o || hmac_calls!=0 || aes_key_o!==0 || aes_iv_o!==0)
+            $fatal(1,"Oversize secret was not rejected cleanly");
+        acknowledge(); forbid_hmac=0; secret_length=32;
+        pass("oversize secret performs no HMAC work");
 
         // CASE 5: Reset both modules while the controller is waiting to send.
         test_case=5;
@@ -207,7 +200,7 @@ module tb_kdfa_control;
         reset_n_i=1; accept_hmac=1;
         repeat(5) begin
             @(negedge clk_i);
-            if(!req_ready_o || rsp_valid_o || hmac_req_valid_o || hmac_rsp_valid_i ||
+            if(!req_ready_o || rsp_valid_o || hmac_start_o || hmac_digest_valid_i ||
                error_o || aes_key_o!==0 || aes_iv_o!==0)
                 $fatal(1,"Stale work survived joint reset");
         end

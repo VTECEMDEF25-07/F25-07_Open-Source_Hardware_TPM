@@ -1,7 +1,9 @@
-# RAM-backed EncryptDecrypt2
+# Symmetric byte-buffer interface
 
-`symmetric_ram_top` connects `encrypt_decrypt2_ram_controller` to the unchanged
-16-byte AES-256/CFB worker. The legacy `symm_top` session path is unchanged.
+`symm_top` selects the primitive or session controller. Both use the same
+byte-buffer interface and share one AES-256/CFB worker. Set
+`session_protect_i` for session CFB or XOR. Session protection is in place,
+so its input and output bases must match.
 
 ## Parameters and jobs
 
@@ -14,8 +16,8 @@
   enforce TPM total packet limits.
 
 With `busy_o=0`, assert `start_i` with key, IV, direction, input/output bases and
-length. The descriptor is latched at acceptance. The caller supplies an authorized,
-resolved AES-256/CFB job. Lower start and wait for busy to fall before the next job;
+length. The descriptor is latched at acceptance. The caller supplies the resolved AES-256/CFB key for a primitive job,
+or validated session inputs for session protection. Lower start and wait for busy to fall before the next job;
 a held start cannot replay it. Busy stays high through the one-cycle done pulse.
 Status, final IV and completed length remain until the next accepted job or reset.
 
@@ -28,10 +30,10 @@ Status, final IV and completed length remain until the next accepted job or rese
 | Empty job | 0 / 0 | No RAM/AES access; zero length, unchanged IV |
 
 RCs are local, unqualified TPM status values; upstream adds parameter/handle
-attribution. On failure, completed length counts successful write acknowledgments,
+attribution. For primitive jobs, completed length counts successful write acknowledgments,
 even within a partial chunk; final IV covers fully acknowledged chunks, or the
 original IV if none completed.
-Discard failed output: a failed write may still have physical side effects.
+Failed session jobs report zero completed length. Discard failed output: a failed write may still have physical side effects.
 
 ## Byte RAM contract
 
