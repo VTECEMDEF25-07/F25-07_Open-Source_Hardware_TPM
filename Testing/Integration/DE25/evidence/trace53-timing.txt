@@ -1,0 +1,25 @@
+CORNER 4_slow_fix4_100c
+setup slack 2.294
+hold slack 0.135
+recovery slack 13.869
+removal slack 0.106
+pulse width slack 6.716
+CORNER 4_slow_fix4_0c
+setup slack 0.756
+hold slack 0.194
+recovery slack 13.279
+removal slack 0.380
+pulse width slack 6.969
+CORNER 4_slow_fix4a_0c
+setup slack 0.590
+hold slack 0.186
+recovery slack 13.290
+removal slack 0.348
+pulse width slack 7.039
+CORNER MIN_fast_fix4_0c
+setup slack 9.439
+hold slack 0.012
+recovery slack 15.640
+removal slack 0.002
+pulse width slack 7.676
+PASS RSA TIMING AUDIT

@@ -1,0 +1,27 @@
+CORNER 4_slow_fix4_100c
+setup slack -3.182
+hold slack 0.020
+recovery slack 7.217
+removal slack 0.213
+pulse width slack 5.689
+CORNER 4_slow_fix4_0c
+setup slack -4.688
+hold slack 0.038
+recovery slack 6.544
+removal slack 0.397
+pulse width slack 5.694
+CORNER 4_slow_fix4a_0c
+setup slack -4.786
+hold slack 0.036
+recovery slack 6.566
+removal slack 0.362
+pulse width slack 5.686
+CORNER MIN_fast_fix4_0c
+setup slack 4.230
+hold slack 0.013
+recovery slack 9.160
+removal slack 0.083
+pulse width slack 5.792
+Error (23035): Tcl error: RSA timing audit failed: 3 negative margins
+Error (23031): Evaluation of Tcl script ../audit.tcl unsuccessful
+Error: Quartus Prime Timing Analyzer was unsuccessful. 2 errors, 221 warnings

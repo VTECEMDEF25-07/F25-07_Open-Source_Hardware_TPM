@@ -1,0 +1,19 @@
+{
+  "variant": "trace53",
+  "sof_sha256": "bd26e5ff96e58d6825135eeeead2ea98e7a440f573e2e17b13078bc64180c9ae",
+  "fingerprint": "2984c201d742c6f39b519a65b234c5188d4e1a2bb74d96a98e7d7cad690e9db8",
+  "clock_hz": 53333333.333333336,
+  "revision": "81b6968645e70669cc157c7709d111206f1f56dc",
+  "timing_audit": "PASS",
+  "corners": 4,
+  "minimum_slack_ns": {
+    "setup": 0.59,
+    "hold": 0.012,
+    "recovery": 13.279,
+    "removal": 0.002,
+    "pulse width": 6.716
+  },
+  "all_ten_pins_match": true,
+  "reported_core_period_ns": 18.75,
+  "source_hashes_verified": 36
+}
