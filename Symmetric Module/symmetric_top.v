@@ -1,9 +1,14 @@
 // Filename: symmetric_top.v
 // Author: Makeda Solomon; refactor assisted by Codex
 // Date: October 13, 2026
-// Description: Route each internal job to session protection OR EncryptDecrypt2. Both CFB paths share one worker; session XOR bypasses AES. One chunk/job, fake HMAC, fixed session lengths.
+// Session parameters use external HMAC-SHA256 and configurable byte buffers.
+// Primitive EncryptDecrypt2 jobs retain the existing single-block interface.
 `default_nettype none
-module symm_top
+module symm_top #(
+    parameter integer MAX_DATA_BYTES=1024,
+    parameter integer MAX_SECRET_BYTES=128,
+    parameter integer MAX_NONCE_BYTES=64
+)
 (
     input wire clock_i, // 50 MHz clock
     input wire reset_n_i,
@@ -21,23 +26,34 @@ module symm_top
     input wire session_valid_i, // Status signal to indicate a valid session creation for session - based protection
     input wire [2:0] mode_i, // Cipher - block mode selected for the primitive path
     input wire decrypt_i, // Decrypt status signal 
-    input wire [4:0] data_bytes_i, // Valid byte count
+    input wire [15:0] data_bytes_i, // Valid byte count
     input wire [255:0] key_i, // Supplied AES key for the primitive path.
     input wire [127:0] iv_i, // Primitive IV; also passed through unchanged on the XOR path.
-    input wire [127:0] data_in_i, // Data to be encrypted or decrypted from Execution Engine
+    input wire [MAX_DATA_BYTES*8-1:0] data_in_i, // Valid bytes are left aligned.
     input wire [127:0] session_mask_i, // Legacy compatibility input; ignored. XOR mask is derived inside.
 
     // Session CFB/XOR inputs from the caller (eventually the execution engine).
     // These are supplied values: this module does not create sessions or nonces.
-    input wire [255:0] session_value_i, // Secret passed to the HMAC service.
-    input wire [255:0] nonce_newer_i, // Caller supplies the correctly ordered newer nonce.
-    input wire [255:0] nonce_older_i, // Caller supplies the correctly ordered older nonce.
+    input wire [MAX_SECRET_BYTES*8-1:0] session_value_i,
+    input wire [15:0] session_value_bytes_i,
+    input wire [MAX_NONCE_BYTES*8-1:0] nonce_newer_i, nonce_older_i,
+    input wire [15:0] nonce_newer_bytes_i, nonce_older_bytes_i,
+
+    output wire hmac_start_o,
+    output wire [7:0] hmac_key_data_o, hmac_message_data_o,
+    output wire hmac_key_valid_o, hmac_key_end_o,
+    input wire hmac_key_ready_i,
+    output wire hmac_message_valid_o, hmac_message_end_o,
+    input wire hmac_message_ready_i, hmac_busy_i,
+    input wire [255:0] hmac_digest_i,
+    input wire hmac_digest_valid_i,
+    output wire hmac_digest_ready_o,
 
     // Outputs back to execution engine
     output wire wait_o, // Signal indicating the AES cipher is still computing cipher
     output wire done_o, // Signal indicating the completion of the symmetric module execution
     output wire [11:0] tpm_rc_o, // Error handling output
-    output wire [127:0] data_out_o, // Plaintext or cipher output
+    output wire [MAX_DATA_BYTES*8-1:0] data_out_o,
     output wire [127:0] iv_out_o, // Final initialization vector
     output wire primitive_path_o, // Last accepted job selected EncryptDecrypt2.
     output wire session_path_o // Last accepted job selected session protection.
@@ -54,10 +70,20 @@ module symm_top
     // s_* signals belong to session protection; p_* belong to EncryptDecrypt2. These are the two encryption/decryption paths
     wire s_start, p_start, s_wait, p_wait, s_done, p_done;
     wire [255:0] s_key, p_key;
-    wire [127:0] s_iv, p_iv, s_data, p_data, s_result, p_result, s_iv_result, p_iv_result;
+    wire [127:0] s_iv, p_iv, s_data, p_data, p_result, s_iv_result, p_iv_result;
+    localparam SESSION_ADDR_WIDTH = $clog2(MAX_DATA_BYTES);
+    reg [MAX_DATA_BYTES*8-1:0] session_buffer_r;
+    reg session_result_valid_r, session_rsp_valid_r;
+    reg [7:0] session_rsp_data_r;
+    wire session_req_valid, session_req_write, session_rsp_ready;
+    wire [SESSION_ADDR_WIDTH-1:0] session_req_addr;
+    wire [7:0] session_req_data;
+    integer session_byte;
+    wire [11:0] s_rc, p_rc, cfb_rc;
+    wire [MAX_DATA_BYTES*8-1:0] s_result =
+        (session_result_valid_r || (s_done && s_rc == 0)) ? session_buffer_r : {MAX_DATA_BYTES*8{1'b0}};
     wire [4:0] s_bytes, p_bytes;
     wire s_decrypt, p_decrypt;
-    wire [11:0] s_rc, p_rc, cfb_rc;
     wire cfb_done, cfb_wait;
     wire [127:0] cfb_result, cfb_iv_result;
 
@@ -65,7 +91,7 @@ module symm_top
     assign wait_o = reset_n_i && state_r != IDLE;
     assign done_o = reset_n_i && state_r == WAIT_JOB && (selected_session_r ? s_done : p_done);
     assign tpm_rc_o = selected_session_r ? s_rc : p_rc;
-    assign data_out_o = selected_session_r ? s_result : p_result;
+    assign data_out_o = selected_session_r ? s_result : {p_result,{(MAX_DATA_BYTES*8-128){1'b0}}};
     assign iv_out_o = selected_session_r ? s_iv_result : p_iv_result;
     assign session_path_o = selected_session_r;
     assign primitive_path_o = !selected_session_r;
@@ -88,8 +114,38 @@ module symm_top
         endcase
     end
 
+    // Bridge the current packed top-level contract to the session byte port.
+    always @(posedge clock_i or negedge reset_n_i) begin
+        if (!reset_n_i) begin
+            session_buffer_r <= 0;
+            session_result_valid_r <= 0;
+            session_rsp_valid_r <= 0;
+            session_rsp_data_r <= 0;
+        end else if (accept_w && session_protect_i) begin
+            session_result_valid_r <= 0;
+            for (session_byte=0; session_byte<MAX_DATA_BYTES; session_byte=session_byte+1)
+                session_buffer_r[(MAX_DATA_BYTES-session_byte)*8-1 -: 8] <=
+                    session_byte < data_bytes_i ? data_in_i[(MAX_DATA_BYTES-session_byte)*8-1 -: 8] : 8'd0;
+        end else begin
+            if (s_done) begin
+                session_result_valid_r <= s_rc == 0;
+                if (s_rc != 0) session_buffer_r <= 0;
+            end
+            if (session_rsp_ready) session_rsp_valid_r <= 0;
+            if (session_req_valid && !session_rsp_valid_r) begin
+                session_rsp_valid_r <= 1;
+                if (session_req_write)
+                    session_buffer_r[(MAX_DATA_BYTES-session_req_addr)*8-1 -: 8] <= session_req_data;
+                else
+                    session_rsp_data_r <= session_buffer_r[(MAX_DATA_BYTES-session_req_addr)*8-1 -: 8];
+            end
+        end
+    end
+
     // Session path: derive CFB key/IV or XOR mask using KDFa and HMAC.
-    session_parameter_controller SESSION_CONTROLLER (
+    session_parameter_controller #(.MAX_DATA_BYTES(MAX_DATA_BYTES),
+        .MAX_SECRET_BYTES(MAX_SECRET_BYTES), .MAX_NONCE_BYTES(MAX_NONCE_BYTES),
+        .RAM_ADDR_WIDTH(SESSION_ADDR_WIDTH)) SESSION_CONTROLLER (
         .clock_i(clock_i),
         .reset_n_i(reset_n_i),
         .start_i(accept_w && session_protect_i),
@@ -101,9 +157,11 @@ module symm_top
         .mode_i(mode_i),
         .data_bytes_i(data_bytes_i),
         .session_value_i(session_value_i),
+        .session_value_bytes_i(session_value_bytes_i),
         .nonce_newer_i(nonce_newer_i),
+        .nonce_newer_bytes_i(nonce_newer_bytes_i),
         .nonce_older_i(nonce_older_i),
-        .data_in_i(data_in_i),
+        .nonce_older_bytes_i(nonce_older_bytes_i),
         .iv_i(iv_i),
         .cfb_start_o(s_start),
         .cfb_key_o(s_key),
@@ -112,14 +170,27 @@ module symm_top
         .cfb_bytes_o(s_bytes),
         .cfb_decrypt_o(s_decrypt),
         .cfb_done_i(cfb_done),
+        .cfb_wait_i(cfb_wait),
         .cfb_rc_i(cfb_rc),
         .cfb_data_i(cfb_result),
         .cfb_iv_i(cfb_iv_result),
         .wait_o(s_wait),
         .done_o(s_done),
         .tpm_rc_o(s_rc),
-        .data_out_o(s_result),
-        .iv_out_o(s_iv_result)
+        .parameter_base_i({SESSION_ADDR_WIDTH{1'b0}}),
+        .ram_req_valid_o(session_req_valid), .ram_req_ready_i(!session_rsp_valid_r),
+        .ram_req_write_o(session_req_write), .ram_req_addr_o(session_req_addr),
+        .ram_req_data_o(session_req_data), .ram_rsp_valid_i(session_rsp_valid_r),
+        .ram_rsp_ready_o(session_rsp_ready), .ram_rsp_data_i(session_rsp_data_r),
+        .ram_rsp_error_i(1'b0),
+        .iv_out_o(s_iv_result),
+        .hmac_start_o(hmac_start_o), .hmac_busy_i(hmac_busy_i),
+        .hmac_key_data_o(hmac_key_data_o), .hmac_key_valid_o(hmac_key_valid_o),
+        .hmac_key_end_o(hmac_key_end_o), .hmac_key_ready_i(hmac_key_ready_i),
+        .hmac_message_data_o(hmac_message_data_o), .hmac_message_valid_o(hmac_message_valid_o),
+        .hmac_message_end_o(hmac_message_end_o), .hmac_message_ready_i(hmac_message_ready_i),
+        .hmac_digest_i(hmac_digest_i), .hmac_digest_valid_i(hmac_digest_valid_i),
+        .hmac_digest_ready_o(hmac_digest_ready_o)
     );
 
     // Command path: use the AES object key and IV supplied by upstream logic.
@@ -134,7 +205,7 @@ module symm_top
         .data_bytes_i(data_bytes_i),
         .key_i(key_i),
         .iv_i(iv_i),
-        .data_in_i(data_in_i),
+        .data_in_i(data_in_i[MAX_DATA_BYTES*8-1 -: 128]),
         .cfb_start_o(p_start),
         .cfb_key_o(p_key),
         .cfb_iv_o(p_iv),

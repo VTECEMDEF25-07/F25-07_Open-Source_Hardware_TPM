@@ -10,7 +10,7 @@ module encrypt_decrypt2_controller (
     input wire [15:0] command_code_i,
     input wire key_valid_i, decrypt_i,
     input wire [2:0] mode_i,
-    input wire [4:0] data_bytes_i,
+    input wire [15:0] data_bytes_i,
     input wire [255:0] key_i,
     input wire [127:0] iv_i, data_in_i,
 

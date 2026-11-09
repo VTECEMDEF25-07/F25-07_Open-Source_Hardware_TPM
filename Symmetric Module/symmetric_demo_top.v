@@ -46,10 +46,9 @@ module symmetric_demo_top
     reg         session_encrypt_r;
     reg         session_use_xor_r;
     reg         key_valid_r;
-    reg         session_valid_r;
     reg [2:0]   mode_r;
     reg         decrypt_r;
-    reg [4:0]   data_bytes_r;
+    reg [15:0]  data_bytes_r;
     reg [255:0] key_r;
     reg [127:0] iv_r;
     reg [127:0] data_in_r;
@@ -66,7 +65,6 @@ module symmetric_demo_top
         session_use_xor_r = 1'b0;
 
         key_valid_r       = 1'b1;
-        session_valid_r   = 1'b1;
         mode_r            = SYM_MODE_CFB;
         decrypt_r         = SW[2];
         data_bytes_r      = 5'd16;
@@ -84,7 +82,7 @@ module symmetric_demo_top
             end
 
             2'b01: begin
-                // Scenario 1: Session CFB: KDFa -> fake HMAC -> AES (practice values).
+                // Scenario 1: Session request is rejected until board HMAC is connected.
                 session_protect_r = 1'b1;
                 session_use_xor_r = 1'b0;
                 mode_r            = SYM_MODE_CFB;
@@ -118,7 +116,7 @@ module symmetric_demo_top
     wire        primitive_path_w;
     wire        session_path_w;
 
-    symm_top U_SYMM
+    symm_top #(.MAX_DATA_BYTES(16), .MAX_SECRET_BYTES(32), .MAX_NONCE_BYTES(32)) U_SYMM
     (
         .clock_i(CLOCK_50),
         .reset_n_i(reset_n_w),
@@ -131,7 +129,8 @@ module symmetric_demo_top
         .session_use_xor_i(session_use_xor_r),
 
         .key_valid_i(key_valid_r),
-        .session_valid_i(session_valid_r),
+        // This board demo has no hash_subsystem. Reject session jobs explicitly.
+        .session_valid_i(1'b0),
         .mode_i(mode_r),
         .decrypt_i(decrypt_r),
         .data_bytes_i(data_bytes_r),
@@ -144,6 +143,10 @@ module symmetric_demo_top
         .session_value_i(256'h000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F),
         .nonce_newer_i(256'h202122232425262728292A2B2C2D2E2F303132333435363738393A3B3C3D3E3F),
         .nonce_older_i(256'h404142434445464748494A4B4C4D4E4F505152535455565758595A5B5C5D5E5F),
+        .session_value_bytes_i(16'd32),
+        .nonce_newer_bytes_i(16'd32), .nonce_older_bytes_i(16'd32),
+        .hmac_busy_i(1'b0), .hmac_key_ready_i(1'b0), .hmac_message_ready_i(1'b0),
+        .hmac_digest_i(256'd0), .hmac_digest_valid_i(1'b0),
 
         .wait_o(wait_w),
         .done_o(done_w),

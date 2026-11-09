@@ -22,6 +22,8 @@ module cfb_block (
     reg [127:0] aes_feedback_r;
     wire aes_ready_w;
     wire aes_result_valid_w;
+    // Clear the expanded key after the output has been captured.
+    wire aes_reset_n_w = reset_n_i && state_r != ST_DONE && state_r != ST_RELEASE;
     wire [127:0] cipher_stream_block_w;
 
     reg [127:0] data_r;
@@ -50,7 +52,7 @@ module cfb_block (
 
     aes AES_IMPLEMENT (
         .clock_i (clock_i),
-        .reset_n_i (reset_n_i),
+        .reset_n_i (aes_reset_n_w),
 
         .init_i (aes_init_r),
         .next_i (aes_next_r),
@@ -159,6 +161,9 @@ module cfb_block (
 
                 ST_DONE: begin
                     done_o <= 1'b1;
+                    aes_key_r <= 0;
+                    data_r <= 0;
+                    aes_feedback_r <= 0;
                     state_r <= ST_RELEASE;
                     // wait_o remains high through the result pulse.
                 end
