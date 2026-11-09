@@ -89,7 +89,7 @@ cd {{{run.as_posix()}}}
 transcript file {{{(run/'transcript.log').as_posix()}}}
 vlib work_demo
 {compile_lines}
-vlog -sv -work work_demo {{{(HERE.parent/'hmac_stream_test_service.sv').as_posix()}}} {{{(run/'tb_professor_demo.sv').as_posix()}}}
+vlog -sv -work work_demo {{{(HERE/'hmac_python_bridge.sv').as_posix()}}} {{{(run/'tb_professor_demo.sv').as_posix()}}}
 vsim -voptargs=+acc -onfinish stop -wlf {{{(run/'vsim.wlf').as_posix()}}} -lib work_demo tb_professor_demo +PYTHON={Path(sys.executable).as_posix()} +HMAC_SERVICE=hmac_reference_service.py
 log -r sim:/tb_professor_demo/*
 if {{![batch_mode]}} {{
@@ -98,8 +98,8 @@ if {{![batch_mode]}} {{
  add wave -group {{Clock}} sim:/tb_professor_demo/clock_i sim:/tb_professor_demo/reset_n_i
  add wave -group {{Job}} sim:/tb_professor_demo/start_i sim:/tb_professor_demo/wait_o sim:/tb_professor_demo/done_o sim:/tb_professor_demo/session_protect_i sim:/tb_professor_demo/session_use_xor_i
  add wave -group {{Input}} -radix hexadecimal sim:/tb_professor_demo/data_in_i sim:/tb_professor_demo/key_i sim:/tb_professor_demo/iv_i
- add wave -group {{KDFa message}} -radix hexadecimal sim:/tb_professor_demo/dut/SESSION_CONTROLLER/KDFA_CONTROLLER.hmac_key_r sim:/tb_professor_demo/dut/SESSION_CONTROLLER/KDFA_CONTROLLER.hmac_message_r
- add wave -group {{Python HMAC digest}} -radix hexadecimal sim:/tb_professor_demo/dut/SESSION_CONTROLLER/hmac_digest_i
+ add wave -group {{KDFa message}} -radix hexadecimal sim:/tb_professor_demo/dut/SESSION_CONTROLLER/hmac_key_w sim:/tb_professor_demo/dut/SESSION_CONTROLLER/hmac_message_w
+ add wave -group {{Python HMAC digest}} -radix hexadecimal sim:/tb_professor_demo/dut/SESSION_CONTROLLER/hmac_digest_w
  add wave -group {{Derived key and IV}} -radix hexadecimal sim:/tb_professor_demo/dut/SESSION_CONTROLLER/kdfa_key_w sim:/tb_professor_demo/dut/SESSION_CONTROLLER/kdfa_iv_w
  add wave -group {{AES input}} -radix hexadecimal sim:/tb_professor_demo/dut/CFB_BLOCK/aes_key_r sim:/tb_professor_demo/dut/CFB_BLOCK/aes_feedback_r
  add wave -group {{Actual vs expected}} -radix hexadecimal sim:/tb_professor_demo/data_out_o sim:/tb_professor_demo/expected_data sim:/tb_professor_demo/iv_out_o sim:/tb_professor_demo/expected_feedback
@@ -113,7 +113,7 @@ if {{[batch_mode]}} {{quit -force -code 0}} else {{wave zoom full}}
 '''
     (run/'run.do').write_text(script,encoding='utf-8')
     # Source hashes identify exactly which RTL version produced the recording.
-    files=[SYM/n for n in sources]+[HERE.parent/'hmac_stream_test_service.sv',HERE/'hmac_reference_service.py',Path(__file__)]
+    files=[SYM/n for n in sources]+[HERE/'hmac_python_bridge.sv',HERE/'hmac_reference_service.py',Path(__file__)]
     (run/'source_hashes.json').write_text(json.dumps({str(f):hashlib.sha256(f.read_bytes()).hexdigest() for f in files},indent=2))
     (OUT/'latest_run.txt').write_text(str(run))
     return run
@@ -129,20 +129,13 @@ module tb_professor_demo;
  reg session_protect_i=0,session_decrypt_i=0,session_encrypt_i=1,session_use_xor_i=0;
  reg key_valid_i=1,session_valid_i=1,decrypt_i=0;
  reg [2:0] mode_i=1;
- reg [15:0] data_bytes_i=16;
+ reg [4:0] data_bytes_i=16;
  reg [255:0] key_i=0,session_value_i=0,nonce_newer_i=0,nonce_older_i=0;
  reg [127:0] iv_i=0,data_in_i=0,session_mask_i=0;
  wire wait_o,done_o,primitive_path_o,session_path_o;
  wire [11:0] tpm_rc_o;
  wire [127:0] data_out_o,iv_out_o;
- wire [15:0] session_value_bytes_i=32,nonce_newer_bytes_i=32,nonce_older_bytes_i=32;
- wire hmac_start_o,hmac_key_valid_o,hmac_key_end_o,hmac_key_ready_i;
- wire hmac_message_valid_o,hmac_message_end_o,hmac_message_ready_i,hmac_busy_i;
- wire [7:0] hmac_key_data_o,hmac_message_data_o;
- wire [255:0] hmac_digest_i;
- wire hmac_digest_valid_i,hmac_digest_ready_o;
- hmac_stream_test_service #(.USE_PYTHON(1)) hmac_service(.*);
- symm_top #(.MAX_DATA_BYTES(16),.MAX_SECRET_BYTES(32),.MAX_NONCE_BYTES(32)) dut(.*);
+ symm_top dut(.*);
  integer test_case=0,cycles,hmac_calls=0,aes_calls=0;
  reg successfully_completed=0;
  reg [127:0] expected_data,expected_feedback,expected_aes_iv;
@@ -150,11 +143,11 @@ module tb_professor_demo;
  reg [607:0] expected_message;
  string test_name;
  always @(posedge clock_i) if(reset_n_i) begin
-  if(dut.SESSION_CONTROLLER.hmac_start_o) begin
+  if(dut.SESSION_CONTROLLER.hmac_req_valid_w && dut.SESSION_CONTROLLER.hmac_req_ready_w) begin
    expected_message={32'd1+hmac_calls,(session_use_xor_i ? 32'h584f5200 : 32'h43464200),
-     nonce_newer_i,nonce_older_i,(session_use_xor_i ? {16'd0,data_bytes_i}*32'd8 : 32'd384)};
-   if(!session_protect_i || dut.SESSION_CONTROLLER.KDFA_CONTROLLER.hmac_key_r!==session_value_i ||
-      dut.SESSION_CONTROLLER.KDFA_CONTROLLER.hmac_message_r!==expected_message)
+     nonce_newer_i,nonce_older_i,(session_use_xor_i ? {27'd0,data_bytes_i}*32'd8 : 32'd384)};
+   if(!session_protect_i || dut.SESSION_CONTROLLER.hmac_key_w!==session_value_i ||
+      dut.SESSION_CONTROLLER.hmac_message_w!==expected_message)
        $fatal(1,"Incorrect KDFa message or secret");
    hmac_calls<=hmac_calls+1;
   end
@@ -170,7 +163,7 @@ module tb_professor_demo;
    $display("CASE|%0d|%s",test_case,test_name);
    start_i=1; @(negedge clock_i); start_i=0;
    cycles=0;
-   while(!done_o && cycles<20000) begin @(negedge clock_i); cycles++; end
+   while(!done_o && cycles<400) begin @(negedge clock_i); cycles++; end
    $display("RESULT|%0d|%032h|%032h|%032h|%032h|%03h|%0d|%0d|%0d",test_case,
        expected_data,data_out_o,expected_feedback,iv_out_o,tpm_rc_o,cycles,hmac_calls,aes_calls);
    if(!done_o || tpm_rc_o!==0 || data_out_o!==expected_data || iv_out_o!==expected_feedback ||
@@ -247,7 +240,7 @@ def build_html(run,m,hm):
 <p>Session fixture inputs are chosen test data, <b>not published TCG test vectors</b>. Message construction follows <a href="{TCG}">TCG Part 1, clause 21</a>. Nonce order A and B are separate fixtures; encryption/decryption within each fixture intentionally reuse the same inputs to check reversal.</p>
 <h2>Actual versus expected</h2><p>All values below are hexadecimal; short outputs are zero-filled at the unused end of the 128-bit bus.</p><table><thead><tr><th>Test</th><th>Expected</th><th>Questa actual</th><th>Result</th></tr></thead><tbody>{rows}</tbody></table>
 <h2>What this demonstrates</h2><ul><li>Real command-path AES-CFB agrees with published NIST examples.</li><li>KDFa constructs the checked messages and assembles correct key/IV bytes when supplied real software HMAC digests.</li><li>Session CFB and XOR output agrees with the software reference for these fixed-size fixtures.</li></ul>
-<div class="scope"><b>Remaining work:</b> hardware HMAC integration, host/execution-engine wiring, nonce lifecycle, and complete TPM authorization/error handling. These tests are not full TPM conformance, hardware timing, resource, side-channel or security certification evidence.</div>
+<div class="scope"><b>Remaining work:</b> hardware HMAC integration, host/execution-engine wiring, nonce lifecycle, variable session lengths, longer-buffer control, and complete TPM authorization/error handling. These tests are not full TPM conformance, hardware timing, resource, side-channel or security certification evidence.</div>
 <h2>Exact inputs and derived material</h2>{details}<h2>Actual HMAC service exchanges</h2><p>{m['hmac_service_calls']} real HMAC calculations; returned digests were rechecked from the recorded key/message. Software reference also passed RFC 4231 test case 1 before simulation.</p>{digest_rows}
 <h2>Sources and reproducibility</h2><ul><li><a href="{NIST}">NIST SP 800-38A: AES-256 CFB128 vectors, F.3.17/F.3.18, printed pages 51–52</a></li><li><a href="{TCG}">TCG TPM 2.0 Part 1 r1.83: session CFB, clause 21.3</a>; XOR: clause 11.4.7.3</li><li><a href="{RFC}">RFC 4231: HMAC-SHA256 known answer, test case 1</a></li><li><a href="https://docs.python.org/3/library/hmac.html">Python hmac reference library</a></li><li><a href="https://docs.openssl.org/3.0/man1/openssl-enc/">OpenSSL enc AES reference</a></li><li><a href="transcript.log">Raw Questa transcript</a> · <a href="results.json">Machine-readable results</a> · <a href="vectors.json">Reference inputs</a> · <a href="source_hashes.json">Source hashes</a> · <a href="tb_professor_demo.sv">Generated testbench</a></li></ul>
 <p><b>Waveforms:</b> <code>vsim.wlf</code> in this report's directory. Run <code>do {{{(run/'run.do').as_posix()}}}</code> in the Questa GUI for grouped signals.</p>

@@ -3,7 +3,7 @@
 // Date: October 13, 2026
 // Description: System test
 `timescale 1ns/1ps
-// Tests KDFa and real AES with an external toy HMAC byte service.
+// Tests the complete practice path: top -> KDFa -> fake HMAC -> real AES.
 // The derived key is FAKE. Passing these tests does not validate real KDFa/HMAC.
 module tb_symmetric_top;
     localparam [255:0] SECRET = 256'h000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f;
@@ -27,31 +27,15 @@ module tb_symmetric_top;
     reg session_protect_i=0, session_decrypt_i=0, session_encrypt_i=0, session_use_xor_i=0;
     reg key_valid_i=1, session_valid_i=1, decrypt_i=0;
     reg [2:0] mode_i=1;
-    reg [15:0] data_bytes_i=16;
+    reg [4:0] data_bytes_i=16;
     reg [255:0] key_i=0, session_value_i=0, nonce_newer_i=0, nonce_older_i=0;
     reg [127:0] iv_i=0, data_in_i=0, session_mask_i=0;
     wire wait_o, done_o, primitive_path_o, session_path_o;
     wire [11:0] tpm_rc_o;
     wire [127:0] data_out_o, iv_out_o;
 
-    // KDFa and AES are inside the top. HMAC is supplied here.
-    wire hmac_start_o, hmac_key_valid_o, hmac_key_end_o, hmac_key_ready_i;
-    wire hmac_message_valid_o, hmac_message_end_o, hmac_message_ready_i, hmac_busy_i;
-    wire [7:0] hmac_key_data_o, hmac_message_data_o;
-    wire [255:0] hmac_digest_i;
-    wire hmac_digest_valid_i, hmac_digest_ready_o;
-    hmac_stream_test_service hmac_service(.*);
-
-    symm_top #(.MAX_DATA_BYTES(16), .MAX_SECRET_BYTES(32), .MAX_NONCE_BYTES(32)) dut (
-        .hmac_start_o(hmac_start_o), .hmac_busy_i(hmac_busy_i),
-        .hmac_key_data_o(hmac_key_data_o), .hmac_key_valid_o(hmac_key_valid_o),
-        .hmac_key_end_o(hmac_key_end_o), .hmac_key_ready_i(hmac_key_ready_i),
-        .hmac_message_data_o(hmac_message_data_o), .hmac_message_valid_o(hmac_message_valid_o),
-        .hmac_message_end_o(hmac_message_end_o), .hmac_message_ready_i(hmac_message_ready_i),
-        .hmac_digest_i(hmac_digest_i), .hmac_digest_valid_i(hmac_digest_valid_i),
-        .hmac_digest_ready_o(hmac_digest_ready_o),
-        .session_value_bytes_i(16'd32), .nonce_newer_bytes_i(16'd32), .nonce_older_bytes_i(16'd32),
-
+    // KDFa, HMAC, and AES are instantiated INSIDE this top, not by the testbench.
+    symm_top dut (
         .clock_i(clock_i), .reset_n_i(reset_n_i), .start_i(start_i),
         .command_code_i(command_code_i), .session_protect_i(session_protect_i),
         .session_decrypt_i(session_decrypt_i), .session_encrypt_i(session_encrypt_i),
@@ -70,7 +54,7 @@ module tb_symmetric_top;
     reg successfully_completed=0, expect_kdfa=0, expect_aes=0, expect_xor=0;
     reg [255:0] expected_aes_key;
     reg [127:0] expected_aes_iv;
-    wire [31:0] message_counter = dut.SESSION_CONTROLLER.KDFA_CONTROLLER.hmac_message_r[607:576];
+    wire [31:0] message_counter = dut.SESSION_CONTROLLER.hmac_message_w[607:576];
     wire [31:0] expected_counter = hmac_calls+1;
 
     // Check the actual wires between modules and the key/IV reaching AES.
@@ -80,9 +64,9 @@ module tb_symmetric_top;
         end else begin
             if(!expect_kdfa && (dut.SESSION_CONTROLLER.state_r == 1))
                 $fatal(1,"Unexpected KDFa request");
-            if(dut.SESSION_CONTROLLER.hmac_start_o) begin
-                if(!expect_kdfa || hmac_calls>=2 || dut.SESSION_CONTROLLER.KDFA_CONTROLLER.hmac_key_r!==SECRET ||
-                   dut.SESSION_CONTROLLER.KDFA_CONTROLLER.hmac_message_r!=={expected_counter,(expect_xor ? 32'h584f5200 : 32'h43464200),NEWER,OLDER,(expect_xor ? {16'd0,data_bytes_i}*32'd8 : 32'd384)})
+            if(dut.SESSION_CONTROLLER.hmac_req_valid_w && dut.SESSION_CONTROLLER.hmac_req_ready_w) begin
+                if(!expect_kdfa || hmac_calls>=2 || dut.SESSION_CONTROLLER.hmac_key_w!==SECRET ||
+                   dut.SESSION_CONTROLLER.hmac_message_w!=={expected_counter,(expect_xor ? 32'h584f5200 : 32'h43464200),NEWER,OLDER,(expect_xor ? {27'd0,data_bytes_i}*32'd8 : 32'd384)})
                     $fatal(1,"Wrong session secret, message, or counter");
                 hmac_calls<=hmac_calls+1;
                 $display("%0t: HMAC accepts message %0d",$time,message_counter);
@@ -131,7 +115,7 @@ module tb_symmetric_top;
         integer cycles;
         begin
             cycles=0;
-            while(!done_o && cycles<20000) begin
+            while(!done_o && cycles<300) begin
                 @(negedge clock_i); cycles=cycles+1;
             end
             if(!done_o || tpm_rc_o!==rc || data_out_o!==data || iv_out_o!==iv ||
@@ -181,8 +165,8 @@ module tb_symmetric_top;
         pass("five-byte session parameter masks unused bytes");
 
         test_case=4; prepare(1,0,0); launch(0);
-        check_result(0,0,iv_i,0,0);
-        pass("empty parameter bypasses KDFa and AES");
+        check_result(0,0,DERIVED_IV,2,0);
+        pass("empty parameter derives material without starting AES");
 
         test_case=5; prepare(0,0,16); launch(0);
         check_result(0,PRIMITIVE_CIPHER,PRIMITIVE_CIPHER,0,1);
@@ -200,23 +184,23 @@ module tb_symmetric_top;
         check_result(12'h08b,0,0,0,0);
         pass("invalid session is rejected before KDFa or AES");
 
-        // 8: Inject a derivation failure at the session-controller boundary.
+        // 8: Inject a service failure at the second response, not inside HMAC.
         test_case=8; prepare(1,0,16); expect_aes=0; launch(0);
-        wait(dut.SESSION_CONTROLLER.kdfa_rsp_valid_w);
-        force dut.SESSION_CONTROLLER.kdfa_error_w=1'b1;
+        wait(dut.SESSION_CONTROLLER.hmac_rsp_valid_w && message_counter==2);
+        force dut.SESSION_CONTROLLER.hmac_error_w=1'b1;
         @(posedge clock_i);
         @(negedge clock_i);
-        release dut.SESSION_CONTROLLER.kdfa_error_w;
+        release dut.SESSION_CONTROLLER.hmac_error_w;
         check_result(12'h101,0,0,2,0);
-        pass("KDFa error reaches the caller and prevents encryption");
+        pass("HMAC error reaches the caller and prevents encryption");
 
         // 9: Reset the entire chain during derivation, then try a fresh job.
         test_case=9; prepare(1,0,16); launch(0);
-        wait(dut.SESSION_CONTROLLER.hmac_start_o);
+        wait(dut.SESSION_CONTROLLER.hmac_req_valid_w);
         @(negedge clock_i); reset_n_i=0; start_i=0;
         repeat(2) @(negedge clock_i); reset_n_i=1;
         repeat(3) @(negedge clock_i);
-        if(wait_o || done_o || dut.SESSION_CONTROLLER.hmac_digest_valid_i || dut.SESSION_CONTROLLER.kdfa_rsp_valid_w ||
+        if(wait_o || done_o || dut.SESSION_CONTROLLER.hmac_rsp_valid_w || dut.SESSION_CONTROLLER.kdfa_rsp_valid_w ||
            dut.CFB_BLOCK.aes_init_r || data_out_o!==0)
             $fatal(1,"Reset left stale work in the pipeline");
         prepare(1,0,16); launch(0); check_result(0,SESSION_CIPHER,SESSION_CIPHER,2,1);
@@ -252,5 +236,5 @@ module tb_symmetric_top;
         successfully_completed=1;
         $display("ALL %0d SYMMETRIC TOP CASES PASSED",case_count); $finish;
     end
-    initial begin #2000000; $fatal(1,"Global symmetric-top test timeout"); end
+    initial begin #100000; $fatal(1,"Global symmetric-top test timeout"); end
 endmodule

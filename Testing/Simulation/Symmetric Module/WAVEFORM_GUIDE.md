@@ -135,10 +135,5 @@ existing fake HMAC. This checks the integration after the isolated tests.
   The signal values are preserved; you may need to add the desired signals
   from the recorded hierarchy to the Wave window again.
 
-The isolated control suites use toy HMAC digests. Their small buffer instances
-retain the original 16-byte examples. Production session jobs now accept
-explicit lengths and complete parameters through KDFa’s external HMAC interface.
-For Python HMAC/OpenSSL comparisons across variable lengths and multiple
-blocks, run `run_session_hash_integration.py` as described in `../README_paths.md`.
-Hardware acceptance also requires the hash team's actual HMAC RTL and a
-connected TPM command path.
+No tests here establish full TPM compliance. The current implementation still
+has fixed session lengths, one-chunk jobs, and a fake HMAC placeholder.

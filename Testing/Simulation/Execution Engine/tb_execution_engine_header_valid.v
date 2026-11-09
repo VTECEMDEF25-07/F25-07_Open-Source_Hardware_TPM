@@ -222,7 +222,7 @@ reg  [15:0] st_untested;
 //startup error signal
 reg execution_startup_done;
 //execution response code
-reg [31:0] execution_response_code;
+reg execution_response_code;
 reg [11:0] auth_response_code;
 // ===================
 // DUT output signals
@@ -289,8 +289,6 @@ execution_engine DUT (
 
     .execution_startup_done_i(execution_startup_done),
     .execution_response_code_i(execution_response_code),
-    .execution_ready_i(1'b0), .execution_data_i(128'd0), .execution_iv_i(128'd0),
-    .execution_result_valid_o(), .execution_result_code_o(), .execution_data_o(), .execution_iv_o(),
     // NV memory submodule inputs
     .nv_phEnableNV_in_i(nv_phEnableNV_in),
     .nv_shEnable_in_i(nv_shEnable_in),
