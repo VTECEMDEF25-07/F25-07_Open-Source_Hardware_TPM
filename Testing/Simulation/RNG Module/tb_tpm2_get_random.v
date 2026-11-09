@@ -2,13 +2,12 @@
 // tb_tpm2_get_random.v
 //
 // Testbench for TPM2_GetRandom.
-//   Part A drives RNG with a simulation-only SHA-256 byte-stream service.
+//   Part A connects RNG to the production shared SHA-256 subsystem.
 //   SHA model integration/test fixes: Aaron Grossman with Codex assistance.
 //   Part B drives tpm2_get_random alone with a known DRBG block, so the
 //   exact payload bytes, TPM_RC_INITIALIZE and TPM_RC_FAILURE can be checked.
 //
 // Run with run_getrandom.py; see the adjacent README for source lists.
-// The SHA model is test-only and does not establish production integration.
 //
 // Written by Jungyeon Won with the help of generative AI
 // ===========================================================================
@@ -35,11 +34,24 @@ module tb_tpm2_get_random;
     wire [7:0] hash_msg_data;
     wire hash_msg_valid, hash_msg_last, hash_msg_ready, hash_digest_valid;
     wire [255:0] hash_digest;
-    sha256_test_model hash_service (
+    hash_subsystem hash_service (
         .clk_i(clk), .reset_n_i(rst_n),
-        .data_i(hash_msg_data), .valid_i(hash_msg_valid), .last_i(hash_msg_last),
-        .ready_o(hash_msg_ready), .digest_reg_o(hash_digest),
-        .digest_valid_reg_o(hash_digest_valid)
+        .raw_request_i(1'b0), .raw_data_i(8'd0), .raw_valid_i(1'b0),
+        .raw_end_i(1'b0), .raw_digest_ready_i(1'b0),
+        .hmac_start_en_i(1'b0), .hmac_key_data_i(8'd0),
+        .hmac_key_valid_i(1'b0), .hmac_key_end_i(1'b0),
+        .hmac_message_data_i(8'd0), .hmac_message_valid_i(1'b0),
+        .hmac_message_end_i(1'b0), .hmac_digest_ready_i(1'b0),
+        .pcr_extend_start_en_i(1'b0), .pcr_extend_index_i(5'd0),
+        .pcr_measurement_i(256'd0), .pcr_read_index_i(5'd0),
+        .raw_grant_o(), .raw_ready_o(), .raw_digest_o(), .raw_digest_valid_o(),
+        .hmac_key_ready_o(), .hmac_message_ready_o(), .hmac_busy_o(),
+        .hmac_digest_o(), .hmac_digest_valid_o(),
+        .pcr_busy_o(), .pcr_done_o(), .pcr_error_o(),
+        .pcr_read_data_o(), .pcr_read_valid_o(), .busy_o(),
+        .rng_hash_msg_data_i(hash_msg_data), .rng_hash_msg_valid_i(hash_msg_valid),
+        .rng_hash_msg_last_i(hash_msg_last), .rng_hash_msg_ready_o(hash_msg_ready),
+        .rng_hash_digest_o(hash_digest), .rng_hash_digest_valid_o(hash_digest_valid)
     );
 
     RNG dut_top (
