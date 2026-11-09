@@ -30,16 +30,16 @@ module tb_rsa_modexp;
     rsa_modexp #(
         .WIDTH(WIDTH)
     ) dut (
-        .clk(clk),
-        .rst_n(rst_n),
-        .start(start),
-        .base(base),
-        .exponent(exponent),
-        .n(n),
-        .result(result),
-        .done(done),
-        .busy(busy),
-        .error(error)
+        .clk_i(clk),
+        .reset_n_i(rst_n),
+        .start_i(start),
+        .base_i(base),
+        .exponent_i(exponent),
+        .n_i(n),
+        .result_o(result),
+        .done_o(done),
+        .busy_o(busy),
+        .error_o(error)
     );
 
     always #5 clk = ~clk;
@@ -80,7 +80,7 @@ module tb_rsa_modexp;
         integer max_cycles;
         begin
             expected = reference_pow(base_in, exponent_in, modulus_in);
-            max_cycles = (2*WIDTH + 2) * (WIDTH + 5) + 2*WIDTH + 10;
+            max_cycles = (2*WIDTH + 2) * (2*WIDTH + 5) + 2*WIDTH + 10;
 
             @(negedge clk);
             base = base_in;
@@ -162,7 +162,7 @@ module tb_rsa_modexp;
         integer max_cycles;
         begin
             expected = reference_pow(8'd7, 8'd9, 8'd13);
-            max_cycles = (2*WIDTH + 2) * (WIDTH + 5) + 2*WIDTH + 10;
+            max_cycles = (2*WIDTH + 2) * (2*WIDTH + 5) + 2*WIDTH + 10;
 
             @(negedge clk);
             base = 8'd7;

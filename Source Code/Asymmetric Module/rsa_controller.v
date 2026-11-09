@@ -1,124 +1,109 @@
+////////////////////////////////////////////////////////////////////////////////
+// Filename:    rsa_controller.v
+// Author:      Sam McCrowell
+// Date:        11/09/2026
+// Version:     1.0
+// Description: Selects the RSA exponent and sequences modular exponentiation.
+//
+// Modification History:
+// Date        By   Version  Change Description
+// 11/09/2026  SMC  1.0      Added registered naming and simplified launch FSM.
+////////////////////////////////////////////////////////////////////////////////
+
 `timescale 1ns/1ps
 
-// Request sequencer for the RSA modular-exponentiation engine.
+// This is a provisional arithmetic interface, not a TPM command or bus
+// interface. The WIDTH-bit vectors are intended to connect to internal key,
+// memory, or command-processing logic. Do not connect them directly to FPGA
+// package pins; the system-level bus interface is a separate integration task.
 //
-// This is a provisional arithmetic boundary, not a TPM command-marshalling
-// interface. Raw TPM command data can have command- and scheme-dependent
-// lengths. Padding/marshalling must convert that data to a WIDTH-bit RSA
-// representative before submitting it here. For RSA-2048, representative,
-// modulus, result, and both exponent ports are 2048 bits. A short public
-// exponent such as 65537 is zero-extended to WIDTH bits by the caller.
-//
-// use_private_key selects the private exponent for decrypt/sign operations;
-// otherwise the public exponent is selected for encrypt/verify. The key
-// management/authorization logic must ensure private_exponent is supplied only
-// for an authorized request. This module does not define TPM command opcodes.
-//
-// start is sampled in IDLE and all request operands are latched. A start while
-// busy is ignored. done pulses with busy low when result/error is valid. Inputs
-// must satisfy the rsa_modexp requirements; its error is forwarded here.
+// start_i is accepted while idle. rsa_modexp samples the request operands on
+// that same edge, so the caller must hold them stable through the accepting
+// edge. A start_i while busy_o is high is ignored. done_o and error_o pulse
+// together when the operation completes.
 module rsa_controller #(parameter WIDTH = 2048)(
-    input wire clk,
-    input wire rst_n,
-    input wire start,
+    input wire clk_i,
+    input wire reset_n_i,
+    input wire start_i,
 
-    input wire use_private_key,
-    input wire [WIDTH-1:0] representative,
-    input wire [WIDTH-1:0] modulus,
-    input wire [WIDTH-1:0] public_exponent,
-    input wire [WIDTH-1:0] private_exponent,
+    input wire use_private_key_i,
+    input wire [WIDTH-1:0] representative_i,
+    input wire [WIDTH-1:0] modulus_i,
+    input wire [WIDTH-1:0] public_exponent_i,
+    input wire [WIDTH-1:0] private_exponent_i,
 
-    output reg [WIDTH-1:0] result,
-    output reg done,
-    output reg busy,
-    output reg error
+    output reg [WIDTH-1:0] result_o,
+    output reg done_o,
+    output reg busy_o,
+    output reg error_o
 );
 
-    localparam [1:0]
-        IDLE         = 2'd0,
-        START_MODEXP = 2'd1,
-        WAIT_MODEXP  = 2'd2;
+    localparam IDLE       = 1'b0;
+    localparam WAIT_MODEXP = 1'b1;
 
-    reg [1:0] state;
-    reg [WIDTH-1:0] representative_reg;
-    reg [WIDTH-1:0] modulus_reg;
-    reg [WIDTH-1:0] exponent_reg;
+    reg state_reg;
 
-    reg modexp_start;
+    wire modexp_start;
+    wire [WIDTH-1:0] selected_exponent;
     wire [WIDTH-1:0] modexp_result;
     wire modexp_done;
     wire modexp_error;
 
-    always @* begin
-        modexp_start = (state == START_MODEXP);
-    end
+    // Launch the child in the same cycle that this controller accepts start_i.
+    // The child captures these same-cycle inputs into its own operand registers.
+    assign modexp_start = (state_reg == IDLE) && start_i;
+    assign selected_exponent = use_private_key_i
+                             ? private_exponent_i
+                             : public_exponent_i;
 
     rsa_modexp #(
         .WIDTH(WIDTH)
     ) modexp_engine (
-        .clk(clk),
-        .rst_n(rst_n),
-        .start(modexp_start),
-        .base(representative_reg),
-        .exponent(exponent_reg),
-        .n(modulus_reg),
-        .result(modexp_result),
-        .done(modexp_done),
-        .busy(),
-        .error(modexp_error)
+        .clk_i(clk_i),
+        .reset_n_i(reset_n_i),
+        .start_i(modexp_start),
+        .base_i(representative_i),
+        .exponent_i(selected_exponent),
+        .n_i(modulus_i),
+        .result_o(modexp_result),
+        .done_o(modexp_done),
+        .busy_o(),
+        .error_o(modexp_error)
     );
 
-    always @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            state              <= IDLE;
-            representative_reg <= {WIDTH{1'b0}};
-            modulus_reg        <= {WIDTH{1'b0}};
-            exponent_reg       <= {WIDTH{1'b0}};
-            result             <= {WIDTH{1'b0}};
-            done               <= 1'b0;
-            busy               <= 1'b0;
-            error              <= 1'b0;
+    always @(posedge clk_i or negedge reset_n_i) begin
+        if (!reset_n_i) begin
+            state_reg <= IDLE;
+            result_o  <= {WIDTH{1'b0}};
+            done_o    <= 1'b0;
+            busy_o    <= 1'b0;
+            error_o   <= 1'b0;
         end else begin
-            done  <= 1'b0;
-            error <= 1'b0;
+            done_o  <= 1'b0;
+            error_o <= 1'b0;
 
-            case (state)
+            case (state_reg)
                 IDLE: begin
-                    busy <= 1'b0;
-
-                    if (start) begin
-                        representative_reg <= representative;
-                        modulus_reg        <= modulus;
-                        if (use_private_key)
-                            exponent_reg <= private_exponent;
-                        else
-                            exponent_reg <= public_exponent;
-
-                        busy  <= 1'b1;
-                        state <= START_MODEXP;
+                    busy_o <= 1'b0;
+                    if (start_i) begin
+                        busy_o   <= 1'b1;
+                        state_reg <= WAIT_MODEXP;
                     end
-                end
-
-                START_MODEXP: begin
-                    state <= WAIT_MODEXP;
                 end
 
                 WAIT_MODEXP: begin
                     if (modexp_done) begin
-                        result             <= modexp_result;
-                        representative_reg <= {WIDTH{1'b0}};
-                        modulus_reg        <= {WIDTH{1'b0}};
-                        exponent_reg       <= {WIDTH{1'b0}};
-                        busy               <= 1'b0;
-                        done               <= 1'b1;
-                        error              <= modexp_error;
-                        state              <= IDLE;
+                        result_o  <= modexp_result;
+                        busy_o    <= 1'b0;
+                        done_o    <= 1'b1;
+                        error_o   <= modexp_error;
+                        state_reg <= IDLE;
                     end
                 end
 
                 default: begin
-                    state <= IDLE;
-                    busy  <= 1'b0;
+                    state_reg <= IDLE;
+                    busy_o    <= 1'b0;
                 end
             endcase
         end

@@ -33,18 +33,18 @@ module tb_rsa_controller;
     rsa_controller #(
         .WIDTH(WIDTH)
     ) dut (
-        .clk(clk),
-        .rst_n(rst_n),
-        .start(start),
-        .use_private_key(use_private_key),
-        .representative(representative),
-        .modulus(modulus),
-        .public_exponent(public_exponent),
-        .private_exponent(private_exponent),
-        .result(result),
-        .done(done),
-        .busy(busy),
-        .error(error)
+        .clk_i(clk),
+        .reset_n_i(rst_n),
+        .start_i(start),
+        .use_private_key_i(use_private_key),
+        .representative_i(representative),
+        .modulus_i(modulus),
+        .public_exponent_i(public_exponent),
+        .private_exponent_i(private_exponent),
+        .result_o(result),
+        .done_o(done),
+        .busy_o(busy),
+        .error_o(error)
     );
 
     always #5 clk = ~clk;
@@ -91,7 +91,7 @@ module tb_rsa_controller;
             else
                 selected_exponent = public_exponent_in;
             expected = reference_pow(representative_in, selected_exponent, modulus_in);
-            max_cycles = (2*WIDTH + 2) * (WIDTH + 6) + 2*WIDTH + 20;
+            max_cycles = (2*WIDTH + 2) * (2*WIDTH + 6) + 2*WIDTH + 20;
 
             @(negedge clk);
             use_private_key = private_key;
@@ -185,7 +185,7 @@ module tb_rsa_controller;
         integer max_cycles;
         begin
             expected = reference_pow(8'd7, 8'd9, 8'd13);
-            max_cycles = (2*WIDTH + 2) * (WIDTH + 6) + 2*WIDTH + 20;
+            max_cycles = (2*WIDTH + 2) * (2*WIDTH + 6) + 2*WIDTH + 20;
 
             @(negedge clk);
             use_private_key = 1'b0;

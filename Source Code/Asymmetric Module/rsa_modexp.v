@@ -1,34 +1,46 @@
+////////////////////////////////////////////////////////////////////////////////
+// Filename:    rsa_modexp.v
+// Author:      Sam McCrowell
+// Date:        11/09/2026
+// Version:     1.0
+// Description: RSA modular exponentiation using one shared Montgomery core.
+//
+// Modification History:
+// Date        By   Version  Change Description
+// 11/09/2026  SMC  1.0      Added interface and register naming conventions.
+////////////////////////////////////////////////////////////////////////////////
+
 `timescale 1ns/1ps
 
 // Functional RSA modular-exponentiation prototype using one shared
 // Montgomery multiplier.
 //
-// Computes result = base^exponent mod n. WIDTH >= 2; n must be odd and > 1;
-// base must be less than n. Invalid modulus/base inputs are rejected with a
-// one-cycle done and error pulse. The exponent is an unsigned WIDTH-bit value.
+// Computes result_o = base_i^exponent_i mod n_i. WIDTH >= 2; n_i must be odd
+// and greater than 1; base_i must be less than n_i. Invalid inputs are rejected
+// with a one-cycle done_o and error_o pulse. The exponent is unsigned.
 //
-// start is sampled only in IDLE, where the inputs are latched. start while busy
-// is ignored. done pulses with busy low when result is valid. result remains
-// stable until the next completed request or reset. A held-high start can be
-// accepted again after the FSM returns to IDLE; callers should pulse start.
+// start_i is sampled only in IDLE, where the inputs are latched. A start_i while
+// busy_o is high is ignored. done_o pulses when result_o is valid. result_o
+// remains stable until the next completed request or reset. Callers should
+// pulse start_i rather than hold it high.
 //
 // This implementation uses fixed-schedule square-and-multiply: every exponent
 // bit performs both a square and a multiply, then selects the next accumulator.
 // This avoids exponent-dependent latency, but is not a complete side-channel
 // countermeasure and is not a production-security claim.
 module rsa_modexp #(parameter WIDTH = 2048)(
-    input wire clk,
-    input wire rst_n,
-    input wire start,
+    input wire clk_i,
+    input wire reset_n_i,
+    input wire start_i,
 
-    input wire [WIDTH-1:0] base,
-    input wire [WIDTH-1:0] exponent,
-    input wire [WIDTH-1:0] n,
+    input wire [WIDTH-1:0] base_i,
+    input wire [WIDTH-1:0] exponent_i,
+    input wire [WIDTH-1:0] n_i,
 
-    output reg [WIDTH-1:0] result,
-    output reg done,
-    output reg busy,
-    output reg error
+    output reg [WIDTH-1:0] result_o,
+    output reg done_o,
+    output reg busy_o,
+    output reg error_o
 );
 
     localparam [3:0]
@@ -43,7 +55,7 @@ module rsa_modexp #(parameter WIDTH = 2048)(
         FINAL_START   = 4'd8,
         FINAL_WAIT    = 4'd9;
 
-    reg [3:0] state;
+    reg [3:0] state_reg;
 
     reg [WIDTH-1:0] base_reg;
     reg [WIDTH-1:0] exponent_reg;
@@ -56,8 +68,8 @@ module rsa_modexp #(parameter WIDTH = 2048)(
     reg [WIDTH-1:0] accumulator_reg;
     reg [WIDTH-1:0] square_reg;
 
-    reg [31:0] precompute_count;
-    reg [31:0] exponent_index;
+    reg [31:0] precompute_count_reg;
+    reg [31:0] exponent_index_reg;
 
     reg mont_start;
     reg [WIDTH-1:0] mont_a;
@@ -83,7 +95,7 @@ module rsa_modexp #(parameter WIDTH = 2048)(
         mont_a = {WIDTH{1'b0}};
         mont_b = {WIDTH{1'b0}};
 
-        case (state)
+        case (state_reg)
             CONVERT_START: begin
                 mont_start = 1'b1;
                 mont_a = base_reg;
@@ -117,20 +129,20 @@ module rsa_modexp #(parameter WIDTH = 2048)(
     montgomery_mult #(
         .WIDTH(WIDTH)
     ) montgomery_core (
-        .clk(clk),
-        .rst_n(rst_n),
-        .start(mont_start),
-        .a(mont_a),
-        .b(mont_b),
-        .n(n_reg),
-        .result(mont_result),
-        .done(mont_done),
-        .busy()
+        .clk_i(clk_i),
+        .reset_n_i(reset_n_i),
+        .start_i(mont_start),
+        .a_i(mont_a),
+        .b_i(mont_b),
+        .n_i(n_reg),
+        .result_o(mont_result),
+        .done_o(mont_done),
+        .busy_o()
     );
 
-    always @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            state                 <= IDLE;
+    always @(posedge clk_i or negedge reset_n_i) begin
+        if (!reset_n_i) begin
+            state_reg             <= IDLE;
             base_reg              <= {WIDTH{1'b0}};
             exponent_reg          <= {WIDTH{1'b0}};
             n_reg                 <= {WIDTH{1'b0}};
@@ -140,39 +152,40 @@ module rsa_modexp #(parameter WIDTH = 2048)(
             base_mont_reg         <= {WIDTH{1'b0}};
             accumulator_reg       <= {WIDTH{1'b0}};
             square_reg            <= {WIDTH{1'b0}};
-            precompute_count      <= 32'd0;
-            exponent_index        <= 32'd0;
-            result                <= {WIDTH{1'b0}};
-            done                  <= 1'b0;
-            busy                  <= 1'b0;
-            error                 <= 1'b0;
+            precompute_count_reg  <= 32'd0;
+            exponent_index_reg    <= 32'd0;
+            result_o              <= {WIDTH{1'b0}};
+            done_o                <= 1'b0;
+            busy_o                <= 1'b0;
+            error_o               <= 1'b0;
         end else begin
-            done  <= 1'b0;
-            error <= 1'b0;
+            done_o  <= 1'b0;
+            error_o <= 1'b0;
 
-            case (state)
+            case (state_reg)
                 IDLE: begin
-                    busy <= 1'b0;
+                    busy_o <= 1'b0;
 
-                    if (start) begin
-                        if ((n <= {{(WIDTH-1){1'b0}}, 1'b1}) ||
-                            (n[0] == 1'b0) || (base >= n)) begin
-                            result <= {WIDTH{1'b0}};
-                            done   <= 1'b1;
-                            error  <= 1'b1;
+                    if (start_i) begin
+                        // Reject n_i <= 1, an even modulus, or base_i >= n_i.
+                        if ((n_i <= {{(WIDTH-1){1'b0}}, 1'b1}) ||
+                            (n_i[0] == 1'b0) || (base_i >= n_i)) begin
+                            result_o <= {WIDTH{1'b0}};
+                            done_o   <= 1'b1;
+                            error_o  <= 1'b1;
                         end else begin
-                            base_reg         <= base;
-                            exponent_reg     <= exponent;
-                            n_reg            <= n;
+                            base_reg         <= base_i;
+                            exponent_reg     <= exponent_i;
+                            n_reg            <= n_i;
                             precompute_reg   <= {{(WIDTH-1){1'b0}}, 1'b1};
                             r_mod_n_reg      <= {WIDTH{1'b0}};
                             r_squared_mod_n_reg <= {WIDTH{1'b0}};
                             base_mont_reg    <= {WIDTH{1'b0}};
                             accumulator_reg  <= {WIDTH{1'b0}};
                             square_reg        <= {WIDTH{1'b0}};
-                            precompute_count <= 32'd0;
-                            busy              <= 1'b1;
-                            state             <= PRECOMPUTE;
+                            precompute_count_reg <= 32'd0;
+                            busy_o                <= 1'b1;
+                            state_reg             <= PRECOMPUTE;
                         end
                     end
                 end
@@ -180,68 +193,68 @@ module rsa_modexp #(parameter WIDTH = 2048)(
                 PRECOMPUTE: begin
                     precompute_reg <= precompute_next[WIDTH-1:0];
 
-                    if (precompute_count == WIDTH-1)
+                    if (precompute_count_reg == WIDTH-1)
                         r_mod_n_reg <= precompute_next[WIDTH-1:0];
 
-                    if (precompute_count == (2*WIDTH)-1) begin
+                    if (precompute_count_reg == (2*WIDTH)-1) begin
                         r_squared_mod_n_reg <= precompute_next[WIDTH-1:0];
                         accumulator_reg     <= r_mod_n_reg;
-                        exponent_index      <= WIDTH-1;
-                        state               <= CONVERT_START;
+                        exponent_index_reg  <= WIDTH-1;
+                        state_reg           <= CONVERT_START;
                     end else begin
-                        precompute_count <= precompute_count + 1'b1;
+                        precompute_count_reg <= precompute_count_reg + 1'b1;
                     end
                 end
 
                 CONVERT_START: begin
-                    state <= CONVERT_WAIT;
+                    state_reg <= CONVERT_WAIT;
                 end
 
                 CONVERT_WAIT: begin
                     if (mont_done) begin
                         base_mont_reg <= mont_result;
-                        state         <= SQUARE_START;
+                        state_reg     <= SQUARE_START;
                     end
                 end
 
                 SQUARE_START: begin
-                    state <= SQUARE_WAIT;
+                    state_reg <= SQUARE_WAIT;
                 end
 
                 SQUARE_WAIT: begin
                     if (mont_done) begin
                         square_reg <= mont_result;
-                        state      <= MULT_START;
+                        state_reg  <= MULT_START;
                     end
                 end
 
                 MULT_START: begin
-                    state <= MULT_WAIT;
+                    state_reg <= MULT_WAIT;
                 end
 
                 MULT_WAIT: begin
                     if (mont_done) begin
-                        if (exponent_reg[exponent_index])
+                        if (exponent_reg[exponent_index_reg])
                             accumulator_reg <= mont_result;
                         else
                             accumulator_reg <= square_reg;
 
-                        if (exponent_index == 0) begin
-                            state <= FINAL_START;
+                        if (exponent_index_reg == 0) begin
+                            state_reg <= FINAL_START;
                         end else begin
-                            exponent_index <= exponent_index - 1'b1;
-                            state          <= SQUARE_START;
+                            exponent_index_reg <= exponent_index_reg - 1'b1;
+                            state_reg          <= SQUARE_START;
                         end
                     end
                 end
 
                 FINAL_START: begin
-                    state <= FINAL_WAIT;
+                    state_reg <= FINAL_WAIT;
                 end
 
                 FINAL_WAIT: begin
                     if (mont_done) begin
-                        result          <= mont_result;
+                        result_o         <= mont_result;
                         exponent_reg    <= {WIDTH{1'b0}};
                         base_reg        <= {WIDTH{1'b0}};
                         n_reg           <= {WIDTH{1'b0}};
@@ -251,15 +264,15 @@ module rsa_modexp #(parameter WIDTH = 2048)(
                         base_mont_reg   <= {WIDTH{1'b0}};
                         accumulator_reg <= {WIDTH{1'b0}};
                         square_reg       <= {WIDTH{1'b0}};
-                        busy            <= 1'b0;
-                        done            <= 1'b1;
-                        state           <= IDLE;
+                        busy_o          <= 1'b0;
+                        done_o          <= 1'b1;
+                        state_reg       <= IDLE;
                     end
                 end
 
                 default: begin
-                    state <= IDLE;
-                    busy  <= 1'b0;
+                    state_reg <= IDLE;
+                    busy_o    <= 1'b0;
                 end
             endcase
         end

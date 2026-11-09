@@ -31,16 +31,16 @@ module tb_rsa_modexp_vectors;
     rsa_modexp #(
         .WIDTH(WIDTH)
     ) dut (
-        .clk(clk),
-        .rst_n(rst_n),
-        .start(start),
-        .base(base),
-        .exponent(exponent),
-        .n(n),
-        .result(result),
-        .done(done),
-        .busy(busy),
-        .error(error)
+        .clk_i(clk),
+        .reset_n_i(rst_n),
+        .start_i(start),
+        .base_i(base),
+        .exponent_i(exponent),
+        .n_i(n),
+        .result_o(result),
+        .done_o(done),
+        .busy_o(busy),
+        .error_o(error)
     );
 
     always #5 clk = ~clk;
@@ -85,9 +85,9 @@ module tb_rsa_modexp_vectors;
             start = 1'b0;
 
             // 2*WIDTH precomputation cycles, followed by 2*WIDTH+2
-            // Montgomery products, each taking approximately WIDTH+3 cycles.
+            // Montgomery products, each taking approximately 2*WIDTH+3 cycles.
             cycles = 0;
-            while ((done !== 1'b1) && (cycles < 9000000)) begin
+            while ((done !== 1'b1) && (cycles < 20000000)) begin
                 @(negedge clk);
                 cycles = cycles + 1;
             end
@@ -115,7 +115,7 @@ module tb_rsa_modexp_vectors;
     end
 
     initial begin
-        #120000000;
+        #250000000;
         $display("FAIL: global testbench timeout");
         $finish;
     end

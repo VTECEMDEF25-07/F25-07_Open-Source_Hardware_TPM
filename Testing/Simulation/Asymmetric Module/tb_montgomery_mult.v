@@ -29,15 +29,15 @@ module tb_montgomery_mult;
     montgomery_mult #(
         .WIDTH(WIDTH)
     ) dut (
-        .clk(clk),
-        .rst_n(rst_n),
-        .start(start),
-        .a(a),
-        .b(b),
-        .n(n),
-        .result(result),
-        .done(done),
-        .busy(busy)
+        .clk_i(clk),
+        .reset_n_i(rst_n),
+        .start_i(start),
+        .a_i(a),
+        .b_i(b),
+        .n_i(n),
+        .result_o(result),
+        .done_o(done),
+        .busy_o(busy)
     );
 
     always #5 clk = ~clk;
@@ -93,7 +93,7 @@ module tb_montgomery_mult;
             start = 1'b0;
 
             cycles = 0;
-            while ((done !== 1'b1) && (cycles < WIDTH + 4)) begin
+            while ((done !== 1'b1) && (cycles < (2*WIDTH) + 5)) begin
                 if (busy !== 1'b1) begin
                     $display("FAIL: busy dropped before completion (test %0d)", test_count);
                     failures = failures + 1;
@@ -151,7 +151,7 @@ module tb_montgomery_mult;
             start = 1'b0;
 
             cycles = 0;
-            while ((done !== 1'b1) && (cycles < WIDTH + 4)) begin
+            while ((done !== 1'b1) && (cycles < (2*WIDTH) + 5)) begin
                 @(negedge clk);
                 cycles = cycles + 1;
             end
