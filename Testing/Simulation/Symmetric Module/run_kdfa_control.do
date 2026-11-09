@@ -15,8 +15,8 @@ file mkdir $run_root
 cd $run_root
 transcript file [file join $run_root transcript.log]
 vlib work_practice
-vlog -vlog01compat -work work_practice [file join $sym_root kdfa_control.v] [file join $sym_root hmac_sha256_placeholder.v]
-vlog -sv -work work_practice [file join $bench_root tb_kdfa_control.sv]
+vlog -vlog01compat -work work_practice [file join $sym_root kdfa_control.v]
+vlog -sv -work work_practice [file join $bench_root hmac_stream_test_service.sv] [file join $bench_root tb_kdfa_control.sv]
 vsim -voptargs=+acc -onfinish stop -wlf [file join $run_root vsim.wlf] -lib work_practice tb_kdfa_control
 # Preserve handshakes, message counters, and digests in this run's vsim.wlf.
 log -r sim:/tb_kdfa_control/*
@@ -28,14 +28,14 @@ add wave -group {Test and clock} sim:/tb_kdfa_control/clk_i sim:/tb_kdfa_control
 add wave -group {Caller to KDFa} sim:/tb_kdfa_control/req_valid_i sim:/tb_kdfa_control/req_ready_o
 add wave -group {Caller to KDFa} sim:/tb_kdfa_control/rsp_valid_o sim:/tb_kdfa_control/rsp_ready_i sim:/tb_kdfa_control/error_o
 add wave -group {Caller inputs} -radix hexadecimal sim:/tb_kdfa_control/session_value_i sim:/tb_kdfa_control/label_i sim:/tb_kdfa_control/context_u_i sim:/tb_kdfa_control/context_v_i
-add wave -group {KDFa to HMAC request} sim:/tb_kdfa_control/hmac_req_valid_o sim:/tb_kdfa_control/hmac_req_ready_i
+add wave -group {KDFa to HMAC request} sim:/tb_kdfa_control/hmac_start_o sim:/tb_kdfa_control/hmac_busy_i
 add wave -group {KDFa to HMAC request} -radix unsigned sim:/tb_kdfa_control/message_counter
 add wave -group {KDFa to HMAC request} -radix hexadecimal sim:/tb_kdfa_control/hmac_key_o sim:/tb_kdfa_control/hmac_message_o
-add wave -group {HMAC to KDFa result} sim:/tb_kdfa_control/hmac_rsp_valid_i sim:/tb_kdfa_control/hmac_rsp_ready_o sim:/tb_kdfa_control/hmac_error_i
+add wave -group {HMAC to KDFa result} sim:/tb_kdfa_control/hmac_digest_valid_i sim:/tb_kdfa_control/hmac_digest_ready_o
 add wave -group {HMAC to KDFa result} -radix hexadecimal sim:/tb_kdfa_control/hmac_digest_i
 add wave -group {Final key and IV} -radix hexadecimal sim:/tb_kdfa_control/aes_key_o sim:/tb_kdfa_control/aes_iv_o
 add wave -group {KDFa state} -radix unsigned sim:/tb_kdfa_control/dut/state_r
-add wave -group {Test controls} sim:/tb_kdfa_control/accept_hmac sim:/tb_kdfa_control/inject_second_error
+add wave -group {Test controls} sim:/tb_kdfa_control/accept_hmac sim:/tb_kdfa_control/secret_length
 if {![batch_mode]} {
     configure wave -namecolwidth 230 -valuecolwidth 260 -timelineunits ns
 }
@@ -48,7 +48,7 @@ set count [examine -radix unsigned sim:/tb_kdfa_control/case_count]
 if {$count != 6} {error "Expected 6 practice cases, got $count"}
 puts "KDFA_PRACTICE_SUITE_PASS ($count cases)"
 puts "Waveform recording: [file join $run_root vsim.wlf]"
-puts {KDFa states: 0=IDLE, 1=SEND, 2=WAIT_DIGEST, 3=DONE. Fake HMAC holds its result while rsp_valid_o=1.}
+puts {KDFa states: 0=IDLE, 1=START_HMAC, 2=SEND_KEY, 3=SEND_MESSAGE, 4=WAIT_DIGEST, 5=DONE.}
 if {[batch_mode]} {
     quit -force -code 0
 } else {

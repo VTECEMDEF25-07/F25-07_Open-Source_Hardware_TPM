@@ -114,6 +114,9 @@ module	TPM_TOP
 		.auth_success_i(1'b1), .param_decrypt_success_i(1'b1), .param_decrypt_fail_i(1'b0), 
 		.param_unmarshall_success_i(1'b1), .param_unmarshall_fail_i(1'b0), 
 		.execution_startup_done_i(1'b1), .execution_response_code_i(32'd0), 
+		// Primitive jobs wait here until decoded object/parameter wiring is added.
+		.execution_ready_i(1'b0), .execution_data_i(128'd0), .execution_iv_i(128'd0),
+		.execution_result_valid_o(), .execution_result_code_o(), .execution_data_o(), .execution_iv_o(),
 		
 		.nv_phEnableNV_in_i(1'b1), .nv_shEnable_in_i(1'b1), 
 		.nv_ehEnable_in_i(1'b1), .tpm_nv_index_i(32'd0), 

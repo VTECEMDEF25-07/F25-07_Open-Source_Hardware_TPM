@@ -23,8 +23,8 @@ switch $module_test {
         set expected_cases 7
     }
     session_parameter_controller {
-        set sources {kdfa_control.v hmac_sha256_placeholder.v session_parameter_controller.v}
-        set expected_cases 12
+        set sources {kdfa_control.v session_parameter_controller.v}
+        set expected_cases 15
     }
     encrypt_decrypt2_controller {
         set sources {encrypt_decrypt2_controller.v}
@@ -33,6 +33,7 @@ switch $module_test {
     default {error "Unknown module test $module_test"}
 }
 foreach name $sources {vlog -vlog01compat -work work_module [file join $sym_root $name]}
+if {$module_test eq "session_parameter_controller"} {vlog -sv -work work_module [file join $bench_root hmac_stream_test_service.sv]}
 set bench tb_$module_test
 vlog -sv -work work_module [file join $bench_root ${bench}.sv]
 vsim -voptargs=+acc -onfinish stop -wlf [file join $run_root vsim.wlf] -lib work_module $bench
@@ -62,11 +63,11 @@ if {![batch_mode]} {
         if {$module_test eq "session_parameter_controller"} {
             add wave -group {Session selection} $root/session_use_xor_i $root/session_decrypt_i $root/session_encrypt_i $root/session_valid_i
             add wave -group {Session inputs} -radix hexadecimal $root/session_value_i $root/nonce_newer_i $root/nonce_older_i
-            add wave -group {HMAC requests} $root/dut/hmac_req_valid_w $root/dut/hmac_req_ready_w
+            add wave -group {HMAC requests} $root/dut/hmac_start_o $root/dut/hmac_busy_i
             add wave -group {HMAC requests} -radix unsigned $root/message_counter $root/hmac_calls
-            add wave -group {HMAC requests} -radix hexadecimal $root/dut/hmac_key_w $root/dut/hmac_message_w
-            add wave -group {HMAC responses} $root/dut/hmac_rsp_valid_w $root/dut/hmac_rsp_ready_w $root/dut/hmac_error_w
-            add wave -group {HMAC responses} -radix hexadecimal $root/dut/hmac_digest_w
+            add wave -group {HMAC requests} -radix hexadecimal $root/dut/KDFA_CONTROLLER.hmac_key_r $root/dut/KDFA_CONTROLLER.hmac_message_r
+            add wave -group {HMAC responses} $root/dut/hmac_digest_valid_i $root/dut/hmac_digest_ready_o
+            add wave -group {HMAC responses} -radix hexadecimal $root/dut/hmac_digest_i
             add wave -group {Derived material} $root/dut/kdfa_rsp_valid_w $root/dut/kdfa_error_w
             add wave -group {Derived material} -radix hexadecimal $root/dut/kdfa_key_w $root/dut/kdfa_iv_w
         } else {

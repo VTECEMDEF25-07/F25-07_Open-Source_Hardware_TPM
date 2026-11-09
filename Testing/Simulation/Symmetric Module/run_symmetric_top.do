@@ -14,11 +14,11 @@ file mkdir $run_root
 cd $run_root
 transcript file [file join $run_root transcript.log]
 vlib work_symmetric
-foreach name {aes_sbox.v aes_inv_sbox.v aes_key_mem.v aes_encipher_block.v aes_decipher_block.v aes_core.v aes.v kdfa_control.v hmac_sha256_placeholder.v cfb_block.v session_parameter_controller.v encrypt_decrypt2_controller.v symmetric_top.v} {
+foreach name {aes_sbox.v aes_inv_sbox.v aes_key_mem.v aes_encipher_block.v aes_decipher_block.v aes_core.v aes.v kdfa_control.v cfb_block.v session_parameter_controller.v encrypt_decrypt2_controller.v symmetric_top.v} {
     vlog -vlog01compat -work work_symmetric [file join $sym_root $name]
 }
 vlog -vlog01compat -work work_symmetric [file join $project_root Project DE1 {Symmetric Demo} symmetric_demo_top.v]
-vlog -sv -work work_symmetric [file join $bench_root tb_symmetric_top.sv]
+vlog -sv -work work_symmetric [file join $bench_root hmac_stream_test_service.sv] [file join $bench_root tb_symmetric_top.sv]
 vsim -voptargs=+acc -onfinish stop -wlf [file join $run_root vsim.wlf] -lib work_symmetric tb_symmetric_top
 log -r sim:/tb_symmetric_top/*
 

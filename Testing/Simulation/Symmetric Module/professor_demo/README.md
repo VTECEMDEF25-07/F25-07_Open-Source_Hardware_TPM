@@ -3,10 +3,10 @@
 Author: Codex, for Makeda Solomon  
 Date: October 14, 2026
 
-This demonstration does **not** implement a hardware HMAC. It compiles the
-existing production RTL into an isolated Questa library, replacing only the
-fake HMAC implementation with a simulation-only Python HMAC service.
-The original source files and Quartus source list are not changed.
+This demonstration compiles production symmetric RTL into an isolated Questa
+library and connects its external HMAC byte port to the simulation-only Python
+service in `../hmac_stream_test_service.sv`. Python hashes the bytes accepted
+from KDFa. Hardware integration requires the hash team's HMAC RTL.
 
 ## What happens
 

@@ -122,8 +122,7 @@ that result. Reset the HMAC client and shared SHA engine together.
 Add `hmac_sha256.v` to the appropriate production
 source lists alongside the shared SHA files. The complete `hash_subsystem`
 wrapper also needs `pcr_controller` and `pcr_registers`, which remain absent
-from the reviewed hash branch. The placeholder is used only by legacy standalone
-KDFa control tests. The board-only demo rejects session requests because it has
+from the reviewed hash branch. The board-only demo rejects session requests because it has
 no connected HMAC service.
 
 ## Current scope
@@ -178,7 +177,7 @@ uses decoded object/session fixtures and real AES through normal command
 admission; it does not test SPI parsing, real authorization, or response bytes.
 
 ```powershell
-python 'Execution Engine/Testbenches/run_execution_primitive.py' --build C:/MDE/review_work/execution_primitive_test
+python 'Testing/Simulation/Execution Engine/run_execution_primitive.py' --build C:/MDE/review_work/execution_primitive_test
 ```
 
 A command can require several jobs: session-decrypt its input parameter,
@@ -203,7 +202,7 @@ Run `../../Testing/Simulation/Symmetric Module/run_kdfa_control.do` for the exis
 Run the cryptographic integration regression from the repository root.
 
 ```powershell
-python 'Symmetric Module/Testbenches/run_session_hash_integration.py' --build C:/MDE/review_work/session_hash_test
+python 'Testing/Simulation/Symmetric Module/run_session_hash_integration.py' --build C:/MDE/review_work/session_hash_test
 ```
 
 This regression uses Python HMAC-SHA256 on the bytes actually accepted by the
@@ -217,7 +216,7 @@ Run the hardware HMAC regression and then the same session suite using the
 actual HMAC/SHA RTL instead of the Python service.
 
 ```powershell
-python 'Hash Module/Testbenches/run_hmac_sha256.py' --build C:/MDE/review_work/hmac_rtl_test
+python 'Testing/Simulation/Hash Module/run_hmac_sha256.py' --build C:/MDE/review_work/hmac_rtl_test
 ```
 
 The runner copies pinned SHA sources from local Git objects into its build

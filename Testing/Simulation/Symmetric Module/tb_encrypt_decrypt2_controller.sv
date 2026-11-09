@@ -20,7 +20,7 @@ module tb_encrypt_decrypt2_controller;
     reg [15:0] command_code_i=16'h0193;
     reg key_valid_i=1,decrypt_i=0;
     reg [2:0] mode_i=1;
-    reg [4:0] data_bytes_i=16;
+    reg [15:0] data_bytes_i=16;
     reg [255:0] key_i=KEY;
     reg [127:0] iv_i=IV,data_in_i=PLAIN;
 

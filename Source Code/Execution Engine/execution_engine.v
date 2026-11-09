@@ -41,6 +41,13 @@ module execution_engine(
 		//execution engine inputs
 		execution_startup_done_i,
 		execution_response_code_i,
+		execution_ready_i,
+		execution_data_i,
+		execution_iv_i,
+		execution_result_valid_o,
+		execution_result_code_o,
+		execution_data_o,
+		execution_iv_o,
 		// NV memory submodule inputs
 		nv_phEnableNV_in_i,
 		nv_shEnable_in_i,
@@ -149,7 +156,14 @@ module execution_engine(
 	//startup error signal
 	input execution_startup_done_i;
 	//execution response code
-	input execution_response_code_i;
+	input [31:0] execution_response_code_i;
+	// EncryptDecrypt2 worker interface. Inputs must be prepared before ready.
+	input execution_ready_i;
+	input [127:0] execution_data_i, execution_iv_i;
+	// Captured result is held until reset or admission of the next command.
+	output reg execution_result_valid_o;
+	output reg [31:0] execution_result_code_o;
+	output reg [127:0] execution_data_o, execution_iv_o;
 	
 	// NV memory submodule inputs
 	input nv_phEnableNV_in_i;
@@ -413,6 +427,10 @@ module execution_engine(
 	// INTERNAL REGISTERS
 	// ============================================================================
 	reg [3:0]  state;
+	localparam [1:0] EXEC_WAIT_AVAILABLE = 2'd0,
+	                 EXEC_WAIT_RESULT = 2'd1,
+	                 EXEC_RESULT_CAPTURED = 2'd2;
+	reg [1:0] execution_phase;
 	reg 		  session_present;
 	reg 		  response_valid_o;
 	reg [11:0] s_response_code;
@@ -556,6 +574,40 @@ module execution_engine(
 		(session_index == 2'd1) ? session1_valid_i :
 											session2_valid_i;
 	assign session_handle_type = current_session_handle[31:24];
+
+	// The primitive worker samples command_start_o on the admission edge.
+	// Its done pulse captures result/status before the outer FSM can advance.
+	always @(posedge clock_i or negedge reset_n_i) begin
+		if (!reset_n_i) begin
+			execution_phase <= EXEC_WAIT_AVAILABLE;
+			execution_result_valid_o <= 1'b0;
+			execution_result_code_o <= 32'd0;
+			execution_data_o <= 128'd0;
+			execution_iv_o <= 128'd0;
+		end else begin
+			if (current_state_o == STATE_IDLE && command_ready_i) begin
+				execution_result_valid_o <= 1'b0;
+				execution_result_code_o <= 32'd0;
+				execution_data_o <= 128'd0;
+				execution_iv_o <= 128'd0;
+			end
+			if (current_state_o != STATE_EXECUTE || commandIndex != TPM_CC_ENCRYPT_DECRYPT_2)
+				execution_phase <= EXEC_WAIT_AVAILABLE;
+			else case (execution_phase)
+				EXEC_WAIT_AVAILABLE: if (execution_ready_i)
+					execution_phase <= EXEC_WAIT_RESULT;
+				EXEC_WAIT_RESULT: if (command_done_i) begin
+					execution_result_valid_o <= 1'b1;
+					execution_result_code_o <= execution_response_code_i;
+					execution_data_o <= execution_response_code_i == 0 ? execution_data_i : 128'd0;
+					execution_iv_o <= execution_response_code_i == 0 ? execution_iv_i : 128'd0;
+					execution_phase <= EXEC_RESULT_CAPTURED;
+				end
+				EXEC_RESULT_CAPTURED: begin end
+				default: execution_phase <= EXEC_WAIT_AVAILABLE;
+			endcase
+		end
+	end
 	// ============================================================================
 	// SEQUENTIAL LOGIC BLOCK - STATE TRANSITIONS ONLY
 	// ============================================================================
@@ -860,6 +912,7 @@ module execution_engine(
 				commandIndex == TPM_CC_POLICY_SECRET ||
 				commandIndex == TPM_CC_REWRAP ||
 				commandIndex == TPM_CC_RSA_ENCRYPT ||
+				commandIndex == TPM_CC_ENCRYPT_DECRYPT_2 ||
 				commandIndex == TPM_CC_VERIFY_SIGNATURE ||
 				commandIndex == TPM_CC_COMMIT ||
 				commandIndex == TPM_CC_EC_EPHEMERAL ||
@@ -904,7 +957,6 @@ module execution_engine(
 					  commandIndex == TPM_CC_POLICY_NV_WRITTEN ||
 					  commandIndex == TPM_CC_POLICY_TEMPLATE ||
 					  commandIndex == TPM_CC_POLICY_AUTHORIZE_NV ||
-					  commandIndex == TPM_CC_ENCRYPT_DECRYPT_2 ||
 					  commandIndex == TPM_CC_POLICY_AC_SEND_SELECT ||
 					  commandIndex == TPM_CC_NV_CERTIFY) begin
 				s_handle_count = 3'b010;
@@ -1252,8 +1304,11 @@ module execution_engine(
 					// 6. Handle multi-cycle operations with proper state management
 					// 7. Return TPM_RC_FAILURE on execution errors
 					
-					// For now, always proceed to post-processing
-					if(command_done_i) begin
+					// Primitive completion must be captured before post-processing.
+					if (commandIndex == TPM_CC_ENCRYPT_DECRYPT_2) begin
+						state = execution_phase == EXEC_RESULT_CAPTURED ? STATE_POST_PROCESS : STATE_EXECUTE;
+					end
+					else if(command_done_i) begin
 						state = STATE_POST_PROCESS;
 					end
 				end
@@ -1550,8 +1605,14 @@ module execution_engine(
 			STATE_EXECUTE: begin
 				//start command processing
 				s_execution_startup_done = execution_startup_done_i;
-				s_response_code = execution_response_code_i;
-				command_start_o = 1'b1;
+				if (commandIndex == TPM_CC_ENCRYPT_DECRYPT_2) begin
+					command_start_o = reset_n_i && execution_phase == EXEC_WAIT_AVAILABLE && execution_ready_i;
+					if (execution_phase == EXEC_WAIT_RESULT && command_done_i)
+						s_response_code = execution_response_code_i[11:0];
+				end else begin
+					command_start_o = 1'b1;
+					s_response_code = execution_response_code_i[11:0];
+				end
 			end
 			
 			// ====================================================================
