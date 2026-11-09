@@ -142,6 +142,12 @@ no connected HMAC service.
 - Session decrypt/encrypt flags describe this one internal job's direction;
   they are not the full command's session-attribute field.
 
+## RAM-backed multi-block primitive
+
+`symmetric_ram_top` streams configurable-length jobs through the existing CFB
+worker using `encrypt_decrypt2_ram_controller` and external byte RAM.
+See [RAM_INTERFACE.md](RAM_INTERFACE.md) for the interface and integration limits.
+
 ## Command scheduling
 
 The execution engine now has a primitive EncryptDecrypt2 worker handshake.
