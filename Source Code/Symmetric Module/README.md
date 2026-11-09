@@ -65,12 +65,12 @@ next job. A held start does not replay the completed job. Reset aborts all
 controllers and the shared worker. These internal controllers are owned
 by the wrapper and their CFB requests are issued only when its worker is idle.
 
-## Current scope
+## Legacy symm_top scope
 
 - AES-256 and CFB128 only for the cipher operation.
 - Each job contains 0 through 16 bytes, first valid byte at the bus MSB.
-- Secret and nonces remain fixed at 32 bytes. No variable-length interface
-  or multi-block buffer controller has been added in this refactor.
+- Secret and nonces remain fixed at 32 bytes. The legacy path accepts one
+  chunk; the separate RAM-backed primitive path is described below.
 - CFB derives 384 bits using the `CFB` label. XOR requests `data_bytes*8`
   bits using the `XOR` label and consumes the leading digest bytes.
 - `aes_key_o` in the KDFa interface carries either the CFB key or the XOR
@@ -81,6 +81,12 @@ by the wrapper and their CFB requests are issued only when its worker is idle.
   it is not a complete TPM continuation implementation for partial chunks.
 - Session decrypt/encrypt flags describe this one internal job's direction;
   they are not the full command's session-attribute field.
+
+## RAM-backed multi-block primitive
+
+`symmetric_ram_top` streams configurable-length jobs through the existing CFB
+worker using `encrypt_decrypt2_ram_controller` and external byte RAM.
+See [RAM_INTERFACE.md](RAM_INTERFACE.md) for the interface and integration limits.
 
 ## Command scheduling
 
