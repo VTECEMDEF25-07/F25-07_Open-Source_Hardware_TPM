@@ -63,3 +63,11 @@ Fresh full compilation PASS; required PLL, physical pins and SOF verified with t
 SOF SHA256: `be470db28c323c0c6e5ec19dfec73c85874fb36de6963f85333502277eafb6ed`.
 
 Both relocated RNG benches also print `ALL TESTS PASSED` in Questa using their new source paths. Evidence: `AI/tmp/pr36-rng-relocation-tests/`. They use behavioral entropy simulation and do not establish physical entropy quality or TPM integration.
+
+## Project-wide vendor follow-up - November 8, 2026
+
+The board IP_TYPE parameter now feeds the inactive keygen placeholder.
+Altera is the supported physical-board selection; other values are rejected.
+Current source elaboration/rejection evidence is recorded by
+`Testing/Simulation/Key Generation/Vendor/test_vendor_quartus.py`.
+Historical bitstream hashes above do not identify this updated source snapshot.

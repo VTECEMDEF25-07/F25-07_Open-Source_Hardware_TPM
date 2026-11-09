@@ -4,6 +4,8 @@
 //
 // Authors:
 //	Ian Sizemore (idsizemore@vt.edu)
+//	Aaron Grossman (IP_TYPE parameter and inactive keygen placeholder)
+// AI Disclosure: Codex assisted with the IP_TYPE/placeholder changes.
 //
 // Date: 11/6/25
 //
@@ -13,7 +15,10 @@
 //	and the execution engine.
 // 
 
-module	TPM_TOP
+
+// IP_TYPE is the sole implementation selector; DEVICE_FAMILY is fixed board metadata.
+// IP_TYPE: 0 = Generic, 1 = Altera, 2 = reserved Xilinx (unsupported).
+module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5")
 (
 	input		CLOCK_50,	// 50 MHz sysclock
 	input		CLOCK_100,	// 100 MHz clock (used for sampling SPI_CLOCK)
@@ -31,6 +36,23 @@ module	TPM_TOP
 
 	wire		rst_n;
 	assign	rst_n = SPI_RST_n & RESET_n;
+
+	// Temporary hierarchy only: keygen is not connected to TPM commands, entropy,
+	// protected storage or response handling. Keep admission/data inputs inactive;
+	// outputs are deliberately unused. Synthesis may remove this entire instance.
+	keygen_core #(.IP_TYPE(IP_TYPE), .DEVICE_FAMILY(DEVICE_FAMILY)) keygen_placeholder (
+		.clock_i(CLOCK_50), .reset_n_i(rst_n), .peers_ready_i(1'b0),
+		.request_valid_i(1'b0), .request_ready_o(),
+		.request_profile_i(2'd0), .request_id_i(32'd0),
+		.generation_valid_i(1'b0), .generation_ready_o(),
+		.generation_data_i(32'd0), .generation_failed_i(1'b0),
+		.result_valid_o(), .result_ready_i(1'b0), .result_data_o(),
+		.result_component_o(), .result_index_o(),
+		.result_component_last_o(), .result_last_o(), .result_id_o(),
+		.ownership_valid_i(1'b0), .ownership_ready_o(), .ownership_accept_i(1'b0),
+		.result_discard_o(), .status_valid_o(), .status_ready_i(1'b0),
+		.status_code_o(), .status_id_o()
+	);
 	
 	wire	[31:0]	commandCode;
 	wire	[31:0]	responseCode;

@@ -1,3 +1,4 @@
+<!-- Authors: Aaron Grossman (changes in this PR); existing project contributors; see Git history. -->
 # Senior design TPM review guidance
 
 Review changes in this open-source FPGA TPM project against existing module documentation and approved interfaces. Apply conventions to new or changed HDL, avoiding unrelated rewrites of inherited code.
@@ -7,7 +8,7 @@ Review changes in this open-source FPGA TPM project against existing module docu
 - Uppercase parameters and command names; preserve standard-defined external identifiers.
 - Comments explain HDL behavior; module instances use explicit named port connections.
 - Synthesizable HDL uses Verilog `.v`/`.vh`, validated separately in Verilog-2001 mode. SystemVerilog testbenches are permitted. Synthesizable SystemVerilog, including IP behind Verilog wrappers, requires explicit section-scoped approval.
-- These conventions mirror `Key Generation/CODING_STANDARDS.md` (or root `CODING_STANDARDS.md` if relocated). Additional style preferences are suggestions, not established requirements.
+- These conventions mirror `Source Code/Key Generation/CODING_STANDARDS.md` (or root `CODING_STANDARDS.md` if relocated). Additional style preferences are suggestions, not established requirements.
 
 ## Correctness priorities
 - Flag demonstrable width, signedness, overflow, indexing, latch, multiple-driver, reset and sequential assignment bugs. Check handshake stability, FIFO boundaries and clock-domain crossings against actual interfaces. Explain the failing scenario.
