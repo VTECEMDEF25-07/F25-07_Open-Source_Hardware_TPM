@@ -5,7 +5,10 @@ Author: Aaron Grossman; Codex assisted with verification and documentation.
 Local integration check, November 8, 2026: main
 `81b6968645e70669cc157c7709d111206f1f56dc` plus SPI PR #37 head
 `dfcdaabd4a992e6f6972f6eb81a63bbdc904b8ee`, with current naming/layout and the reviewed SPI cleanup.
-The merged image has **not been physically tested**.
+The reviewed image (`80597de`) was physically tested on November 8, 2026:
+all eight original C suites pass at 1 and 15 MHz SPI. A requested 24 MHz
+configures 30 MHz and fails with a command-execution polling timeout in the
+status-state-machine suite. This is not full high-speed hardware acceptance.
 
 - Complete matching-edition Quartus build: PASS; 1 PLL.
 - Original TPM assertion replays: PASS at 1, 24 and 30 MHz with ideal board
@@ -33,6 +36,6 @@ Follow the [SPI timing/reset contract](../../Source%20Code/IO%20Interface/SPI.md
 and [physical follow-ups](../../FUTURE_WORK.md) before claiming board acceptance.
 
 The vendor fan files are unchanged. This image has no JTAG telemetry monitor.
-Earlier PR-image 30 MHz failures and later unmodified-main physical passes
-apply to their own bitstreams, not this merge. A 24 MHz FTDI request configures
-30 MHz; exact 24 MHz hardware acceptance remains outstanding.
+Earlier PR-image results and unmodified-main physical passes apply to their
+own bitstreams. The fresh reviewed-image 30 MHz failure remains unresolved;
+exact 24 MHz hardware acceptance also remains outstanding.
