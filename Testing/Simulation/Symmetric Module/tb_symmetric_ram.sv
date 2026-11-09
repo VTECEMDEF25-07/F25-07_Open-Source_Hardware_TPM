@@ -18,7 +18,30 @@ module tb_symmetric_ram;
     wire [RAM_ADDR_WIDTH-1:0] ram_req_addr_o;
     wire [7:0] ram_req_data_o, ram_rsp_data_i;
     wire ram_rsp_valid_i, ram_rsp_ready_o, ram_rsp_error_i;
-    symmetric_ram_top #(.MAX_SYM_DATA_BYTES(MAX_SYM_DATA_BYTES), .RAM_ADDR_WIDTH(RAM_ADDR_WIDTH)) dut(.*);
+    wire [15:0] command_code_i = 16'h0193;
+    wire key_valid_i = 1'b1;
+    wire [2:0] mode_i = 3'd1;
+    reg session_protect_i = 0;
+    wire session_valid_i = 1'b1;
+    wire session_decrypt_i = 1'b0, session_encrypt_i = 1'b1, session_use_xor_i = 1'b1;
+    wire [1023:0] session_value_i = 0;
+    wire [511:0] nonce_newer_i = 0, nonce_older_i = 0;
+    wire [15:0] session_value_bytes_i = 0, nonce_newer_bytes_i = 0, nonce_older_bytes_i = 0;
+    wire hmac_start_o, hmac_key_valid_o, hmac_key_end_o;
+    wire hmac_message_valid_o, hmac_message_end_o, hmac_digest_ready_o;
+    wire [7:0] hmac_key_data_o, hmac_message_data_o;
+    reg hmac_digest_valid_i = 0;
+    wire hmac_key_ready_i = 1'b1, hmac_message_ready_i = 1'b1, hmac_busy_i = 1'b0;
+    wire [255:0] hmac_digest_i = {32{8'ha5}};
+
+    // One fixed digest exercises the session path through the shared buffer.
+    always @(posedge clock_i or negedge reset_n_i) begin
+        if (!reset_n_i) hmac_digest_valid_i <= 0;
+        else if (hmac_message_end_o) hmac_digest_valid_i <= 1;
+        else if (hmac_digest_ready_o) hmac_digest_valid_i <= 0;
+    end
+
+    symm_top #(.MAX_SYM_DATA_BYTES(MAX_SYM_DATA_BYTES), .RAM_ADDR_WIDTH(RAM_ADDR_WIDTH)) dut(.*);
     symmetric_test_ram #(.ADDR_WIDTH(RAM_ADDR_WIDTH)) ram (
         .clock_i(clock_i), .reset_n_i(reset_n_i),
         .req_valid_i(ram_req_valid_o), .req_ready_o(ram_req_ready_i),
@@ -84,6 +107,7 @@ module tb_symmetric_ram;
             // All descriptor fields must be captured, including bases and length.
             data_length_i = 32'hffffffff; input_base_i = ~source; output_base_i = ~destination;
             decrypt_i = !dec; key_i = ~key; iv_i = ~iv;
+            session_protect_i = 0;
         end
     endtask
     task finish_job(input bit failed, input integer completed, input [127:0] feedback);
@@ -234,6 +258,17 @@ module tb_symmetric_ram;
             reset_both();case_count=case_count+1;
             reuse_job();
         end
+        // Switch from the primitive path to session XOR, then back again.
+        initialize_memory();
+        expected_memory[0] = expected_memory[0] ^ 8'ha5;
+        session_protect_i = 1;
+        launch(1,0,0,0,0,128'h1234);
+        finish_job(0,1,128'h1234);
+        check_memory();
+        if (worker_count != 0 || read_count != 1 || write_count != 1)
+            $fatal(1,"Session XOR used the wrong data path");
+        reuse_job();
+
         successfully_completed=1;
         $display("SYMMETRIC_RAM_SUITE_PASS capacity=%0d address_width=%0d vectors=%0d cases=%0d",
             MAX_SYM_DATA_BYTES,RAM_ADDR_WIDTH,vectors,case_count);

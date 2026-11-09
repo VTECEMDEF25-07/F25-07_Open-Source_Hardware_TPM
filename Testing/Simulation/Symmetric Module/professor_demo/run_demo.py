@@ -80,7 +80,7 @@ def prepare():
         add(f'Session XOR {n} bytes: recover','Session XOR',encrypted,data,xor=True,decrypt=True)
     (run/'vectors.json').write_text(json.dumps(dict(cases=cases,rfc_hmac=dict(expected=expected,actual=got)),indent=2))
     (run/'tb_professor_demo.sv').write_text(make_bench(cases),encoding='utf-8')
-    sources=['aes_sbox.v','aes_inv_sbox.v','aes_key_mem.v','aes_encipher_block.v','aes_decipher_block.v','aes_core.v','aes.v','kdfa_control.v','cfb_block.v','session_parameter_controller.v','encrypt_decrypt2_controller.v','symmetric_top.v']
+    sources=['AES/aes_sbox.v','AES/aes_inv_sbox.v','AES/aes_key_mem.v','AES/aes_encipher_block.v','AES/aes_decipher_block.v','AES/aes_core.v','AES/aes.v','Controllers/kdfa_control.v','Controllers/cfb_block.v','Controllers/session_parameter_controller.v','Controllers/primitive_controller.v','symmetric_top.v']
     compile_lines='\n'.join(f'vlog -vlog01compat -work work_demo {{{(SYM/n).as_posix()}}}' for n in sources)
     script=f'''# Simulation-only Python HMAC replacement; original placeholder is NOT compiled.
 if {{[batch_mode]}} {{onerror {{quit -force -code 1}}}} else {{onerror {{abort}}}}
@@ -89,7 +89,7 @@ cd {{{run.as_posix()}}}
 transcript file {{{(run/'transcript.log').as_posix()}}}
 vlib work_demo
 {compile_lines}
-vlog -sv -work work_demo {{{(HERE/'hmac_python_bridge.sv').as_posix()}}} {{{(run/'tb_professor_demo.sv').as_posix()}}}
+vlog -sv -work work_demo {{{(HERE.parent/'hmac_stream_test_service.sv').as_posix()}}} {{{(run/'tb_professor_demo.sv').as_posix()}}}
 vsim -voptargs=+acc -onfinish stop -wlf {{{(run/'vsim.wlf').as_posix()}}} -lib work_demo tb_professor_demo +PYTHON={Path(sys.executable).as_posix()} +HMAC_SERVICE=hmac_reference_service.py
 log -r sim:/tb_professor_demo/*
 if {{![batch_mode]}} {{
@@ -98,10 +98,10 @@ if {{![batch_mode]}} {{
  add wave -group {{Clock}} sim:/tb_professor_demo/clock_i sim:/tb_professor_demo/reset_n_i
  add wave -group {{Job}} sim:/tb_professor_demo/start_i sim:/tb_professor_demo/wait_o sim:/tb_professor_demo/done_o sim:/tb_professor_demo/session_protect_i sim:/tb_professor_demo/session_use_xor_i
  add wave -group {{Input}} -radix hexadecimal sim:/tb_professor_demo/data_in_i sim:/tb_professor_demo/key_i sim:/tb_professor_demo/iv_i
- add wave -group {{KDFa message}} -radix hexadecimal sim:/tb_professor_demo/dut/SESSION_CONTROLLER/hmac_key_w sim:/tb_professor_demo/dut/SESSION_CONTROLLER/hmac_message_w
- add wave -group {{Python HMAC digest}} -radix hexadecimal sim:/tb_professor_demo/dut/SESSION_CONTROLLER/hmac_digest_w
+ add wave -group {{KDFa message}} -radix hexadecimal sim:/tb_professor_demo/dut/SESSION_CONTROLLER/KDFA_CONTROLLER/hmac_key_r sim:/tb_professor_demo/dut/SESSION_CONTROLLER/KDFA_CONTROLLER/hmac_message_r
+ add wave -group {{Python HMAC digest}} -radix hexadecimal sim:/tb_professor_demo/hmac_digest_i
  add wave -group {{Derived key and IV}} -radix hexadecimal sim:/tb_professor_demo/dut/SESSION_CONTROLLER/kdfa_key_w sim:/tb_professor_demo/dut/SESSION_CONTROLLER/kdfa_iv_w
- add wave -group {{AES input}} -radix hexadecimal sim:/tb_professor_demo/dut/CFB_BLOCK/aes_key_r sim:/tb_professor_demo/dut/CFB_BLOCK/aes_feedback_r
+ add wave -group {{AES input}} -radix hexadecimal sim:/tb_professor_demo/dut/WORKER/aes_key_r sim:/tb_professor_demo/dut/WORKER/aes_feedback_r
  add wave -group {{Actual vs expected}} -radix hexadecimal sim:/tb_professor_demo/data_out_o sim:/tb_professor_demo/expected_data sim:/tb_professor_demo/iv_out_o sim:/tb_professor_demo/expected_feedback
  configure wave -namecolwidth 260 -valuecolwidth 260 -timelineunits ns
 }}
@@ -113,7 +113,7 @@ if {{[batch_mode]}} {{quit -force -code 0}} else {{wave zoom full}}
 '''
     (run/'run.do').write_text(script,encoding='utf-8')
     # Source hashes identify exactly which RTL version produced the recording.
-    files=[SYM/n for n in sources]+[HERE/'hmac_python_bridge.sv',HERE/'hmac_reference_service.py',Path(__file__)]
+    files=[SYM/n for n in sources]+[HERE.parent/'hmac_stream_test_service.sv',HERE/'hmac_reference_service.py',Path(__file__)]
     (run/'source_hashes.json').write_text(json.dumps({str(f):hashlib.sha256(f.read_bytes()).hexdigest() for f in files},indent=2))
     (OUT/'latest_run.txt').write_text(str(run))
     return run
@@ -129,13 +129,44 @@ module tb_professor_demo;
  reg session_protect_i=0,session_decrypt_i=0,session_encrypt_i=1,session_use_xor_i=0;
  reg key_valid_i=1,session_valid_i=1,decrypt_i=0;
  reg [2:0] mode_i=1;
- reg [4:0] data_bytes_i=16;
+ reg [31:0] data_bytes_i=16;
  reg [255:0] key_i=0,session_value_i=0,nonce_newer_i=0,nonce_older_i=0;
- reg [127:0] iv_i=0,data_in_i=0,session_mask_i=0;
- wire wait_o,done_o,primitive_path_o,session_path_o;
+ reg [127:0] iv_i=0,data_in_i=0;
+ wire wait_o,done_o;
  wire [11:0] tpm_rc_o;
- wire [127:0] data_out_o,iv_out_o;
- symm_top dut(.*);
+ wire [127:0] iv_out_o;
+ reg [127:0] data_out_o=0;
+ reg [7:0] ram_rsp_data_i=0;
+ reg ram_rsp_valid_i=0;
+ wire ram_req_valid_o, ram_req_write_o, ram_rsp_ready_o;
+ wire [3:0] ram_req_addr_o;
+ wire [7:0] ram_req_data_o;
+ wire [15:0] session_value_bytes_i=32, nonce_newer_bytes_i=32, nonce_older_bytes_i=32;
+ wire hmac_start_o, hmac_key_valid_o, hmac_key_end_o, hmac_key_ready_i;
+ wire hmac_message_valid_o, hmac_message_end_o, hmac_message_ready_i, hmac_busy_i;
+ wire hmac_digest_valid_i, hmac_digest_ready_o;
+ wire [7:0] hmac_key_data_o, hmac_message_data_o;
+ wire [255:0] hmac_digest_i;
+ hmac_stream_test_service #(.USE_PYTHON(1)) hmac_service(.*);
+ symm_top #(.MAX_SYM_DATA_BYTES(16), .RAM_ADDR_WIDTH(4),
+   .MAX_SECRET_BYTES(32), .MAX_NONCE_BYTES(32)) dut(
+   .data_length_i(data_bytes_i), .input_base_i(4'd0), .output_base_i(4'd0),
+   .busy_o(wait_o), .final_iv_o(iv_out_o), .error_o(), .completed_length_o(),
+   .ram_req_ready_i(!ram_rsp_valid_i), .ram_rsp_error_i(1'b0), .*
+ );
+ always @(posedge clock_i or negedge reset_n_i) begin
+   if (!reset_n_i) begin
+     data_out_o <= 0; ram_rsp_valid_i <= 0; ram_rsp_data_i <= 0;
+   end else if (start_i && !wait_o) data_out_o <= data_in_i;
+   else begin
+     if (ram_rsp_ready_o) ram_rsp_valid_i <= 0;
+     if (ram_req_valid_o && !ram_rsp_valid_i) begin
+       ram_rsp_valid_i <= 1;
+       if (ram_req_write_o) data_out_o[127-ram_req_addr_o*8 -: 8] <= ram_req_data_o;
+       else ram_rsp_data_i <= data_out_o[127-ram_req_addr_o*8 -: 8];
+     end
+   end
+ end
  integer test_case=0,cycles,hmac_calls=0,aes_calls=0;
  reg successfully_completed=0;
  reg [127:0] expected_data,expected_feedback,expected_aes_iv;
@@ -143,17 +174,17 @@ module tb_professor_demo;
  reg [607:0] expected_message;
  string test_name;
  always @(posedge clock_i) if(reset_n_i) begin
-  if(dut.SESSION_CONTROLLER.hmac_req_valid_w && dut.SESSION_CONTROLLER.hmac_req_ready_w) begin
+  if(hmac_start_o) begin
    expected_message={32'd1+hmac_calls,(session_use_xor_i ? 32'h584f5200 : 32'h43464200),
-     nonce_newer_i,nonce_older_i,(session_use_xor_i ? {27'd0,data_bytes_i}*32'd8 : 32'd384)};
-   if(!session_protect_i || dut.SESSION_CONTROLLER.hmac_key_w!==session_value_i ||
-      dut.SESSION_CONTROLLER.hmac_message_w!==expected_message)
+     nonce_newer_i,nonce_older_i,(session_use_xor_i ? data_bytes_i*32'd8 : 32'd384)};
+   if(!session_protect_i || dut.SESSION_CONTROLLER.KDFA_CONTROLLER.hmac_key_r!==session_value_i ||
+      dut.SESSION_CONTROLLER.KDFA_CONTROLLER.hmac_message_r!==expected_message)
        $fatal(1,"Incorrect KDFa message or secret");
    hmac_calls<=hmac_calls+1;
   end
-  if(dut.CFB_BLOCK.aes_init_r) begin
-   if(session_use_xor_i || dut.CFB_BLOCK.aes_key_r!==expected_aes_key ||
-      dut.CFB_BLOCK.aes_feedback_r!==expected_aes_iv) $fatal(1,"AES key/IV mismatch");
+  if(dut.WORKER.aes_init_r) begin
+   if(session_use_xor_i || dut.WORKER.aes_key_r!==expected_aes_key ||
+      dut.WORKER.aes_feedback_r!==expected_aes_iv) $fatal(1,"AES key/IV mismatch");
    aes_calls<=aes_calls+1;
   end
  end
@@ -163,7 +194,7 @@ module tb_professor_demo;
    $display("CASE|%0d|%s",test_case,test_name);
    start_i=1; @(negedge clock_i); start_i=0;
    cycles=0;
-   while(!done_o && cycles<400) begin @(negedge clock_i); cycles++; end
+   while(!done_o && cycles<1000) begin @(negedge clock_i); cycles++; end
    $display("RESULT|%0d|%032h|%032h|%032h|%032h|%03h|%0d|%0d|%0d",test_case,
        expected_data,data_out_o,expected_feedback,iv_out_o,tpm_rc_o,cycles,hmac_calls,aes_calls);
    if(!done_o || tpm_rc_o!==0 || data_out_o!==expected_data || iv_out_o!==expected_feedback ||

@@ -1,0 +1,124 @@
+{C:/Major_Design_Experience/F25-07_Open-Source_Hardware_TPM/Execution Engine/startup_procedures_check.v} {1 {vlog -work work -stats=none {C:/Major_Design_Experience/F25-07_Open-Source_Hardware_TPM/Execution Engine/startup_procedures_check.v}
+Model Technology ModelSim - Intel FPGA Edition vlog 2020.1 Compiler 2020.02 Feb 28 2020
+-- Compiling module startup_procedures_check
+
+Top level modules:
+	startup_procedures_check
+
+} {} {}} {C:/Major_Design_Experience/F25-07_Open-Source_Hardware_TPM/IO Interface/Testbenches/tb_test.v} {1 {vlog -work work -stats=none {C:/Major_Design_Experience/F25-07_Open-Source_Hardware_TPM/IO Interface/Testbenches/tb_test.v}
+Model Technology ModelSim - Intel FPGA Edition vlog 2020.1 Compiler 2020.02 Feb 28 2020
+-- Compiling module tb_test
+-- Compiling module PLL_100
+
+Top level modules:
+	tb_test
+	PLL_100
+
+} {} {}} {C:/Major_Design_Experience/F25-07_Open-Source_Hardware_TPM/IO Interface/spi_slave.v} {1 {vlog -work work -stats=none {C:/Major_Design_Experience/F25-07_Open-Source_Hardware_TPM/IO Interface/spi_slave.v}
+Model Technology ModelSim - Intel FPGA Edition vlog 2020.1 Compiler 2020.02 Feb 28 2020
+-- Compiling module spi_slave
+-- Compiling module DET_FF
+
+Top level modules:
+	spi_slave
+
+} {} {}} {C:/Major_Design_Experience/F25-07_Open-Source_Hardware_TPM/IO Interface/tpm_crb.v} {1 {vlog -work work -stats=none {C:/Major_Design_Experience/F25-07_Open-Source_Hardware_TPM/IO Interface/tpm_crb.v}
+Model Technology ModelSim - Intel FPGA Edition vlog 2020.1 Compiler 2020.02 Feb 28 2020
+-- Compiling module tpm_crb
+-- Compiling module CRB_TRANS
+
+Top level modules:
+	tpm_crb
+
+} {} {}} C:/Major_Design_Experience/F25-07_Open-Source_Hardware_TPM/de1_soc_top.v {1 {vlog -work work -stats=none C:/Major_Design_Experience/F25-07_Open-Source_Hardware_TPM/de1_soc_top.v
+Model Technology ModelSim - Intel FPGA Edition vlog 2020.1 Compiler 2020.02 Feb 28 2020
+-- Compiling module de1_soc_top
+
+Top level modules:
+	de1_soc_top
+
+} {} {}} {C:/Major_Design_Experience/F25-07_Open-Source_Hardware_TPM/IO Interface/tpm_spi_ctrl.v} {1 {vlog -work work -stats=none {C:/Major_Design_Experience/F25-07_Open-Source_Hardware_TPM/IO Interface/tpm_spi_ctrl.v}
+Model Technology ModelSim - Intel FPGA Edition vlog 2020.1 Compiler 2020.02 Feb 28 2020
+-- Compiling module tpm_spi_ctrl
+-- Compiling module fsm_transWrite
+-- Compiling module fsm_transRead
+-- Compiling module fsm_stall
+-- Compiling module fsm_obtainHeader
+
+Top level modules:
+	tpm_spi_ctrl
+
+} {} {}} {C:/Major_Design_Experience/F25-07_Open-Source_Hardware_TPM/Management Module/sevensegdecoder_proc.v} {1 {vlog -work work -stats=none {C:/Major_Design_Experience/F25-07_Open-Source_Hardware_TPM/Management Module/sevensegdecoder_proc.v}
+Model Technology ModelSim - Intel FPGA Edition vlog 2020.1 Compiler 2020.02 Feb 28 2020
+-- Compiling module sevensegdecoder_proc
+
+Top level modules:
+	sevensegdecoder_proc
+
+} {} {}} {C:/Major_Design_Experience/F25-07_Open-Source_Hardware_TPM/Management Module/management_module.v} {2 {vlog -work work -stats=none {C:/Major_Design_Experience/F25-07_Open-Source_Hardware_TPM/Management Module/management_module.v}
+Model Technology ModelSim - Intel FPGA Edition vlog 2020.1 Compiler 2020.02 Feb 28 2020
+-- Compiling module management_module
+** Warning: C:/Major_Design_Experience/F25-07_Open-Source_Hardware_TPM/Management Module/management_module.v(137): (vlog-2600) [RDGN] - Redundant digits in numeric literal.
+** Warning: C:/Major_Design_Experience/F25-07_Open-Source_Hardware_TPM/Management Module/management_module.v(137): (vlog-2600) [RDGN] - Redundant digits in numeric literal.
+
+Top level modules:
+	management_module
+
+} {} {}} {C:/Major_Design_Experience/F25-07_Open-Source_Hardware_TPM/Management Module/clk.v} {1 {vlog -work work -stats=none {C:/Major_Design_Experience/F25-07_Open-Source_Hardware_TPM/Management Module/clk.v}
+Model Technology ModelSim - Intel FPGA Edition vlog 2020.1 Compiler 2020.02 Feb 28 2020
+-- Compiling module clk
+
+Top level modules:
+	clk
+
+} {} {}} {C:/Major_Design_Experience/F25-07_Open-Source_Hardware_TPM/IO Interface/fifo_buffer.v} {1 {vlog -work work -stats=none {C:/Major_Design_Experience/F25-07_Open-Source_Hardware_TPM/IO Interface/fifo_buffer.v}
+Model Technology ModelSim - Intel FPGA Edition vlog 2020.1 Compiler 2020.02 Feb 28 2020
+-- Compiling module fifo_buffer
+-- Compiling module GENERIC_BUFFER
+
+Top level modules:
+	fifo_buffer
+
+} {} {}} {C:/Major_Design_Experience/F25-07_Open-Source_Hardware_TPM/Management Module/management_module_top.v} {1 {vlog -work work -stats=none {C:/Major_Design_Experience/F25-07_Open-Source_Hardware_TPM/Management Module/management_module_top.v}
+Model Technology ModelSim - Intel FPGA Edition vlog 2020.1 Compiler 2020.02 Feb 28 2020
+-- Compiling module management_module_top
+
+Top level modules:
+	management_module_top
+
+} {} {}} {C:/Major_Design_Experience/F25-07_Open-Source_Hardware_TPM/Execution Engine/input_output_signal_structure.v} {1 {vlog -work work -stats=none {C:/Major_Design_Experience/F25-07_Open-Source_Hardware_TPM/Execution Engine/input_output_signal_structure.v}
+Model Technology ModelSim - Intel FPGA Edition vlog 2020.1 Compiler 2020.02 Feb 28 2020
+-- Compiling module execution_engine_fsm
+
+Top level modules:
+	execution_engine_fsm
+
+} {} {}} {C:/Major_Design_Experience/F25-07_Open-Source_Hardware_TPM/IO Interface/tpm_io.v} {1 {vlog -work work -stats=none {C:/Major_Design_Experience/F25-07_Open-Source_Hardware_TPM/IO Interface/tpm_io.v}
+Model Technology ModelSim - Intel FPGA Edition vlog 2020.1 Compiler 2020.02 Feb 28 2020
+-- Compiling module tpm_io
+
+Top level modules:
+	tpm_io
+
+} {} {}} {C:/Major_Design_Experience/F25-07_Open-Source_Hardware_TPM/IO Interface/tpm_reg_space.v} {1 {vlog -work work -stats=none {C:/Major_Design_Experience/F25-07_Open-Source_Hardware_TPM/IO Interface/tpm_reg_space.v}
+Model Technology ModelSim - Intel FPGA Edition vlog 2020.1 Compiler 2020.02 Feb 28 2020
+-- Compiling module tpm_reg_space
+
+Top level modules:
+	tpm_reg_space
+
+} {} {}} {C:/Major_Design_Experience/F25-07_Open-Source_Hardware_TPM/Execution Engine/execution_engine.v} {1 {vlog -work work -stats=none {C:/Major_Design_Experience/F25-07_Open-Source_Hardware_TPM/Execution Engine/execution_engine.v}
+Model Technology ModelSim - Intel FPGA Edition vlog 2020.1 Compiler 2020.02 Feb 28 2020
+-- Compiling module execution_engine
+
+Top level modules:
+	execution_engine
+
+} {} {}} C:/Major_Design_Experience/F25-07_Open-Source_Hardware_TPM/TPM_TOP.v {1 {vlog -work work -stats=none C:/Major_Design_Experience/F25-07_Open-Source_Hardware_TPM/TPM_TOP.v
+Model Technology ModelSim - Intel FPGA Edition vlog 2020.1 Compiler 2020.02 Feb 28 2020
+-- Compiling module tpm_top
+
+Top level modules:
+	tpm_top
+
+} {} {}}

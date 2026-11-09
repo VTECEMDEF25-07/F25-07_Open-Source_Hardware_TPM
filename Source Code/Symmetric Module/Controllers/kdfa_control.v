@@ -1,5 +1,8 @@
-// TPM KDFa with HMAC-SHA256. Byte buffers are left aligned, MSB first.
-// Lengths exclude unused bytes. Labels include their terminating zero.
+// Filename: kdfa_control.v
+// Author: Makeda Solomon; refactor assisted by Codex
+// Date: October 13, 2026
+// Description: TPM KDFa with HMAC-SHA256. Byte buffers are left aligned, MSB first.
+//              Lengths exclude unused bytes. Labels include their terminating zero.
 `default_nettype none
 module kdfa_control #(
     parameter integer MAX_SECRET_BYTES=128,

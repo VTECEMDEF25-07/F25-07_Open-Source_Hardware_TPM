@@ -16,8 +16,18 @@
 // this includes defined TPM constants (command codes, etc.)
 `include "tpm_types.vh"
 
-module	tpm_crb
+// The board top enables scoped command routing. Existing standalone callers
+// can retain the original CRB behavior with the default parameter.
+module	tpm_crb #(parameter SCOPED_COMMANDS = 0,
+    parameter ENABLE_ENCRYPTDECRYPT2 = 0)
 (
+    // The executor reads the saved command by packet address. The CRB reads
+    // reply bytes by payload offset and adds the TPM response header itself.
+    input wire [11:0] exec_cmd_addr_i,
+    output wire [7:0] exec_cmd_byte_o,
+    input wire [11:0] exec_rsp_length_i,
+    output wire [11:0] exec_rsp_addr_o,
+    input wire [7:0] exec_rsp_byte_i,
 	input			clock_i,
 	input			reset_n_i,
 	
@@ -65,7 +75,7 @@ module	tpm_crb
 	// command tag
 	reg	[15:0]	cmd_st;
 	
-	// local cmd buffer (unusued)
+	// Command packet copy, readable by the execution engine after receipt.
 	reg		cmdWren_n;
 	reg	[11:0]	cmdAddr;
 	reg	[7:0]	cmdIn;
@@ -170,6 +180,18 @@ module	tpm_crb
 	reg	[2:0]	nHandles, nHandles_comb;	// number of handles
 	reg	[2:0]	nSessions, nSessions_comb;	// number of sessions
 	reg		proc_ee, badRead, setup_mm;
+    reg [11:0] response_length_hold;
+    // Well-formed Startup stays on the management path. Hash has no handles
+    // in this scope. Other requests go to the executor for an error reply.
+    wire scoped_startup = commandCode_o == `TPM_CC_Startup &&
+        cmd_st == `TPM_ST_NO_SESSIONS && cmdSize_i == 32'd12;
+    wire read_scoped_params = scoped_startup ||
+        (commandCode_o == `TPM_CC_Hash && cmdSize_i >= 32'd18 && cmdSize_i <= 32'd1042) ||
+        (ENABLE_ENCRYPTDECRYPT2 && commandCode_o == 32'h00000193 &&
+         cmdSize_i >= 32'd50 && cmdSize_i <= 32'd1074);
+    assign exec_cmd_byte_o = cmdOut;
+    // Strip the 10-byte header offset when indexing the executor payload.
+    assign exec_rsp_addr_o = ci_addr - 12'd10;
 	// proc_ee: is the command processed by the execution engine?
 	// badRead: does the fully read number of bytes mismatch from the command header indicated cmdSize_i?
 	// setup_mm: has the management module been setup? (it requires an extra pulse on initialization)
@@ -180,7 +202,7 @@ module	tpm_crb
 		if (!reset_n_i)
 			state <= Idle;
 		// "cheat" transfer to Exec_setup0 for malformed command data (more data than expected)
-		else if (state > CmdDecode && state < FullRead && ci_addr > cmdSize_i[11:0] + 12'd1)
+		else if (!SCOPED_COMMANDS && state > CmdDecode && state < FullRead && ci_addr > cmdSize_i[11:0] + 12'd1)
 			state <= Exec_setup0;
 		else
 			state <= next_state;
@@ -202,7 +224,7 @@ module	tpm_crb
 			next_state = ci_done ? CmdDecode : CmdHeader_wait;
 		// go to go to HandleCountCheck
 		CmdDecode:
-			next_state = HandleCountCheck;
+			next_state = SCOPED_COMMANDS ? (read_scoped_params ? CmdRead_start : FullRead) : HandleCountCheck;
 		// go to ReadHandle_start while it < nHandles, otherwise transfer to CmdRead_start (if no sessions), or ReadAuthSize_start (if sessions)
 		HandleCountCheck:
 			next_state = it < nHandles ? ReadHandle_start : (nSessions == 3'd0 ? CmdRead_start : ReadAuthSize_start);
@@ -343,6 +365,7 @@ module	tpm_crb
 			nSessions <= 3'd7;
 			authSize_o <= 32'h00;
 			proc_ee <= 1'b0;
+            response_length_hold <= 12'd10;
 			setup_mm <= 1'b0;
 			badRead <= 1'b1;
 			
@@ -382,6 +405,7 @@ module	tpm_crb
 				nSessions <= 3'd7;
 				authSize_o <= 32'h00;
 				proc_ee <= 1'b0;
+            response_length_hold <= 12'd10;
 				badRead <= 1'b1;
 				
 				ci_start <= 1'b0;
@@ -425,7 +449,8 @@ module	tpm_crb
 				nHandles <= nHandles_comb;
 				nSessions <= nSessions_comb;
 				expectedTag_o <= nSessions_comb == 0 ? `TPM_ST_NO_SESSIONS : `TPM_ST_SESSIONS;
-				proc_ee <= ~(commandCode_o == `TPM_CC_HierarchyControl
+				proc_ee <= SCOPED_COMMANDS ? !scoped_startup :
+                    ~(commandCode_o == `TPM_CC_HierarchyControl
 					|| commandCode_o == `TPM_CC_Startup);
 			end
 			
@@ -609,6 +634,10 @@ module	tpm_crb
 				if (!responseRec)
 					responseRec <= rspReady_i;
 				responseCode_hold <= responseCode_i;
+                // Capture the size with the ready pulse. The FIFO uses this
+                // size both to transfer the reply and to end host reads.
+                if (SCOPED_COMMANDS && proc_ee && rspReady_i)
+                    response_length_hold <= exec_rsp_length_i;
 			end
 			
 			// execution done_o, store response code if the processor was execution engine
@@ -619,15 +648,17 @@ module	tpm_crb
 			// currently, all there is to assemble of the response is the tag
 			AssembleRsp:
 			begin
-				if (responseCode_i != `TPM_RC_SUCCESS)
-					cmd_st <= `TPM_ST_NO_SESSIONS;
+				if (SCOPED_COMMANDS && responseCode_hold == `TPM_RC_BAD_TAG)
+                    cmd_st <= `TPM_ST_RSP_COMMAND;
+                else if (responseCode_hold != `TPM_RC_SUCCESS)
+                    cmd_st <= `TPM_ST_NO_SESSIONS;
 			end
 			
 			// setup transfer fsm for sending response
 			RspOut_start:
 			begin
 				ci_start <= 1'b1;
-				ci_size <= 12'd10;
+				ci_size <= response_length_hold;
 			end
 			
 			// send out response
@@ -640,12 +671,14 @@ module	tpm_crb
 				12'h001:	rspByteOut_o <= cmd_st[7:0];
 				12'h002:	rspByteOut_o <= 8'h00;
 				12'h003:	rspByteOut_o <= 8'h00;
-				12'h004:	rspByteOut_o <= 8'h00;
-				12'h005:	rspByteOut_o <= 8'h0A;
+				12'h004:	rspByteOut_o <= {4'b0,response_length_hold[11:8]};
+				12'h005:	rspByteOut_o <= response_length_hold[7:0];
 				12'h006:	rspByteOut_o <= responseCode_hold[31:24];
 				12'h007:	rspByteOut_o <= responseCode_hold[23:16];
 				12'h008:	rspByteOut_o <= responseCode_hold[15:8];
 				12'h009:	rspByteOut_o <= responseCode_hold[7:0];
+                // After the header, take the selected byte from the executor.
+                default: rspByteOut_o <= SCOPED_COMMANDS ? exec_rsp_byte_i : 8'd0;
 				
 				endcase
 			end
@@ -698,8 +731,11 @@ module	tpm_crb
 		Exec_wait0, Exec_wait1, Exec_done,
 		AssembleRsp, RspOut_start, RspOut_wait:
 		begin
-			rspAddr = ci_addr;
-			rspWren_n = 1'b1;
+			// Lend the command RAM address port to the executor while it runs.
+			if (SCOPED_COMMANDS && proc_ee && state == Exec_wait0)
+                cmdAddr = exec_cmd_addr_i;
+            rspAddr = ci_addr;
+            rspWren_n = 1'b1;
 		end
 		
 		endcase
@@ -708,7 +744,10 @@ module	tpm_crb
 	// static assignments
 	assign	cmdOutAddr_o = cmdAddr;
 	assign	rspOutAddr_o = rspAddr;
-	assign	rspSend_o = ci_wren;
+	// The legacy transfer FSM can visit the address just past the reply.
+    // Suppress that extra write in the scoped path.
+    assign rspSend_o = SCOPED_COMMANDS ?
+        (ci_wren || state != RspOut_wait || ci_addr >= response_length_hold) : ci_wren;
 	
 	assign	cmdDone_o = state == Exec_start;
 	assign	rspDone_o = state == Complete;
@@ -728,7 +767,7 @@ module	tpm_crb
 	end
 	
 	// placeholder
-	assign	rspSize_o = 32'd10;
+	assign rspSize_o = {20'd0,response_length_hold};
 	
 	// combinational logic to determine number of handles, sessions; ccValid (from spec)
 	always @* case (commandCode_o)

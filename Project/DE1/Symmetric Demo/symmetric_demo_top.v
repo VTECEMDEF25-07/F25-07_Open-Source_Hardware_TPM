@@ -52,7 +52,6 @@ module symmetric_demo_top
     reg [255:0] key_r;
     reg [127:0] iv_r;
     reg [127:0] data_in_r;
-    reg [127:0] session_mask_r;
 
     wire [15:0] data_word_w;
     assign data_word_w = {6'b000000, SW[9:0]};
@@ -72,7 +71,6 @@ module symmetric_demo_top
         key_r             = 256'h000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F;
         iv_r              = 128'h00112233445566778899AABBCCDDEEFF;
         data_in_r         = {8{data_word_w}};
-        session_mask_r    = 128'hA5A5A5A55A5A5A5AF0F00F0FF00FF0F0;
 
         case (SW[1:0])
             2'b00: begin
@@ -111,12 +109,37 @@ module symmetric_demo_top
     wire        wait_w;
     wire        done_w;
     wire [11:0] tpm_rc_w;
-    wire [127:0] data_out_w;
-    wire [127:0] iv_out_w;
-    wire        primitive_path_w;
-    wire        session_path_w;
+    reg [127:0] demo_buffer_r;
+    reg [7:0] demo_read_data_r;
+    reg demo_rsp_valid_r;
+    wire demo_req_valid_w, demo_req_write_w, demo_rsp_ready_w;
+    wire [3:0] demo_addr_w;
+    wire [7:0] demo_write_data_w;
+    reg primitive_path_w, session_path_w;
 
-    symm_top #(.MAX_DATA_BYTES(16), .MAX_SECRET_BYTES(32), .MAX_NONCE_BYTES(32)) U_SYMM
+    always @(posedge CLOCK_50 or negedge reset_n_w) begin
+        if (!reset_n_w) begin
+            demo_buffer_r <= 0;
+            demo_read_data_r <= 0;
+            demo_rsp_valid_r <= 0;
+            primitive_path_w <= 0;
+            session_path_w <= 0;
+        end else if (start_w && !wait_w) begin
+            demo_buffer_r <= data_in_r;
+            primitive_path_w <= !session_protect_r;
+            session_path_w <= session_protect_r;
+        end else begin
+            if (demo_rsp_ready_w) demo_rsp_valid_r <= 0;
+            if (demo_req_valid_w && !demo_rsp_valid_r) begin
+                demo_rsp_valid_r <= 1;
+                if (demo_req_write_w)
+                    demo_buffer_r[127-demo_addr_w*8 -: 8] <= demo_write_data_w;
+                else demo_read_data_r <= demo_buffer_r[127-demo_addr_w*8 -: 8];
+            end
+        end
+    end
+
+    symm_top #(.MAX_SYM_DATA_BYTES(16), .RAM_ADDR_WIDTH(4), .MAX_SECRET_BYTES(32), .MAX_NONCE_BYTES(32)) U_SYMM
     (
         .clock_i(CLOCK_50),
         .reset_n_i(reset_n_w),
@@ -133,11 +156,10 @@ module symmetric_demo_top
         .session_valid_i(1'b0),
         .mode_i(mode_r),
         .decrypt_i(decrypt_r),
-        .data_bytes_i(data_bytes_r),
+        .data_length_i({16'd0,data_bytes_r}),
+        .input_base_i(4'd0), .output_base_i(4'd0),
         .key_i(key_r),
         .iv_i(iv_r),
-        .data_in_i(data_in_r),
-        .session_mask_i(session_mask_r),
 
         // Fixed demo values stand in for the execution engine's session inputs.
         .session_value_i(256'h000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F),
@@ -147,14 +169,17 @@ module symmetric_demo_top
         .nonce_newer_bytes_i(16'd32), .nonce_older_bytes_i(16'd32),
         .hmac_busy_i(1'b0), .hmac_key_ready_i(1'b0), .hmac_message_ready_i(1'b0),
         .hmac_digest_i(256'd0), .hmac_digest_valid_i(1'b0),
+        .hmac_start_o(), .hmac_key_data_o(), .hmac_key_valid_o(),
+        .hmac_key_end_o(), .hmac_message_data_o(), .hmac_message_valid_o(),
+        .hmac_message_end_o(), .hmac_digest_ready_o(),
 
-        .wait_o(wait_w),
-        .done_o(done_w),
-        .tpm_rc_o(tpm_rc_w),
-        .data_out_o(data_out_w),
-        .iv_out_o(iv_out_w),
-        .primitive_path_o(primitive_path_w),
-        .session_path_o(session_path_w)
+        .busy_o(wait_w), .done_o(done_w), .error_o(), .tpm_rc_o(tpm_rc_w),
+        .final_iv_o(), .completed_length_o(),
+        .ram_req_valid_o(demo_req_valid_w), .ram_req_ready_i(!demo_rsp_valid_r),
+        .ram_req_write_o(demo_req_write_w), .ram_req_addr_o(demo_addr_w),
+        .ram_req_data_o(demo_write_data_w), .ram_rsp_valid_i(demo_rsp_valid_r),
+        .ram_rsp_ready_o(demo_rsp_ready_w), .ram_rsp_data_i(demo_read_data_r),
+        .ram_rsp_error_i(1'b0)
     );
 
     reg        done_latched_r;
@@ -180,7 +205,7 @@ module symmetric_demo_top
                 primitive_latched_r <= primitive_path_w;
                 session_latched_r   <= session_path_w;
                 rc_latched_r        <= tpm_rc_w;
-                data_latched_r      <= data_out_w;
+                data_latched_r      <= tpm_rc_w == 0 ? demo_buffer_r : 128'd0;
             end
         end
     end

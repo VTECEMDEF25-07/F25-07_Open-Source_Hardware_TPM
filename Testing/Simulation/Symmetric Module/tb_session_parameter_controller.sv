@@ -25,18 +25,19 @@ module tb_session_parameter_controller;
     localparam [127:0] TOY_MASK=128'h00000001584f52002021222324252627;
     reg session_valid_i=1,key_valid_i=1,session_decrypt_i=0,session_encrypt_i=1,session_use_xor_i=0;
     reg [2:0] mode_i=1;
-    reg [4:0] data_bytes_i=16;
+    reg [15:0] data_bytes_i=16;
     reg [255:0] session_value_i=SECRET,nonce_newer_i=NEWER,nonce_older_i=OLDER;
     reg [127:0] data_in_i=PLAIN,iv_i=IV;
     integer hmac_calls=0, expected_hmac_calls=2;
     reg expected_xor=0;
-    wire [31:0] message_counter=dut.hmac_message_w[607:576];
+    wire [31:0] message_counter=dut.KDFA_CONTROLLER.hmac_message_r[607:576];
 
     // The testbench acts as a delayed CFB worker. It tests the controller in
     // isolation; tb_cfb_block checks the actual AES calculation separately.
     wire cfb_start_o,cfb_decrypt_o,wait_o,done_o;
     wire [255:0] cfb_key_o;
-    wire [127:0] cfb_iv_o,cfb_data_o,data_out_o,iv_out_o;
+    wire [127:0] cfb_iv_o,cfb_data_o,iv_out_o;
+    wire [127:0] data_out_o;
     wire [4:0] cfb_bytes_o;
     wire [11:0] tpm_rc_o;
     reg cfb_done_i=0;
@@ -45,7 +46,7 @@ module tb_session_parameter_controller;
     reg [127:0] expected_input=PLAIN;
     reg [255:0] expected_key=KEY;
     reg [127:0] expected_iv=IV;
-    reg expected_decrypt=0, expect_cfb=0;
+    reg expected_decrypt=0, expect_cfb=0, two_chunks=0;
     integer expected_bytes=16, cfb_calls=0;
     integer response_delay=0;
     reg [11:0] worker_rc=0;
@@ -57,9 +58,11 @@ module tb_session_parameter_controller;
         end else begin
             cfb_done_i<=0;
             if(cfb_start_o) begin
-                if(!expect_cfb || cfb_calls!=0 || response_delay!=0 ||
-                   cfb_key_o!==expected_key || cfb_iv_o!==expected_iv ||
-                   cfb_data_o!==expected_input || cfb_bytes_o!==expected_bytes[4:0] ||
+                if(!expect_cfb || cfb_calls>(two_chunks ? 1 : 0) || response_delay!=0 ||
+                   cfb_key_o!==expected_key ||
+                   cfb_iv_o!==(cfb_calls==0 ? expected_iv : MOCK_IV) ||
+                   cfb_data_o!==(cfb_calls==0 ? expected_input : {8'ha5,120'd0}) ||
+                   cfb_bytes_o!==(two_chunks ? (cfb_calls==0 ? 5'd16 : 5'd1) : expected_bytes[4:0]) ||
                    cfb_decrypt_o!==expected_decrypt)
                     $fatal(1,"Case %0d: wrong CFB request",test_case);
                 cfb_calls<=cfb_calls+1;
@@ -85,7 +88,7 @@ module tb_session_parameter_controller;
         integer cycles;
         begin
             cycles=0;
-            while(!done_o && cycles<100) begin @(negedge clock_i); cycles++; end
+            while(!done_o && cycles<20000) begin @(negedge clock_i); cycles++; end
             if(!done_o || tpm_rc_o!==rc || data_out_o!==data || iv_out_o!==iv || cfb_calls!=calls)
                 $fatal(1,"Case %0d: rc=%h data=%h iv=%h calls=%0d",test_case,tpm_rc_o,data_out_o,iv_out_o,cfb_calls);
             if(start_i) repeat(4) begin
@@ -101,11 +104,55 @@ module tb_session_parameter_controller;
         end
     endtask
 
-    session_parameter_controller dut(.*);
+    wire hmac_start_o, hmac_key_valid_o, hmac_key_end_o, hmac_key_ready_i;
+    wire hmac_message_valid_o, hmac_message_end_o, hmac_message_ready_i, hmac_busy_i;
+    wire [7:0] hmac_key_data_o, hmac_message_data_o;
+    wire [255:0] hmac_digest_i;
+    wire hmac_digest_valid_i, hmac_digest_ready_o;
+    hmac_stream_test_service hmac_service(.*);
+    wire cfb_wait_i=0;
+    wire [15:0] session_value_bytes_i=32, nonce_newer_bytes_i=32, nonce_older_bytes_i=32;
+    wire [11:0] parameter_base_i = 12'd120;
+    wire [11:0] ram_req_addr_o;
+    wire ram_req_valid_o, ram_req_write_o, ram_rsp_ready_o;
+    wire [7:0] ram_req_data_o;
+    reg ram_rsp_valid_i=0;
+    reg [7:0] ram_rsp_data_i=0;
+    reg ram_rsp_error_i=0, fail_ram=0;
+    reg [135:0] ram_payload;
+    reg [135:0] ram_result;
+    reg ready_cycle=0;
+    wire ram_req_ready_i = ready_cycle && !ram_rsp_valid_i;
+    wire [11:0] ram_offset = ram_req_addr_o-parameter_base_i;
+    assign data_out_o = ram_result[135:8];
+
     always @(posedge clock_i) begin
-        if(reset_n_i && dut.hmac_req_valid_w && dut.hmac_req_ready_w) begin
-            if(hmac_calls>=expected_hmac_calls || dut.hmac_key_w!==SECRET ||
-               dut.hmac_message_w!=={(32'd1+hmac_calls),
+        if (!reset_n_i) begin
+            ram_rsp_valid_i <= 0;
+            ram_rsp_error_i <= 0;
+            ready_cycle <= 0;
+        end else begin
+            ready_cycle <= !ready_cycle;
+            if (ram_rsp_valid_i && ram_rsp_ready_o) ram_rsp_valid_i <= 0;
+            if (ram_req_valid_o && ram_req_ready_i) begin
+                if (ram_offset >= 17) $fatal(1,"RAM access outside parameter");
+                ram_rsp_data_i <= ram_payload[135-ram_offset*8 -: 8];
+                ram_rsp_valid_i <= 1;
+                ram_rsp_error_i <= fail_ram;
+                if (ram_req_write_o && !fail_ram) begin
+                    ram_payload[135-ram_offset*8 -: 8] <= ram_req_data_o;
+                    ram_result[135-ram_offset*8 -: 8] <= ram_req_data_o;
+                end
+            end
+        end
+    end
+
+    session_parameter_controller #(.MAX_DATA_BYTES(32), .MAX_SECRET_BYTES(32),
+        .MAX_NONCE_BYTES(32)) dut(.*);
+    always @(posedge clock_i) begin
+        if(reset_n_i && dut.hmac_start_o) begin
+            if(hmac_calls>=expected_hmac_calls || dut.KDFA_CONTROLLER.hmac_key_r!==SECRET ||
+               dut.KDFA_CONTROLLER.hmac_message_r!=={(32'd1+hmac_calls),
                  (expected_xor ? 32'h584f5200 : 32'h43464200),NEWER,OLDER,
                  (expected_xor ? expected_bytes*32'd8 : 32'd384)})
                 $fatal(1,"Wrong captured secret, nonce order, label, counter or bit count");
@@ -120,6 +167,7 @@ module tb_session_parameter_controller;
             session_use_xor_i=xor_mode; session_decrypt_i=decrypt; session_encrypt_i=!decrypt;
             data_bytes_i=bytes; session_value_i=SECRET; nonce_newer_i=NEWER; nonce_older_i=OLDER;
             data_in_i=PLAIN; iv_i=IV;
+            ram_payload={PLAIN,8'ha5}; ram_result=0; two_chunks=0;
             expected_input=PLAIN; expected_decrypt=decrypt; expected_bytes=bytes;
             expected_key=TOY_KEY; expected_iv=TOY_IV; expect_cfb=!xor_mode && bytes<=16;
             cfb_calls=0; worker_rc=0; hmac_calls=0; expected_xor=xor_mode;
@@ -141,7 +189,7 @@ module tb_session_parameter_controller;
         test_case=2; prepare(0,1,16); launch(1); check_session(0,MOCK_RESULT,MOCK_IV,1);
         test_case=3; prepare(1,0,16); launch(0); check_session(0,PLAIN ^ TOY_MASK,IV,0);
         test_case=4; prepare(1,1,16);
-        data_in_i=PLAIN ^ TOY_MASK; launch(0); check_session(0,PLAIN,IV,0);
+        data_in_i=PLAIN ^ TOY_MASK; ram_payload[135:8]=data_in_i; launch(0); check_session(0,PLAIN,IV,0);
         test_case=5; prepare(1,0,5); launch(0);
         check_session(0,(PLAIN ^ TOY_MASK) & 128'hffffffffff0000000000000000000000,IV,0);
         test_case=6; prepare(1,0,0); launch(0); check_session(0,0,IV,0);
@@ -151,15 +199,15 @@ module tb_session_parameter_controller;
         launch(0); check_session(12'h082,0,0,0);
         test_case=9; prepare(0,0,16); mode_i=0; expect_cfb=0; expected_hmac_calls=0;
         launch(0); check_session(12'h089,0,0,0);
-        test_case=10; prepare(0,0,17); expected_hmac_calls=0;
+        test_case=10; prepare(0,0,33); expected_hmac_calls=0;
         launch(0); check_session(12'h095,0,0,0);
         test_case=11; prepare(0,0,16); expect_cfb=0; launch(0);
-        wait(dut.hmac_rsp_valid_w && message_counter==2);
-        force dut.hmac_error_w=1'b1;
-        @(posedge clock_i); @(negedge clock_i); release dut.hmac_error_w;
+        wait(dut.kdfa_rsp_valid_w);
+        force dut.kdfa_error_w=1'b1;
+        @(posedge clock_i); @(negedge clock_i); release dut.kdfa_error_w;
         check_session(12'h101,0,0,0);
         test_case=12; prepare(0,0,16); launch(0);
-        wait(dut.hmac_req_valid_w);
+        wait(dut.hmac_start_o);
         @(negedge clock_i); reset_n_i=0; start_i=0;
         repeat(2) @(negedge clock_i); reset_n_i=1;
         repeat(3) @(negedge clock_i);
@@ -167,10 +215,20 @@ module tb_session_parameter_controller;
             $fatal(1,"Reset left stale derivation");
         prepare(0,0,16); launch(0); check_session(0,MOCK_RESULT,MOCK_IV,1);
 
+        test_case=13; prepare(0,0,16); fail_ram=1; expect_cfb=0;
+        launch(0); check_session(12'h101,0,0,0); fail_ram=0;
+        test_case=14; prepare(0,0,17); two_chunks=1; expect_cfb=1;
+        launch(0); check_session(0,MOCK_RESULT,MOCK_IV,2);
+        if (ram_result[7:0] !== MOCK_RESULT[127:120])
+            $fatal(1,"CFB tail was not written");
+        test_case=15; prepare(1,0,17);
+        launch(0); check_session(0,PLAIN ^ TOY_MASK,IV,0);
+        if (ram_result[7:0] !== (8'ha5 ^ 8'h28))
+            $fatal(1,"XOR mask did not advance to byte 17");
         successfully_completed=1;
         $display("ALL %0d MODULE CASES PASSED",case_count);
         $finish;
     end
-    initial begin #100000; $fatal(1,"Global module test timeout"); end
+    initial begin #2000000; $fatal(1,"Global module test timeout"); end
 endmodule
 `default_nettype wire
