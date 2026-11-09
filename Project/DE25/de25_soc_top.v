@@ -63,7 +63,6 @@ module de25_soc_top #(parameter IP_TYPE = `FPGA_IP_TYPE) (
     // Select the FPGA resource backend at the TPM boundary.
     TPM_TOP #(.IP_TYPE(IP_TYPE), .DEVICE_FAMILY("Agilex 5")) tpm (
         .CLOCK_50(clock_50),
-        .CLOCK_100(clock_100),
         .RESET_n(tpm_release_reg[1]),
         .SPI_CLOCK(spi_clock_i),
         .SPI_CS_n(spi_cs_n_i),

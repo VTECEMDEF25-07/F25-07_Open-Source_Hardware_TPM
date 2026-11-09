@@ -5,7 +5,7 @@ Virginia Tech Lenovo-sponsored senior design project.
 
 ## Layout
 
-- `Project/DE1/`: DE1-SoC Quartus project, board wrapper, PLL, pins and constraints.
+- `Project/DE1/`: DE1-SoC Quartus project, board wrapper, pins and constraints (direct 50 MHz, no PLL).
 - `Project/DE25/`: DE25 Quartus project, board wrapper, PLL, pins, constraints and Fan Controller.
 - `Source Code/`: shared TPM top and reusable module folders, including the standalone RNG sources.
 - `Testing/Simulation/`: module testbenches, RNG benches and DE25 cooling regression scripts/models.
@@ -32,6 +32,8 @@ set DE25_SPI_TARGET usb_adapter
 - `lenovo_tester`: Raspberry Pi running Lenovo's TPM tester on the adjacent odd-numbered JP1 signal contacts.
 
 Change the setting, recompile `Project/DE25/de25_soc_top.qpf`, and program the resulting SOF. The setting selects physical pins through Quartus Tcl constraints; it is separate from the HDL `FPGA_IP_TYPE` resource selection. See the [DE25 wiring table](Project/DE25/README.md#spi-wiring-selection) for connector pins and Pi connections. The Lenovo pin map still requires physical validation.
+
+The [common SPI guide](Source%20Code/IO%20Interface/SPI.md) defines host timing and test commands.
 
 See [board setup](Project/README.md) for board details and [simulation instructions](Testing/Simulation/README.md) for simulations. Each board's VALIDATION.md records build results and timing/hardware limitations.
 

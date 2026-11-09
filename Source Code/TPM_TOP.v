@@ -21,7 +21,6 @@
 module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5")
 (
 	input		CLOCK_50,	// 50 MHz sysclock
-	input		CLOCK_100,	// 100 MHz clock (used for sampling SPI_CLOCK)
 	input		RESET_n,	// async reset
 	
 	input		SPI_CLOCK,	// SPI clock
@@ -82,7 +81,7 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5")
 	
 	tpm_io io
 	(
-		.clock50_i(CLOCK_50), .clock100_i(CLOCK_100),
+		.clock50_i(CLOCK_50),
 		.reset_n_i(rst_n),
 		.SPI_clk_i(SPI_CLOCK), .SPI_cs_n_i(SPI_CS_n),
 		.SPI_mosi_i(SPI_MOSI), .SPI_miso_o(SPI_MISO),

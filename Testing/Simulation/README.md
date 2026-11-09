@@ -21,3 +21,7 @@ See [RNG simulations](RNG%20Module/README.md) for the two relocated PR #38 bench
 ## Key generation
 
 See [Key Generation/README.md](Key%20Generation/README.md) for the independent reference, core/resource/arithmetic benches and runners. Reusable HDL stays under `Source Code/Key Generation/`; fixtures here are test-only.
+
+## Common SPI
+
+See the [SPI guide](../../Source%20Code/IO%20Interface/SPI.md#verification) for serializer and original-TPM assertion replays on both board models. Tests are under `IO Interface/`; the DE25 adapter is under `DE25/tests/`. DE1 replay uses its board top directly.

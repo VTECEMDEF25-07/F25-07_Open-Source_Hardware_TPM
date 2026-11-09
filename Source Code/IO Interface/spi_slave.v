@@ -1,210 +1,124 @@
-// spi_slave.v
-// modules:
-//	spi_slave
-//	DET_FF
-//
-// Authors:
-//	Ian Sizemore (idsizemore@vt.edu)
-//
-// Date: 11/6/25
-//
-// General Description:
-//	This is the SPI serializer module, which handles the SPI protocol connection between
-//	the Host System and the I/O module (specifically the transaction handler).
-
-module spi_slave
-(
-	input			clock50_i,	// 50 MHz (sysclock, arbitrary)
-	input			clock100_i,	// 100 MHz (used for sampling SPI, >60 MHz should work)
-	input			reset_n_i,
-	
-	output	reg		RX_valid_o,	// data valid pulse
-	output	reg	[7:0]	RX_data_o,	// receive byte
-	
-	input			TX_valid_i,	// data valid pulse
-	output			TX_request_o,	// request next byte
-	output	reg		TX_received_o,	// ack
-	input		[7:0]	TX_data_i,	// send byte
-	
-	input			SPI_clock_i,
-	output			SPI_miso_o,
-	input			SPI_mosi_i,
-	input			SPI_cs_n_i
+// Portable mode-0 SPI agent. SCK clocks the pins; held-data byte mailboxes
+// cross to the 50 MHz TPM clock with synchronized request/acknowledge toggles.
+module spi_slave (
+    input clock_i, input reset_n_i,
+    output reg rx_valid_o, output reg [7:0] rx_data_o,
+    input tx_valid_i, input [7:0] tx_data_i,
+    output reg tx_request_o, output reg tx_received_o,
+    input spi_clock_i, input spi_mosi_i, input spi_cs_n_i,
+    output spi_miso_o, output chip_select_n_o
 );
-	
-	reg	[2:0]	RX_bitCount;
-	reg	[7:0]	RX_tempByte;
-	reg	[7:0]	RX_byte;
-	reg		RX_done0, RX_done1, RX_done2;
-	
-	// mosi
-	always @(posedge SPI_clock_i, posedge SPI_cs_n_i)
-	begin
-		if (SPI_cs_n_i)
-		begin
-			RX_bitCount <= 1'b0;
-			RX_done0 <= 1'b0;
-		end else begin
-			RX_bitCount <= RX_bitCount + 1'b1;
-			
-			RX_tempByte <= { RX_tempByte[6:0], SPI_mosi_i };
-			
-			if (RX_bitCount == 3'd7)
-			begin
-				RX_done0 <= 1'b1;
-				RX_byte <= { RX_tempByte[6:0], SPI_mosi_i };
-			end
-			else if (RX_bitCount == 3'd2)
-			begin
-				RX_done0 <= 1'b0;
-			end
-		end
-	end
-	
-	// RX data sync
-	always @(posedge clock50_i, negedge reset_n_i)
-	begin
-		if (!reset_n_i)
-		begin
-			RX_done1 <= 1'b0;
-			RX_done2 <= 1'b0;
-			RX_valid_o <= 1'b0;
-			RX_data_o  <= 8'h00;
-		end else begin
-			RX_done1 <= RX_done0;
-			RX_done2 <= RX_done1;
-			
-			if (RX_done2 == 1'b0 && RX_done1 == 1'b1)
-			begin
-				RX_valid_o <= 1'b1;
-				RX_data_o <= RX_byte;
-			end else begin
-				RX_valid_o <= 1'b0;
-			end
-		end
-	end
-	
-	
-	reg	[7:0]	TX_preload;
-	reg		TX_bit;
-	reg	[2:0]	TX_counter, prev_TX_counter;
-	reg	[2:0]	sync0_TX_counter, sync1_TX_counter;
-	reg		TX_done, prev_TX_done;
-	assign	TX_request_o = TX_done & ~prev_TX_done;
-	
-	
-	reg	prev_SPI_clock;
-	always @(posedge clock50_i)
-	begin
-		prev_SPI_clock <= SPI_clock_i;
-		prev_TX_done <= TX_done;
-		
-		sync0_TX_counter <= TX_counter;
-		sync1_TX_counter <= sync0_TX_counter;
-		
-		if (sync1_TX_counter == 3'd4)
-			TX_done <= 1'b1;
-		else if (sync1_TX_counter == 3'd2)
-			TX_done <= 1'b0;
-		
-		
-	end
-	
-	
-	wire	det_clock0, det_clock1, det_clock;
-	
-	DET_FF	det_ff0
-	(
-		clock100_i, reset_n_i, SPI_clock_i, det_clock0
-	);
-	DET_FF	det_ff1
-	(
-		clock100_i, reset_n_i, det_clock0, det_clock1
-	);
-	
-	assign	det_clock = det_clock0 & ~det_clock1;
-	
-	reg	[8:0]	TX_temp;
-	
-	// TX_temp is a shift register, which shifts out MISO bits.
-	// det_clock has a posedge sooner than SPI_clock_i does, which allows
-	// slow SPI master devices more time to capture the MISO signal
-	// (think of a device with a long MISO setup requirement).
-	// det_clock is a negedge detector of the SPI_clock_i, and is fed by
-	// dual edge triggered flipflops
-	always @(posedge det_clock)
-	begin
-		if (  TX_counter == 3'd7)
-		begin
-			TX_temp <= { TX_temp[7], TX_preload };
-		end else begin
-			TX_temp <= TX_temp << 1'b1;
-		end
-	end
-	
-	reg	prev_TX_valid;
-	wire	neg_TX_valid;
-	
-	always @(posedge clock50_i)
-		prev_TX_valid <= TX_valid_i;
-	assign	neg_TX_valid = ~TX_valid_i & prev_TX_valid;
-	
-	// preload TX byte early to avoid timing issues
-	always @(posedge clock50_i, negedge reset_n_i)
-	begin
-		if (!reset_n_i)
-		begin
-			TX_preload <= 8'd0;
-			TX_received_o <= 1'b0;
-		end else if (SPI_cs_n_i)
-		begin
-			TX_preload <= 8'd0;
-			TX_received_o <= 1'b0;
-		end else if (TX_valid_i)
-		begin
-			TX_preload <= TX_data_i;
-			TX_received_o <= 1'b1;
-		end else
-			TX_received_o <= 1'b0;
-	end
-	
-	
-	always @(negedge SPI_clock_i, posedge SPI_cs_n_i)
-	begin	if (SPI_cs_n_i)
-		begin
-			TX_counter <= 3'd5;
-		end else begin
-			TX_counter <= TX_counter - 3'd1;
-		end
-		
-		
-	end
-		
-	assign	SPI_miso_o = TX_temp[8];
-	
-endmodule
+    wire frame_reset_n = reset_n_i && !spi_cs_n_i;
+    reg [2:0] rx_bit_count_reg, tx_bit_count_reg;
+    reg [7:0] rx_shift_reg, rx_mailbox_reg;
+    reg rx_toggle_reg, request_toggle_reg;
+    reg [7:0] tx_shift_reg, tx_pending_reg;
+    reg tx_pending_valid_reg;
+    reg offer_meta_reg, offer_sync_reg, offer_seen_reg, tx_ack_reg;
+    reg chip_select_meta_reg, chip_select_sync_reg;
+    reg [7:0] chip_select_delay_reg;
+    reg rx_meta_reg, rx_sync_reg, rx_seen_reg;
+    reg request_meta_reg, request_sync_reg, request_seen_reg;
+    reg ack_meta_reg, ack_sync_reg;
+    reg [7:0] tx_mailbox_reg;
+    reg tx_toggle_reg, tx_valid_seen_reg;
+    wire new_offer = offer_sync_reg != offer_seen_reg;
+    assign spi_miso_o = spi_cs_n_i ? 1'bz : tx_shift_reg[7];
+    // Let the 50 MHz transaction FSM finish its final byte before it sees
+    // deselect. The identical delay on both CS edges preserves frame gaps;
+    // the next frame's first complete byte arrives well after its delayed CS.
+    assign chip_select_n_o = chip_select_delay_reg[7];
 
-
-// Dual edge triggered flipflop
-module	DET_FF
-(
-	input	clock_i, reset_n_i,
-	input	D_i,
-	output	Q_o
-);
-	
-	reg	p, n;
-	
-	always @(posedge clock_i, negedge reset_n_i)
-		if (!reset_n_i)
-			p <= 1'b0;
-		else
-			p <= D_i ^ n;
-	always @(negedge clock_i, negedge reset_n_i)
-		if (!reset_n_i)
-			n <= 1'b0;
-		else
-			n <= D_i ^ p;
-	
-	assign	Q_o = p ^ n;
+    always @(posedge spi_clock_i or negedge frame_reset_n) begin
+        if (!frame_reset_n) begin
+            rx_bit_count_reg <= 0; rx_shift_reg <= 0;
+        end else begin
+            rx_shift_reg <= {rx_shift_reg[6:0], spi_mosi_i};
+            rx_bit_count_reg <= rx_bit_count_reg + 3'd1;
+        end
+    end
+    // Capture the completed word on the following falling edge. MOSI now
+    // fans out to exactly one input register, allowing physical I/O packing
+    // or hold-route balancing without duplicating the external sampling path.
+    always @(negedge spi_clock_i or negedge reset_n_i) begin
+        if (!reset_n_i) begin
+            rx_mailbox_reg <= 0; rx_toggle_reg <= 0;
+        end else begin
+            if (!spi_cs_n_i && rx_bit_count_reg == 0) begin
+                rx_mailbox_reg <= rx_shift_reg;
+                rx_toggle_reg <= !rx_toggle_reg;
+            end
+        end
+    end
+    always @(negedge spi_clock_i or negedge frame_reset_n) begin
+        if (!frame_reset_n) begin offer_meta_reg <= 0; offer_sync_reg <= 0; end
+        else begin offer_meta_reg <= tx_toggle_reg; offer_sync_reg <= offer_meta_reg; end
+    end
+    always @(negedge spi_clock_i or negedge frame_reset_n) begin
+        if (!frame_reset_n) begin
+            tx_bit_count_reg <= 0; tx_shift_reg <= 0; tx_pending_reg <= 0;
+            tx_pending_valid_reg <= 0;
+            offer_seen_reg <= 0; request_toggle_reg <= 0; tx_ack_reg <= 0;
+        end else begin
+            tx_bit_count_reg <= tx_bit_count_reg + 3'd1;
+            if (tx_bit_count_reg == 0) request_toggle_reg <= !request_toggle_reg;
+            if (new_offer) begin
+                tx_pending_reg <= tx_mailbox_reg; tx_pending_valid_reg <= 1;
+                offer_seen_reg <= offer_sync_reg;
+            end
+            if (tx_bit_count_reg == 7) begin
+                // Forward an offer arriving on the boundary, otherwise use
+                // the pending byte. Acknowledge only actual consumption.
+                tx_shift_reg <= new_offer ? tx_mailbox_reg :
+                                tx_pending_valid_reg ? tx_pending_reg : 8'd0;
+                if (new_offer || tx_pending_valid_reg)
+                    tx_ack_reg <= new_offer ? offer_sync_reg : offer_seen_reg;
+                tx_pending_valid_reg <= 0;
+            end else tx_shift_reg <= {tx_shift_reg[6:0], 1'b0};
+        end
+    end
+    always @(posedge clock_i or negedge reset_n_i) begin
+        if (!reset_n_i) begin
+            chip_select_meta_reg <= 1; chip_select_sync_reg <= 1;
+            chip_select_delay_reg <= 8'hff;
+            rx_meta_reg <= 0; rx_sync_reg <= 0;
+            request_meta_reg <= 0; request_sync_reg <= 0;
+            ack_meta_reg <= 0; ack_sync_reg <= 0;
+        end else begin
+            chip_select_meta_reg <= spi_cs_n_i; chip_select_sync_reg <= chip_select_meta_reg;
+            chip_select_delay_reg <= {chip_select_delay_reg[6:0], chip_select_sync_reg};
+            rx_meta_reg <= rx_toggle_reg; rx_sync_reg <= rx_meta_reg;
+            request_meta_reg <= request_toggle_reg; request_sync_reg <= request_meta_reg;
+            ack_meta_reg <= tx_ack_reg; ack_sync_reg <= ack_meta_reg;
+        end
+    end
+    always @(posedge clock_i or negedge reset_n_i) begin
+        if (!reset_n_i) begin
+            rx_seen_reg <= 0; request_seen_reg <= 0;
+            tx_mailbox_reg <= 0; tx_toggle_reg <= 0; tx_valid_seen_reg <= 0;
+            rx_data_o <= 0; rx_valid_o <= 0; tx_request_o <= 0; tx_received_o <= 0;
+        end else begin
+            rx_valid_o <= 0; tx_request_o <= 0; tx_received_o <= 0;
+            // A last-byte event remains valid after external CS rises. Its
+            // mailbox is not cleared by CS and the transaction CS is delayed.
+            if (rx_sync_reg != rx_seen_reg) begin
+                rx_data_o <= rx_mailbox_reg; rx_valid_o <= 1; rx_seen_reg <= rx_sync_reg;
+            end
+            if (chip_select_sync_reg) begin
+                request_seen_reg <= request_sync_reg;
+                tx_mailbox_reg <= 0; tx_toggle_reg <= 0; tx_valid_seen_reg <= 0;
+            end else begin
+                if (request_sync_reg != request_seen_reg) begin
+                    tx_request_o <= 1; request_seen_reg <= request_sync_reg;
+                end
+                if (!tx_valid_i) tx_valid_seen_reg <= 0;
+                // One outstanding offer. The payload remains stable until
+                // the SPI domain consumes it and its ack returns here.
+                if (tx_valid_i && !tx_valid_seen_reg && tx_toggle_reg == ack_sync_reg) begin
+                    tx_mailbox_reg <= tx_data_i; tx_toggle_reg <= !tx_toggle_reg;
+                    tx_valid_seen_reg <= 1; tx_received_o <= 1;
+                end
+            end
+        end
+    end
 endmodule

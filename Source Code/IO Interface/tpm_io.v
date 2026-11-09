@@ -13,7 +13,6 @@
 module	tpm_io
 (
 	input		clock50_i,	// 50 MHz	(sysclock, arbitrary)
-	input		clock100_i,	// 100 MHz	(for SPI timing, should be >60 MHz)
 	input		reset_n_i,
 	
 	// host system communication
@@ -53,16 +52,16 @@ module	tpm_io
 	wire		RX_valid, TX_valid;
 	wire		TX_request, TX_received;
 	
-	spi_slave spi_serialzier
-	(
-		.clock50_i(clock50_i), .clock100_i(clock100_i),
-		.reset_n_i(reset_n_i),
-		.RX_valid_o(RX_valid), .RX_data_o(RX_byte),
-		.TX_valid_i(TX_valid), .TX_data_i(TX_byte),
-		.TX_request_o(TX_request), .TX_received_o(TX_received),
-		.SPI_clock_i(SPI_clk_i), .SPI_cs_n_i(SPI_cs_n_i),
-		.SPI_miso_o(SPI_miso_o), .SPI_mosi_i(SPI_mosi_i)
-	);
+    wire spi_transaction_cs_n;
+    spi_slave spi_serializer (
+        .clock_i(clock50_i), .reset_n_i(reset_n_i),
+        .rx_valid_o(RX_valid), .rx_data_o(RX_byte),
+        .tx_valid_i(TX_valid), .tx_data_i(TX_byte),
+        .tx_request_o(TX_request), .tx_received_o(TX_received),
+        .spi_clock_i(SPI_clk_i), .spi_cs_n_i(SPI_cs_n_i),
+        .spi_mosi_i(SPI_mosi_i), .spi_miso_o(SPI_miso_o),
+        .chip_select_n_o(spi_transaction_cs_n)
+    );
 	
 	wire	[15:0]	t_addr, t_baseAddr;
 	wire		t_wren_n, t_rden_n;
@@ -74,7 +73,7 @@ module	tpm_io
 	tpm_spi_ctrl transaction_handler
 	(
 		.clock_i(clock50_i), .reset_n_i(reset_n_i),
-		.SPI_CS_n_i(SPI_cs_n_i),
+		.SPI_CS_n_i(spi_transaction_cs_n),
 		.SPI_RX_byte_i(RX_byte), .SPI_RX_valid_i(RX_valid),
 		.SPI_TX_byte_o(TX_byte), .SPI_TX_valid_o(TX_valid),
 		.SPI_TX_prepare_i(TX_request), .SPI_TX_ack_i(TX_received),
