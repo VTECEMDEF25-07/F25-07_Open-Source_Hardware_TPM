@@ -25,16 +25,14 @@ set_location_assignment PIN_CH128 -to clock_i
 set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to clock_i
 set_location_assignment PIN_BW59 -to board_reset_n_i
 set_instance_assignment -name IO_STANDARD "1.2-V" -to board_reset_n_i
-set_location_assignment PIN_BU28 -to spi_clock_i
+# Select the USB adapter or Lenovo Raspberry Pi tester in de25_spi_pins.tcl.
+source de25_spi_pins.tcl
 set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to spi_clock_i
-set_location_assignment PIN_BP31 -to spi_cs_n_i
 set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to spi_cs_n_i
-set_location_assignment PIN_BM31 -to spi_mosi_i
 set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to spi_mosi_i
-set_location_assignment PIN_BW28 -to spi_reset_n_i
 set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to spi_reset_n_i
-set_location_assignment PIN_BF40 -to spi_miso_o
 set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to spi_miso_o
+# IRQ stays on JP1 pin 2; leave purple disconnected for the Pi tester.
 set_location_assignment PIN_BE43 -to interrupt_n_o
 set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to interrupt_n_o
 set_location_assignment PIN_BF120 -to fan_i2c_scl

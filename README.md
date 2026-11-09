@@ -20,6 +20,19 @@ Virginia Tech Lenovo-sponsored senior design project.
 
 Keep the complete repository together: project source paths are relative. Generated outputs are ignored; source, constraints, project settings and required test inputs remain tracked.
 
+## DE25 SPI wiring configuration
+
+Set `DE25_SPI_TARGET` on line 8 of [`Project/DE25/de25_spi_pins.tcl`](Project/DE25/de25_spi_pins.tcl) before compiling:
+
+```tcl
+set DE25_SPI_TARGET usb_adapter
+```
+
+- `usb_adapter` (default): USB-to-SPI adapter on the even-numbered JP1 signal contacts.
+- `lenovo_tester`: Raspberry Pi running Lenovo's TPM tester on the adjacent odd-numbered JP1 signal contacts.
+
+Change the setting, recompile `Project/DE25/de25_soc_top.qpf`, and program the resulting SOF. The setting selects physical pins through Quartus Tcl constraints; it is separate from the HDL `FPGA_IP_TYPE` resource selection. See the [DE25 wiring table](Project/DE25/README.md#spi-wiring-selection) for connector pins and Pi connections. The Lenovo pin map still requires physical validation.
+
 See [board setup](Project/README.md) for board details and [simulation instructions](Testing/Simulation/README.md) for simulations. Each board's VALIDATION.md records build results and timing/hardware limitations.
 
 Key generation: [design and review](Source%20Code/Key%20Generation/README.md), [simulation runners](Testing/Simulation/Key%20Generation/README.md). The portable core remains separate from TPM command integration.
