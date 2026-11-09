@@ -1,195 +1,195 @@
 module execution_engine(
-		clock,
-		reset_n,
-		command_ready,
-		command_tag,
-		command_size,
-		command_code,
-		command_length,
+		clock_i,
+		reset_n_i,
+		command_ready_i,
+		command_tag_i,
+		command_size_i,
+		command_code_i,
+		command_length_i,
 		//command buffer inputs
-		handle_0,
-		handle_1,
-		handle_2,
-		session0_handle,
-		session1_handle,
-		session2_handle,
-		session0_attributes,
-		session1_attributes,
-		session2_attributes,
-		session0_hmac_size,
-		session1_hmac_size,
-		session2_hmac_size,
-		session0_valid,
-		session1_valid,
-		session2_valid,
-		authorization_size,
-		session_loaded,
-		max_session_amount,
-		auth_session,
-		auth_necessary,
-		authHandle,
-		pcrSelect,
+		handle_0_i,
+		handle_1_i,
+		handle_2_i,
+		session0_handle_i,
+		session1_handle_i,
+		session2_handle_i,
+		session0_attributes_i,
+		session1_attributes_i,
+		session2_attributes_i,
+		session0_hmac_size_i,
+		session1_hmac_size_i,
+		session2_hmac_size_i,
+		session0_valid_i,
+		session1_valid_i,
+		session2_valid_i,
+		authorization_size_i,
+		session_loaded_i,
+		max_session_amount_i,
+		auth_session_i,
+		auth_necessary_i,
+		authHandle_i,
+		pcrSelect_i,
 		// Authorization submodule inputs
-		auth_done,
-		auth_success,
-		auth_response_code,
+		auth_done_i,
+		auth_success_i,
+		auth_response_code_i,
 		//inputs from param decrypt submodule
-		param_decrypt_success,
-		param_decrypt_fail,
-		param_unmarshall_success,
-		param_unmarshall_fail,
+		param_decrypt_success_i,
+		param_decrypt_fail_i,
+		param_unmarshall_success_i,
+		param_unmarshall_fail_i,
 		//execution engine inputs
-		execution_startup_done,
-		execution_response_code,
+		execution_startup_done_i,
+		execution_response_code_i,
 		// NV memory submodule inputs
-		nv_phEnableNV_in,
-		nv_shEnable_in,
-		nv_ehEnable_in,
-		tpm_nv_index,
-		nv_index_attributes,
-		nv_object_present,
-		nv_index_present,
-		entity_hierarchy,
+		nv_phEnableNV_in_i,
+		nv_shEnable_in_i,
+		nv_ehEnable_in_i,
+		tpm_nv_index_i,
+		nv_index_attributes_i,
+		nv_object_present_i,
+		nv_index_present_i,
+		entity_hierarchy_i,
 		// Memory submodule inputs
-		mem_orderly,
-		ram_available,
-		loaded_object_present,
-		object_attributes,
+		mem_orderly_i,
+		ram_available_i,
+		loaded_object_present_i,
+		object_attributes_i,
 		// Self-test submodule inputs
-		st_testsRun,
-		st_testsPassed,
-		st_untested,
+		st_testsRun_i,
+		st_testsPassed_i,
+		st_untested_i,
 		// Management module inputs 
-		op_state,
-		startup_type,
-		phEnable,
-		phEnableNV,
-		shEnable,
-		ehEnable,
-		shutdownSave,
-		command_done,
+		op_state_i,
+		startup_type_i,
+		phEnable_i,
+		phEnableNV_i,
+		shEnable_i,
+		ehEnable_i,
+		shutdownSave_i,
+		command_done_i,
 		//management outputs
-		testsPassed,
-		untested,
-		nv_phEnableNV,
-		nv_shEnable,
-		nv_ehEnable,
-		orderlyInput,
-		initialized,
-		testsRun,
-		authHierarchy,
+		testsPassed_o,
+		untested_o,
+		nv_phEnableNV_o,
+		nv_shEnable_o,
+		nv_ehEnable_o,
+		orderlyInput_o,
+		initialized_o,
+		testsRun_o,
+		authHierarchy_o,
 		// Response outputs
-		response_valid,
-		response_code,
-		response_length,
-		current_state,
-		command_start
+		response_valid_o,
+		response_code_o,
+		response_length_o,
+		current_state_o,
+		command_start_o
 	);
 
 	// Inputs
-	input         clock;					// Input clock signal
-	input         reset_n;				// Active-low input reset signal
-	input         command_ready;	// Active-high input command valid signal perhaps we can create a combinational logic check for this in a separate module
-	input  [15:0] command_tag;
-	input	 [31:0] command_size;
-	input  [31:0] command_code;
-	input  [15:0] command_length;		// 16-bit input command length
+	input         clock_i;					// Input clock_i signal
+	input         reset_n_i;				// Active-low input reset signal
+	input         command_ready_i;	// Active-high input command valid signal perhaps we can create a combinational logic check for this in a separate module
+	input  [15:0] command_tag_i;
+	input	 [31:0] command_size_i;
+	input  [31:0] command_code_i;
+	input  [15:0] command_length_i;		// 16-bit input command length
 	
-	input [31:0] handle_0;
-	input [31:0] handle_1;
-	input [31:0] handle_2;	
+	input [31:0] handle_0_i;
+	input [31:0] handle_1_i;
+	input [31:0] handle_2_i;	
 	// Inputs from managemnt module - EXACT MATCH to management_module outputs
-	input  [2:0]  op_state;				// 3-bit input operational state from management module
-	input  [2:0]  startup_type;		// 3-bit input startup type from management module
-	input         phEnable;				// 1-bit input platform hierarchy enable from management module
-	input         phEnableNV;			// 1-bit input platform hierarchy NV memory enable from management module
-	input         shEnable;				// 1-bit input owner hierarchy enable from management module
-	input         ehEnable;				// 1-bit input endorsement hierarchy enable from management module
-	input  [15:0] shutdownSave;		// 16-bit input shutdown type from management module
+	input  [2:0]  op_state_i;				// 3-bit input operational state from management module
+	input  [2:0]  startup_type_i;		// 3-bit input startup type from management module
+	input         phEnable_i;				// 1-bit input platform hierarchy enable from management module
+	input         phEnableNV_i;			// 1-bit input platform hierarchy NV memory enable from management module
+	input         shEnable_i;				// 1-bit input owner hierarchy enable from management module
+	input         ehEnable_i;				// 1-bit input endorsement hierarchy enable from management module
+	input  [15:0] shutdownSave_i;		// 16-bit input shutdown type from management module
 	//Inputs from command processing
-	input 		  command_done;
+	input 		  command_done_i;
 	//inputs for session validation
-	input [31:0] session0_handle;
-	input [31:0] session1_handle;
-	input [31:0] session2_handle;
+	input [31:0] session0_handle_i;
+	input [31:0] session1_handle_i;
+	input [31:0] session2_handle_i;
 
 
-	input [7:0] session0_attributes;
-	input [7:0] session1_attributes;
-	input [7:0] session2_attributes;
+	input [7:0] session0_attributes_i;
+	input [7:0] session1_attributes_i;
+	input [7:0] session2_attributes_i;
 
 
-	input [15:0] session0_hmac_size;
-	input [15:0] session1_hmac_size;
-	input [15:0] session2_hmac_size;
+	input [15:0] session0_hmac_size_i;
+	input [15:0] session1_hmac_size_i;
+	input [15:0] session2_hmac_size_i;
 
 
-	input session0_valid;
-	input session1_valid;
-	input session2_valid;
-	input [31:0] authorization_size;
-	input	session_loaded;
-	input [15:0] max_session_amount;
-	input auth_session;
-	input auth_necessary;
+	input session0_valid_i;
+	input session1_valid_i;
+	input session2_valid_i;
+	input [31:0] authorization_size_i;
+	input	session_loaded_i;
+	input [15:0] max_session_amount_i;
+	input auth_session_i;
+	input auth_necessary_i;
 	
-	input [31:0] authHandle;			// 32-bit input signal from command buffer indicating authorization control domain requested by command
+	input [31:0] authHandle_i;			// 32-bit input signal from command buffer indicating authorization control domain requested by command
 
-	input [7:0] pcrSelect;
+	input [7:0] pcrSelect_i;
 	
 	// Authorization inputs for authorization checks
-	input auth_done;			// 1-bit input signal from authorization submodule indicating completion of authorization checks
-	input auth_success;			// 1-bit input signal from authorization submodule indicating successful authorization
-	input [11:0] auth_response_code;
+	input auth_done_i;			// 1-bit input signal from authorization submodule indicating completion of authorization checks
+	input auth_success_i;			// 1-bit input signal from authorization submodule indicating successful authorization
+	input [11:0] auth_response_code_i;
 	
-	input param_decrypt_success;
-	input param_decrypt_fail;
-	input param_unmarshall_success;
-	input param_unmarshall_fail;
+	input param_decrypt_success_i;
+	input param_decrypt_fail_i;
+	input param_unmarshall_success_i;
+	input param_unmarshall_fail_i;
 	//startup error signal
-	input execution_startup_done;
+	input execution_startup_done_i;
 	//execution response code
-	input execution_response_code;
+	input execution_response_code_i;
 	
 	// NV memory submodule inputs
-	input nv_phEnableNV_in;
-	input nv_shEnable_in;
-	input nv_ehEnable_in;
-	input [31:0] tpm_nv_index;
-	input [31:0] nv_index_attributes;
-	input nv_object_present;
-	input nv_index_present;
-	input [31:0] entity_hierarchy;
+	input nv_phEnableNV_in_i;
+	input nv_shEnable_in_i;
+	input nv_ehEnable_in_i;
+	input [31:0] tpm_nv_index_i;
+	input [31:0] nv_index_attributes_i;
+	input nv_object_present_i;
+	input nv_index_present_i;
+	input [31:0] entity_hierarchy_i;
 	
 	// Memory submodule inputs
-	input [15:0] mem_orderly;
-	input ram_available;
-	input loaded_object_present;
-	input [31:0] object_attributes;
+	input [15:0] mem_orderly_i;
+	input ram_available_i;
+	input loaded_object_present_i;
+	input [31:0] object_attributes_i;
 	
 	// Self-test submodule inputs
-	input [15:0] st_testsRun;
-	input [15:0] st_testsPassed;
-	input [15:0] st_untested;
+	input [15:0] st_testsRun_i;
+	input [15:0] st_testsPassed_i;
+	input [15:0] st_untested_i;
 	
 	// Outputs
-	output        response_valid;		// 1-bit output response valid signal
-	output [31:0] response_code;		// 32-bit output response code
-	output [15:0] response_length;		// 16-bit output response length
-	output [3:0]  current_state;		// 4-bit output current pipeline stage
-   output reg    command_start;
+	output        response_valid_o;		// 1-bit output response valid signal
+	output [31:0] response_code_o;		// 32-bit output response code
+	output [15:0] response_length_o;		// 16-bit output response length
+	output [3:0]  current_state_o;		// 4-bit output current pipeline stage
+   output reg    command_start_o;
 	   
 	//////////////////////////////////////////////////////////////////////////////////////////////////////////
-	output	 [15:0] orderlyInput;		// 2-byte (16 bits) input from memory of state of last shutdown state
-	output reg	     initialized;			// 1-bit input intialized bit (from execution engine)
-	output	 [15:0] testsRun;				// 2-byte (16 bits) input of amount of tests run by the self-test module, from the execution engine
-	output	 [15:0] testsPassed;			// 2-byte (16 bits) input of amount of tests that have run and passed by the self-test module, from the execution engine
-	output	 [15:0] untested;				// 2-byte (16 bits) input of amount of tests that still need to be run by the self-test module, from the execution engine
-	output 		     nv_phEnableNV;		// 1-bit input of state of phEnableNV switch, from Non-Volatile memory
-	output	        nv_shEnable;			// 1-bit input of state of shEnable switch, from Non-Volatile memory
-	output           nv_ehEnable;			// 1-bit input of state of ehEnable switch, from Non-Volatile memory
+	output	 [15:0] orderlyInput_o;		// 2-byte (16 bits) input from memory of state of last shutdown state
+	output reg	     initialized_o;			// 1-bit input intialized bit (from execution engine)
+	output	 [15:0] testsRun_o;				// 2-byte (16 bits) input of amount of tests run by the self-test module, from the execution engine
+	output	 [15:0] testsPassed_o;			// 2-byte (16 bits) input of amount of tests that have run and passed by the self-test module, from the execution engine
+	output	 [15:0] untested_o;				// 2-byte (16 bits) input of amount of tests that still need to be run by the self-test module, from the execution engine
+	output 		     nv_phEnableNV_o;		// 1-bit input of state of phEnableNV_i switch, from Non-Volatile memory
+	output	        nv_shEnable_o;			// 1-bit input of state of shEnable_i switch, from Non-Volatile memory
+	output           nv_ehEnable_o;			// 1-bit input of state of ehEnable_i switch, from Non-Volatile memory
 	// Outputs to management module - EXACT MATCH to management_module inputs
-	output	 [31:0] authHierarchy;		// 2-byte (16 bits) input verifying which hiearchy was authorized (from execution engine)
+	output	 [31:0] authHierarchy_o;		// 2-byte (16 bits) input verifying which hiearchy was authorized (from execution engine)
 	
 	// ============================================================================
 	// PIPELINE STAGES - TCG TPM 2.0 Specification Part 3, Section 5: Command Processing
@@ -229,7 +229,7 @@ module execution_engine(
 				TPM_RC_COMMAND_SIZE  = 12'h042,  // Command size mismatch
 				TPM_RC_COMMAND_CODE  = 12'h043,  // Unimplemented/unsupported command
 				TPM_RC_FAILURE       = RC_VER1 + 12'h001,  // TPM in failure mode
-				TPM_RC_INITIALIZE    = RC_VER1 + 12'h000,  // TPM not initialized
+				TPM_RC_INITIALIZE    = RC_VER1 + 12'h000,  // TPM not initialized_o
 				TPM_RC_HANDLE        = RC_FMT1 + 12'h00B,  // Handle error (e.g., invalid handle or hierarchy disabled)
 				TPM_RC_AUTH_MISSING  = RC_VER1 + 12'h024,  // Authorization required but not provided
 				TPM_RC_AUTH_FAIL     = RC_FMT1 + 12'h00E,  // Authorization failure
@@ -414,10 +414,10 @@ module execution_engine(
 	// ============================================================================
 	reg [3:0]  state;
 	reg 		  session_present;
-	reg 		  response_valid;
+	reg 		  response_valid_o;
 	reg [11:0] s_response_code;
-	reg [15:0] response_length;
-	reg [3:0]  current_state;
+	reg [15:0] response_length_o;
+	reg [3:0]  current_state_o;
 	reg [2:0]  handle_index;
 	reg [2:0]  handle_count;
 	wire [31:0] current_handle;
@@ -432,7 +432,7 @@ module execution_engine(
 	wire [7:0]  current_session_attributes;
 	wire [15:0] current_session_hmac_size;
 	wire        current_session_valid;
-	reg [31:0] authHierarchy;
+	reg [31:0] authHierarchy_o;
 	reg		  audit;
 	reg		  decrypt;
 	reg		  encrypt;
@@ -443,7 +443,7 @@ module execution_engine(
 	reg [1:0]  decrypt_count;
 	reg [1:0]  encrypt_count;
 	
-	reg [31:0] response_code;
+	reg [31:0] response_code_o;
 	reg [2:0]  s_handle_index;
 	reg [2:0]  s_handle_count;
 	reg [31:0] s_current_handle;
@@ -530,38 +530,38 @@ module execution_engine(
 	wire command_valid;
 
 	assign current_handle =
-   		(handle_index == 3'b000) ? handle_0 :
-                (handle_index == 3'b001) ? handle_1 :
-                                           handle_2;
+   		(handle_index == 3'b000) ? handle_0_i :
+                (handle_index == 3'b001) ? handle_1_i :
+                                           handle_2_i;
 
 	assign handle_type       = current_handle[31:24];
 	assign handle_index_bits = current_handle[23:0];
 	assign current_session_handle =
-    (session_index == 2'd0) ? session0_handle :
-    (session_index == 2'd1) ? session1_handle :
-                              session2_handle;
+    (session_index == 2'd0) ? session0_handle_i :
+    (session_index == 2'd1) ? session1_handle_i :
+                              session2_handle_i;
 
 	assign current_session_attributes =
-    (session_index == 2'd0) ? session0_attributes :
-    (session_index == 2'd1) ? session1_attributes :
-                              session2_attributes;
+    (session_index == 2'd0) ? session0_attributes_i :
+    (session_index == 2'd1) ? session1_attributes_i :
+                              session2_attributes_i;
 
 	assign current_session_hmac_size =
-    (session_index == 2'd0) ? session0_hmac_size :
-    (session_index == 2'd1) ? session1_hmac_size :
-                              session2_hmac_size;
+    (session_index == 2'd0) ? session0_hmac_size_i :
+    (session_index == 2'd1) ? session1_hmac_size_i :
+                              session2_hmac_size_i;
 
 	assign current_session_valid =
-		(session_index == 2'd0) ? session0_valid :
-		(session_index == 2'd1) ? session1_valid :
-											session2_valid;
+		(session_index == 2'd0) ? session0_valid_i :
+		(session_index == 2'd1) ? session1_valid_i :
+											session2_valid_i;
 	assign session_handle_type = current_session_handle[31:24];
 	// ============================================================================
 	// SEQUENTIAL LOGIC BLOCK - STATE TRANSITIONS ONLY
 	// ============================================================================
-		always@(posedge clock, negedge reset_n) begin
-			if(!reset_n) begin
-				current_state <= STATE_IDLE;
+		always@(posedge clock_i, negedge reset_n_i) begin
+			if(!reset_n_i) begin
+				current_state_o <= STATE_IDLE;
 				mode_check_error <= 1'b0;
 				header_valid_error <= 1'b0;
 				param_unmarshall_error <= 1'b0;
@@ -582,12 +582,12 @@ module execution_engine(
 				decrypt_count <= 2'd0;
 				encrypt_count <= 2'd0;
 				auth_check_error <= 1'b0;
-				initialized <= 1'b0;
-				response_code <= 32'd0;
+				initialized_o <= 1'b0;
+				response_code_o <= 32'd0;
 			end
 			else begin
-				response_code <= {20'h0, s_response_code};
-				current_state <= state;
+				response_code_o <= {20'h0, s_response_code};
+				current_state_o <= state;
 				mode_check_error <= s_mode_check_error;
 				header_valid_error <= s_header_valid_error;
 				param_unmarshall_error <= s_param_unmarshall_error;
@@ -613,67 +613,67 @@ module execution_engine(
 				decrypt_count <= s_decrypt_count;
 				encrypt_count <= s_encrypt_count;
 				auth_check_error <= s_auth_check_error;
-				initialized <= s_initialized;
+				initialized_o <= s_initialized;
 
 			end
 		end
 		
-		assign orderlyInput = mem_orderly;
-		assign testsRun = st_testsRun;
-		assign testsPassed = st_testsPassed;
-		assign untested	 = st_untested;
-		assign nv_phEnableNV = nv_phEnableNV_in;
-		assign nv_shEnable = nv_shEnable_in;
-		assign nv_ehEnable = nv_ehEnable_in;
+		assign orderlyInput_o = mem_orderly_i;
+		assign testsRun_o = st_testsRun_i;
+		assign testsPassed_o = st_testsPassed_i;
+		assign untested_o	 = st_untested_i;
+		assign nv_phEnableNV_o = nv_phEnableNV_in_i;
+		assign nv_shEnable_o = nv_shEnable_in_i;
+		assign nv_ehEnable_o = nv_ehEnable_in_i;
 		
-		assign nv_tag = tpm_nv_index[31:24];
-		assign nv_index = tpm_nv_index[23:0];
+		assign nv_tag = tpm_nv_index_i[31:24];
+		assign nv_index = tpm_nv_index_i[23:0];
 
 		// Object Attributes
-		// object_attributes bits[31:20] reserved
-		assign x509sign = object_attributes[19];
-		assign sign = object_attributes[18];
-		assign object_encrypt = object_attributes[18];
-		assign object_decrypt = object_attributes[17];
-		assign restricted = object_attributes[16];
-		// object_attributes bits[15:12] reserved
-		assign encryptedDuplication = object_attributes[11];
-		assign noDA = object_attributes[10];
-		// object_attributes bits[9:8] reserved
-		assign adminWithPolicy = object_attributes[7];
-		assign userWithAuth = object_attributes[6];
-		assign sensitiveDataOrigin = object_attributes[5];
-		assign fixedParent = object_attributes[4];
-		assign stClear = object_attributes[2];
-		assign fixedTPM = object_attributes[1];
-		// object_attributes bit[0] reserved
+		// object_attributes_i bits[31:20] reserved
+		assign x509sign = object_attributes_i[19];
+		assign sign = object_attributes_i[18];
+		assign object_encrypt = object_attributes_i[18];
+		assign object_decrypt = object_attributes_i[17];
+		assign restricted = object_attributes_i[16];
+		// object_attributes_i bits[15:12] reserved
+		assign encryptedDuplication = object_attributes_i[11];
+		assign noDA = object_attributes_i[10];
+		// object_attributes_i bits[9:8] reserved
+		assign adminWithPolicy = object_attributes_i[7];
+		assign userWithAuth = object_attributes_i[6];
+		assign sensitiveDataOrigin = object_attributes_i[5];
+		assign fixedParent = object_attributes_i[4];
+		assign stClear = object_attributes_i[2];
+		assign fixedTPM = object_attributes_i[1];
+		// object_attributes_i bit[0] reserved
 		
 		// Non-Volatile Index Attributes
 		// Reference: TCG TPM2.0 Specification Rev. 1.59, Part 2: Structures, Section 13.4 TPMA_NV (NV Index Attributes)
-		assign tpma_nv_read_stClear = nv_index_attributes[31];
-		assign tpma_nv_platformCreate = nv_index_attributes[30];
-		assign tpma_nv_written = nv_index_attributes[29];
-		assign tpma_nv_readLocked = nv_index_attributes[28];
-		assign tpma_nv_clear_stClear = nv_index_attributes[27];
-		assign tpma_nv_orderly = nv_index_attributes[26];
-		assign tpma_nv_no_DA = nv_index_attributes[25];
-		// nv_index_attributes bits[24:20] reserved for future use
-		assign tpma_nv_policyRead = nv_index_attributes[19];
-		assign tpma_nv_authRead = nv_index_attributes[18];
-		assign tpma_nv_ownerRead = nv_index_attributes[17];
-		assign tpma_nv_ppRead = nv_index_attributes[16];
-		assign tpma_nv_globalLock = nv_index_attributes[15];
-		assign tpma_nv_write_stClear = nv_index_attributes[14];
-		assign tpma_nv_writeDefine = nv_index_attributes[13];
-		assign tpma_nv_writeAll = nv_index_attributes[12];
-		assign tpma_nv_writeLocked = nv_index_attributes[11];
-		assign tpma_nv_policy_delete = nv_index_attributes[10];
-		// nv_index_attributes bits[9:8] reserved for future use
-		assign tpm_nt = nv_index_attributes[7:4];
-		assign tpma_nv_policyWrite = nv_index_attributes[3];
-		assign tpma_nv_authWrite = nv_index_attributes[2];
-		assign tpma_nv_ownerWrite = nv_index_attributes[1];
-		assign tpma_nv_ppWrite = nv_index_attributes[0];
+		assign tpma_nv_read_stClear = nv_index_attributes_i[31];
+		assign tpma_nv_platformCreate = nv_index_attributes_i[30];
+		assign tpma_nv_written = nv_index_attributes_i[29];
+		assign tpma_nv_readLocked = nv_index_attributes_i[28];
+		assign tpma_nv_clear_stClear = nv_index_attributes_i[27];
+		assign tpma_nv_orderly = nv_index_attributes_i[26];
+		assign tpma_nv_no_DA = nv_index_attributes_i[25];
+		// nv_index_attributes_i bits[24:20] reserved for future use
+		assign tpma_nv_policyRead = nv_index_attributes_i[19];
+		assign tpma_nv_authRead = nv_index_attributes_i[18];
+		assign tpma_nv_ownerRead = nv_index_attributes_i[17];
+		assign tpma_nv_ppRead = nv_index_attributes_i[16];
+		assign tpma_nv_globalLock = nv_index_attributes_i[15];
+		assign tpma_nv_write_stClear = nv_index_attributes_i[14];
+		assign tpma_nv_writeDefine = nv_index_attributes_i[13];
+		assign tpma_nv_writeAll = nv_index_attributes_i[12];
+		assign tpma_nv_writeLocked = nv_index_attributes_i[11];
+		assign tpma_nv_policy_delete = nv_index_attributes_i[10];
+		// nv_index_attributes_i bits[9:8] reserved for future use
+		assign tpm_nt = nv_index_attributes_i[7:4];
+		assign tpma_nv_policyWrite = nv_index_attributes_i[3];
+		assign tpma_nv_authWrite = nv_index_attributes_i[2];
+		assign tpma_nv_ownerWrite = nv_index_attributes_i[1];
+		assign tpma_nv_ppWrite = nv_index_attributes_i[0];
 	assign nv_write = (commandIndex == TPM_CC_NV_DEFINE_SPACE ||
 								 commandIndex == TPM_CC_NV_WRITE ||
 								 commandIndex == TPM_CC_NV_INCREMENT ||
@@ -683,22 +683,22 @@ module execution_engine(
 	assign nv_read = (commandIndex == TPM_CC_NV_DEFINE_SPACE || commandIndex == TPM_CC_NV_READ);
 					
 		// Reference: TCG TPM2.0 Specification Rev. 1.59, Part 2: Structures, Section 8.9.2 TPMA_CC (Command Code Attributes): Structure Definition
-		assign commandIndex = command_code[15:0];			// Indicates the command being selected
+		assign commandIndex = command_code_i[15:0];			// Indicates the command being selected
 		
-		assign nv = command_code[22];							// SET(1): indicates that the command may write to NV
+		assign nv = command_code_i[22];							// SET(1): indicates that the command may write to NV
 																		// CLEAR(0): indicates that the command does not write to NV
 																		
-		assign extensive = command_code[23];				// SET(1): This command could flush any number of loaded contexts
+		assign extensive = command_code_i[23];				// SET(1): This command could flush any number of loaded contexts
 																		// CLEAR(0): no additional changes other than indicated by the flushed attribute
 																		
-		assign flushed = command_code[24];					// SET(1): The context associated with any transient handle in the command will be flushed when this command completes.
+		assign flushed = command_code_i[24];					// SET(1): The context associated with any transient handle in the command will be flushed when this command completes.
 																		// CLEAR(0): No context is flushed as a side effect of this command.
 																		
-		assign cHandles = command_code[27:25];				// indicates the number of the handles in the handle area for this command
+		assign cHandles = command_code_i[27:25];				// indicates the number of the handles in the handle area for this command
 		
-		assign rHandle = command_code[28];					// SET(1): indicates the presence of the handle area in the response
+		assign rHandle = command_code_i[28];					// SET(1): indicates the presence of the handle area in the response
 		
-		assign v = command_code[29];							// SET(1): indicates that the command is vendor-specific
+		assign v = command_code_i[29];							// SET(1): indicates that the command is vendor-specific
 																		// CLEAR(0): indicates that the command is defined in a version of this specification
 		assign command_valid = (commandIndex == TPM_CC_NV_UNDEFINE_SPACE_SPECIAL ||
 					commandIndex == TPM_CC_EVICT_CONTROL ||
@@ -991,25 +991,25 @@ module execution_engine(
 			s_current_session_attributes = current_session_attributes;
 			s_current_session_hmac_size = current_session_hmac_size;
 			s_current_session_valid = current_session_valid;
-			if(command_tag == TPM_ST_SESSIONS) begin
+			if(command_tag_i == TPM_ST_SESSIONS) begin
 			// Map flattened inputs into a common structure for session processing.
 				if (session_index == 2'd0) begin
-					s_current_session_handle     = session0_handle;
-					s_current_session_attributes = session0_attributes;
-					s_current_session_hmac_size  = session0_hmac_size;
-					s_current_session_valid      = session0_valid;
+					s_current_session_handle     = session0_handle_i;
+					s_current_session_attributes = session0_attributes_i;
+					s_current_session_hmac_size  = session0_hmac_size_i;
+					s_current_session_valid      = session0_valid_i;
 				end
 				else if (session_index == 2'd1) begin
-					s_current_session_handle     = session1_handle;
-					s_current_session_attributes = session1_attributes;
-					s_current_session_hmac_size  = session1_hmac_size;
-					s_current_session_valid      = session1_valid;
+					s_current_session_handle     = session1_handle_i;
+					s_current_session_attributes = session1_attributes_i;
+					s_current_session_hmac_size  = session1_hmac_size_i;
+					s_current_session_valid      = session1_valid_i;
 				end
 				else begin
-					s_current_session_handle     = session2_handle;
-					s_current_session_attributes = session2_attributes;
-					s_current_session_hmac_size  = session2_hmac_size;
-					s_current_session_valid      = session2_valid;
+					s_current_session_handle     = session2_handle_i;
+					s_current_session_attributes = session2_attributes_i;
+					s_current_session_hmac_size  = session2_hmac_size_i;
+					s_current_session_valid      = session2_valid_i;
 				end
 
 				// ----------------------------------------------------------------
@@ -1037,7 +1037,7 @@ module execution_engine(
 			s_encrypt_count = encrypt_count;
 			state = STATE_IDLE;   
 			s_session_index = 3'b000;
-			case(current_state)
+			case(current_state_o)
 				// ====================================================================
 				// STAGE 1: IDLE - Wait for command
 				// ====================================================================
@@ -1046,7 +1046,7 @@ module execution_engine(
 					s_audit_count = 2'b0;
 					s_decrypt_count = 2'b0;
 					s_encrypt_count = 2'b0;
-					if(command_ready) begin
+					if(command_ready_i) begin
 						state = STATE_HEADER_VALID;
 					end
 				end
@@ -1055,8 +1055,8 @@ module execution_engine(
 				// STAGE 2: HEADER VALIDATION - TPM 2.0 Part 3, Section 5.2
 				// ====================================================================
 				STATE_HEADER_VALID: begin
-					if((command_tag != TPM_ST_NO_SESSIONS && command_tag != TPM_ST_SESSIONS) || 
-						 command_size != command_length ||
+					if((command_tag_i != TPM_ST_NO_SESSIONS && command_tag_i != TPM_ST_SESSIONS) || 
+						 command_size_i != command_length_i ||
 						 !command_valid) begin
 						state = STATE_POST_PROCESS;
 					end
@@ -1070,20 +1070,20 @@ module execution_engine(
 				// ====================================================================
 				STATE_MODE_CHECK: begin
 					// IMPLEMENTED: Basic mode checks
-					if(op_state == FAILURE_MODE_STATE) begin
+					if(op_state_i == FAILURE_MODE_STATE) begin
 						// In Failure mode, only TPM2_GetTestResult or TPM2_GetCapability allowed with no sessions
-						if(commandIndex != TPM_CC_GET_TEST_RESULT || commandIndex != TPM_CC_GET_CAPABILITY || command_tag != TPM_ST_NO_SESSIONS) begin
+						if(commandIndex != TPM_CC_GET_TEST_RESULT || commandIndex != TPM_CC_GET_CAPABILITY || command_tag_i != TPM_ST_NO_SESSIONS) begin
 							state = STATE_POST_PROCESS;
 						end
 						else begin
 							state = STATE_HANDLE_VALID;
 						end
 					end
-					else if(op_state == OPERATIONAL_STATE)begin
+					else if(op_state_i == OPERATIONAL_STATE)begin
 							state = STATE_HANDLE_VALID;
 					end
 					else begin
-						// TPM not initialized - first command must be TPM2_Startup
+						// TPM not initialized_o - first command must be TPM2_Startup
 						if(commandIndex != TPM_CC_STARTUP) begin
 							state = STATE_POST_PROCESS;
 						end
@@ -1135,10 +1135,10 @@ module execution_engine(
 					if (session_error)
 						state = STATE_POST_PROCESS;
 					
-					if((command_tag == TPM_ST_NO_SESSIONS && command_code_tag == TPM_ST_SESSIONS) || (command_tag == TPM_ST_SESSIONS && command_code_tag == TPM_ST_NO_SESSIONS)) begin
+					if((command_tag_i == TPM_ST_NO_SESSIONS && command_code_tag == TPM_ST_SESSIONS) || (command_tag_i == TPM_ST_SESSIONS && command_code_tag == TPM_ST_NO_SESSIONS)) begin
 						s_session_error = 1'b1;
 					end
-					else if(command_tag == TPM_ST_SESSIONS && command_code_tag == TPM_ST_SESSIONS) begin
+					else if(command_tag_i == TPM_ST_SESSIONS && command_code_tag == TPM_ST_SESSIONS) begin
 						// Step 1: Validate the session handle's type.
 						// The top 8 bits of the handle indicate its type.
 						// Valid session types include HMAC (0x01), Policy (0x02), and Password (0x03).
@@ -1155,11 +1155,11 @@ module execution_engine(
 						if (current_session_hmac_size == 16'b0 && (!audit || !decrypt || !encrypt)) begin
 							s_session_error = 1'b1; // An empty session must be doing something
 						end
-						else if(max_session_amount == session_index && authorization_size > 32'd0) s_session_error = 1'b1;
+						else if(max_session_amount_i == session_index && authorization_size_i > 32'd0) s_session_error = 1'b1;
 						
-						else if(!session_loaded) s_session_error = 1'b1;
+						else if(!session_loaded_i) s_session_error = 1'b1;
 						
-						else if(!auth_session && auth_necessary) s_session_error = 1'b1;
+						else if(!auth_session_i && auth_necessary_i) s_session_error = 1'b1;
 						else if(!session_error &&  session_index < 2'd3 && current_session_valid) begin
 						s_session_index = session_index + 1'b1;
 									
@@ -1188,7 +1188,7 @@ module execution_engine(
 													// If we encountered any error, prepare a failure response
 							s_session_index = 3'b000;
 							state = STATE_POST_PROCESS;
-						end else if (session_index == max_session_amount) begin
+						end else if (session_index == max_session_amount_i) begin
 							s_session_index = 3'b000;
 							state = STATE_AUTH_CHECK;
 						end else state = STATE_SESSION_VALID;
@@ -1244,8 +1244,8 @@ module execution_engine(
 				// ====================================================================
 				STATE_EXECUTE: begin
 					// TODO: IMPLEMENT COMMAND EXECUTION:
-					// 1. Execute command-specific logic based on command_code
-					// 2. For TPM_CC_STARTUP: Set initialized state
+					// 1. Execute command-specific logic based on command_code_i
+					// 2. For TPM_CC_STARTUP: Set initialized_o state
 					// 3. For TPM_CC_GET_TEST_RESULT: Return self-test results
 					// 4. For cryptographic commands: Perform operations via crypto engine
 					// 5. Update TPM state (objects, NV, PCRs, sessions) as required
@@ -1253,7 +1253,7 @@ module execution_engine(
 					// 7. Return TPM_RC_FAILURE on execution errors
 					
 					// For now, always proceed to post-processing
-					if(command_done) begin
+					if(command_done_i) begin
 						state = STATE_POST_PROCESS;
 					end
 				end
@@ -1267,7 +1267,7 @@ module execution_engine(
 					// 2. Update session nonces and compute response HMACs if sessions present
 					// 3. Encrypt response parameters if sessions have encrypt attribute
 					// 4. Update audit log if command auditing enabled
-					// 5. Calculate final response_length
+					// 5. Calculate final response_length_o
 					// 6. Format proper response structure
 					state = STATE_IDLE;
 				end
@@ -1287,17 +1287,17 @@ module execution_engine(
 		s_auth_check_error = auth_check_error;
 		s_param_unmarshall_error = param_unmarshall_error;
 		s_param_decrypt_error = param_decrypt_error;
-		s_execution_startup_done = execution_startup_done;
-		s_initialized = initialized;
+		s_execution_startup_done = execution_startup_done_i;
+		s_initialized = initialized_o;
 		s_handle_index = handle_index;
 		
 		// Default output values
-		response_valid =   1'b0;
-		s_response_code = response_code[11:0];
-		response_length = 16'h0;
-		command_start   = 1'b0;
+		response_valid_o =   1'b0;
+		s_response_code = response_code_o[11:0];
+		response_length_o = 16'h0;
+		command_start_o   = 1'b0;
 		session_present = 1'b0;
-		authHierarchy = 32'h00000000;
+		authHierarchy_o = 32'h00000000;
 
 		if(state == STATE_HANDLE_VALID) begin			// Check that the TPM shall successfully unmarshal the number of handles required by the command and validate that the value of the handle is consistent with the command syntax
 			s_current_handle = current_handle;
@@ -1310,7 +1310,7 @@ module execution_engine(
 		        	end
 		    		// If the handle references a transient object, check that the handle references a loaded object
 		        	else if(handle_type == TPM_HT_TRANSIENT) begin
-		                	if(!loaded_object_present) begin
+		                	if(!loaded_object_present_i) begin
 					        s_handle_error = 1'b1;
 						s_response_code = TPM_RC_REFERENCE_H0 + handle_index;
 					end else begin
@@ -1319,14 +1319,14 @@ module execution_engine(
 					end
 				end
 				else if(handle_type == TPM_HT_PERSISTENT) begin
-					if((entity_hierarchy == TPM_RH_PLATFORM && !phEnable) || 
-			                   (entity_hierarchy == TPM_RH_OWNER && !shEnable) || 
-				           (entity_hierarchy == TPM_RH_ENDORSEMENT && !ehEnable) ||
-			                   !nv_object_present) begin
+					if((entity_hierarchy_i == TPM_RH_PLATFORM && !phEnable_i) || 
+			                   (entity_hierarchy_i == TPM_RH_OWNER && !shEnable_i) || 
+				           (entity_hierarchy_i == TPM_RH_ENDORSEMENT && !ehEnable_i) ||
+			                   !nv_object_present_i) begin
 						s_handle_error = 1'b1;
 						s_response_code = TPM_RC_HANDLE; 
 					end
-					else if(!ram_available) begin
+					else if(!ram_available_i) begin
 						s_handle_error = 1'b1;
 						s_response_code = TPM_RC_OBJECT_MEMORY;
 					end else begin
@@ -1334,10 +1334,10 @@ module execution_engine(
 					end
 				end
 			else if(handle_type == TPM_HT_NV_INDEX) begin
-				if(!nv_index_present ||
-			           (entity_hierarchy == TPM_RH_PLATFORM && !phEnable) || 
-			            (entity_hierarchy == TPM_RH_OWNER && !shEnable) || 
-						(entity_hierarchy == TPM_RH_ENDORSEMENT && !ehEnable)) begin
+				if(!nv_index_present_i ||
+			           (entity_hierarchy_i == TPM_RH_PLATFORM && !phEnable_i) || 
+			            (entity_hierarchy_i == TPM_RH_OWNER && !shEnable_i) || 
+						(entity_hierarchy_i == TPM_RH_ENDORSEMENT && !ehEnable_i)) begin
 						s_handle_error = 1'b1;
 						s_response_code = TPM_RC_HANDLE;
 					end
@@ -1361,9 +1361,9 @@ module execution_engine(
 					end
 				end
 				else if(handle_type == TPM_HT_PERMANENT) begin
-					if((current_handle == TPM_RH_PLATFORM && !phEnable) || 
-						(current_handle == TPM_RH_OWNER && !shEnable) || 
-						(current_handle == TPM_RH_ENDORSEMENT && !ehEnable)) begin
+					if((current_handle == TPM_RH_PLATFORM && !phEnable_i) || 
+						(current_handle == TPM_RH_OWNER && !shEnable_i) || 
+						(current_handle == TPM_RH_ENDORSEMENT && !ehEnable_i)) begin
 						s_handle_error = 1'b1;
 						s_response_code = TPM_RC_HIERARCHY;
 					end else begin
@@ -1372,7 +1372,7 @@ module execution_engine(
 					end
 				end
 				// Check if the handle references a PCR, then the value is within the range of PCR supported by the TPM
-				else if(handle_type == TPM_HT_PCR && pcrSelect > PCR_SELECT_MAX) begin
+				else if(handle_type == TPM_HT_PCR && pcrSelect_i > PCR_SELECT_MAX) begin
 					s_handle_error = 1'b1;
 					s_response_code = TPM_RC_VALUE;
 				end else begin
@@ -1382,18 +1382,18 @@ module execution_engine(
             end
 
 
-		case(current_state)
+		case(current_state_o)
 			// ====================================================================
 			// STAGE 1: IDLE - Wait for command
 			// ====================================================================
 			STATE_IDLE: begin
-					response_valid =   1'b0;
+					response_valid_o =   1'b0;
 					s_response_code =   12'b0;
-					response_length = 16'h0;
+					response_length_o = 16'h0;
 					s_handle_error = 1'b0;
 					s_handle_index = 3'b000;
-				if(command_ready) begin
-					session_present = (command_tag == TPM_ST_SESSIONS);
+				if(command_ready_i) begin
+					session_present = (command_tag_i == TPM_ST_SESSIONS);
 				end
 			end
 			
@@ -1402,11 +1402,11 @@ module execution_engine(
 			// ===================================================================
 			STATE_HEADER_VALID: begin
 				// IMPLEMENTED: Basic header validation
-				if(command_tag != TPM_ST_NO_SESSIONS && command_tag != TPM_ST_SESSIONS) begin
+				if(command_tag_i != TPM_ST_NO_SESSIONS && command_tag_i != TPM_ST_SESSIONS) begin
 					s_header_valid_error = 1'b1;
 					s_response_code = TPM_RC_BAD_TAG;
 				end
-				else if(command_size != command_length) begin
+				else if(command_size_i != command_length_i) begin
 					s_header_valid_error = 1'b1;
 					s_response_code = TPM_RC_COMMAND_SIZE;
 				end
@@ -1422,15 +1422,15 @@ module execution_engine(
 			// ====================================================================
 			STATE_MODE_CHECK: begin
 				// IMPLEMENTED: Basic mode checks
-				if(op_state == FAILURE_MODE_STATE) begin
+				if(op_state_i == FAILURE_MODE_STATE) begin
 					// In Failure mode, only TPM2_GetTestResult or TPM2_GetCapability allowed with no sessions
-					if(commandIndex != TPM_CC_GET_TEST_RESULT || commandIndex != TPM_CC_GET_CAPABILITY || command_tag != TPM_ST_NO_SESSIONS) begin
+					if(commandIndex != TPM_CC_GET_TEST_RESULT || commandIndex != TPM_CC_GET_CAPABILITY || command_tag_i != TPM_ST_NO_SESSIONS) begin
 						s_mode_check_error = 1'b1;
 						s_response_code = TPM_RC_FAILURE;
 					end
 				end
-				else if(op_state != OPERATIONAL_STATE) begin
-					// TPM not initialized - first command must be TPM2_Startup
+				else if(op_state_i != OPERATIONAL_STATE) begin
+					// TPM not initialized_o - first command must be TPM2_Startup
 					if(commandIndex != TPM_CC_STARTUP) begin
 						s_mode_check_error = 1'b1;
 						s_response_code = TPM_RC_INITIALIZE;
@@ -1449,13 +1449,13 @@ module execution_engine(
 			// ====================================================================
 			STATE_SESSION_VALID: begin
 				//s_session_index = session_index;
-				if(s_session_index == max_session_amount || s_session_error)begin
-				if(command_tag == TPM_ST_NO_SESSIONS) begin
+				if(s_session_index == max_session_amount_i || s_session_error)begin
+				if(command_tag_i == TPM_ST_NO_SESSIONS) begin
 					if(command_code_tag == TPM_ST_SESSIONS) begin
 						s_response_code = TPM_RC_AUTH_CONTEXT;
 					end
 				end
-				else if(command_tag == TPM_ST_SESSIONS) begin
+				else if(command_tag_i == TPM_ST_SESSIONS) begin
 					if(command_code_tag == TPM_ST_NO_SESSIONS) begin
 						s_response_code = TPM_RC_AUTH_MISSING;
 					end
@@ -1466,16 +1466,16 @@ module execution_engine(
 							s_response_code = TPM_RC_HANDLE;
 						end
 						else begin
-							if(!session_loaded) begin
+							if(!session_loaded_i) begin
 								s_response_code = TPM_RC_REFERENCE_S0 + session_index;
 							end
-							else if(max_session_amount == session_index && authorization_size > 32'd0) begin
+							else if(max_session_amount_i == session_index && authorization_size_i > 32'd0) begin
 								s_response_code = TPM_RC_AUTHSIZE;
 							end
-							else if(s_audit_count > 2'd1 || s_decrypt_count > 2'd1 || s_encrypt_count > 2'd1 || (!auth_session && !audit && !decrypt && !encrypt)) begin
+							else if(s_audit_count > 2'd1 || s_decrypt_count > 2'd1 || s_encrypt_count > 2'd1 || (!auth_session_i && !audit && !decrypt && !encrypt)) begin
 								s_response_code = TPM_RC_ATTRIBUTES;
 							end
-							else if(!auth_session && auth_necessary) begin
+							else if(!auth_session_i && auth_necessary_i) begin
 								s_response_code = TPM_RC_AUTH_MISSING;
 							end
 						end
@@ -1489,16 +1489,16 @@ module execution_engine(
 			// ====================================================================
 			STATE_AUTH_CHECK: begin
 				// Check to see if authorization subsystem has finished before updating authorization dependent information
-				if(auth_done) begin
+				if(auth_done_i) begin
 					// Response code will come from authorization subsystem
-					s_response_code = auth_response_code;
+					s_response_code = auth_response_code_i;
 					
 					// If authorization successful tell other modules the authorization hierarchy, if it fails tell them the null hierarchy
-					if(auth_success) begin
-						authHierarchy = authHandle;
+					if(auth_success_i) begin
+						authHierarchy_o = authHandle_i;
 					end
 					else begin
-						authHierarchy = TPM_RH_NULL;
+						authHierarchy_o = TPM_RH_NULL;
 						s_auth_check_error = 1'b1;
 					end
 				end
@@ -1510,10 +1510,10 @@ module execution_engine(
 			STATE_PARAM_DECRYPT: begin
 				//Do not do yet implement some sort of signal
 				// For now, always proceed to parameter unmarshaling
-				if(param_decrypt_success == 1'b1)begin
+				if(param_decrypt_success_i == 1'b1)begin
 					
 				end
-				else if(param_decrypt_fail == 1'b1)begin
+				else if(param_decrypt_fail_i == 1'b1)begin
 					//placeholder there are many specific response codes that would be determined by the submodule
 					s_response_code = TPM_RC_ATTRIBUTES;
 					s_param_decrypt_error = 1'b1;
@@ -1533,10 +1533,10 @@ module execution_engine(
 				//    - Verify reserved fields are zero
 				// 3. Handle TPM2B structures with size prefixes
 				// 4. Return appropriate error codes (TPM_RC_SIZE, TPM_RC_VALUE, TPM_RC_SCHEME, etc.)
-				if(param_unmarshall_success == 1'b1)begin
+				if(param_unmarshall_success_i == 1'b1)begin
 					
 				end
-				else if(param_unmarshall_fail == 1'b1)begin
+				else if(param_unmarshall_fail_i == 1'b1)begin
 					//placeholder there are many specific response codes that would be determined by the submodule
 					s_response_code = TPM_RC_ATTRIBUTES;
 					s_param_unmarshall_error = 1'b1;
@@ -1549,9 +1549,9 @@ module execution_engine(
 			// ====================================================================
 			STATE_EXECUTE: begin
 				//start command processing
-				s_execution_startup_done = execution_startup_done;
-				s_response_code = execution_response_code;
-				command_start = 1'b1;
+				s_execution_startup_done = execution_startup_done_i;
+				s_response_code = execution_response_code_i;
+				command_start_o = 1'b1;
 			end
 			
 			// ====================================================================
@@ -1563,16 +1563,16 @@ module execution_engine(
 				// 2. Update session nonces and compute response HMACs if sessions present
 				// 3. Encrypt response parameters if sessions have encrypt attribute
 				// 4. Update audit log if command auditing enabled
-				// 5. Calculate final response_length
+				// 5. Calculate final response_length_o
 				// 6. Format proper response structure
 				
 				//Check whether the initiliazed signal can be sent based on if previous errors were set
-				if(commandIndex == TPM_CC_STARTUP || op_state != OPERATIONAL_STATE || !s_session_error || !s_handle_error || !s_header_valid_error || 
+				if(commandIndex == TPM_CC_STARTUP || op_state_i != OPERATIONAL_STATE || !s_session_error || !s_handle_error || !s_header_valid_error || 
 						   !s_mode_check_error ||!s_auth_check_error || !s_param_decrypt_error || !s_param_unmarshall_error || !s_execution_startup_done)begin
 					s_initialized = 1'b1;
 				end
-				response_valid = 1'b1;
-				response_length = 16'h0A; // Minimum response size for success
+				response_valid_o = 1'b1;
+				response_length_o = 16'h0A; // Minimum response size for success
 			end
 			default: begin
 			end

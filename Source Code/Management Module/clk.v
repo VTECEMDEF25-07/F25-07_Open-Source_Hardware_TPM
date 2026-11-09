@@ -8,10 +8,10 @@
 //              TEMPLATE FOR A SYNTHESIZABLE CLOCK!
 //
 //              This module has one input:
-//              - enable:  The clock module runs when this is asserted.
+//              - enable_i:  The clock module runs when this is asserted.
 //
 //              This module has one output:
-//	        - clk_out: The clock output.
+//	        - clk_out_o: The clock output.
 // 
 // 		This module has one parameter:
 //              - period: The clock period of the free-running output (in ns).
@@ -25,22 +25,22 @@
 
 `timescale 1ns/1ns
 
-module clk(enable, clk_out);
-   input  enable;		// enable allows clk_out to "run" when asserted.
-   output clk_out;		// enable-controlled clock output.
-   reg    clk_out;		// variable clk_out is defined procedurally.
+module clk(enable_i, clk_out_o);
+   input  enable_i;		// enable_i allows clk_out_o to "run" when asserted.
+   output clk_out_o;		// enable_i-controlled clock output.
+   reg    clk_out_o;		// variable clk_out_o is defined procedurally.
 
    parameter PERIOD = 50;	// The default period of the clock.
 
-// Set initial value for clk_out on power-up
+// Set initial value for clk_out_o on power-up
    initial
-      clk_out = 0;
+      clk_out_o = 0;
 
 // Produce controlled free-running clock
    always begin
       #(PERIOD/2);
-      if(enable)
-         clk_out = ~clk_out;
+      if(enable_i)
+         clk_out_o = ~clk_out_o;
    end
 
 endmodule

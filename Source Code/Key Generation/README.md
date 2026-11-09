@@ -1,67 +1,57 @@
-# Key Generation: architecture and review baseline
+<!--
+Filename: README.md
+Authors: Aaron Grossman; Project contributors; see Git history.
+Date: 2026-11-08
+General Description: Introduces the portable key generator and its integration boundaries.
+AI Disclosure: Codex assisted with consolidation; see docs/AI_DISCLOSURE.md in the keygen source folder.
+-->
 
-Updated October 13, 2026. This is a documentation-only review chunk for the revised standalone core. It supersedes the September proposed cancel/staged-store protocol; it does not make the historical implementation conform to this design.
+# Portable key generation
 
-## Agreed system
-
-- Assemble AES-128/AES-256 from supplied generation words.
-- Generate RSA-2048 from two 1024-bit primes, with public exponent 65537.
-- Use FIPS 186-5 Appendix A.1.3 as the generation baseline; finish the precise standards/errata mapping before algorithm implementation.
-- Evaluate dedicated RTL and soft-core-driven RSA; both execute inside FPGA fabric.
-- Accept one operation at a time and capture its parameters.
-- Transfer validated complete results to a protected receiver, obtain whole-result ownership acknowledgment, clear temporary local secrets, then report success.
-- Preserve generated RSA primes through protected handoff. Internal full-exponent/CRT preparation is deferred; required private-key validation is not.
-- Use reset-only abort for the first version; no separate core cancel interface is selected.
-- Consume an external fresh or isolated repeatable generation stream. Raw hierarchy seeds stay outside keygen. The detailed teammate contract is pending.
-- Use generic Verilog for synthesizable source. SystemVerilog testbenches are explicitly permitted. Any synthesizable SV section requires Aaron's approval before use.
-
-## Boundaries
+Generate AES-128, AES-256 and RSA-2048 keys using dedicated Verilog logic and an externally supplied generation stream. One operation runs at a time. The RSA controller is a hardware state machine; there is no CPU, firmware or instruction ROM dependency.
 
 ```text
-External request controller + generation service
-                     |
-             Portable keygen controller
-              /                    \
-       AES assembler           RSA candidate
-                                     |
-                          Arithmetic + scratch RAM
-              \                    /
-              Protected complete-result handoff
-                     |
-             External object/receiver service
+External coordinator + generation stream
+                  |
+             keygen_core
+          /               \
+ AES key assembly     RSA controller
+                      arithmetic + private RAM
+          \               /
+        Result words -> ownership decision -> clearing -> status
 ```
 
-TPM parsing, authorization, hierarchy seeds, object wrapping/handles, durable storage and host responses stay outside this core. A keygen demo is not complete TPM command support.
+AES returns four or eight 32-bit words. RSA uses exponent 65537 and returns n, e, p and q; d is calculated and checked internally, then cleared. External words are most significant first; private arithmetic uses little-endian 32-bit limbs. The `IP_TYPE` parameter selects Generic or Altera resources as described below.
 
-## Portability
+## Resource selection
 
-Common resource wrappers select generic, Altera or Xilinx implementations. Every vendor implementation must have a synthesizable generic equivalent and match its defined cycle-level interface. Board clocks, pins, SPI transport and vendor primitives stay in wrappers/backends.
+Set the commented `FPGA_IP_TYPE` define at the top of the board source. Its value becomes the board IP_TYPE default and propagates through TPM_TOP. Standalone modules use 0 (Generic) or 1 (Altera); 2 (reserved Xilinx) is rejected. There is no shared vendor header. The define is local to the board source; reusable keygen modules receive the parameter explicitly.
 
-Directory proposal: `rtl/`, `IP/wrappers/`, `IP/generic/`, `IP/altera/`, `IP/xilinx/`, `firmware/`, `Testbenches/`, `reference/`, `demo/` and `scripts/`. Preserve existing organization until moves are intentional review chunks. [Coding and language rules](CODING_STANDARDS.md) apply to new/updated work.
+```verilog
+TPM_TOP #(.IP_TYPE(1)) tpm (...);
+// For standalone use:
+keygen_core #(.IP_TYPE(0)) keygen (...);
+```
 
-## Existing draft review disposition
+`TPM_TOP` passes the same parameter through its inactive keygen placeholder. Keygen propagates it through the RSA engine, math/pair checker and each RAM/multiplier wrapper. Generate blocks elaborate the selected implementation independently per instance. Invalid values fail elaboration in Questa/Quartus and cause a fatal error in Verilator. Xilinx implementations remain future work.
 
-| Existing chunk | Disposition |
-| --- | --- |
-| This architecture outline | Review the current requirements/boundaries; exact interfaces remain open. |
-| Execution/keygen plumbing | Hold from merge. Captured-request/wait/error fixes are reusable, but should be separated from legacy Create adapter integration. |
-| AES assembly | Most reusable code chunk. Review counts, ordering and clearing after language/naming cleanup; reset-only and explicit complete-result handoff still require redesign. |
-| AES staged-store backend | Historical prototype; do not merge as the new core. Redesign around the selected handoff boundary instead of durable-store commit/cancel. |
+DE1 and DE25 both select Altera at their board top. Fixed `DEVICE_FAMILY` metadata propagates to keygen memories: Cyclone V/M10K for DE1 and Agilex 5/M20K for DE25. Unknown RAM families are rejected. Board PLL/reset/fan circuitry remains board-specific; implementation wrappers reject unsupported resource backends. This does not establish that an active full keygen fits either board.
 
-The legacy branches are preserved. Their original tests demonstrate historical behavior only. Style and Verilog migration must not be confused with architectural acceptance.
+## Where to start
 
-## Next progressive review chunks
+- **Integrating the module:** [interface and lifecycle](docs/INTERFACE.md).
+- **Reviewing RSA correctness:** [algorithm and implementation](docs/RSA_ALGORITHM.md).
+- **Running checks:** [simulation instructions and validation summary](../../Testing/Simulation/Key%20Generation/README.md).
+- **Attribution:** [Aaron Grossman's contribution, AI use and course disclosure](docs/AI_DISCLOSURE.md), [coding standards](CODING_STANDARDS.md).
 
-1. Agree exact request/generation/result/reset contracts.
-2. Generic Verilog resources and a runner that compiles Verilog source separately from SV tests.
-3. Standalone AES worker under the new contract.
-4. Independently checked RSA arithmetic.
-5. Complete dedicated RTL RSA generation.
-6. Soft-core feasibility and RSA firmware/accelerator integration as separate chunks.
-7. Shared controller/protected handoff/reset integration.
-8. DE25 SPI/demo wrapper and host checker.
-9. Later TPM command/object adapter integration.
+The implementation lives in `rtl/common/`, `rtl/aes/`, `rtl/rsa_rtl/`, `rtl/arithmetic/` and `IP/`. The [resource](IP/README.md) and [math](Math/README.md) READMEs are optional detailed references. Benches, the independent Python oracle, fixtures and runners live under `Testing/Simulation/Key Generation/`.
 
-Each request states behavior, dependencies, actual checks and untested limitations. Keep requests draft until review; do not merge automatically. AI contributions and independent verification are disclosed.
+## Integration limits and remaining work
 
-The canonical living spec and plan stay in the class workspace `AI/KEY_GENERATION_SPEC.md` and `AI/KEYGEN_IMPLEMENTATION_PLAN.md`. This summary is self-contained for repository reviewers.
+TPM command handling, authorization, production entropy/DRBG and hierarchy seeds, object wrapping, CRT preparation and protected storage remain external. The receiver must implement the whole-key ownership/discard contract; receiving the last word alone does not accept a key.
+
+The shared [DE1/DE25 projects](../../Project/README.md) contain a temporary keygen hierarchy so `TPM_TOP.IP_TYPE` reaches the resource wrappers. The placeholder's clock/reset are connected, all request/source/ownership inputs are tied inactive, and outputs are unused. Synthesis may remove it entirely. It is not connected to TPM commands, entropy, storage or responses. Demonstration transport and packaging are local-only. Public deterministic fixtures are not production entropy.
+
+Before claiming hardware release acceptance, resolve generic RAM inference/full-core fit, validate source-matched timing and reset/CDC, and run physical correctness, normal-stream multi-seed performance, recovery and cooling/soak tests. Directed known-candidate simulations establish functional behavior, not prime-search performance, side-channel resistance or certification.
+
+Historical CPU work remains on `aaron/keygen-cpu` at `c90610165605cac55243522847c5e5f50f60ef08`. Earlier review ledgers are retained in Git history; they are not additional required reading.

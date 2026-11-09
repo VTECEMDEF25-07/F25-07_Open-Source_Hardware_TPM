@@ -75,6 +75,8 @@ module tpm2_get_random #(
     // From the DRBG (random_number_generation)
     input  wire [255:0] rng_data,
     input  wire         rng_valid,       // 1-cycle pulse per new block
+    output wire         rng_req,         // 1 = waiting for a block; DRBG
+                                         //     generates one on request
  
     // Status
     input  wire         tpm_initialized, // tie 1 until TPM2_Startup exists
@@ -166,6 +168,8 @@ module tpm2_get_random #(
     assign cmd_ready = (state == S_RECV);
     assign rsp_valid = (state == S_SEND);
     assign rsp_last  = (state == S_SEND) && (tx_index == rsp_len - 16'd1);
+    // Ask the DRBG for a block only while a GetRandom is waiting for one.
+    assign rng_req   = (state == S_WAIT_RNG) && !rng_fresh;
  
     wire cmd_fire = cmd_valid && cmd_ready;
     wire rsp_fire = rsp_valid && rsp_ready;

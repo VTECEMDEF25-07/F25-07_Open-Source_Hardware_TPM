@@ -12,39 +12,39 @@
 	
 module	tpm_io
 (
-	input		clock50,	// 50 MHz	(sysclock, arbitrary)
-	input		clock100,	// 100 MHz	(for SPI timing, should be >60 MHz)
-	input		reset_n,
+	input		clock50_i,	// 50 MHz	(sysclock, arbitrary)
+	input		clock100_i,	// 100 MHz	(for SPI timing, should be >60 MHz)
+	input		reset_n_i,
 	
 	// host system communication
-	input		SPI_clk,	// SPI clock
-	input		SPI_cs_n,	// SPI chip select, active low
-	input		SPI_mosi,	// SPI mosi
-	output		SPI_miso,	// SPI miso
-	output		SPI_pirq_n,	// SPI Interrupt Request, active low
+	input		SPI_clk_i,	// SPI clock
+	input		SPI_cs_n_i,	// SPI chip select, active low
+	input		SPI_mosi_i,	// SPI mosi
+	output		SPI_miso_o,	// SPI miso
+	output		SPI_pirq_n_o,	// SPI Interrupt Request, active low
 	
 	// internal communication
-	output		execStart,	// start execution
-	output	[31:0]	commandCode,	// command code
-	output	[15:0]	commandTag,	// command tag
-	input		responseReady,	// response is ready
-	input	[31:0]	responseCode,	// response code
-	output	[39:0]	commandParam,	// command parameters for management module
-	output	[7:0]	locality,	// active locality
-	output	[31:0]	commandSize,	// command size
+	output		execStart_o,	// start execution
+	output	[31:0]	commandCode_o,	// command code
+	output	[15:0]	commandTag_o,	// command tag
+	input		responseReady_i,	// response is ready
+	input	[31:0]	responseCode_i,	// response code
+	output	[39:0]	commandParam_o,	// command parameters for management module
+	output	[7:0]	locality_o,	// active locality_o
+	output	[31:0]	commandSize_o,	// command size
 	
 	// command session data
-	output	[31:0]	handle0, handle1, handle2,
-	output	[31:0]	sessionHandle0, sessionHandle1, sessionHandle2,
-	output	[15:0]	sessionNonceSize0, sessionNonceSize1, sessionNonceSize2,
-	output	[11:0]	sessionNonceAddr0, sessionNonceAddr1, sessionNonceAddr2,
-	output	[7:0]	sessionAttributes0, sessionAttributes1, sessionAttributes2,
-	output	[15:0]	sessionHmacSize0, sessionHmacSize1, sessionHmacSize2,
-	output	[11:0]	sessionHmacAddr0, sessionHmacAddr1, sessionHmacAddr2,
-	output	[31:0]	authSize,
+	output	[31:0]	handle0_o, handle1_o, handle2_o,
+	output	[31:0]	sessionHandle0_o, sessionHandle1_o, sessionHandle2_o,
+	output	[15:0]	sessionNonceSize0_o, sessionNonceSize1_o, sessionNonceSize2_o,
+	output	[11:0]	sessionNonceAddr0_o, sessionNonceAddr1_o, sessionNonceAddr2_o,
+	output	[7:0]	sessionAttributes0_o, sessionAttributes1_o, sessionAttributes2_o,
+	output	[15:0]	sessionHmacSize0_o, sessionHmacSize1_o, sessionHmacSize2_o,
+	output	[11:0]	sessionHmacAddr0_o, sessionHmacAddr1_o, sessionHmacAddr2_o,
+	output	[31:0]	authSize_o,
 	
 	// session validity
-	output		sessionValid0, sessionValid1, sessionValid2
+	output		sessionValid0_o, sessionValid1_o, sessionValid2_o
 );
 	
 	// this module is simply instantiations and connections
@@ -55,13 +55,13 @@ module	tpm_io
 	
 	spi_slave spi_serialzier
 	(
-		.clock50(clock50), .clock100(clock100),
-		.reset_n(reset_n),
-		.RX_valid(RX_valid), .RX_data(RX_byte),
-		.TX_valid(TX_valid), .TX_data(TX_byte),
-		.TX_request(TX_request), .TX_received(TX_received),
-		.SPI_clock(SPI_clk), .SPI_cs_n(SPI_cs_n),
-		.SPI_miso(SPI_miso), .SPI_mosi(SPI_mosi)
+		.clock50_i(clock50_i), .clock100_i(clock100_i),
+		.reset_n_i(reset_n_i),
+		.RX_valid_o(RX_valid), .RX_data_o(RX_byte),
+		.TX_valid_i(TX_valid), .TX_data_i(TX_byte),
+		.TX_request_o(TX_request), .TX_received_o(TX_received),
+		.SPI_clock_i(SPI_clk_i), .SPI_cs_n_i(SPI_cs_n_i),
+		.SPI_miso_o(SPI_miso_o), .SPI_mosi_i(SPI_mosi_i)
 	);
 	
 	wire	[15:0]	t_addr, t_baseAddr;
@@ -73,16 +73,16 @@ module	tpm_io
 	
 	tpm_spi_ctrl transaction_handler
 	(
-		.clock(clock50), .reset_n(reset_n),
-		.SPI_CS_n(SPI_cs_n),
-		.SPI_RX_byte(RX_byte), .SPI_RX_valid(RX_valid),
-		.SPI_TX_byte(TX_byte), .SPI_TX_valid(TX_valid),
-		.SPI_TX_prepare(TX_request), .SPI_TX_ack(TX_received),
-		.FRS_addr(t_addr), .FRS_baseAddr(t_baseAddr),
-		.FRS_wren_n(t_wren_n), .FRS_rden_n(t_rden_n),
-		.FRS_wrByte(t_writeByte), .FRS_rdByte(t_readByte),
-		.CMD_size(t_size), .FRS_req(t_req),
-		.updateAddr(t_updateAddr)
+		.clock_i(clock50_i), .reset_n_i(reset_n_i),
+		.SPI_CS_n_i(SPI_cs_n_i),
+		.SPI_RX_byte_i(RX_byte), .SPI_RX_valid_i(RX_valid),
+		.SPI_TX_byte_o(TX_byte), .SPI_TX_valid_o(TX_valid),
+		.SPI_TX_prepare_i(TX_request), .SPI_TX_ack_i(TX_received),
+		.FRS_addr_o(t_addr), .FRS_baseAddr_o(t_baseAddr),
+		.FRS_wren_n_o(t_wren_n), .FRS_rden_n_o(t_rden_n),
+		.FRS_wrByte_o(t_writeByte), .FRS_rdByte_i(t_readByte),
+		.CMD_size_o(t_size), .FRS_req_o(t_req),
+		.updateAddr_o(t_updateAddr)
 	);
 	
 	wire	[31:0]	c_rspSize;
@@ -93,43 +93,43 @@ module	tpm_io
 	
 	tpm_reg_space fifo_register_space
 	(
-		.clock(clock50), .reset_n(reset_n),
-		.t_req(t_req), .t_dir(t_wren_n),
-		.t_size(t_size), .updateAddr(t_updateAddr),
-		.t_address(t_addr), .t_baseAddr(t_baseAddr),
-		.t_writeByte(t_writeByte), .t_readByte(t_readByte),
-		.SPI_PIRQ_n(SPI_pirq_n), .locality_out(locality),
-		.c_cmdSize(commandSize), .c_rspSize(c_rspSize),
-		.c_cmdSend(c_cmdSend), .c_rspSend(c_rspSend),
-		.c_cmdDone(c_cmdDone), .c_rspDone(c_rspDone),
-		.c_cmdInAddr(c_cmdAddr), .c_rspInAddr(c_rspAddr),
-		.c_cmdByteOut(c_cmdByte), .c_rspByteIn(c_rspByte),
-		.e_execDone(c_execDone),
-		.c_execDone(c_execDone), .c_execAck(c_execAck)
+		.clock_i(clock50_i), .reset_n_i(reset_n_i),
+		.t_req_i(t_req), .t_dir_i(t_wren_n),
+		.t_size_i(t_size), .updateAddr_i(t_updateAddr),
+		.t_address_i(t_addr), .t_baseAddr_i(t_baseAddr),
+		.t_writeByte_i(t_writeByte), .t_readByte_o(t_readByte),
+		.SPI_PIRQ_n_o(SPI_pirq_n_o), .locality_out_o(locality_o),
+		.c_cmdSize_o(commandSize_o), .c_rspSize_i(c_rspSize),
+		.c_cmdSend_o(c_cmdSend), .c_rspSend_i(c_rspSend),
+		.c_cmdDone_i(c_cmdDone), .c_rspDone_i(c_rspDone),
+		.c_cmdInAddr_i(c_cmdAddr), .c_rspInAddr_i(c_rspAddr),
+		.c_cmdByteOut_o(c_cmdByte), .c_rspByteIn_i(c_rspByte),
+		.e_execDone_i(c_execDone),
+		.c_execDone_i(c_execDone), .c_execAck_o(c_execAck)
 	);
 	
 	tpm_crb command_response_buffer
 	(
-		.clock(clock50), .reset_n(reset_n),
-		.locality(locality), .cmdAbort(1'b0),
-		.cmdSize(commandSize), .rspSize(c_rspSize),
-		.cmdSend(c_cmdSend), .rspSend(c_rspSend),
-		.cmdDone(c_cmdDone), .rspDone(c_rspDone),
-		.cmdByteIn(c_cmdByte), .rspByteOut(c_rspByte),
-		.execDone(c_execDone), .execStart(execStart),
-		.cmdOutAddr(c_cmdAddr), .rspOutAddr(c_rspAddr),
-		.execAck(c_execAck), .rspReady(responseReady),
-		.commandCode(commandCode), .responseCode(responseCode),
-		.commandParam(commandParam), .commandTag(commandTag),
-		.handle0(handle0), .handle1(handle1), .handle2(handle2),
-		.sessionHandle0(sessionHandle0), .sessionHandle1(sessionHandle1), .sessionHandle2(sessionHandle2),
-		.sessionNonceSize0(sessionNonceSize0), .sessionNonceSize1(sessionNonceSize1), .sessionNonceSize2(sessionNonceSize2),
-		.sessionAttributes0(sessionAttributes0), .sessionAttributes1(sessionAttributes1), .sessionAttributes2(sessionAttributes2),
-		.sessionHmacSize0(sessionHmacSize0), .sessionHmacSize1(sessionHmacSize1), .sessionHmacSize2(sessionHmacSize2),
-		.sessionNonceAddr0(sessionNonceAddr0), .sessionNonceAddr1(sessionNonceAddr1), .sessionNonceAddr2(sessionNonceAddr2),
-		.sessionHmacAddr0(sessionHmacAddr0), .sessionHmacAddr1(sessionHmacAddr1), .sessionHmacAddr2(sessionHmacAddr2),
-		.authSize(authSize),
-		.sessionValid0(sessionValid0), .sessionValid1(sessionValid1), .sessionValid2(sessionValid2)
+		.clock_i(clock50_i), .reset_n_i(reset_n_i),
+		.locality_i(locality_o), .cmdAbort_i(1'b0),
+		.cmdSize_i(commandSize_o), .rspSize_o(c_rspSize),
+		.cmdSend_i(c_cmdSend), .rspSend_o(c_rspSend),
+		.cmdDone_o(c_cmdDone), .rspDone_o(c_rspDone),
+		.cmdByteIn_i(c_cmdByte), .rspByteOut_o(c_rspByte),
+		.execDone_o(c_execDone), .execStart_o(execStart_o),
+		.cmdOutAddr_o(c_cmdAddr), .rspOutAddr_o(c_rspAddr),
+		.execAck_i(c_execAck), .rspReady_i(responseReady_i),
+		.commandCode_o(commandCode_o), .responseCode_i(responseCode_i),
+		.commandParam_o(commandParam_o), .commandTag_o(commandTag_o),
+		.handle0_o(handle0_o), .handle1_o(handle1_o), .handle2_o(handle2_o),
+		.sessionHandle0_o(sessionHandle0_o), .sessionHandle1_o(sessionHandle1_o), .sessionHandle2_o(sessionHandle2_o),
+		.sessionNonceSize0_o(sessionNonceSize0_o), .sessionNonceSize1_o(sessionNonceSize1_o), .sessionNonceSize2_o(sessionNonceSize2_o),
+		.sessionAttributes0_o(sessionAttributes0_o), .sessionAttributes1_o(sessionAttributes1_o), .sessionAttributes2_o(sessionAttributes2_o),
+		.sessionHmacSize0_o(sessionHmacSize0_o), .sessionHmacSize1_o(sessionHmacSize1_o), .sessionHmacSize2_o(sessionHmacSize2_o),
+		.sessionNonceAddr0_o(sessionNonceAddr0_o), .sessionNonceAddr1_o(sessionNonceAddr1_o), .sessionNonceAddr2_o(sessionNonceAddr2_o),
+		.sessionHmacAddr0_o(sessionHmacAddr0_o), .sessionHmacAddr1_o(sessionHmacAddr1_o), .sessionHmacAddr2_o(sessionHmacAddr2_o),
+		.authSize_o(authSize_o),
+		.sessionValid0_o(sessionValid0_o), .sessionValid1_o(sessionValid1_o), .sessionValid2_o(sessionValid2_o)
 	);
 	
 endmodule

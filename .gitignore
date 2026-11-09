@@ -1,65 +1,90 @@
-# Generated Quartus outputs; hand-authored project/IP files stay tracked.
+# Filename: .gitignore
+# Authors: Aaron Grossman; Project contributors; see Git history.
+# Date: 2026-10-13
+# General Description: Keeps generated build products and tool caches out of version control.
+# AI Disclosure: Codex and GPT-6 Astra assisted with coding and verification.
+
+# Generated Quartus files. Track .qpf/.qsf/.sdc/.qip/.tcl and hand-authored IP.
 db/
 incremental_db/
 output_files/
 greybox_tmp/
 qdb/
+ip_user_files/
 dni/
 tmp-clearbox/
-ip_user_files/
-*.rpt
-*.summary
-*.smsg
-*.qws
 *.qdb
 *.ddb
 *.qdf
 *.qpg
+*.qws
+*.smsg
+*.rpt
+*.summary
 *.sof
 *.pof
 *.jic
 *.rbf
-c5_pin_model_dump.txt
-# Simulation products; never ignore Simulation source or fixtures.
-work/
-obj_dir/
+*.ipcache
+*.qsys_edit
+
+# Disposable build directories. Do not ignore whole simulation/ or IP/ trees.
 build/
+out/
+.cache/
+work/
 modelsim.ini
 transcript
-*.vcd
 *.wlf
+*.vcd
 *.vpd
 *.fst
 *.log
 *.jou
+
+# Firmware products; source and checked memory/test fixtures stay tracked.
+*.o
+*.a
+*.elf
+*.map
+*.d
+/Source Code/Key Generation/firmware/generated/
+
+# Tool caches and local environments.
 __pycache__/
-*.pyc
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
 .vscode/
 .idea/
+.DS_Store
 Thumbs.db
 Desktop.ini
-.DS_Store
 *.bak
 *.tmp
+*.temp
 *~
 *.orig
 *.rej
+
+# Personal verification utilities, excluded from the review.
 /local_scripts/
 
+# Shared project organization.
+# Generated Quartus outputs; hand-authored project/IP files stay tracked.
+c5_pin_model_dump.txt
+# Simulation products; never ignore Simulation source or fixtures.
+obj_dir/
+*.pyc
 # Compiler and simulator binaries.
-*.o
-*.a
 *.exe
 *.dll
 *.vvp
 *.out
-*.ipcache
-*.qsys_edit
-
 # Personal board-selection helpers; teammates open the QPF files directly.
 /Project/build.py
 /Project/board_config.json
-
 # Generated raw entropy capture datasets.
 raw_seq.bin
 raw_restart.bin
