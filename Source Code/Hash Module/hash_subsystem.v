@@ -9,7 +9,7 @@
 //
 // General Description:
 // Shared SHA-256, HMAC-SHA256 and PCR bank integration.
-// Requester priority: PCR (0), HMAC (1), raw hash (2).
+// Requester priority: PCR (0), HMAC (1), raw hash (2), rng (3). Although this may be problematic.
 // Starts are one-cycle pulses accepted only while the respective busy_o is
 // low. Raw requests use request/grant. HMAC key/message streams use ready.
 // PCR reads show the previous value until an extend commits (done pulse).
@@ -46,11 +46,18 @@ module hash_subsystem #(
     input wire [PCR_INDEX_WIDTH-1:0] pcr_read_index_i,
     output wire [255:0] pcr_read_data_o,
     output wire pcr_read_valid_o,
-    output wire busy_o
+    output wire busy_o,
+    //RNG ports:
+    input  wire [7:0]   rng_hash_msg_data_i,
+    input  wire         rng_hash_msg_valid_i,
+    input  wire         rng_hash_msg_last_i,
+    output wire         rng_hash_msg_ready_o,
+    output wire [255:0] rng_hash_digest_o,
+    output wire         rng_hash_digest_valid_o
 );
-    wire [2:0] request, grant, data_valid, message_end, data_ready;
-    wire [2:0] digest_valid, digest_ready;
-    wire [23:0] data;
+    wire [3:0] request, grant, data_valid, message_end, data_ready;
+    wire [3:0] digest_valid, digest_ready;
+    wire [31:0] data; //RNG's byte goes in data[31:24]
     wire [255:0] digest, old_pcr, pcr_write_data;
     wire pcr_write_en, engine_busy;
     wire [PCR_INDEX_WIDTH-1:0] pcr_write_index;
@@ -67,7 +74,29 @@ module hash_subsystem #(
     assign digest_ready[2] = raw_digest_ready_i;
     assign busy_o = engine_busy || hmac_busy_o || pcr_busy_o;
 
-    hash_engine #(.REQUESTERS(3)) u_engine (
+    // The RNG holds its first byte until SHA accepts it.
+    reg rng_has_grant;
+
+    assign request[3] = reset_n_i && rng_hash_msg_valid_i && !rng_has_grant;
+    assign data[31:24] = rng_hash_msg_data_i;
+    assign data_valid[3] = rng_has_grant && rng_hash_msg_valid_i;
+    assign message_end[3] = rng_has_grant && rng_hash_msg_last_i;
+    assign rng_hash_msg_ready_o = rng_has_grant && data_ready[3];
+
+    // The RNG takes its digest as soon as it is valid.
+    assign digest_ready[3] = 1'b1;
+    assign rng_hash_digest_valid_o = digest_valid[3];
+    assign rng_hash_digest_o = digest_valid[3] ? digest : 256'b0;
+
+    always @(posedge clk_i or negedge reset_n_i) begin
+        if (!reset_n_i)
+            rng_has_grant <= 1'b0;
+        else if (digest_valid[3])
+            rng_has_grant <= 1'b0;
+        else if (grant[3])
+            rng_has_grant <= 1'b1;
+    end
+    hash_engine #(.REQUESTERS(4)) u_engine (
         .clk_i(clk_i), .reset_n_i(reset_n_i), .request_valid_i(request),
         .request_grant_o(grant), .data_in_i(data), .data_valid_i(data_valid),
         .message_end_i(message_end), .data_ready_o(data_ready),

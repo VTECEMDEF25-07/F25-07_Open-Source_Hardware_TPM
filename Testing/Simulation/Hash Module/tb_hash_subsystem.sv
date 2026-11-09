@@ -28,6 +28,11 @@ module tb_hash_subsystem;
     wire [255:0] pcr_read_data_o;
     integer pcr_completions=0;
 
+    reg [7:0] rng_hash_msg_data_i=0;
+    reg rng_hash_msg_valid_i=0, rng_hash_msg_last_i=0;
+    wire rng_hash_msg_ready_o, rng_hash_digest_valid_o;
+    wire [255:0] rng_hash_digest_o;
+
     hash_subsystem dut (.*);
 
     always @(posedge clk_i) begin
@@ -60,6 +65,13 @@ module tb_hash_subsystem;
         do @(posedge clk_i); while (!hmac_message_ready_o);
         @(negedge clk_i);
         hmac_message_valid_i=0; hmac_message_end_i=0;
+    endtask
+
+    task automatic rng_byte(input [7:0] data, input bit last);
+        rng_hash_msg_data_i=data; rng_hash_msg_valid_i=1; rng_hash_msg_last_i=last;
+        do @(posedge clk_i); while (!rng_hash_msg_ready_o);
+        @(negedge clk_i);
+        rng_hash_msg_valid_i=0; rng_hash_msg_last_i=0;
     endtask
 
     initial begin
@@ -122,6 +134,44 @@ module tb_hash_subsystem;
         @(negedge clk_i);
         if (busy_o || hmac_digest_valid_o || raw_digest_valid_o || pcr_busy_o)
             $fatal(1, "Subsystem remained busy after all results were accepted");
+        // Hold a new raw result while the RNG presents its first byte.
+        raw_digest_ready_i=0;
+        raw_request_i=1;
+        do @(posedge clk_i); while (!raw_grant_o);
+        @(negedge clk_i); raw_request_i=0;
+        raw_byte(0,0,1);
+        while (!raw_digest_valid_o) @(negedge clk_i);
+        rng_hash_msg_data_i="a";
+        rng_hash_msg_valid_i=1;
+        repeat (8) begin
+            @(posedge clk_i);
+            if (rng_hash_msg_ready_o || rng_hash_digest_valid_o ||
+                !raw_digest_valid_o || raw_digest_o !== RAW_EMPTY)
+                $fatal(1, "RNG advanced while raw SHA held its result");
+        end
+        @(negedge clk_i);
+        raw_digest_ready_i=1;
+        // Keep the same first byte on the bus through its first transfer.
+        rng_byte("a",0);
+        rng_byte("b",0);
+        rng_byte("c",1);
+        while (!rng_hash_digest_valid_o) @(negedge clk_i);
+        if (rng_hash_digest_o !== RAW_ABC || raw_digest_valid_o || hmac_digest_valid_o)
+            $fatal(1, "RNG digest was incorrect or routed to another caller");
+        @(negedge clk_i);
+        if (rng_hash_digest_valid_o || busy_o)
+            $fatal(1, "RNG digest did not retire after one cycle");
+
+        // A subsequent RNG message must acquire a new turn.
+        rng_byte("a",0);
+        rng_byte("b",0);
+        rng_byte("c",1);
+        while (!rng_hash_digest_valid_o) @(negedge clk_i);
+        if (rng_hash_digest_o !== RAW_ABC)
+            $fatal(1, "Second RNG request returned the wrong digest");
+        @(negedge clk_i);
+        if (rng_hash_digest_valid_o || busy_o)
+            $fatal(1, "Second RNG digest did not retire");
         $display("HASH_SUBSYSTEM_SHARED_PASS");
         $finish;
     end
