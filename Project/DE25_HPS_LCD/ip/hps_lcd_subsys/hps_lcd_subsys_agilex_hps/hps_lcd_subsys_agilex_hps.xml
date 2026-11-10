@@ -1,0 +1,2776 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<deploy
+ date="2026.11.10.01:57:12"
+ outputDirectory="C:/Users/aaron/seadrive_root/aaronhen/My Libraries/Aaron Files - SSD/2026-2027/Fall/ECE 4806 - Senior Design Project/AI/tmp/overnight-lcd/repo/Project/DE25_HPS_LCD/ip/hps_lcd_subsys/hps_lcd_subsys_agilex_hps/">
+ <perimeter>
+  <parameter
+     name="AUTO_GENERATION_ID"
+     type="Integer"
+     defaultValue="0"
+     onHdl="0"
+     affectsHdl="1" />
+  <parameter
+     name="AUTO_UNIQUE_ID"
+     type="String"
+     defaultValue=""
+     onHdl="0"
+     affectsHdl="1" />
+  <parameter
+     name="AUTO_DEVICE_FAMILY"
+     type="String"
+     defaultValue="Agilex 5"
+     onHdl="0"
+     affectsHdl="1" />
+  <parameter
+     name="AUTO_DEVICE"
+     type="String"
+     defaultValue="A5ED013BB32AE4SCS"
+     onHdl="0"
+     affectsHdl="1" />
+  <parameter
+     name="AUTO_DEVICE_SPEEDGRADE"
+     type="String"
+     defaultValue="4"
+     onHdl="0"
+     affectsHdl="1" />
+  <parameter
+     name="AUTO_BOARD"
+     type="String"
+     defaultValue="default"
+     onHdl="0"
+     affectsHdl="1" />
+  <interface name="h2f_reset" kind="reset" start="1">
+   <property name="associatedClock" value="" />
+   <property name="associatedDirectReset" value="" />
+   <property name="associatedResetSinks" value="none" />
+   <property name="synchronousEdges" value="NONE" />
+   <port name="h2f_reset_reset" direction="output" role="reset" width="1" />
+  </interface>
+  <interface name="hps_io" kind="conduit" start="0">
+   <property name="associatedClock" value="" />
+   <property name="associatedReset" value="" />
+   <property name="prSafe" value="false" />
+   <port
+       name="hps_io_hps_osc_clk"
+       direction="input"
+       role="hps_osc_clk"
+       width="1" />
+   <port name="hps_io_spim0_clk" direction="output" role="spim0_clk" width="1" />
+   <port
+       name="hps_io_spim0_mosi"
+       direction="output"
+       role="spim0_mosi"
+       width="1" />
+   <port
+       name="hps_io_spim0_ss0_n"
+       direction="output"
+       role="spim0_ss0_n"
+       width="1" />
+   <port name="hps_io_uart1_tx" direction="output" role="uart1_tx" width="1" />
+   <port name="hps_io_uart1_rx" direction="input" role="uart1_rx" width="1" />
+   <port name="hps_io_gpio34" direction="bidir" role="gpio34" width="1" />
+   <port name="hps_io_gpio35" direction="bidir" role="gpio35" width="1" />
+   <port name="hps_io_gpio42" direction="bidir" role="gpio42" width="1" />
+  </interface>
+ </perimeter>
+ <entity
+   kind="hps_lcd_subsys_agilex_hps"
+   version="1.0"
+   name="hps_lcd_subsys_agilex_hps">
+  <parameter name="AUTO_GENERATION_ID" value="0" />
+  <parameter name="AUTO_DEVICE" value="A5ED013BB32AE4SCS" />
+  <parameter name="AUTO_DEVICE_FAMILY" value="Agilex 5" />
+  <parameter name="AUTO_BOARD" value="default" />
+  <parameter name="AUTO_UNIQUE_ID" value="" />
+  <parameter name="AUTO_DEVICE_SPEEDGRADE" value="4" />
+  <generatedFiles>
+   <file
+       path="C:\Users\aaron\seadrive_root\aaronhen\My Libraries\Aaron Files - SSD\2026-2027\Fall\ECE 4806 - Senior Design Project\AI\tmp\overnight-lcd\repo\Project\DE25_HPS_LCD\ip\hps_lcd_subsys\hps_lcd_subsys_agilex_hps\synth\hps_lcd_subsys_agilex_hps.v"
+       attributes="CONTAINS_INLINE_CONFIGURATION" />
+  </generatedFiles>
+  <childGeneratedFiles>
+   <file
+       path="C:\Users\aaron\seadrive_root\aaronhen\My Libraries\Aaron Files - SSD\2026-2027\Fall\ECE 4806 - Senior Design Project\AI\tmp\overnight-lcd\repo\Project\DE25_HPS_LCD\ip\hps_lcd_subsys\hps_lcd_subsys_agilex_hps\synth\hps_lcd_subsys_agilex_hps.v"
+       attributes="CONTAINS_INLINE_CONFIGURATION" />
+  </childGeneratedFiles>
+  <sourceFiles>
+   <file
+       path="C:/Users/aaron/seadrive_root/aaronhen/My Libraries/Aaron Files - SSD/2026-2027/Fall/ECE 4806 - Senior Design Project/AI/tmp/overnight-lcd/repo/Project/DE25_HPS_LCD/ip/hps_lcd_subsys/hps_lcd_subsys_agilex_hps.ip" />
+  </sourceFiles>
+  <childSourceFiles>
+   <file
+       path="C:/altera_pro/26.1/ip/altera/intel_hps/sm/intel_soc_sundancemesa/intel_soc_sundancemesa_hw.tcl" />
+   <file
+       path="C:/altera_pro/26.1/qsys/lib/com.altera.sopcmodel.components.hwtclvalidator.jar" />
+   <file
+       path="C:/altera_pro/26.1/qsys/lib/com.altera.sopcmodel.components.tclelement.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.sopc.generator.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.ddmwriter.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.sopcdocument.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.hdlwriter.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.sopcmodel.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.qsys.common.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.intel.quartus.ngpd.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.intel.shared.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/jacl1.3.2a.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/commons-text-1.10.0.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/commons-lang3-3.12.0.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/guava-32.0.1-jre.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/jfreechart-1.5.0.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/miglayout-swing-5.2.jar" />
+   <file
+       path="C:/altera_pro/26.1/qsys/lib/docking-frames-common-1.1.2_20c.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/bare-bones-browser-launch-3.2.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/jaxb-api.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/jaxb-jxc.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/jaxb-runtime.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/jaxb-xjc.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/codemodel.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/dtd-parser.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/FastInfoset.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/istack-commons-runtime.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/istack-commons-tools.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/javax.activation-api.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/relaxng-datatype.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/rngom.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/stax-ex.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/txw2.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/xsom.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/failureaccess-1.0.1.jar" />
+   <file
+       path="C:/altera_pro/26.1/qsys/lib/listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/jsr305-3.0.2.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/checker-qual-3.33.0.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/j2objc-annotations-2.8.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/miglayout-core-5.2.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/docking-frames-core-1.1.2_20c.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/commons-io-2.13.0.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.qsys.model.common.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.privateinterfaces.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.qsys.ipxact.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/antlr4-runtime-4.7.2.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.sopclibrary.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.sopcmodel.atlantic.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.qsys.ipxact.module.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.intel.quartus.dni.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.sopcreport.build.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.sopcreport.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.sopc.qsymbol.jar" />
+   <file
+       path="C:/altera_pro/26.1/qsys/lib/com.altera.sopcmodel.transforms.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.qsys.hypericonnect.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.qsys.cmsis.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.hdlcomponent.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.tcl.interpreter.jar" />
+   <file
+       path="C:/altera_pro/26.1/ip/altera/intel_hps/sm/hps/intel_hps_sundancemesa_hw.tcl" />
+   <file
+       path="C:/altera_pro/26.1/qsys/lib/com.altera.sopcmodel.components.hwtclvalidator.jar" />
+   <file
+       path="C:/altera_pro/26.1/qsys/lib/com.altera.sopcmodel.components.tclelement.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.sopc.generator.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.ddmwriter.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.sopcdocument.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.hdlwriter.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.sopcmodel.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.qsys.common.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.intel.quartus.ngpd.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.intel.shared.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/jacl1.3.2a.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/commons-text-1.10.0.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/commons-lang3-3.12.0.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/guava-32.0.1-jre.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/jfreechart-1.5.0.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/miglayout-swing-5.2.jar" />
+   <file
+       path="C:/altera_pro/26.1/qsys/lib/docking-frames-common-1.1.2_20c.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/bare-bones-browser-launch-3.2.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/jaxb-api.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/jaxb-jxc.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/jaxb-runtime.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/jaxb-xjc.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/codemodel.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/dtd-parser.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/FastInfoset.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/istack-commons-runtime.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/istack-commons-tools.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/javax.activation-api.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/relaxng-datatype.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/rngom.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/stax-ex.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/txw2.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/xsom.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/failureaccess-1.0.1.jar" />
+   <file
+       path="C:/altera_pro/26.1/qsys/lib/listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/jsr305-3.0.2.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/checker-qual-3.33.0.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/j2objc-annotations-2.8.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/miglayout-core-5.2.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/docking-frames-core-1.1.2_20c.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/commons-io-2.13.0.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.qsys.model.common.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.privateinterfaces.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.qsys.ipxact.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/antlr4-runtime-4.7.2.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.sopclibrary.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.sopcmodel.atlantic.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.qsys.ipxact.module.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.intel.quartus.dni.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.sopcreport.build.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.sopcreport.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.sopc.qsymbol.jar" />
+   <file
+       path="C:/altera_pro/26.1/qsys/lib/com.altera.sopcmodel.transforms.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.qsys.hypericonnect.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.qsys.cmsis.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.hdlcomponent.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.tcl.interpreter.jar" />
+  </childSourceFiles>
+  <messages>
+   <message level="Info" culprit="hps_lcd_subsys_agilex_hps">"Generating: hps_lcd_subsys_agilex_hps"</message>
+   <message level="Info" culprit="hps_lcd_subsys_agilex_hps">"Generating: hps_lcd_subsys_agilex_hps_intel_agilex_5_soc_1400_jqcor4i"</message>
+   <message level="Info" culprit="hps_lcd_subsys_agilex_hps">"Generating: hps_lcd_subsys_agilex_hps_intel_sundancemesa_hps_100_e2ybgji"</message>
+  </messages>
+ </entity>
+ <entity
+   kind="intel_agilex_5_soc"
+   version="14.0.0"
+   name="hps_lcd_subsys_agilex_hps_intel_agilex_5_soc_1400_jqcor4i">
+  <parameter
+     name="HPS_HANDOFF_OPTION_STRING"
+     value="    HPS_PRESENT: true
+    HPS_DDR_PRESENT: false
+    hps_wachdog_expiration: COLD_RESET
+    cores_power_state: 15
+    boot_core: 0
+    l3_cache_size: HALF_ON
+    f2soc_intfcsel: DISABLE
+    f2sdram_intfcsel: DISABLE" />
+  <parameter name="REG_pin33_sel" value="8" />
+  <parameter name="REG_pin25_sel" value="8" />
+  <parameter name="ED_h2f_packet_size" value="1" />
+  <parameter name="AUTO_BOARD" value="default" />
+  <parameter name="REG_nocdiv_l4mpclk" value="1" />
+  <parameter name="NOC_clk_periph_l4_div" value="2" />
+  <parameter name="REG_io41_output_delay" value="0" />
+  <parameter
+     name="Periph_clk_frequencies"
+     value="250,250,250,400.00,200.00,100.00,500.00,20.00" />
+  <parameter name="IO_OUTPUT_DELAY47" value="-1" />
+  <parameter name="REG_mfdbck_fdiv" value="0" />
+  <parameter name="IO_OUTPUT_DELAY46" value="-1" />
+  <parameter name="REG_pin9_sel" value="8" />
+  <parameter name="MPLL_VCO_M" value="128" />
+  <parameter name="MPLL_VCO_N" value="1" />
+  <parameter name="SPIS1_Mode" value="N/A" />
+  <parameter name="IO_INPUT_DELAY47" value="-1" />
+  <parameter name="MPU_clk_periph_div" value="4" />
+  <parameter name="IO_INPUT_DELAY42" value="-1" />
+  <parameter name="REG_pin17_sel" value="8" />
+  <parameter name="IO_INPUT_DELAY41" value="-1" />
+  <parameter name="DMA_PeriphID" value="0,1,2,3,4,5,6,7" />
+  <parameter name="IO_INPUT_DELAY40" value="-1" />
+  <parameter name="IO_INPUT_DELAY46" value="-1" />
+  <parameter name="IO_INPUT_DELAY45" value="-1" />
+  <parameter name="IO_INPUT_DELAY44" value="-1" />
+  <parameter name="Periph_usb_src_override" value="3" />
+  <parameter name="IO_INPUT_DELAY43" value="-1" />
+  <parameter name="REG_pin2_sel" value="8" />
+  <parameter name="REG_mpllm_mdiv" value="128" />
+  <parameter name="IO_OUTPUT_DELAY39" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY38" value="-1" />
+  <parameter name="REG_mpllglob_arefclkdiv" value="1" />
+  <parameter name="IO_OUTPUT_DELAY37" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY36" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY35" value="-1" />
+  <parameter name="IO_INPUT_DELAY39" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY45" value="-1" />
+  <parameter
+     name="Periph_clk_sources"
+     value="PeriphC3,PeriphC3,PeriphC3,MainC3,MainC3,GDB Free,PeriphC3,MainC3" />
+  <parameter name="IO_INPUT_DELAY38" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY44" value="-1" />
+  <parameter name="IO_INPUT_DELAY37" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY43" value="-1" />
+  <parameter name="H2F_IRQ_SPIM0_Enable" value="false" />
+  <parameter name="IO_INPUT_DELAY36" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY42" value="-1" />
+  <parameter name="FPGA_EMAC1_md_clk_mhz" value="2.5" />
+  <parameter name="UART1_Mode" value="No_flow_control" />
+  <parameter name="IO_OUTPUT_DELAY41" value="-1" />
+  <parameter name="REG_pin10_sel" value="8" />
+  <parameter name="REG_io2_output_delay" value="0" />
+  <parameter name="IO_OUTPUT_DELAY40" value="-1" />
+  <parameter name="REG_io40_output_delay" value="0" />
+  <parameter name="IO_INPUT_DELAY31" value="-1" />
+  <parameter name="IO_INPUT_DELAY30" value="-1" />
+  <parameter name="IO_INPUT_DELAY35" value="-1" />
+  <parameter name="IO_INPUT_DELAY34" value="-1" />
+  <parameter name="REG_io1_output_delay" value="0" />
+  <parameter name="IO_INPUT_DELAY33" value="-1" />
+  <parameter name="IO_INPUT_DELAY32" value="-1" />
+  <parameter name="REG_pin41_sel" value="8" />
+  <parameter name="REG_emacbctr_cnt" value="9" />
+  <parameter name="I2C0_Mode" value="N/A" />
+  <parameter name="Rst_hps_warm_en" value="false" />
+  <parameter name="ED_lwh2f_packet_size" value="1" />
+  <parameter name="EMAC2_PTP" value="false" />
+  <parameter name="I3C1_Mode" value="N/A" />
+  <parameter name="H2F_IRQ_USB1_Enable" value="false" />
+  <parameter name="Periph_usb_freq_override" value="20.0" />
+  <parameter name="REG_emacctl_emac0sel" value="0" />
+  <parameter name="MPFE_f2s_data_width" value="0" />
+  <parameter name="H2F_IRQ_DMA_Enable1" value="false" />
+  <parameter name="H2F_IRQ_DMA_Enable0" value="false" />
+  <parameter name="H2F_IRQ_SDMMC_Enable" value="false" />
+  <parameter name="ED_en_synth_gen" value="false" />
+  <parameter name="USB0_PinMuxing" value="Unused" />
+  <parameter name="MPU_clk_ccu_div" value="2" />
+  <parameter name="MPFE_f2s_mode" value="ace5lite" />
+  <parameter name="hps_ioa10_opd_en" value="false" />
+  <parameter name="hps_ioa14_opd_en" value="false" />
+  <parameter name="hps_ioa18_opd_en" value="false" />
+  <parameter name="REG_pinmux_spim0_usefpga_sel" value="0" />
+  <parameter name="hps_iob18_opd_en" value="false" />
+  <parameter name="H2F_IRQ_SPIS0_Enable" value="false" />
+  <parameter name="TPIU_Select" value="HPS Clock Manager" />
+  <parameter name="REG_gpiodiv_val" value="1" />
+  <parameter name="REG_pinmux_i2c_emac1_usefpga_sel" value="0" />
+  <parameter name="hps_iob9_opd_en" value="false" />
+  <parameter name="device_trait_iobank_rev" value="IO96B_REVB1" />
+  <parameter name="REG_pin34_sel" value="8" />
+  <parameter name="FPGA_SPIM1_sclk_mhz" value="125.0" />
+  <parameter name="REG_io31_output_delay" value="0" />
+  <parameter name="hps_iob10_opd_en" value="false" />
+  <parameter name="hps_iob13_opd_en" value="false" />
+  <parameter name="f2s_data_width" value="0" />
+  <parameter name="SPIS1_PinMuxing" value="Unused" />
+  <parameter name="Periph_gpio_freq_override" value="400.0" />
+  <parameter name="JAVA_ERROR_MSG" value="" />
+  <parameter name="REG_pinmux_uart1_usefpga_sel" value="0" />
+  <parameter name="hps_iob1_opd_en" value="false" />
+  <parameter name="ED_f2sdram_connectivity" value="1" />
+  <parameter name="Pwr_override_cache_size" value="false" />
+  <parameter name="H2F_IRQ_I2CEMAC2_Enable" value="false" />
+  <parameter name="MPU_core3_freq_override_mhz" value="800.0" />
+  <parameter name="User0_clk_src_select" value="7" />
+  <parameter
+     name="MPU_clk_outputs"
+     value="MPU,MPU CCU,MPU Periph,Core0|Core1,Core2,Core3" />
+  <parameter name="SPIM0_PinMuxing" value="IO" />
+  <parameter name="REG_pin18_sel" value="8" />
+  <parameter name="H2F_IRQ_I3C0_Enable" value="false" />
+  <parameter name="REG_pin40_sel" value="8" />
+  <parameter name="H2F_IRQ_L4Timer_Enable" value="false" />
+  <parameter name="REG_io4_output_delay" value="0" />
+  <parameter name="MPU_core01_freq_override_mhz" value="800.0" />
+  <parameter name="REG_nocdiv_cspdbgclk" value="2" />
+  <parameter name="REG_pin3_sel" value="8" />
+  <parameter name="REG_io3_output_delay" value="0" />
+  <parameter name="FPGA_SPIM0_sclk_mhz" value="125.0" />
+  <parameter name="REG_emacbctr_src" value="1" />
+  <parameter name="REG_io0_output_delay" value="0" />
+  <parameter name="REG_pin24_sel" value="8" />
+  <parameter name="REG_ppllglob_psrc" value="0" />
+  <parameter name="hps_ioa15_opd_en" value="false" />
+  <parameter name="FPGA_EMAC_PTP_clk_en" value="true" />
+  <parameter name="hps_iob24_opd_en" value="false" />
+  <parameter name="NOC_clk_cs_trace_div" value="4" />
+  <parameter name="REG_io44_output_delay" value="0" />
+  <parameter name="ED_f2sdram_data_width" value="256" />
+  <parameter name="I2C0_PinMuxing" value="Unused" />
+  <parameter name="hps_iob21_opd_en" value="false" />
+  <parameter name="REG_pin39_sel" value="5" />
+  <parameter name="REG_io30_output_delay" value="0" />
+  <parameter name="OPT_coreboot_sel" value="0" />
+  <parameter name="REG_mpllc0_div" value="4" />
+  <parameter name="ED_lwh2f_traffic_pattern" value="0" />
+  <parameter name="FPGA_EMAC2_tx_clk_en" value="true" />
+  <parameter name="ED_h2f_data_width" value="128" />
+  <parameter name="hps_iob4_opd_en" value="false" />
+  <parameter name="ED_en_sim_gen" value="true" />
+  <parameter name="REG_pinmux_mdio0_usefpga_sel" value="0" />
+  <parameter
+     name="NOC_clk_sources"
+     value="MainC3,NOC,NOC,NOC,L4Periph,NOC,NOC,NOC" />
+  <parameter name="Rst_watchdog_en" value="false" />
+  <parameter name="REG_ppllglob_arefclkdiv" value="1" />
+  <parameter name="H2F_IRQ_UART1_Enable" value="false" />
+  <parameter name="Periph_psi_freq_override" value="500.0" />
+  <parameter name="hps_ioa3_opd_en" value="false" />
+  <parameter name="AUTO_DEVICE_SPEEDGRADE" value="4" />
+  <parameter name="REG_pinmux_mdio2_usefpga_sel" value="0" />
+  <parameter name="REG_nocdiv_l4spclk" value="2" />
+  <parameter name="LWH2F_Address_Width" value="29" />
+  <parameter name="H2F_Address_Width" value="38" />
+  <parameter name="REG_pin8_sel" value="8" />
+  <parameter name="FPGA_EMAC1_gtx_clk_mhz" value="125.0" />
+  <parameter name="REG_io20_output_delay" value="0" />
+  <parameter
+     name="HPS_HANDOFF_STRING"
+     value="pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 9
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 5
+}
+pinmux_select {
+  value: 5
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 7
+}
+pinmux_select {
+  value: 7
+}
+pinmux_select {
+  value: 7
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+reg {
+  reg_name: &quot;mainpllgrp.nocclk.src&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;mainpllgrp.nocdiv.cspdbgclk&quot;
+  reg_value: 2
+}
+reg {
+  reg_name: &quot;mainpllgrp.nocdiv.cstraceclk&quot;
+  reg_value: 2
+}
+reg {
+  reg_name: &quot;mainpllgrp.nocdiv.csclk&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;mainpllgrp.nocdiv.mpuperiphdiv&quot;
+  reg_value: 2
+}
+reg {
+  reg_name: &quot;mainpllgrp.nocdiv.ccudiv&quot;
+  reg_value: 1
+}
+reg {
+  reg_name: &quot;mainpllgrp.nocdiv.softphydiv&quot;
+  reg_value: 2
+}
+reg {
+  reg_name: &quot;mainpllgrp.nocdiv.l4spclk&quot;
+  reg_value: 2
+}
+reg {
+  reg_name: &quot;mainpllgrp.nocdiv.l4mpclk&quot;
+  reg_value: 1
+}
+reg {
+  reg_name: &quot;mainpllgrp.nocdiv.l4sysfreeclk&quot;
+  reg_value: 2
+}
+reg {
+  reg_name: &quot;mainpllgrp.pllglob.modclkdiv&quot;
+  reg_value: 6
+}
+reg {
+  reg_name: &quot;mainpllgrp.pllglob.fastrefclk&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;mainpllgrp.pllglob.psrc&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;mainpllgrp.pllglob.drefclkdiv&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;mainpllgrp.pllglob.arefclkdiv&quot;
+  reg_value: 1
+}
+reg {
+  reg_name: &quot;mainpllgrp.fdbck.fdiv&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;mainpllgrp.pllc0.div&quot;
+  reg_value: 4
+}
+reg {
+  reg_name: &quot;mainpllgrp.pllc1.div&quot;
+  reg_value: 4
+}
+reg {
+  reg_name: &quot;mainpllgrp.pllc2.div&quot;
+  reg_value: 6
+}
+reg {
+  reg_name: &quot;mainpllgrp.pllc3.div&quot;
+  reg_value: 8
+}
+reg {
+  reg_name: &quot;mainpllgrp.pllm.mdiv&quot;
+  reg_value: 128
+}
+reg {
+  reg_name: &quot;perpllgrp.emacctl.emac0sel&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;perpllgrp.emacctl.emac1sel&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;perpllgrp.emacctl.emac2sel&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;perpllgrp.pllglob.modclkdiv&quot;
+  reg_value: 5
+}
+reg {
+  reg_name: &quot;perpllgrp.pllglob.fstrefclk&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;perpllgrp.pllglob.psrc&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;perpllgrp.pllglob.drefclkdiv&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;perpllgrp.pllglob.arefclkdiv&quot;
+  reg_value: 1
+}
+reg {
+  reg_name: &quot;perpllgrp.fdbck.fdiv&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;perpllgrp.pllc0.div&quot;
+  reg_value: 5
+}
+reg {
+  reg_name: &quot;perpllgrp.pllc1.div&quot;
+  reg_value: 5
+}
+reg {
+  reg_name: &quot;perpllgrp.pllc2.div&quot;
+  reg_value: 125
+}
+reg {
+  reg_name: &quot;perpllgrp.pllc3.div&quot;
+  reg_value: 6
+}
+reg {
+  reg_name: &quot;perpllgrp.pllm.mdiv&quot;
+  reg_value: 120
+}
+reg {
+  reg_name: &quot;ctl.emacactr.src&quot;
+  reg_value: 1
+}
+reg {
+  reg_name: &quot;ctl.emacactr.cnt&quot;
+  reg_value: 1
+}
+reg {
+  reg_name: &quot;ctl.emacbctr.src&quot;
+  reg_value: 1
+}
+reg {
+  reg_name: &quot;ctl.emacbctr.cnt&quot;
+  reg_value: 9
+}
+reg {
+  reg_name: &quot;ctl.emacptpctr.src&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;ctl.emacptpctr.cnt&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;ctl.gpiodbctr.src&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;ctl.gpiodbctr.cnt&quot;
+  reg_value: 1
+}
+reg {
+  reg_name: &quot;perpllgrp.gpiodiv.gpiodbclk&quot;
+  reg_value: 1
+}
+reg {
+  reg_name: &quot;ctl.s2fuser0ctr.src&quot;
+  reg_value: 1
+}
+reg {
+  reg_name: &quot;ctl.s2fuser0ctr.cnt&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;ctl.s2fuser1ctr.src&quot;
+  reg_value: 1
+}
+reg {
+  reg_name: &quot;ctl.s2fuser1ctr.cnt&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;ctl.psirefctr.src&quot;
+  reg_value: 1
+}
+reg {
+  reg_name: &quot;ctl.psirefctr.cnt&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;ctl.usb31ctr.src&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;ctl.usb31ctr.cnt&quot;
+  reg_value: 19
+}
+reg {
+  reg_name: &quot;ctl.dsuctr.src&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;ctl.dsuctr.cnt&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;ctl.core01ctr.src&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;ctl.core01ctr.cnt&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;ctl.core23ctr.src&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;ctl.core2ctr.cnt&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;ctl.core3ctr.cnt&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;hps_osc_clk_hz&quot;
+  reg_value: 25000000
+}
+reg {
+  reg_name: &quot;fpga_clk_hz&quot;
+  reg_value: 125000000
+}
+" />
+  <parameter name="REG_io45_output_delay" value="0" />
+  <parameter name="NAND_Mode" value="N/A" />
+  <parameter name="TRACE_Mode" value="N/A" />
+  <parameter name="REG_io0_input_delay" value="0" />
+  <parameter name="REG_ppllglob_fastrefclk" value="0" />
+  <parameter name="ED_f2sdram_packet_size" value="1" />
+  <parameter name="REG_pin43_sel" value="7" />
+  <parameter name="MPFE_f2sdram_data_width" value="0" />
+  <parameter name="SDMMC_PinMuxing" value="Unused" />
+  <parameter name="hps_ioa4_opd_en" value="false" />
+  <parameter name="REG_io8_input_delay" value="0" />
+  <parameter name="REG_psirefctr_src" value="1" />
+  <parameter name="REG_pin35_sel" value="8" />
+  <parameter name="REG_pin23_sel" value="8" />
+  <parameter name="REG_pinmux_emac2_usefpga_sel" value="0" />
+  <parameter name="SPIS0_Mode" value="N/A" />
+  <parameter name="REG_pinmux_sdmmc_usefpga_sel" value="0" />
+  <parameter name="REG_io1_input_delay" value="0" />
+  <parameter name="REG_io9_input_delay" value="0" />
+  <parameter name="EMIF_AXI_Enable" value="false" />
+  <parameter name="REG_io4_input_delay" value="0" />
+  <parameter name="EMAC2_PPS_Enable" value="false" />
+  <parameter name="REG_pin4_sel" value="8" />
+  <parameter name="MPLL_Override" value="true" />
+  <parameter name="REG_io5_input_delay" value="0" />
+  <parameter name="REG_s2fuser1ctr_src" value="1" />
+  <parameter name="REG_pin38_sel" value="5" />
+  <parameter name="REG_nocdiv_softphydiv" value="2" />
+  <parameter name="PLL_CLK3" value="Unused" />
+  <parameter name="PLL_CLK4" value="Unused" />
+  <parameter name="REG_pin20_sel" value="8" />
+  <parameter name="hps_iob22_opd_en" value="false" />
+  <parameter name="MPU_core23_src_override" value="0" />
+  <parameter name="Rst_sdm_wd_config" value="0" />
+  <parameter name="STM_Enable" value="false" />
+  <parameter name="REG_ppllglob_modclkdiv" value="5" />
+  <parameter name="REG_pin7_sel" value="8" />
+  <parameter name="MPFE_f2s_address_width" value="40" />
+  <parameter
+     name="NOC_clk_frequencies"
+     value="400.0,100.0,200.0,100.0,50.0,400.0,100.0,100.0" />
+  <parameter name="REG_io35_output_delay" value="0" />
+  <parameter name="f2s_address_width" value="40" />
+  <parameter name="Periph_emaca_src_override" value="7" />
+  <parameter
+     name="NOC_clk_outputs"
+     value="NOC,L4 Free,L4 Peripheral,L4 Slow Peripheral,SoftPHY,CoreSight,CoreSight Debug APB,CoreSight Trace IO" />
+  <parameter name="EMAC0_PTP" value="false" />
+  <parameter name="UART0_Mode" value="N/A" />
+  <parameter name="H2F_IRQ_EMAC0_Enable" value="false" />
+  <parameter name="Periph_clk_override" value="false" />
+  <parameter name="CM_Mode" value="N/A" />
+  <parameter name="MPLL_VCO_fdiv" value="0" />
+  <parameter name="I2CEMAC1_Mode" value="N/A" />
+  <parameter name="REG_io42_input_delay" value="0" />
+  <parameter name="REG_io47_output_delay" value="0" />
+  <parameter name="ED_f2h_addr_width" value="38" />
+  <parameter name="hps_iob17_opd_en" value="false" />
+  <parameter name="SPIM1_PinMuxing" value="Unused" />
+  <parameter name="REG_pin42_sel" value="8" />
+  <parameter name="REG_io46_input_delay" value="0" />
+  <parameter name="USB0_Mode" value="N/A" />
+  <parameter name="REG_pinmux_i2c_emac2_usefpga_sel" value="0" />
+  <parameter name="REG_pin16_sel" value="8" />
+  <parameter name="REG_io16_output_delay" value="0" />
+  <parameter name="H2F_IRQ_I3C1_Enable" value="false" />
+  <parameter name="EMAC1_Mode" value="N/A" />
+  <parameter name="hps_iob11_opd_en" value="false" />
+  <parameter name="hps_iob12_opd_en" value="false" />
+  <parameter name="MPU_Events_Enable" value="false" />
+  <parameter name="REG_hps_osc_hz" value="25000000" />
+  <parameter name="REG_core01ctr_src" value="0" />
+  <parameter name="REG_pinmux_uart0_usefpga_sel" value="0" />
+  <parameter name="MPU_core2_freq_override_mhz" value="800.0" />
+  <parameter name="JTAG_Enable" value="false" />
+  <parameter name="MPFE_f2s_SMMU" value="0" />
+  <parameter name="REG_pin22_sel" value="8" />
+  <parameter name="FPGA_I2CEMAC0_clk_mhz" value="125.0" />
+  <parameter name="REG_pin36_sel" value="8" />
+  <parameter name="Pwr_cpu_app_select" value="0" />
+  <parameter name="hps_iob5_opd_en" value="false" />
+  <parameter name="REG_mpllglob_modclkdiv" value="6" />
+  <parameter name="H2F_IRQ_GPIO1_Enable" value="false" />
+  <parameter
+     name="MPU_clk_frequencies"
+     value="533.33,266.665,133.3325,800.00,800.00,800.00" />
+  <parameter name="ED_f2sdram_traffic_pattern" value="0" />
+  <parameter name="hps_ioa24_opd_en" value="false" />
+  <parameter name="ED_h2f_traffic_pattern" value="0" />
+  <parameter name="NOC_clk_phy_div" value="4" />
+  <parameter name="REG_psirefctr_cnt" value="0" />
+  <parameter name="PLL_CLK1" value="Unused" />
+  <parameter name="H2F_IRQ_NAND_Enable" value="false" />
+  <parameter name="PLL_CLK2" value="Unused" />
+  <parameter name="hps_ioa19_opd_en" value="false" />
+  <parameter name="REG_io32_input_delay" value="0" />
+  <parameter name="PLL_CLK0" value="Unused" />
+  <parameter name="hps_ioa13_opd_en" value="false" />
+  <parameter name="REG_io46_output_delay" value="0" />
+  <parameter name="ED_lwh2f_connectivity" value="1" />
+  <parameter name="REG_pin21_sel" value="8" />
+  <parameter name="NOC_clk_cs_debug_div" value="4" />
+  <parameter
+     name="Periph_clk_outputs"
+     value="EMAC0,EMAC1,EMAC2,EMAC PTP,GDB Free,GPIO Debounce,PSI Ref,USB 3.1" />
+  <parameter name="REG_pin6_sel" value="8" />
+  <parameter name="EMAC1_PTP" value="false" />
+  <parameter name="Periph_psi_src_override" value="7" />
+  <parameter name="ED_f2h_data_width" value="256" />
+  <parameter name="REG_pinmux_jtag_usefpga_sel" value="0" />
+  <parameter name="REG_io36_output_delay" value="0" />
+  <parameter name="F2H_IRQ_Enable" value="false" />
+  <parameter name="REG_pinmux_mdio1_usefpga_sel" value="0" />
+  <parameter name="FPGA_I2C0_sclk_mhz" value="125.0" />
+  <parameter name="MPLL_C1_Override_mhz" value="800.0" />
+  <parameter name="f2sdram_SMMU" value="false" />
+  <parameter name="ED_en_questa" value="true" />
+  <parameter name="Pwr_default_mpu_l3_cache_size" value="1MB" />
+  <parameter name="H2F_IRQ_SYSTimer_Enable" value="false" />
+  <parameter name="FPGA_EMAC2_gtx_clk_mhz" value="125.0" />
+  <parameter name="REG_pin15_sel" value="8" />
+  <parameter name="REG_io20_input_delay" value="0" />
+  <parameter name="User0_clk_freq" value="500.0" />
+  <parameter name="ED_en_vcsmx" value="true" />
+  <parameter name="REG_io22_input_delay" value="0" />
+  <parameter name="REG_io23_input_delay" value="0" />
+  <parameter name="REG_io24_input_delay" value="0" />
+  <parameter name="REG_pinmux_spis1_usefpga_sel" value="0" />
+  <parameter name="PPLL_C1_Override_mhz" value="600.0" />
+  <parameter name="REG_io25_input_delay" value="0" />
+  <parameter name="IO_INPUT_DELAY5" value="-1" />
+  <parameter name="REG_io28_input_delay" value="0" />
+  <parameter name="IO_INPUT_DELAY6" value="-1" />
+  <parameter name="IO_INPUT_DELAY7" value="-1" />
+  <parameter name="REG_io26_output_delay" value="0" />
+  <parameter name="IO_INPUT_DELAY8" value="-1" />
+  <parameter name="IO_INPUT_DELAY9" value="-1" />
+  <parameter name="REG_io26_input_delay" value="0" />
+  <parameter name="REG_io9_output_delay" value="0" />
+  <parameter name="REG_io27_input_delay" value="0" />
+  <parameter name="REG_io14_output_delay" value="0" />
+  <parameter name="REG_core23ctr_src" value="0" />
+  <parameter name="Pwr_a76_core3_on" value="true" />
+  <parameter name="REG_pinmux_spis0_usefpga_sel" value="0" />
+  <parameter name="REG_pinmux_i2c1_usefpga_sel" value="0" />
+  <parameter name="NOC_clk_free_l4_div" value="4" />
+  <parameter name="REG_io29_input_delay" value="0" />
+  <parameter name="NOC_clk_cs_div" value="1" />
+  <parameter name="REG_pinmux_i2c0_usefpga_sel" value="0" />
+  <parameter name="REG_core01ctr_cnt" value="0" />
+  <parameter name="FPGA_EMAC0_md_clk_mhz" value="2.5" />
+  <parameter name="f2sdram_address_width" value="40" />
+  <parameter name="IO_INPUT_DELAY0" value="-1" />
+  <parameter name="IO_INPUT_DELAY1" value="-1" />
+  <parameter name="IO_INPUT_DELAY2" value="-1" />
+  <parameter name="IO_INPUT_DELAY3" value="-1" />
+  <parameter name="IO_INPUT_DELAY4" value="-1" />
+  <parameter name="REG_dsuctr_cnt" value="0" />
+  <parameter name="H2F_IRQ_UART0_Enable" value="false" />
+  <parameter name="REG_pin37_sel" value="8" />
+  <parameter name="SPIM1_Mode" value="N/A" />
+  <parameter name="H2F_IRQ_EMAC1_Enable" value="false" />
+  <parameter name="REG_io21_input_delay" value="0" />
+  <parameter name="REG_io10_input_delay" value="0" />
+  <parameter name="MPFE_ATB_Enable" value="false" />
+  <parameter name="REG_io11_input_delay" value="0" />
+  <parameter name="REG_io33_input_delay" value="0" />
+  <parameter name="REG_io34_input_delay" value="0" />
+  <parameter name="REG_io12_input_delay" value="0" />
+  <parameter name="REG_pin29_sel" value="8" />
+  <parameter name="device_family" value="Agilex 5" />
+  <parameter name="MPLL_Outputs" value="VCO,C0,C1,C2,C3" />
+  <parameter name="PPLL_C0_Override_mhz" value="600.0" />
+  <parameter name="REG_io35_input_delay" value="0" />
+  <parameter name="hps_iob23_opd_en" value="false" />
+  <parameter name="REG_pin5_sel" value="8" />
+  <parameter name="REG_io13_input_delay" value="0" />
+  <parameter name="REG_io15_input_delay" value="0" />
+  <parameter name="REG_io15_output_delay" value="0" />
+  <parameter name="REG_io36_input_delay" value="0" />
+  <parameter name="PPLL_C2_Override_mhz" value="24.0" />
+  <parameter name="REG_io14_input_delay" value="0" />
+  <parameter name="REG_io25_output_delay" value="0" />
+  <parameter name="PPLL_VCO_Fref_mhz" value="25.0" />
+  <parameter name="REG_io38_input_delay" value="0" />
+  <parameter name="REG_io39_input_delay" value="0" />
+  <parameter name="ED_f2h_connectivity" value="1" />
+  <parameter name="REG_io17_input_delay" value="0" />
+  <parameter name="REG_io19_input_delay" value="0" />
+  <parameter name="REG_io27_output_delay" value="0" />
+  <parameter name="REG_ppllc1_div" value="5" />
+  <parameter name="ED_en_xcelium" value="true" />
+  <parameter name="REG_io37_input_delay" value="0" />
+  <parameter name="REG_io16_input_delay" value="0" />
+  <parameter name="REG_io8_output_delay" value="0" />
+  <parameter name="REG_io13_output_delay" value="0" />
+  <parameter name="MPFE_f2sdram_address_width" value="40" />
+  <parameter name="MPLL_VCO_Fref_mhz" value="25.0" />
+  <parameter name="EMIF_Topology" value="0" />
+  <parameter name="REG_io18_input_delay" value="0" />
+  <parameter name="REG_pin14_sel" value="8" />
+  <parameter name="REG_pin44_sel" value="7" />
+  <parameter name="hps_iob2_opd_en" value="false" />
+  <parameter name="USB1_Mode" value="N/A" />
+  <parameter name="hps_iob6_opd_en" value="false" />
+  <parameter name="hps_ioa1_opd_en" value="false" />
+  <parameter name="Periph_clk_emac0_sel" value="250" />
+  <parameter name="MPLL_C2_Override_mhz" value="533.33" />
+  <parameter name="hps_ioa5_opd_en" value="false" />
+  <parameter name="hps_ioa9_opd_en" value="false" />
+  <parameter name="REG_mpllc3_div" value="8" />
+  <parameter name="REG_pinmux_i3c1_usefpga_sel" value="0" />
+  <parameter name="MPLL_C0_Override_mhz" value="800.0" />
+  <parameter name="REG_pinmux_i3c0_usefpga_sel" value="0" />
+  <parameter name="H2F_IRQ_I2CEMAC1_Enable" value="false" />
+  <parameter name="User0_clk_enable" value="false" />
+  <parameter name="FPGA_I3C1_sclk_mhz" value="125.0" />
+  <parameter name="REG_io37_output_delay" value="0" />
+  <parameter name="Pwr_a76_core2_on" value="true" />
+  <parameter name="REG_io39_output_delay" value="0" />
+  <parameter name="REG_s2fuser0ctr_src" value="1" />
+  <parameter name="REG_s2fuser1ctr_cnt" value="0" />
+  <parameter name="REG_io41_input_delay" value="0" />
+  <parameter name="REG_io96b_csr" value="0" />
+  <parameter name="hps_iob16_opd_en" value="false" />
+  <parameter name="MPFE_Lite_is_present" value="false" />
+  <parameter name="REG_io45_input_delay" value="0" />
+  <parameter name="PPLL_VCO_fdiv" value="0" />
+  <parameter name="OPT_HPS_DDR_PRESENT" value="0" />
+  <parameter name="REG_io47_input_delay" value="0" />
+  <parameter name="REG_fpga_clk_hz" value="125000000" />
+  <parameter name="EMAC0_PPS_Enable" value="false" />
+  <parameter name="REG_io7_output_delay" value="0" />
+  <parameter name="PPLL_C3_Override_mhz" value="500.0" />
+  <parameter name="REG_io28_output_delay" value="0" />
+  <parameter name="hps_iob15_opd_en" value="false" />
+  <parameter name="SDMMC_Mode" value="N/A" />
+  <parameter name="REG_core3ctr_cnt" value="0" />
+  <parameter name="Periph_emac_ptp_src_override" value="7" />
+  <parameter name="FPGA_I3C0_sclk_mhz" value="125.0" />
+  <parameter name="FPGA_EMAC1_tx_clk_en" value="true" />
+  <parameter name="REG_periph_pwrgate" value="255" />
+  <parameter name="PPLL_VCO_Override_mhz" value="3000.0" />
+  <parameter name="REG_ppllglob_drefclkdiv" value="0" />
+  <parameter name="OPT_corepwr_state" value="15" />
+  <parameter name="hps_iob7_opd_en" value="false" />
+  <parameter name="NOC_clk_slow_l4_div" value="4" />
+  <parameter name="Pwr_a55_core0_1_on" value="true" />
+  <parameter name="I2C1_PinMuxing" value="Unused" />
+  <parameter name="REG_dsuctr_src" value="0" />
+  <parameter name="OPT_watchdog_reset" value="COLD" />
+  <parameter name="REG_io17_output_delay" value="0" />
+  <parameter name="SPIS0_PinMuxing" value="Unused" />
+  <parameter name="hps_ioa20_opd_en" value="false" />
+  <parameter name="REG_io43_input_delay" value="0" />
+  <parameter name="REG_nocdiv_ccudiv" value="1" />
+  <parameter name="ED_f2sdram_addr_width" value="40" />
+  <parameter name="hps_ioa17_opd_en" value="false" />
+  <parameter name="REG_pfdbck_fdiv" value="0" />
+  <parameter name="REG_io31_input_delay" value="0" />
+  <parameter name="I3C0_Mode" value="N/A" />
+  <parameter name="REG_nocclk_src" value="0" />
+  <parameter name="OPT_f2sdram_sel" value="0" />
+  <parameter
+     name="HPS_IO_Enable"
+     value="NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,HCLK:HPS_OSC_CLK,NONE,NONE,NONE,NONE,NONE,NONE,GPIO1:IO10,GPIO1:IO11,NONE,NONE,UART1:TX,UART1:RX,NONE,NONE,GPIO1:IO18,SPIM0:SS0_N,SPIM0:CLK,SPIM0:MOSI,NONE,NONE" />
+  <parameter name="MPU_clk_override" value="true" />
+  <parameter name="REG_gpiodbctr_cnt" value="1" />
+  <parameter name="JAVA_WARNING_MSG" value="" />
+  <parameter name="device_name" value="A5ED013BB32AE4SCS" />
+  <parameter name="MPLL_C3_Override_mhz" value="400.0" />
+  <parameter name="REG_pin30_sel" value="8" />
+  <parameter name="USB1_PinMuxing" value="Unused" />
+  <parameter name="PPLL_Frequencies" value="3000.00,600.00,600.00,24.00,500.00" />
+  <parameter name="REG_ppllc0_div" value="5" />
+  <parameter name="REG_nocdiv_mpuperiphdiv" value="2" />
+  <parameter name="H2F_IRQ_USB0_Enable" value="false" />
+  <parameter name="REG_pin13_sel" value="8" />
+  <parameter name="REG_ppllm_mdiv" value="120" />
+  <parameter name="REG_mpllglob_drefclkdiv" value="0" />
+  <parameter name="UART1_PinMuxing" value="IO" />
+  <parameter name="H2F_IRQ_GPIO0_Enable" value="false" />
+  <parameter name="ED_h2f_addr_width" value="26" />
+  <parameter name="REG_io34_output_delay" value="0" />
+  <parameter name="H2F_IRQ_EMAC2_Enable" value="false" />
+  <parameter name="Periph_emacb_src_override" value="7" />
+  <parameter name="REG_io24_output_delay" value="0" />
+  <parameter name="REG_pin45_sel" value="7" />
+  <parameter name="hps_ioa23_opd_en" value="false" />
+  <parameter name="User1_clk_freq" value="500.0" />
+  <parameter name="FPGA_I2CEMAC1_clk_mhz" value="125.0" />
+  <parameter name="REG_io38_output_delay" value="0" />
+  <parameter name="MPU_clk_freq_override_mhz" value="533.33" />
+  <parameter name="f2sdram_data_width" value="0" />
+  <parameter name="REG_pin28_sel" value="8" />
+  <parameter name="hps_ioa12_opd_en" value="false" />
+  <parameter name="H2F_Width" value="0" />
+  <parameter name="REG_pin0_sel" value="8" />
+  <parameter name="Debug_APB_Enable" value="false" />
+  <parameter name="CM_PinMuxing" value="Unused" />
+  <parameter name="EMAC1_PinMuxing" value="Unused" />
+  <parameter name="f2s_SMMU" value="false" />
+  <parameter name="F2H_free_clock_enable" value="false" />
+  <parameter name="OPT_f2soc_sel" value="0" />
+  <parameter name="PPLL_Clock_Source" value="0" />
+  <parameter name="REG_io10_output_delay" value="0" />
+  <parameter name="MPLL_Clock_Source" value="0" />
+  <parameter name="SPIM0_Mode" value="Single_slave_selects" />
+  <parameter name="REG_emacctl_emac2sel" value="0" />
+  <parameter name="MPU_clk_sources" value="MainC2,MPU,MPU,MainC1,MainC0,MainC0" />
+  <parameter name="f2s_mode" value="ace5lite" />
+  <parameter name="REG_io7_input_delay" value="0" />
+  <parameter name="REG_ppllc2_div" value="125" />
+  <parameter name="REG_pin19_sel" value="8" />
+  <parameter name="REG_pinmux_emac0_usefpga_sel" value="0" />
+  <parameter name="REG_io6_input_delay" value="0" />
+  <parameter name="TRACE_PinMuxing" value="Unused" />
+  <parameter
+     name="PIN_TO_BALL_MAP"
+     value="HPS_IOA_24,G135,HPS_IOB_5,B134,HPS_IOB_6,AA135,HPS_IOB_7,V127,HPS_IOB_8,AB132,HPS_IOB_9,T127,HPS_IOB_10,Y132,HPS_IOB_11,T124,HPS_IOB_12,P124,HPS_IOB_13,M127,HPS_IOB_14,K127,HPS_IOB_15,M124,HPS_IOB_16,AB127,HPS_IOB_17,K124,HPS_IOB_18,Y127,HPS_IOB_19,H127,HPS_IOB_20,AB124,HPS_IOB_21,F127,HPS_IOB_22,Y124,HPS_IOB_23,F124,HPS_IOB_24,D124,HPS_IOA_1,W135,HPS_IOA_2,U135,HPS_IOA_3,W134,HPS_IOA_4,AK115,HPS_IOA_5,U134,HPS_IOA_6,AL120,HPS_IOA_7,R134,HPS_IOA_8,AG115,HPS_IOA_10,AK120,HPS_IOA_9,N135,HPS_IOA_11,N134,HPS_IOA_12,T132,HPS_IOA_13,P132,HPS_IOA_14,L135,HPS_IOA_15,J135,HPS_IOA_16,AD135,HPS_IOA_17,M132,HPS_IOA_18,AD134,HPS_IOA_19,K132,HPS_IOA_20,AG129,HPS_IOB_1,E135,HPS_IOA_21,J134,HPS_IOB_2,F132,HPS_IOA_22,AG120,HPS_IOB_3,D132,HPS_IOA_23,G134,HPS_IOB_4,AG123" />
+  <parameter name="REG_usb31ctr_cnt" value="19" />
+  <parameter name="EMAC1_PPS_Enable" value="false" />
+  <parameter name="hps_ioa6_opd_en" value="false" />
+  <parameter name="hps_ioa2_opd_en" value="false" />
+  <parameter name="hps_ioa8_opd_en" value="false" />
+  <parameter name="REG_pinmux_emac1_usefpga_sel" value="0" />
+  <parameter name="REG_io19_output_delay" value="0" />
+  <parameter name="ED_f2h_traffic_pattern" value="0" />
+  <parameter name="REG_io5_output_delay" value="0" />
+  <parameter name="REG_io18_output_delay" value="0" />
+  <parameter name="REG_nocdiv_csclk" value="0" />
+  <parameter name="PPLL_Override" value="true" />
+  <parameter name="MPFE_is_present" value="false" />
+  <parameter name="REG_io2_input_delay" value="0" />
+  <parameter name="LWH2F_Width" value="0" />
+  <parameter name="FPGA_I2CEMAC2_clk_mhz" value="125.0" />
+  <parameter name="REG_io3_input_delay" value="0" />
+  <parameter name="MPU_core01_src_override" value="1" />
+  <parameter name="REG_nocdiv_l4sysfreeclk" value="2" />
+  <parameter name="Pwr_mpu_l3_cache_size" value="1" />
+  <parameter name="UART0_PinMuxing" value="Unused" />
+  <parameter name="I2CEMAC2_PinMuxing" value="Unused" />
+  <parameter name="REG_pin46_sel" value="8" />
+  <parameter name="DMA_Enable" value="No,No,No,No,No,No,No,No" />
+  <parameter name="H2F_IRQ_I2C1_Enable" value="false" />
+  <parameter name="FPGA_I2C1_sclk_mhz" value="125.0" />
+  <parameter name="PPLL_Outputs" value="VCO,C0,C1,C2,C3" />
+  <parameter name="ED_en_riviera" value="false" />
+  <parameter name="REG_pin12_sel" value="8" />
+  <parameter name="REG_emacptpctr_src" value="0" />
+  <parameter name="Pwr_boot_core_sel" value="0" />
+  <parameter name="ED_lwh2f_data_width" value="32" />
+  <parameter name="EMAC2_PinMuxing" value="Unused" />
+  <parameter name="REG_io6_output_delay" value="0" />
+  <parameter name="REG_mpllglob_fastrefclk" value="0" />
+  <parameter name="I2C1_Mode" value="N/A" />
+  <parameter name="F2H_free_clk_mhz" value="125" />
+  <parameter name="User1_clk_enable" value="false" />
+  <parameter name="REG_io29_output_delay" value="0" />
+  <parameter name="REG_gpiodbctr_src" value="0" />
+  <parameter name="User1_clk_src_select" value="7" />
+  <parameter name="ED_lwh2f_addr_width" value="26" />
+  <parameter name="REG_io11_output_delay" value="0" />
+  <parameter name="MPLL_VCO_Override_mhz" value="3200.0" />
+  <parameter name="NAND_PinMuxing" value="Unused" />
+  <parameter name="OPT_l3cache_size" value="1" />
+  <parameter name="REG_pin31_sel" value="8" />
+  <parameter name="REG_io33_output_delay" value="0" />
+  <parameter name="REG_pin27_sel" value="9" />
+  <parameter name="REG_mpllc1_div" value="4" />
+  <parameter name="ED_f2h_packet_size" value="1" />
+  <parameter name="REG_io23_output_delay" value="0" />
+  <parameter name="MPLL_Frequencies" value="3200.00,800.00,800.00,533.33,400.00" />
+  <parameter name="Periph_clk_emac2_sel" value="250" />
+  <parameter name="hps_ioa21_opd_en" value="false" />
+  <parameter name="EMAC2_Mode" value="N/A" />
+  <parameter name="REG_emacactr_src" value="1" />
+  <parameter name="GP_Enable" value="false" />
+  <parameter name="REG_io21_output_delay" value="0" />
+  <parameter name="hps_iob19_opd_en" value="false" />
+  <parameter name="REG_pinmux_spim1_usefpga_sel" value="0" />
+  <parameter name="REG_s2fuser0ctr_cnt" value="0" />
+  <parameter name="FPGA_EMAC0_tx_clk_en" value="true" />
+  <parameter name="REG_io40_input_delay" value="0" />
+  <parameter name="REG_io44_input_delay" value="0" />
+  <parameter name="CTI_Enable" value="false" />
+  <parameter name="FPGA_EMAC2_md_clk_mhz" value="2.5" />
+  <parameter name="H2F_IRQ_SPIS1_Enable" value="false" />
+  <parameter name="H2F_IRQ_ECC_SERR_Enable" value="false" />
+  <parameter name="REG_io43_output_delay" value="0" />
+  <parameter name="IO_OUTPUT_DELAY12" value="-1" />
+  <parameter name="REG_pin26_sel" value="8" />
+  <parameter name="PPLL_VCO_M" value="120" />
+  <parameter name="IO_OUTPUT_DELAY11" value="-1" />
+  <parameter name="PPLL_VCO_N" value="1" />
+  <parameter name="IO_OUTPUT_DELAY10" value="-1" />
+  <parameter name="hps_iob8_opd_en" value="false" />
+  <parameter name="I2CEMAC0_Mode" value="N/A" />
+  <parameter name="REG_pinmux_i2c_emac0_usefpga_sel" value="0" />
+  <parameter name="hps_iob14_opd_en" value="false" />
+  <parameter name="REG_pin1_sel" value="8" />
+  <parameter name="I2CEMAC0_PinMuxing" value="Unused" />
+  <parameter name="REG_io12_output_delay" value="0" />
+  <parameter name="REG_core2ctr_cnt" value="0" />
+  <parameter name="hps_iob3_opd_en" value="false" />
+  <parameter name="Rst_h2f_cold_en" value="false" />
+  <parameter name="ED_h2f_connectivity" value="1" />
+  <parameter name="EMAC0_Mode" value="N/A" />
+  <parameter name="REG_mpllglob_psrc" value="0" />
+  <parameter name="NOC_clk_src_select" value="3" />
+  <parameter name="H2F_IRQ_I2CEMAC0_Enable" value="false" />
+  <parameter name="eosc1_clk_mhz" value="25.0" />
+  <parameter name="REG_ppllc3_div" value="6" />
+  <parameter name="hps_ioa22_opd_en" value="false" />
+  <parameter name="REG_pin11_sel" value="8" />
+  <parameter name="hps_ioa11_opd_en" value="false" />
+  <parameter name="REG_usb31ctr_src" value="0" />
+  <parameter name="Periph_emac_ptp_freq_override" value="400.0" />
+  <parameter name="I2CEMAC2_Mode" value="N/A" />
+  <parameter name="REG_emacctl_emac1sel" value="0" />
+  <parameter name="H2F_IRQ_Watchdog_Enable" value="false" />
+  <parameter name="Periph_gpio_src_override" value="3" />
+  <parameter name="REG_io30_input_delay" value="0" />
+  <parameter name="H2F_IRQ_I2C0_Enable" value="false" />
+  <parameter name="REG_nocdiv_cstraceclk" value="2" />
+  <parameter name="REG_io42_output_delay" value="0" />
+  <parameter name="IO_OUTPUT_DELAY29" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY28" value="-1" />
+  <parameter name="I3C0_PinMuxing" value="Unused" />
+  <parameter name="IO_OUTPUT_DELAY27" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY26" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY25" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY24" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY7" value="-1" />
+  <parameter name="IO_INPUT_DELAY28" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY34" value="-1" />
+  <parameter name="hps_iob20_opd_en" value="false" />
+  <parameter name="REG_emacptpctr_cnt" value="0" />
+  <parameter name="IO_OUTPUT_DELAY6" value="-1" />
+  <parameter name="IO_INPUT_DELAY27" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY33" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY9" value="-1" />
+  <parameter name="IO_INPUT_DELAY26" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY32" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY8" value="-1" />
+  <parameter name="IO_INPUT_DELAY25" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY31" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY30" value="-1" />
+  <parameter name="REG_io32_output_delay" value="0" />
+  <parameter name="I3C1_PinMuxing" value="Unused" />
+  <parameter name="IO_INPUT_DELAY29" value="-1" />
+  <parameter name="IO_INPUT_DELAY20" value="-1" />
+  <parameter name="REG_pin47_sel" value="8" />
+  <parameter name="IO_OUTPUT_DELAY1" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY0" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY3" value="-1" />
+  <parameter name="IO_INPUT_DELAY24" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY2" value="-1" />
+  <parameter name="IO_INPUT_DELAY23" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY5" value="-1" />
+  <parameter name="IO_INPUT_DELAY22" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY4" value="-1" />
+  <parameter name="IO_INPUT_DELAY21" value="-1" />
+  <parameter name="ATB_Enable" value="false" />
+  <parameter name="I2CEMAC1_PinMuxing" value="Unused" />
+  <parameter name="H2F_IRQ_PeriphClock_Enable" value="false" />
+  <parameter name="MPU_clk_src_override" value="2" />
+  <parameter name="IO_OUTPUT_DELAY19" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY18" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY17" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY16" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY15" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY14" value="-1" />
+  <parameter name="hps_ioa7_opd_en" value="false" />
+  <parameter name="IO_OUTPUT_DELAY13" value="-1" />
+  <parameter name="IO_INPUT_DELAY17" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY23" value="-1" />
+  <parameter name="IO_INPUT_DELAY16" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY22" value="-1" />
+  <parameter name="IO_INPUT_DELAY15" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY21" value="-1" />
+  <parameter name="REG_pin32_sel" value="8" />
+  <parameter name="H2F_IRQ_SPIM1_Enable" value="false" />
+  <parameter name="IO_INPUT_DELAY14" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY20" value="-1" />
+  <parameter name="EMAC0_PinMuxing" value="Unused" />
+  <parameter name="IO_INPUT_DELAY19" value="-1" />
+  <parameter name="REG_io22_output_delay" value="0" />
+  <parameter name="IO_INPUT_DELAY18" value="-1" />
+  <parameter name="REG_pinmux_nand_usefpga_sel" value="0" />
+  <parameter name="Periph_clk_emac1_sel" value="250" />
+  <parameter name="FPGA_EMAC0_gtx_clk_mhz" value="125.0" />
+  <parameter name="IO_INPUT_DELAY13" value="-1" />
+  <parameter name="IO_INPUT_DELAY12" value="-1" />
+  <parameter name="IO_INPUT_DELAY11" value="-1" />
+  <parameter name="REG_mpllc2_div" value="6" />
+  <parameter name="IO_INPUT_DELAY10" value="-1" />
+  <parameter name="hps_ioa16_opd_en" value="false" />
+  <parameter name="REG_emacactr_cnt" value="1" />
+  <generatedFiles>
+   <file
+       path="C:\Users\aaron\seadrive_root\aaronhen\My Libraries\Aaron Files - SSD\2026-2027\Fall\ECE 4806 - Senior Design Project\AI\tmp\overnight-lcd\repo\Project\DE25_HPS_LCD\ip\hps_lcd_subsys\hps_lcd_subsys_agilex_hps\intel_agilex_5_soc_1400\synth\hps_lcd_subsys_agilex_hps_intel_agilex_5_soc_1400_jqcor4i.v"
+       attributes="CONTAINS_INLINE_CONFIGURATION" />
+  </generatedFiles>
+  <childGeneratedFiles>
+   <file
+       path="C:\Users\aaron\seadrive_root\aaronhen\My Libraries\Aaron Files - SSD\2026-2027\Fall\ECE 4806 - Senior Design Project\AI\tmp\overnight-lcd\repo\Project\DE25_HPS_LCD\ip\hps_lcd_subsys\hps_lcd_subsys_agilex_hps\intel_agilex_5_soc_1400\synth\hps_lcd_subsys_agilex_hps_intel_agilex_5_soc_1400_jqcor4i.v"
+       attributes="CONTAINS_INLINE_CONFIGURATION" />
+  </childGeneratedFiles>
+  <sourceFiles>
+   <file
+       path="C:/altera_pro/26.1/ip/altera/intel_hps/sm/intel_soc_sundancemesa/intel_soc_sundancemesa_hw.tcl" />
+   <file
+       path="C:/altera_pro/26.1/qsys/lib/com.altera.sopcmodel.components.hwtclvalidator.jar" />
+   <file
+       path="C:/altera_pro/26.1/qsys/lib/com.altera.sopcmodel.components.tclelement.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.sopc.generator.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.ddmwriter.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.sopcdocument.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.hdlwriter.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.sopcmodel.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.qsys.common.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.intel.quartus.ngpd.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.intel.shared.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/jacl1.3.2a.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/commons-text-1.10.0.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/commons-lang3-3.12.0.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/guava-32.0.1-jre.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/jfreechart-1.5.0.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/miglayout-swing-5.2.jar" />
+   <file
+       path="C:/altera_pro/26.1/qsys/lib/docking-frames-common-1.1.2_20c.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/bare-bones-browser-launch-3.2.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/jaxb-api.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/jaxb-jxc.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/jaxb-runtime.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/jaxb-xjc.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/codemodel.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/dtd-parser.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/FastInfoset.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/istack-commons-runtime.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/istack-commons-tools.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/javax.activation-api.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/relaxng-datatype.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/rngom.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/stax-ex.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/txw2.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/xsom.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/failureaccess-1.0.1.jar" />
+   <file
+       path="C:/altera_pro/26.1/qsys/lib/listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/jsr305-3.0.2.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/checker-qual-3.33.0.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/j2objc-annotations-2.8.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/miglayout-core-5.2.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/docking-frames-core-1.1.2_20c.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/commons-io-2.13.0.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.qsys.model.common.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.privateinterfaces.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.qsys.ipxact.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/antlr4-runtime-4.7.2.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.sopclibrary.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.sopcmodel.atlantic.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.qsys.ipxact.module.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.intel.quartus.dni.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.sopcreport.build.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.sopcreport.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.sopc.qsymbol.jar" />
+   <file
+       path="C:/altera_pro/26.1/qsys/lib/com.altera.sopcmodel.transforms.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.qsys.hypericonnect.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.qsys.cmsis.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.hdlcomponent.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.tcl.interpreter.jar" />
+  </sourceFiles>
+  <childSourceFiles>
+   <file
+       path="C:/altera_pro/26.1/ip/altera/intel_hps/sm/hps/intel_hps_sundancemesa_hw.tcl" />
+   <file
+       path="C:/altera_pro/26.1/qsys/lib/com.altera.sopcmodel.components.hwtclvalidator.jar" />
+   <file
+       path="C:/altera_pro/26.1/qsys/lib/com.altera.sopcmodel.components.tclelement.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.sopc.generator.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.ddmwriter.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.sopcdocument.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.hdlwriter.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.sopcmodel.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.qsys.common.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.intel.quartus.ngpd.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.intel.shared.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/jacl1.3.2a.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/commons-text-1.10.0.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/commons-lang3-3.12.0.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/guava-32.0.1-jre.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/jfreechart-1.5.0.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/miglayout-swing-5.2.jar" />
+   <file
+       path="C:/altera_pro/26.1/qsys/lib/docking-frames-common-1.1.2_20c.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/bare-bones-browser-launch-3.2.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/jaxb-api.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/jaxb-jxc.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/jaxb-runtime.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/jaxb-xjc.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/codemodel.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/dtd-parser.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/FastInfoset.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/istack-commons-runtime.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/istack-commons-tools.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/javax.activation-api.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/relaxng-datatype.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/rngom.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/stax-ex.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/txw2.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/xsom.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/failureaccess-1.0.1.jar" />
+   <file
+       path="C:/altera_pro/26.1/qsys/lib/listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/jsr305-3.0.2.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/checker-qual-3.33.0.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/j2objc-annotations-2.8.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/miglayout-core-5.2.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/docking-frames-core-1.1.2_20c.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/commons-io-2.13.0.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.qsys.model.common.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.privateinterfaces.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.qsys.ipxact.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/antlr4-runtime-4.7.2.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.sopclibrary.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.sopcmodel.atlantic.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.qsys.ipxact.module.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.intel.quartus.dni.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.sopcreport.build.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.sopcreport.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.sopc.qsymbol.jar" />
+   <file
+       path="C:/altera_pro/26.1/qsys/lib/com.altera.sopcmodel.transforms.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.qsys.hypericonnect.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.qsys.cmsis.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.hdlcomponent.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.tcl.interpreter.jar" />
+  </childSourceFiles>
+  <instantiator instantiator="hps_lcd_subsys_agilex_hps" as="agilex_hps" />
+  <messages>
+   <message level="Info" culprit="hps_lcd_subsys_agilex_hps">"Generating: hps_lcd_subsys_agilex_hps_intel_agilex_5_soc_1400_jqcor4i"</message>
+   <message level="Info" culprit="hps_lcd_subsys_agilex_hps">"Generating: hps_lcd_subsys_agilex_hps_intel_sundancemesa_hps_100_e2ybgji"</message>
+  </messages>
+ </entity>
+ <entity
+   kind="intel_sundancemesa_hps"
+   version="1.0.0"
+   name="hps_lcd_subsys_agilex_hps_intel_sundancemesa_hps_100_e2ybgji">
+  <parameter
+     name="HPS_HANDOFF_OPTION_STRING"
+     value="    HPS_PRESENT: true
+    HPS_DDR_PRESENT: false
+    hps_wachdog_expiration: COLD_RESET
+    cores_power_state: 15
+    boot_core: 0
+    l3_cache_size: HALF_ON
+    f2soc_intfcsel: DISABLE
+    f2sdram_intfcsel: DISABLE" />
+  <parameter name="User0_clk_freq" value="500.0" />
+  <parameter name="NOC_clk_periph_l4_div" value="2" />
+  <parameter name="PPLL_C1_Override_mhz" value="600.0" />
+  <parameter
+     name="Periph_clk_frequencies"
+     value="250,250,250,400.00,200.00,100.00,500.00,20.00" />
+  <parameter name="IO_OUTPUT_DELAY47" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY46" value="-1" />
+  <parameter name="MPLL_VCO_M" value="128" />
+  <parameter name="IO_INPUT_DELAY5" value="-1" />
+  <parameter name="MPLL_VCO_N" value="1" />
+  <parameter name="IO_INPUT_DELAY6" value="-1" />
+  <parameter name="SPIS1_Mode" value="N/A" />
+  <parameter name="IO_INPUT_DELAY7" value="-1" />
+  <parameter name="IO_INPUT_DELAY8" value="-1" />
+  <parameter name="IO_INPUT_DELAY47" value="-1" />
+  <parameter name="IO_INPUT_DELAY9" value="-1" />
+  <parameter name="MPU_clk_periph_div" value="4" />
+  <parameter name="IO_INPUT_DELAY42" value="-1" />
+  <parameter name="Pwr_a76_core3_on" value="true" />
+  <parameter name="IO_INPUT_DELAY41" value="-1" />
+  <parameter name="DMA_PeriphID" value="0,1,2,3,4,5,6,7" />
+  <parameter name="IO_INPUT_DELAY40" value="-1" />
+  <parameter name="NOC_clk_free_l4_div" value="4" />
+  <parameter name="IO_INPUT_DELAY46" value="-1" />
+  <parameter name="IO_INPUT_DELAY45" value="-1" />
+  <parameter name="IO_INPUT_DELAY44" value="-1" />
+  <parameter name="NOC_clk_cs_div" value="1" />
+  <parameter name="Periph_usb_src_override" value="3" />
+  <parameter name="IO_INPUT_DELAY43" value="-1" />
+  <parameter name="FPGA_EMAC0_md_clk_mhz" value="2.5" />
+  <parameter name="IO_INPUT_DELAY0" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY39" value="-1" />
+  <parameter name="IO_INPUT_DELAY1" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY38" value="-1" />
+  <parameter name="IO_INPUT_DELAY2" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY37" value="-1" />
+  <parameter name="IO_INPUT_DELAY3" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY36" value="-1" />
+  <parameter name="IO_INPUT_DELAY4" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY35" value="-1" />
+  <parameter name="IO_INPUT_DELAY39" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY45" value="-1" />
+  <parameter
+     name="Periph_clk_sources"
+     value="PeriphC3,PeriphC3,PeriphC3,MainC3,MainC3,GDB Free,PeriphC3,MainC3" />
+  <parameter name="IO_INPUT_DELAY38" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY44" value="-1" />
+  <parameter name="IO_INPUT_DELAY37" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY43" value="-1" />
+  <parameter name="H2F_IRQ_SPIM0_Enable" value="false" />
+  <parameter name="IO_INPUT_DELAY36" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY42" value="-1" />
+  <parameter name="FPGA_EMAC1_md_clk_mhz" value="2.5" />
+  <parameter name="UART1_Mode" value="No_flow_control" />
+  <parameter name="IO_OUTPUT_DELAY41" value="-1" />
+  <parameter name="H2F_IRQ_UART0_Enable" value="false" />
+  <parameter name="IO_OUTPUT_DELAY40" value="-1" />
+  <parameter name="SPIM1_Mode" value="N/A" />
+  <parameter name="H2F_IRQ_EMAC1_Enable" value="false" />
+  <parameter name="IO_INPUT_DELAY31" value="-1" />
+  <parameter name="IO_INPUT_DELAY30" value="-1" />
+  <parameter name="IO_INPUT_DELAY35" value="-1" />
+  <parameter name="IO_INPUT_DELAY34" value="-1" />
+  <parameter name="IO_INPUT_DELAY33" value="-1" />
+  <parameter name="IO_INPUT_DELAY32" value="-1" />
+  <parameter name="MPFE_ATB_Enable" value="false" />
+  <parameter name="device_family" value="Agilex 5" />
+  <parameter name="MPLL_Outputs" value="VCO,C0,C1,C2,C3" />
+  <parameter name="PPLL_C0_Override_mhz" value="600.0" />
+  <parameter name="hps_iob23_opd_en" value="false" />
+  <parameter name="I2C0_Mode" value="N/A" />
+  <parameter name="PPLL_C2_Override_mhz" value="24.0" />
+  <parameter name="PPLL_VCO_Fref_mhz" value="25.0" />
+  <parameter name="Rst_hps_warm_en" value="false" />
+  <parameter name="EMAC2_PTP" value="false" />
+  <parameter name="I3C1_Mode" value="N/A" />
+  <parameter name="H2F_IRQ_USB1_Enable" value="false" />
+  <parameter name="Periph_usb_freq_override" value="20.0" />
+  <parameter name="MPFE_f2sdram_address_width" value="40" />
+  <parameter name="MPLL_VCO_Fref_mhz" value="25.0" />
+  <parameter name="MPFE_f2s_data_width" value="0" />
+  <parameter name="hps_iob2_opd_en" value="false" />
+  <parameter name="H2F_IRQ_DMA_Enable1" value="false" />
+  <parameter name="H2F_IRQ_DMA_Enable0" value="false" />
+  <parameter name="USB1_Mode" value="N/A" />
+  <parameter name="H2F_IRQ_SDMMC_Enable" value="false" />
+  <parameter name="hps_iob6_opd_en" value="false" />
+  <parameter name="hps_ioa1_opd_en" value="false" />
+  <parameter name="Periph_clk_emac0_sel" value="250" />
+  <parameter name="MPLL_C2_Override_mhz" value="533.33" />
+  <parameter name="hps_ioa5_opd_en" value="false" />
+  <parameter name="hps_ioa9_opd_en" value="false" />
+  <parameter name="MPLL_C0_Override_mhz" value="800.0" />
+  <parameter name="USB0_PinMuxing" value="Unused" />
+  <parameter name="H2F_IRQ_I2CEMAC1_Enable" value="false" />
+  <parameter name="User0_clk_enable" value="false" />
+  <parameter name="MPU_clk_ccu_div" value="2" />
+  <parameter name="FPGA_I3C1_sclk_mhz" value="125.0" />
+  <parameter name="MPFE_f2s_mode" value="ace5lite" />
+  <parameter name="Pwr_a76_core2_on" value="true" />
+  <parameter name="hps_ioa10_opd_en" value="false" />
+  <parameter name="hps_ioa14_opd_en" value="false" />
+  <parameter name="hps_ioa18_opd_en" value="false" />
+  <parameter name="hps_iob16_opd_en" value="false" />
+  <parameter name="hps_iob18_opd_en" value="false" />
+  <parameter name="MPFE_Lite_is_present" value="false" />
+  <parameter name="H2F_IRQ_SPIS0_Enable" value="false" />
+  <parameter name="PPLL_VCO_fdiv" value="0" />
+  <parameter name="TPIU_Select" value="HPS Clock Manager" />
+  <parameter name="EMAC0_PPS_Enable" value="false" />
+  <parameter name="hps_iob9_opd_en" value="false" />
+  <parameter name="device_trait_iobank_rev" value="IO96B_REVB1" />
+  <parameter name="PPLL_C3_Override_mhz" value="500.0" />
+  <parameter name="FPGA_SPIM1_sclk_mhz" value="125.0" />
+  <parameter name="hps_iob10_opd_en" value="false" />
+  <parameter name="hps_iob13_opd_en" value="false" />
+  <parameter name="hps_iob15_opd_en" value="false" />
+  <parameter name="SPIS1_PinMuxing" value="Unused" />
+  <parameter name="SDMMC_Mode" value="N/A" />
+  <parameter name="Periph_gpio_freq_override" value="400.0" />
+  <parameter name="JAVA_ERROR_MSG" value="" />
+  <parameter name="Periph_emac_ptp_src_override" value="7" />
+  <parameter name="FPGA_I3C0_sclk_mhz" value="125.0" />
+  <parameter name="FPGA_EMAC1_tx_clk_en" value="true" />
+  <parameter name="hps_iob1_opd_en" value="false" />
+  <parameter name="Pwr_override_cache_size" value="false" />
+  <parameter name="PPLL_VCO_Override_mhz" value="3000.0" />
+  <parameter name="H2F_IRQ_I2CEMAC2_Enable" value="false" />
+  <parameter name="MPU_core3_freq_override_mhz" value="800.0" />
+  <parameter name="User0_clk_src_select" value="7" />
+  <parameter name="hps_iob7_opd_en" value="false" />
+  <parameter name="NOC_clk_slow_l4_div" value="4" />
+  <parameter name="Pwr_a55_core0_1_on" value="true" />
+  <parameter name="I2C1_PinMuxing" value="Unused" />
+  <parameter
+     name="MPU_clk_outputs"
+     value="MPU,MPU CCU,MPU Periph,Core0|Core1,Core2,Core3" />
+  <parameter name="SPIM0_PinMuxing" value="IO" />
+  <parameter name="H2F_IRQ_I3C0_Enable" value="false" />
+  <parameter name="H2F_IRQ_L4Timer_Enable" value="false" />
+  <parameter name="MPU_core01_freq_override_mhz" value="800.0" />
+  <parameter name="SPIS0_PinMuxing" value="Unused" />
+  <parameter name="FPGA_SPIM0_sclk_mhz" value="125.0" />
+  <parameter name="hps_ioa20_opd_en" value="false" />
+  <parameter name="hps_ioa15_opd_en" value="false" />
+  <parameter name="hps_ioa17_opd_en" value="false" />
+  <parameter name="I3C0_Mode" value="N/A" />
+  <parameter
+     name="HPS_IO_Enable"
+     value="NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,HCLK:HPS_OSC_CLK,NONE,NONE,NONE,NONE,NONE,NONE,GPIO1:IO10,GPIO1:IO11,NONE,NONE,UART1:TX,UART1:RX,NONE,NONE,GPIO1:IO18,SPIM0:SS0_N,SPIM0:CLK,SPIM0:MOSI,NONE,NONE" />
+  <parameter name="MPU_clk_override" value="true" />
+  <parameter name="FPGA_EMAC_PTP_clk_en" value="true" />
+  <parameter name="hps_iob24_opd_en" value="false" />
+  <parameter name="NOC_clk_cs_trace_div" value="4" />
+  <parameter name="I2C0_PinMuxing" value="Unused" />
+  <parameter name="JAVA_WARNING_MSG" value="" />
+  <parameter name="device_name" value="A5ED013BB32AE4SCS" />
+  <parameter name="hps_iob21_opd_en" value="false" />
+  <parameter name="MPLL_C3_Override_mhz" value="400.0" />
+  <parameter name="USB1_PinMuxing" value="Unused" />
+  <parameter name="PPLL_Frequencies" value="3000.00,600.00,600.00,24.00,500.00" />
+  <parameter name="H2F_IRQ_USB0_Enable" value="false" />
+  <parameter name="FPGA_EMAC2_tx_clk_en" value="true" />
+  <parameter name="hps_iob4_opd_en" value="false" />
+  <parameter name="UART1_PinMuxing" value="IO" />
+  <parameter name="H2F_IRQ_GPIO0_Enable" value="false" />
+  <parameter
+     name="NOC_clk_sources"
+     value="MainC3,NOC,NOC,NOC,L4Periph,NOC,NOC,NOC" />
+  <parameter name="Rst_watchdog_en" value="false" />
+  <parameter name="H2F_IRQ_UART1_Enable" value="false" />
+  <parameter name="Periph_psi_freq_override" value="500.0" />
+  <parameter name="hps_ioa3_opd_en" value="false" />
+  <parameter name="H2F_IRQ_EMAC2_Enable" value="false" />
+  <parameter name="Periph_emacb_src_override" value="7" />
+  <parameter name="hps_ioa23_opd_en" value="false" />
+  <parameter name="LWH2F_Address_Width" value="29" />
+  <parameter name="User1_clk_freq" value="500.0" />
+  <parameter name="H2F_Address_Width" value="38" />
+  <parameter name="FPGA_I2CEMAC1_clk_mhz" value="125.0" />
+  <parameter name="MPU_clk_freq_override_mhz" value="533.33" />
+  <parameter name="hps_ioa12_opd_en" value="false" />
+  <parameter name="FPGA_EMAC1_gtx_clk_mhz" value="125.0" />
+  <parameter
+     name="HPS_HANDOFF_STRING"
+     value="pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 9
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 5
+}
+pinmux_select {
+  value: 5
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 7
+}
+pinmux_select {
+  value: 7
+}
+pinmux_select {
+  value: 7
+}
+pinmux_select {
+  value: 8
+}
+pinmux_select {
+  value: 8
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+io_delay {
+  output_val: 0
+  input_val: 0
+}
+reg {
+  reg_name: &quot;mainpllgrp.nocclk.src&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;mainpllgrp.nocdiv.cspdbgclk&quot;
+  reg_value: 2
+}
+reg {
+  reg_name: &quot;mainpllgrp.nocdiv.cstraceclk&quot;
+  reg_value: 2
+}
+reg {
+  reg_name: &quot;mainpllgrp.nocdiv.csclk&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;mainpllgrp.nocdiv.mpuperiphdiv&quot;
+  reg_value: 2
+}
+reg {
+  reg_name: &quot;mainpllgrp.nocdiv.ccudiv&quot;
+  reg_value: 1
+}
+reg {
+  reg_name: &quot;mainpllgrp.nocdiv.softphydiv&quot;
+  reg_value: 2
+}
+reg {
+  reg_name: &quot;mainpllgrp.nocdiv.l4spclk&quot;
+  reg_value: 2
+}
+reg {
+  reg_name: &quot;mainpllgrp.nocdiv.l4mpclk&quot;
+  reg_value: 1
+}
+reg {
+  reg_name: &quot;mainpllgrp.nocdiv.l4sysfreeclk&quot;
+  reg_value: 2
+}
+reg {
+  reg_name: &quot;mainpllgrp.pllglob.modclkdiv&quot;
+  reg_value: 6
+}
+reg {
+  reg_name: &quot;mainpllgrp.pllglob.fastrefclk&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;mainpllgrp.pllglob.psrc&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;mainpllgrp.pllglob.drefclkdiv&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;mainpllgrp.pllglob.arefclkdiv&quot;
+  reg_value: 1
+}
+reg {
+  reg_name: &quot;mainpllgrp.fdbck.fdiv&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;mainpllgrp.pllc0.div&quot;
+  reg_value: 4
+}
+reg {
+  reg_name: &quot;mainpllgrp.pllc1.div&quot;
+  reg_value: 4
+}
+reg {
+  reg_name: &quot;mainpllgrp.pllc2.div&quot;
+  reg_value: 6
+}
+reg {
+  reg_name: &quot;mainpllgrp.pllc3.div&quot;
+  reg_value: 8
+}
+reg {
+  reg_name: &quot;mainpllgrp.pllm.mdiv&quot;
+  reg_value: 128
+}
+reg {
+  reg_name: &quot;perpllgrp.emacctl.emac0sel&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;perpllgrp.emacctl.emac1sel&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;perpllgrp.emacctl.emac2sel&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;perpllgrp.pllglob.modclkdiv&quot;
+  reg_value: 5
+}
+reg {
+  reg_name: &quot;perpllgrp.pllglob.fstrefclk&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;perpllgrp.pllglob.psrc&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;perpllgrp.pllglob.drefclkdiv&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;perpllgrp.pllglob.arefclkdiv&quot;
+  reg_value: 1
+}
+reg {
+  reg_name: &quot;perpllgrp.fdbck.fdiv&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;perpllgrp.pllc0.div&quot;
+  reg_value: 5
+}
+reg {
+  reg_name: &quot;perpllgrp.pllc1.div&quot;
+  reg_value: 5
+}
+reg {
+  reg_name: &quot;perpllgrp.pllc2.div&quot;
+  reg_value: 125
+}
+reg {
+  reg_name: &quot;perpllgrp.pllc3.div&quot;
+  reg_value: 6
+}
+reg {
+  reg_name: &quot;perpllgrp.pllm.mdiv&quot;
+  reg_value: 120
+}
+reg {
+  reg_name: &quot;ctl.emacactr.src&quot;
+  reg_value: 1
+}
+reg {
+  reg_name: &quot;ctl.emacactr.cnt&quot;
+  reg_value: 1
+}
+reg {
+  reg_name: &quot;ctl.emacbctr.src&quot;
+  reg_value: 1
+}
+reg {
+  reg_name: &quot;ctl.emacbctr.cnt&quot;
+  reg_value: 9
+}
+reg {
+  reg_name: &quot;ctl.emacptpctr.src&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;ctl.emacptpctr.cnt&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;ctl.gpiodbctr.src&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;ctl.gpiodbctr.cnt&quot;
+  reg_value: 1
+}
+reg {
+  reg_name: &quot;perpllgrp.gpiodiv.gpiodbclk&quot;
+  reg_value: 1
+}
+reg {
+  reg_name: &quot;ctl.s2fuser0ctr.src&quot;
+  reg_value: 1
+}
+reg {
+  reg_name: &quot;ctl.s2fuser0ctr.cnt&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;ctl.s2fuser1ctr.src&quot;
+  reg_value: 1
+}
+reg {
+  reg_name: &quot;ctl.s2fuser1ctr.cnt&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;ctl.psirefctr.src&quot;
+  reg_value: 1
+}
+reg {
+  reg_name: &quot;ctl.psirefctr.cnt&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;ctl.usb31ctr.src&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;ctl.usb31ctr.cnt&quot;
+  reg_value: 19
+}
+reg {
+  reg_name: &quot;ctl.dsuctr.src&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;ctl.dsuctr.cnt&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;ctl.core01ctr.src&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;ctl.core01ctr.cnt&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;ctl.core23ctr.src&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;ctl.core2ctr.cnt&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;ctl.core3ctr.cnt&quot;
+  reg_value: 0
+}
+reg {
+  reg_name: &quot;hps_osc_clk_hz&quot;
+  reg_value: 25000000
+}
+reg {
+  reg_name: &quot;fpga_clk_hz&quot;
+  reg_value: 125000000
+}
+" />
+  <parameter name="H2F_Width" value="0" />
+  <parameter name="Debug_APB_Enable" value="false" />
+  <parameter name="NAND_Mode" value="N/A" />
+  <parameter name="TRACE_Mode" value="N/A" />
+  <parameter name="CM_PinMuxing" value="Unused" />
+  <parameter name="EMAC1_PinMuxing" value="Unused" />
+  <parameter name="F2H_free_clock_enable" value="false" />
+  <parameter name="PPLL_Clock_Source" value="0" />
+  <parameter name="MPLL_Clock_Source" value="0" />
+  <parameter name="SPIM0_Mode" value="Single_slave_selects" />
+  <parameter name="MPFE_f2sdram_data_width" value="0" />
+  <parameter name="MPU_clk_sources" value="MainC2,MPU,MPU,MainC1,MainC0,MainC0" />
+  <parameter name="SDMMC_PinMuxing" value="Unused" />
+  <parameter name="hps_ioa4_opd_en" value="false" />
+  <parameter name="TRACE_PinMuxing" value="Unused" />
+  <parameter name="PIN_TO_BALL_MAP" value="" />
+  <parameter name="EMAC1_PPS_Enable" value="false" />
+  <parameter name="SPIS0_Mode" value="N/A" />
+  <parameter name="hps_ioa6_opd_en" value="false" />
+  <parameter name="hps_ioa2_opd_en" value="false" />
+  <parameter name="hps_ioa8_opd_en" value="false" />
+  <parameter name="PPLL_Override" value="true" />
+  <parameter name="MPFE_is_present" value="false" />
+  <parameter name="LWH2F_Width" value="0" />
+  <parameter name="FPGA_I2CEMAC2_clk_mhz" value="125.0" />
+  <parameter name="EMAC2_PPS_Enable" value="false" />
+  <parameter name="MPU_core01_src_override" value="1" />
+  <parameter name="MPLL_Override" value="true" />
+  <parameter name="Pwr_mpu_l3_cache_size" value="1" />
+  <parameter name="UART0_PinMuxing" value="Unused" />
+  <parameter name="PLL_CLK3" value="Unused" />
+  <parameter name="I2CEMAC2_PinMuxing" value="Unused" />
+  <parameter name="PLL_CLK4" value="Unused" />
+  <parameter name="DMA_Enable" value="No,No,No,No,No,No,No,No" />
+  <parameter name="H2F_IRQ_I2C1_Enable" value="false" />
+  <parameter name="FPGA_I2C1_sclk_mhz" value="125.0" />
+  <parameter name="PPLL_Outputs" value="VCO,C0,C1,C2,C3" />
+  <parameter name="Pwr_boot_core_sel" value="0" />
+  <parameter name="hps_iob22_opd_en" value="false" />
+  <parameter name="MPU_core23_src_override" value="0" />
+  <parameter name="EMAC2_PinMuxing" value="Unused" />
+  <parameter name="I2C1_Mode" value="N/A" />
+  <parameter name="F2H_free_clk_mhz" value="125" />
+  <parameter name="User1_clk_enable" value="false" />
+  <parameter name="Rst_sdm_wd_config" value="0" />
+  <parameter name="User1_clk_src_select" value="7" />
+  <parameter name="STM_Enable" value="false" />
+  <parameter name="MPLL_VCO_Override_mhz" value="3200.0" />
+  <parameter name="NAND_PinMuxing" value="Unused" />
+  <parameter name="MPFE_f2s_address_width" value="40" />
+  <parameter
+     name="NOC_clk_frequencies"
+     value="400.0,100.0,200.0,100.0,50.0,400.0,100.0,100.0" />
+  <parameter name="Periph_emaca_src_override" value="7" />
+  <parameter name="MPLL_Frequencies" value="3200.00,800.00,800.00,533.33,400.00" />
+  <parameter
+     name="NOC_clk_outputs"
+     value="NOC,L4 Free,L4 Peripheral,L4 Slow Peripheral,SoftPHY,CoreSight,CoreSight Debug APB,CoreSight Trace IO" />
+  <parameter name="Periph_clk_emac2_sel" value="250" />
+  <parameter name="EMAC0_PTP" value="false" />
+  <parameter name="UART0_Mode" value="N/A" />
+  <parameter name="H2F_IRQ_EMAC0_Enable" value="false" />
+  <parameter name="hps_ioa21_opd_en" value="false" />
+  <parameter name="EMAC2_Mode" value="N/A" />
+  <parameter name="GP_Enable" value="false" />
+  <parameter name="Periph_clk_override" value="false" />
+  <parameter name="CM_Mode" value="N/A" />
+  <parameter name="MPLL_VCO_fdiv" value="0" />
+  <parameter name="I2CEMAC1_Mode" value="N/A" />
+  <parameter name="hps_iob19_opd_en" value="false" />
+  <parameter name="FPGA_EMAC0_tx_clk_en" value="true" />
+  <parameter name="hps_iob17_opd_en" value="false" />
+  <parameter name="CTI_Enable" value="false" />
+  <parameter name="SPIM1_PinMuxing" value="Unused" />
+  <parameter name="FPGA_EMAC2_md_clk_mhz" value="2.5" />
+  <parameter name="H2F_IRQ_SPIS1_Enable" value="false" />
+  <parameter name="USB0_Mode" value="N/A" />
+  <parameter name="H2F_IRQ_ECC_SERR_Enable" value="false" />
+  <parameter name="H2F_IRQ_I3C1_Enable" value="false" />
+  <parameter name="EMAC1_Mode" value="N/A" />
+  <parameter name="IO_OUTPUT_DELAY12" value="-1" />
+  <parameter name="PPLL_VCO_M" value="120" />
+  <parameter name="IO_OUTPUT_DELAY11" value="-1" />
+  <parameter name="PPLL_VCO_N" value="1" />
+  <parameter name="IO_OUTPUT_DELAY10" value="-1" />
+  <parameter name="hps_iob8_opd_en" value="false" />
+  <parameter name="I2CEMAC0_Mode" value="N/A" />
+  <parameter name="hps_iob11_opd_en" value="false" />
+  <parameter name="hps_iob12_opd_en" value="false" />
+  <parameter name="hps_iob14_opd_en" value="false" />
+  <parameter name="MPU_Events_Enable" value="false" />
+  <parameter name="I2CEMAC0_PinMuxing" value="Unused" />
+  <parameter name="MPU_core2_freq_override_mhz" value="800.0" />
+  <parameter name="JTAG_Enable" value="false" />
+  <parameter name="MPFE_f2s_SMMU" value="0" />
+  <parameter name="hps_iob3_opd_en" value="false" />
+  <parameter name="FPGA_I2CEMAC0_clk_mhz" value="125.0" />
+  <parameter name="Rst_h2f_cold_en" value="false" />
+  <parameter name="Pwr_cpu_app_select" value="0" />
+  <parameter name="EMAC0_Mode" value="N/A" />
+  <parameter name="hps_iob5_opd_en" value="false" />
+  <parameter name="NOC_clk_src_select" value="3" />
+  <parameter name="H2F_IRQ_GPIO1_Enable" value="false" />
+  <parameter
+     name="MPU_clk_frequencies"
+     value="533.33,266.665,133.3325,800.00,800.00,800.00" />
+  <parameter name="H2F_IRQ_I2CEMAC0_Enable" value="false" />
+  <parameter name="hps_ioa24_opd_en" value="false" />
+  <parameter name="eosc1_clk_mhz" value="25.0" />
+  <parameter name="NOC_clk_phy_div" value="4" />
+  <parameter name="hps_ioa22_opd_en" value="false" />
+  <parameter name="PLL_CLK1" value="Unused" />
+  <parameter name="hps_ioa11_opd_en" value="false" />
+  <parameter name="H2F_IRQ_NAND_Enable" value="false" />
+  <parameter name="Periph_emac_ptp_freq_override" value="400.0" />
+  <parameter name="PLL_CLK2" value="Unused" />
+  <parameter name="I2CEMAC2_Mode" value="N/A" />
+  <parameter name="hps_ioa19_opd_en" value="false" />
+  <parameter name="PLL_CLK0" value="Unused" />
+  <parameter name="hps_ioa13_opd_en" value="false" />
+  <parameter name="H2F_IRQ_Watchdog_Enable" value="false" />
+  <parameter name="Periph_gpio_src_override" value="3" />
+  <parameter name="H2F_IRQ_I2C0_Enable" value="false" />
+  <parameter name="IO_OUTPUT_DELAY29" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY28" value="-1" />
+  <parameter name="I3C0_PinMuxing" value="Unused" />
+  <parameter name="IO_OUTPUT_DELAY27" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY26" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY25" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY24" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY7" value="-1" />
+  <parameter name="IO_INPUT_DELAY28" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY34" value="-1" />
+  <parameter name="hps_iob20_opd_en" value="false" />
+  <parameter name="IO_OUTPUT_DELAY6" value="-1" />
+  <parameter name="IO_INPUT_DELAY27" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY33" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY9" value="-1" />
+  <parameter name="IO_INPUT_DELAY26" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY32" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY8" value="-1" />
+  <parameter name="IO_INPUT_DELAY25" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY31" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY30" value="-1" />
+  <parameter name="I3C1_PinMuxing" value="Unused" />
+  <parameter name="IO_INPUT_DELAY29" value="-1" />
+  <parameter name="IO_INPUT_DELAY20" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY1" value="-1" />
+  <parameter name="NOC_clk_cs_debug_div" value="4" />
+  <parameter name="IO_OUTPUT_DELAY0" value="-1" />
+  <parameter
+     name="Periph_clk_outputs"
+     value="EMAC0,EMAC1,EMAC2,EMAC PTP,GDB Free,GPIO Debounce,PSI Ref,USB 3.1" />
+  <parameter name="IO_OUTPUT_DELAY3" value="-1" />
+  <parameter name="IO_INPUT_DELAY24" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY2" value="-1" />
+  <parameter name="IO_INPUT_DELAY23" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY5" value="-1" />
+  <parameter name="IO_INPUT_DELAY22" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY4" value="-1" />
+  <parameter name="IO_INPUT_DELAY21" value="-1" />
+  <parameter name="EMAC1_PTP" value="false" />
+  <parameter name="Periph_psi_src_override" value="7" />
+  <parameter name="I2CEMAC1_PinMuxing" value="Unused" />
+  <parameter name="H2F_IRQ_PeriphClock_Enable" value="false" />
+  <parameter name="MPU_clk_src_override" value="2" />
+  <parameter name="IO_OUTPUT_DELAY19" value="-1" />
+  <parameter name="F2H_IRQ_Enable" value="false" />
+  <parameter name="IO_OUTPUT_DELAY18" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY17" value="-1" />
+  <parameter name="FPGA_I2C0_sclk_mhz" value="125.0" />
+  <parameter name="IO_OUTPUT_DELAY16" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY15" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY14" value="-1" />
+  <parameter name="hps_ioa7_opd_en" value="false" />
+  <parameter name="MPLL_C1_Override_mhz" value="800.0" />
+  <parameter name="IO_OUTPUT_DELAY13" value="-1" />
+  <parameter name="IO_INPUT_DELAY17" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY23" value="-1" />
+  <parameter name="IO_INPUT_DELAY16" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY22" value="-1" />
+  <parameter name="IO_INPUT_DELAY15" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY21" value="-1" />
+  <parameter name="H2F_IRQ_SPIM1_Enable" value="false" />
+  <parameter name="IO_INPUT_DELAY14" value="-1" />
+  <parameter name="IO_OUTPUT_DELAY20" value="-1" />
+  <parameter name="EMAC0_PinMuxing" value="Unused" />
+  <parameter name="IO_INPUT_DELAY19" value="-1" />
+  <parameter name="IO_INPUT_DELAY18" value="-1" />
+  <parameter name="Pwr_default_mpu_l3_cache_size" value="1MB" />
+  <parameter name="H2F_IRQ_SYSTimer_Enable" value="false" />
+  <parameter name="Periph_clk_emac1_sel" value="250" />
+  <parameter name="FPGA_EMAC0_gtx_clk_mhz" value="125.0" />
+  <parameter name="FPGA_EMAC2_gtx_clk_mhz" value="125.0" />
+  <parameter name="IO_INPUT_DELAY13" value="-1" />
+  <parameter name="IO_INPUT_DELAY12" value="-1" />
+  <parameter name="IO_INPUT_DELAY11" value="-1" />
+  <parameter name="IO_INPUT_DELAY10" value="-1" />
+  <parameter name="hps_ioa16_opd_en" value="false" />
+  <generatedFiles>
+   <file
+       path="C:\Users\aaron\seadrive_root\aaronhen\My Libraries\Aaron Files - SSD\2026-2027\Fall\ECE 4806 - Senior Design Project\AI\tmp\overnight-lcd\repo\Project\DE25_HPS_LCD\ip\hps_lcd_subsys\hps_lcd_subsys_agilex_hps\intel_sundancemesa_hps_100\synth\hps_lcd_subsys_agilex_hps_intel_sundancemesa_hps_100_e2ybgji.v"
+       attributes="" />
+   <file
+       path="C:\Users\aaron\seadrive_root\aaronhen\My Libraries\Aaron Files - SSD\2026-2027\Fall\ECE 4806 - Senior Design Project\AI\tmp\overnight-lcd\repo\Project\DE25_HPS_LCD\ip\hps_lcd_subsys\hps_lcd_subsys_agilex_hps\intel_sundancemesa_hps_100\synth\ready_latency\hps_axi4_ready_latency_adapter.sv"
+       attributes="" />
+   <file
+       path="C:\Users\aaron\seadrive_root\aaronhen\My Libraries\Aaron Files - SSD\2026-2027\Fall\ECE 4806 - Senior Design Project\AI\tmp\overnight-lcd\repo\Project\DE25_HPS_LCD\ip\hps_lcd_subsys\hps_lcd_subsys_agilex_hps\intel_sundancemesa_hps_100\synth\ready_latency\ready_latency_adapter.sv"
+       attributes="" />
+   <file
+       path="C:\Users\aaron\seadrive_root\aaronhen\My Libraries\Aaron Files - SSD\2026-2027\Fall\ECE 4806 - Senior Design Project\AI\tmp\overnight-lcd\repo\Project\DE25_HPS_LCD\ip\hps_lcd_subsys\hps_lcd_subsys_agilex_hps\intel_sundancemesa_hps_100\synth\ready_latency\ff_macro_p2c.sv"
+       attributes="" />
+   <file
+       path="C:\Users\aaron\seadrive_root\aaronhen\My Libraries\Aaron Files - SSD\2026-2027\Fall\ECE 4806 - Senior Design Project\AI\tmp\overnight-lcd\repo\Project\DE25_HPS_LCD\ip\hps_lcd_subsys\hps_lcd_subsys_agilex_hps\intel_sundancemesa_hps_100\synth\ready_latency\ff_macro_c2p.sv"
+       attributes="" />
+   <file
+       path="C:\Users\aaron\seadrive_root\aaronhen\My Libraries\Aaron Files - SSD\2026-2027\Fall\ECE 4806 - Senior Design Project\AI\tmp\overnight-lcd\repo\Project\DE25_HPS_LCD\ip\hps_lcd_subsys\hps_lcd_subsys_agilex_hps\intel_sundancemesa_hps_100\synth\ready_latency\scfifo_s.sv"
+       attributes="" />
+   <file
+       path="C:\Users\aaron\seadrive_root\aaronhen\My Libraries\Aaron Files - SSD\2026-2027\Fall\ECE 4806 - Senior Design Project\AI\tmp\overnight-lcd\repo\Project\DE25_HPS_LCD\ip\hps_lcd_subsys\hps_lcd_subsys_agilex_hps\intel_sundancemesa_hps_100\synth\ready_latency\scfifo_s_showahead.sv"
+       attributes="" />
+   <file
+       path="C:\Users\aaron\seadrive_root\aaronhen\My Libraries\Aaron Files - SSD\2026-2027\Fall\ECE 4806 - Senior Design Project\AI\tmp\overnight-lcd\repo\Project\DE25_HPS_LCD\ip\hps_lcd_subsys\hps_lcd_subsys_agilex_hps\intel_sundancemesa_hps_100\synth\ready_latency\scfifo_s_normal.sv"
+       attributes="" />
+   <file
+       path="C:\Users\aaron\seadrive_root\aaronhen\My Libraries\Aaron Files - SSD\2026-2027\Fall\ECE 4806 - Senior Design Project\AI\tmp\overnight-lcd\repo\Project\DE25_HPS_LCD\ip\hps_lcd_subsys\hps_lcd_subsys_agilex_hps\intel_sundancemesa_hps_100\synth\ready_latency\add_a_b_s0_s1.sv"
+       attributes="" />
+   <file
+       path="C:\Users\aaron\seadrive_root\aaronhen\My Libraries\Aaron Files - SSD\2026-2027\Fall\ECE 4806 - Senior Design Project\AI\tmp\overnight-lcd\repo\Project\DE25_HPS_LCD\ip\hps_lcd_subsys\hps_lcd_subsys_agilex_hps\intel_sundancemesa_hps_100\synth\ready_latency\generic_mlab.sv"
+       attributes="" />
+   <file
+       path="C:\Users\aaron\seadrive_root\aaronhen\My Libraries\Aaron Files - SSD\2026-2027\Fall\ECE 4806 - Senior Design Project\AI\tmp\overnight-lcd\repo\Project\DE25_HPS_LCD\ip\hps_lcd_subsys\hps_lcd_subsys_agilex_hps\intel_sundancemesa_hps_100\synth\ready_latency\generic_m20k.sv"
+       attributes="" />
+   <file
+       path="C:\Users\aaron\seadrive_root\aaronhen\My Libraries\Aaron Files - SSD\2026-2027\Fall\ECE 4806 - Senior Design Project\AI\tmp\overnight-lcd\repo\Project\DE25_HPS_LCD\ip\hps_lcd_subsys\hps_lcd_subsys_agilex_hps\intel_sundancemesa_hps_100\synth\ready_latency\ready_latency_reset_synchronizer.sv"
+       attributes="" />
+   <file
+       path="C:\Users\aaron\seadrive_root\aaronhen\My Libraries\Aaron Files - SSD\2026-2027\Fall\ECE 4806 - Senior Design Project\AI\tmp\overnight-lcd\repo\Project\DE25_HPS_LCD\ip\hps_lcd_subsys\hps_lcd_subsys_agilex_hps\intel_sundancemesa_hps_100\synth\hps_lcd_subsys_agilex_hps_intel_sundancemesa_hps_100_e2ybgji.sdc"
+       attributes="" />
+  </generatedFiles>
+  <childGeneratedFiles>
+   <file
+       path="C:\Users\aaron\seadrive_root\aaronhen\My Libraries\Aaron Files - SSD\2026-2027\Fall\ECE 4806 - Senior Design Project\AI\tmp\overnight-lcd\repo\Project\DE25_HPS_LCD\ip\hps_lcd_subsys\hps_lcd_subsys_agilex_hps\intel_sundancemesa_hps_100\synth\hps_lcd_subsys_agilex_hps_intel_sundancemesa_hps_100_e2ybgji.v"
+       attributes="" />
+   <file
+       path="C:\Users\aaron\seadrive_root\aaronhen\My Libraries\Aaron Files - SSD\2026-2027\Fall\ECE 4806 - Senior Design Project\AI\tmp\overnight-lcd\repo\Project\DE25_HPS_LCD\ip\hps_lcd_subsys\hps_lcd_subsys_agilex_hps\intel_sundancemesa_hps_100\synth\ready_latency\hps_axi4_ready_latency_adapter.sv"
+       attributes="" />
+   <file
+       path="C:\Users\aaron\seadrive_root\aaronhen\My Libraries\Aaron Files - SSD\2026-2027\Fall\ECE 4806 - Senior Design Project\AI\tmp\overnight-lcd\repo\Project\DE25_HPS_LCD\ip\hps_lcd_subsys\hps_lcd_subsys_agilex_hps\intel_sundancemesa_hps_100\synth\ready_latency\ready_latency_adapter.sv"
+       attributes="" />
+   <file
+       path="C:\Users\aaron\seadrive_root\aaronhen\My Libraries\Aaron Files - SSD\2026-2027\Fall\ECE 4806 - Senior Design Project\AI\tmp\overnight-lcd\repo\Project\DE25_HPS_LCD\ip\hps_lcd_subsys\hps_lcd_subsys_agilex_hps\intel_sundancemesa_hps_100\synth\ready_latency\ff_macro_p2c.sv"
+       attributes="" />
+   <file
+       path="C:\Users\aaron\seadrive_root\aaronhen\My Libraries\Aaron Files - SSD\2026-2027\Fall\ECE 4806 - Senior Design Project\AI\tmp\overnight-lcd\repo\Project\DE25_HPS_LCD\ip\hps_lcd_subsys\hps_lcd_subsys_agilex_hps\intel_sundancemesa_hps_100\synth\ready_latency\ff_macro_c2p.sv"
+       attributes="" />
+   <file
+       path="C:\Users\aaron\seadrive_root\aaronhen\My Libraries\Aaron Files - SSD\2026-2027\Fall\ECE 4806 - Senior Design Project\AI\tmp\overnight-lcd\repo\Project\DE25_HPS_LCD\ip\hps_lcd_subsys\hps_lcd_subsys_agilex_hps\intel_sundancemesa_hps_100\synth\ready_latency\scfifo_s.sv"
+       attributes="" />
+   <file
+       path="C:\Users\aaron\seadrive_root\aaronhen\My Libraries\Aaron Files - SSD\2026-2027\Fall\ECE 4806 - Senior Design Project\AI\tmp\overnight-lcd\repo\Project\DE25_HPS_LCD\ip\hps_lcd_subsys\hps_lcd_subsys_agilex_hps\intel_sundancemesa_hps_100\synth\ready_latency\scfifo_s_showahead.sv"
+       attributes="" />
+   <file
+       path="C:\Users\aaron\seadrive_root\aaronhen\My Libraries\Aaron Files - SSD\2026-2027\Fall\ECE 4806 - Senior Design Project\AI\tmp\overnight-lcd\repo\Project\DE25_HPS_LCD\ip\hps_lcd_subsys\hps_lcd_subsys_agilex_hps\intel_sundancemesa_hps_100\synth\ready_latency\scfifo_s_normal.sv"
+       attributes="" />
+   <file
+       path="C:\Users\aaron\seadrive_root\aaronhen\My Libraries\Aaron Files - SSD\2026-2027\Fall\ECE 4806 - Senior Design Project\AI\tmp\overnight-lcd\repo\Project\DE25_HPS_LCD\ip\hps_lcd_subsys\hps_lcd_subsys_agilex_hps\intel_sundancemesa_hps_100\synth\ready_latency\add_a_b_s0_s1.sv"
+       attributes="" />
+   <file
+       path="C:\Users\aaron\seadrive_root\aaronhen\My Libraries\Aaron Files - SSD\2026-2027\Fall\ECE 4806 - Senior Design Project\AI\tmp\overnight-lcd\repo\Project\DE25_HPS_LCD\ip\hps_lcd_subsys\hps_lcd_subsys_agilex_hps\intel_sundancemesa_hps_100\synth\ready_latency\generic_mlab.sv"
+       attributes="" />
+   <file
+       path="C:\Users\aaron\seadrive_root\aaronhen\My Libraries\Aaron Files - SSD\2026-2027\Fall\ECE 4806 - Senior Design Project\AI\tmp\overnight-lcd\repo\Project\DE25_HPS_LCD\ip\hps_lcd_subsys\hps_lcd_subsys_agilex_hps\intel_sundancemesa_hps_100\synth\ready_latency\generic_m20k.sv"
+       attributes="" />
+   <file
+       path="C:\Users\aaron\seadrive_root\aaronhen\My Libraries\Aaron Files - SSD\2026-2027\Fall\ECE 4806 - Senior Design Project\AI\tmp\overnight-lcd\repo\Project\DE25_HPS_LCD\ip\hps_lcd_subsys\hps_lcd_subsys_agilex_hps\intel_sundancemesa_hps_100\synth\ready_latency\ready_latency_reset_synchronizer.sv"
+       attributes="" />
+   <file
+       path="C:\Users\aaron\seadrive_root\aaronhen\My Libraries\Aaron Files - SSD\2026-2027\Fall\ECE 4806 - Senior Design Project\AI\tmp\overnight-lcd\repo\Project\DE25_HPS_LCD\ip\hps_lcd_subsys\hps_lcd_subsys_agilex_hps\intel_sundancemesa_hps_100\synth\hps_lcd_subsys_agilex_hps_intel_sundancemesa_hps_100_e2ybgji.sdc"
+       attributes="" />
+  </childGeneratedFiles>
+  <sourceFiles>
+   <file
+       path="C:/altera_pro/26.1/ip/altera/intel_hps/sm/hps/intel_hps_sundancemesa_hw.tcl" />
+   <file
+       path="C:/altera_pro/26.1/qsys/lib/com.altera.sopcmodel.components.hwtclvalidator.jar" />
+   <file
+       path="C:/altera_pro/26.1/qsys/lib/com.altera.sopcmodel.components.tclelement.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.sopc.generator.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.ddmwriter.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.sopcdocument.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.hdlwriter.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.sopcmodel.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.qsys.common.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.intel.quartus.ngpd.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.intel.shared.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/jacl1.3.2a.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/commons-text-1.10.0.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/commons-lang3-3.12.0.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/guava-32.0.1-jre.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/jfreechart-1.5.0.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/miglayout-swing-5.2.jar" />
+   <file
+       path="C:/altera_pro/26.1/qsys/lib/docking-frames-common-1.1.2_20c.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/bare-bones-browser-launch-3.2.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/jaxb-api.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/jaxb-jxc.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/jaxb-runtime.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/jaxb-xjc.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/codemodel.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/dtd-parser.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/FastInfoset.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/istack-commons-runtime.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/istack-commons-tools.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/javax.activation-api.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/relaxng-datatype.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/rngom.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/stax-ex.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/txw2.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/xsom.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/failureaccess-1.0.1.jar" />
+   <file
+       path="C:/altera_pro/26.1/qsys/lib/listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/jsr305-3.0.2.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/checker-qual-3.33.0.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/j2objc-annotations-2.8.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/miglayout-core-5.2.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/docking-frames-core-1.1.2_20c.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/commons-io-2.13.0.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.qsys.model.common.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.privateinterfaces.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.qsys.ipxact.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/antlr4-runtime-4.7.2.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.sopclibrary.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.sopcmodel.atlantic.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.qsys.ipxact.module.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.intel.quartus.dni.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.sopcreport.build.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.sopcreport.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.sopc.qsymbol.jar" />
+   <file
+       path="C:/altera_pro/26.1/qsys/lib/com.altera.sopcmodel.transforms.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.qsys.hypericonnect.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.qsys.cmsis.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.hdlcomponent.jar" />
+   <file path="C:/altera_pro/26.1/qsys/lib/com.altera.tcl.interpreter.jar" />
+  </sourceFiles>
+  <childSourceFiles/>
+  <instantiator
+     instantiator="hps_lcd_subsys_agilex_hps_intel_agilex_5_soc_1400_jqcor4i"
+     as="sm_hps" />
+  <messages>
+   <message level="Info" culprit="hps_lcd_subsys_agilex_hps">"Generating: hps_lcd_subsys_agilex_hps_intel_sundancemesa_hps_100_e2ybgji"</message>
+  </messages>
+ </entity>
+</deploy>
