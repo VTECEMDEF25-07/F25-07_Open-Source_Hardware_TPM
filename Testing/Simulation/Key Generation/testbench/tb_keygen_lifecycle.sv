@@ -32,7 +32,14 @@ module tb_keygen_lifecycle #(parameter IP_TYPE = 0);
  integer tests=0,j;
  reg [31:0]active_id=0,held_word;
  localparam [1023:0]P=1024'hf71ccdb1c7544608b1eea2307f4dd112e1ea90ffa89a11a67aa87aced1a654a64b04a412eb1e4ed1cb0fc7b7e2271e94917e2f93f6f9058138975ee5515196e2a6717fdff1e2a6c8fa5e8daa16ee856f4d278b7a55744bab2b1fdeaf4d4ae93540527c08717acb9839a1cffee7dd6163cc2181697fed4e6ffbdf34c1f735bf3b;
- keygen_core #(.IP_TYPE(IP_TYPE)) dut(.*);
+ keygen_core #(.IP_TYPE(IP_TYPE)) dut(
+  .private_open_valid_i(1'b0),.private_open_ready_o(),.private_active_o(),
+  .private_cmd_valid_i(1'b0),.private_cmd_ready_o(),.private_cmd_op_i(8'd0),
+  .private_cmd_arg0_i(32'd0),.private_cmd_arg1_i(32'd0),.private_cmd_arg2_i(32'd0),.private_cmd_arg3_i(32'd0),
+  .private_rsp_valid_o(),.private_rsp_ready_i(1'b0),.private_rsp_status_o(),
+  .private_mem_write_en_i(1'b0),.private_mem_read_en_i(1'b0),.private_mem_address_i(12'd0),.private_mem_write_data_i(32'd0),
+  .private_mem_ready_o(),.private_mem_read_valid_o(),.private_mem_read_data_o(),
+  .private_close_valid_i(1'b0),.private_close_ready_o(),.private_close_rsp_valid_o(),.private_close_rsp_ready_i(1'b0),.*);
  initial begin
   if (dut.engine.IP_TYPE != IP_TYPE ||
       dut.engine.math.IP_TYPE != IP_TYPE || dut.engine.pair_check.IP_TYPE != IP_TYPE ||

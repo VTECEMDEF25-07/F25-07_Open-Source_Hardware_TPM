@@ -49,7 +49,16 @@ module tb_keygen_full #(parameter IP_TYPE = 0);
     assign generation_valid_i=offer_en && (directed ? (directed_index<384) : source_valid);
     assign generation_data_i=directed ? directed_words[directed_index] : source_data;
     assign generation_failed_i=directed ? 1'b0 : source_failed;
-    keygen_core #(.IP_TYPE(IP_TYPE)) dut(.*);
+    // Keep the legacy default-interface assertions; explicitly disconnect the
+    // optional private-demo lease rather than relying on wildcard port lookup.
+    keygen_core #(.IP_TYPE(IP_TYPE)) dut(
+        .private_open_valid_i(1'b0),.private_open_ready_o(),.private_active_o(),
+        .private_cmd_valid_i(1'b0),.private_cmd_ready_o(),.private_cmd_op_i(8'd0),
+        .private_cmd_arg0_i(32'd0),.private_cmd_arg1_i(32'd0),.private_cmd_arg2_i(32'd0),.private_cmd_arg3_i(32'd0),
+        .private_rsp_valid_o(),.private_rsp_ready_i(1'b0),.private_rsp_status_o(),
+        .private_mem_write_en_i(1'b0),.private_mem_read_en_i(1'b0),.private_mem_address_i(12'd0),.private_mem_write_data_i(32'd0),
+        .private_mem_ready_o(),.private_mem_read_valid_o(),.private_mem_read_data_o(),
+        .private_close_valid_i(1'b0),.private_close_ready_o(),.private_close_rsp_valid_o(),.private_close_rsp_ready_i(1'b0),.*);
     keygen_test_source source(
         .clock_i(clock_i),.reset_n_i(reset_n_i),.start_valid_i(source_start),.start_ready_o(source_ready),
         .seed_i(seed),.word_valid_o(source_valid),.word_ready_i(generation_ready_o && !directed && offer_en),

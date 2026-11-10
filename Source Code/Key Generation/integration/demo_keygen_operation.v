@@ -13,6 +13,7 @@ module demo_keygen_operation #(
     output reg [31:0] done_id_o,output reg [1:0] done_profile_o,done_mode_o,
     output reg [3:0] done_core_status_o,done_setup_error_o,done_teardown_error_o,
     output reg done_ownership_committed_o,output reg [31:0] done_handle_o,
+    output wire [63:0] done_cycles_o,
     output wire busy_o,available_o,output reg recovery_required_o,
     output wire scrub_done_o,abort_o,
     output wire reserve_valid_o,input wire reserve_ready_i,
@@ -79,6 +80,9 @@ module demo_keygen_operation #(
     assign private_open_ready_o=private_admissible && core_private_open_ready;
     assign job_ready_o=available_o;
     assign done_valid_o=running && state_reg==DONE;
+    // Accepted outer job through core/source/receiver cleanup; held DONE stalls
+    // are excluded. This is a hardware cycle count, not transport elapsed time.
+    assign done_cycles_o=done_valid_o ? cycles_reg : 64'd0;
     assign scrub_done_o=running && boot_done && source_scrub && !private_active_o && (state_reg==IDLE || state_reg==DONE);
     assign reserve_valid_o=running && state_reg==RESERVE;
     assign reserve_profile_o=done_profile_o;assign reserve_mode_o=done_mode_o;
