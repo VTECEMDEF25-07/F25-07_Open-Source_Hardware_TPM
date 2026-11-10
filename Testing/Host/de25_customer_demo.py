@@ -12,6 +12,7 @@ from de25_customer_crypto import aes_encrypt_on_laptop,expected_cfb_final_iv
 from de25_customer_console import PublicRecorder,input_message,show_bytes
 from de25_customer_evidence import load_phase1,display_phase1,validate_phase1
 from de25_customer_protocol import CustomerClient,ProtocolError
+from de25_customer_fpga_hash import verify_fpga_sha256
 
 DEFAULT_MESSAGE='Hello Lenovo — encrypted on the laptop, decrypted by the DE25.'
 
@@ -125,9 +126,10 @@ def run_customer_flow(client,recorder,phase1,allow_export,auto=False,message=DEF
     recorder.emit('rsa-pass','RSA: FPGA key generation -> laptop PUBLIC encryption -> FPGA PRIVATE decryption PASS.')
     if status_relay is not None and hasattr(status_relay,'show_plaintext'):
         status_relay.show_plaintext(4,rsa_returned)
-    recorder.emit('customer-flow-pass','CUSTOMER AES / RSA FLOW PASS. LCD glass acceptance remains tied to separate physical evidence.',
+    hash_result=verify_fpga_sha256(client.transport,rsa_returned,recorder)
+    recorder.emit('customer-flow-pass','CUSTOMER AES / RSA / SHA256 FLOW PASS. LCD glass acceptance remains tied to separate physical evidence.',
                   phase1_passed=8,phase1_total=8,aes_match=True,rsa_private_match=True)
-    summary=dict(status='PASS',scope='customer AES/RSA functional flow; not a standalone public MODEXP demo',
+    summary=dict(status='PASS',scope='customer AES/RSA/SHA256 functional flow',hash=hash_result,
                  source_commit=phase1['source_commit'],sof_sha256=phase1['sof_sha256'],core_hz=caps.core_hz,
                  provider='FRESH_UNQUALIFIED' if client.provider==0 else 'TEST_DETERMINISTIC',entropy_qualified=False,
                  phase1=phase1,aes=aes_result,rsa=dict(handle=f'0x{rsa_handle:08x}',modulus_hex=nhex,

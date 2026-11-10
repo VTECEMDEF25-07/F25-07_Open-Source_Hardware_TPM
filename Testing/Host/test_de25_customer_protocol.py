@@ -4,10 +4,11 @@ Private fixture computation below tests the client; no private computation or
 host-generated RSA key is used by the real customer client.
 """
 from pathlib import Path
-import contextlib,io,json,struct,unittest
+import contextlib,hashlib,io,json,struct,unittest
 from de25_customer_protocol import CustomerClient,ProtocolError,decode_snapshot,parse_reply,request
 from de25_customer_console import PublicRecorder
 from de25_customer_demo import run_customer_flow
+from de25_customer_fpga_hash import FPGAHashError
 from test_de25_customer_evidence import fixture as phase1_fixture
 
 
@@ -23,7 +24,7 @@ class SoftwareBoardModel:
         assert f['test_only']; self.fixture={k:int(v,0) for k,v in f['results'][0]['key'].items()}
         self.status_callback=None; self.expected_provider=0; self.sequence=0; self.state=0
         self.calls=[]; self.aes_key=bytes(range(32)); self.bad_caps=False
-        self.bad_aes=False; self.bad_rsa=False; self.provider=0
+        self.bad_aes=False; self.bad_rsa=False; self.bad_hash=False; self.provider=0
 
     def poll_status(self,force=False):
         word=(1<<24)|0x80|(self.provider<<4)|self.state
@@ -38,6 +39,11 @@ class SoftwareBoardModel:
     def transact(self,packet,timeout_s=185):
         self.calls.append(bytes(packet))
         if int.from_bytes(packet[6:10],'big')==0x144: self.status(0); return tpm()
+        if int.from_bytes(packet[6:10],'big')==0x17d:
+            n=int.from_bytes(packet[10:12],'big');assert len(packet)==18+n
+            assert packet[-6:]==bytes.fromhex('000b40000007')
+            digest=bytes(32) if self.bad_hash else hashlib.sha256(packet[12:12+n]).digest()
+            return tpm(b'\x00\x20'+digest+bytes.fromhex('8024400000070000'))
         ver,op,flags,ident,handle,reserved=struct.unpack('>BBHIII',packet[10:26]); body=packet[26:]
         assert ver==2 and reserved==0
         if op==0:
@@ -104,6 +110,9 @@ class ProtocolTests(unittest.TestCase):
             result=run_customer_flow(client,rec,phase1_fixture(),True,auto=True,message='Lenovo café',rsa_message='FPGA private RSA!')
         self.assertTrue(result['aes']['plaintext_match']); self.assertTrue(result['rsa']['plaintext_match'])
         self.assertEqual(result['rsa']['returned_plaintext'],'FPGA private RSA!')
+        self.assertTrue(result['hash']['match'])
+        self.assertEqual(bytes.fromhex(result['hash']['message_hex']),b'FPGA private RSA!')
+        self.assertEqual(result['hash']['fpga_digest_hex'],hashlib.sha256(b'FPGA private RSA!').hexdigest())
         self.assertEqual([p[11] for p in model.calls if int.from_bytes(p[6:10],'big')==0x20000101],[0,1,2,3,4])
         self.assertEqual(rec.events[0]['event'],'phase1-start')
         self.assertEqual(len([e for e in rec.events if e['event']=='phase1-suite']),8)
@@ -113,6 +122,13 @@ class ProtocolTests(unittest.TestCase):
         self.assertFalse(result['rsa']['private_context_exported'])
         self.assertFalse(result['lcd_glass_verified'])
         self.assertTrue(result['hardware_statuses'])
+
+    def test_hardware_hash_mismatch_prevents_final_success(self):
+        model=SoftwareBoardModel();model.bad_hash=True;rec=PublicRecorder()
+        with contextlib.redirect_stdout(io.StringIO()),self.assertRaises(FPGAHashError):
+            run_customer_flow(CustomerClient(model,0),rec,phase1_fixture(),True,auto=True)
+        self.assertNotIn('customer-flow-pass',[e['event'] for e in rec.events])
+        self.assertFalse([e for e in rec.events if e['event']=='hash-compare'][-1]['match'])
 
     def test_mismatched_caps_stops_before_any_generation(self):
         m=SoftwareBoardModel(); m.bad_caps=True
