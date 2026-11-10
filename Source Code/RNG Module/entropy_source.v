@@ -16,7 +16,10 @@
 // Simulation time units (ignored by synthesis).
 `timescale 1ns/1ps
  
-module entropy_source (
+module entropy_source #(
+    parameter integer WARMUP_CYCLES = 8,
+    parameter integer SAMPLE_DIV = 1
+) (
     input  wire         clk,             // system clock; sets the sampling rate
     input  wire         rst_n,           // active-low reset (0 = reset)
     input  wire         enable,          // 1 = run the rings and collect bits
@@ -39,14 +42,21 @@ module entropy_source (
     // they are thrown away. SP 800-90B tests the source exactly as it runs,
     // which is why this happens here and not only in the test logic.
     // -----------------------------------------------------------------------
-    localparam [3:0] WARMUP_CYCLES = 4'd8;
-    reg  [3:0] warmup_count;
+    localparam integer WARMUP_W = (WARMUP_CYCLES < 2) ? 1 : $clog2(WARMUP_CYCLES+1);
+    localparam integer DIV_W = (SAMPLE_DIV < 2) ? 1 : $clog2(SAMPLE_DIV);
+    reg [WARMUP_W-1:0] warmup_count;
+    reg [DIV_W-1:0] sample_div_count;
+    generate
+        if (WARMUP_CYCLES < 2 || SAMPLE_DIV < 1) begin : bad_profile
+            ERROR_entropy_source_invalid_profile u_error();
+        end
+    endgenerate
     wire       warm = (warmup_count == WARMUP_CYCLES);
  
     always @(posedge clk or negedge rst_n) begin
-        if (!rst_n)       warmup_count <= 4'd0;
-        else if (!enable) warmup_count <= 4'd0;          // rings stopped
-        else if (!warm)   warmup_count <= warmup_count + 4'd1;
+        if (!rst_n)       warmup_count <= {WARMUP_W{1'b0}};
+        else if (!enable) warmup_count <= {WARMUP_W{1'b0}};          // rings stopped
+        else if (!warm)   warmup_count <= warmup_count + 1'b1;
     end
  
     // -----------------------------------------------------------------------
@@ -88,7 +98,16 @@ module entropy_source (
     wire sampled_bit = sample_sync[1];
  
     // A bit is collected only once the rings are running and warmed up.
-    wire collect = enable && warm;
+    // Unconditioned sampling cadence: first sample after warmup, then one
+    // every SAMPLE_DIV board clocks. No XOR/hash/DRBG is added here.
+    // The default8/1 preserves the original source behavior.
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) sample_div_count <= {DIV_W{1'b0}};
+        else if (!enable || !warm || sample_div_count == SAMPLE_DIV-1)
+            sample_div_count <= {DIV_W{1'b0}};
+        else sample_div_count <= sample_div_count + 1'b1;
+    end
+    wire collect = enable && warm && (sample_div_count == 0);
     assign raw_sample       = sampled_bit;
     assign raw_sample_valid = collect;
  

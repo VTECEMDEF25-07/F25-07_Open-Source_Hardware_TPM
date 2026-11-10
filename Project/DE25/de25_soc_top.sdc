@@ -70,7 +70,7 @@ derive_clock_uncertainty
 set demo_rng_sampler [get_registers -nowarn {*g_fresh.u_entropy|sample_sync*}]
 if {[get_collection_size $demo_rng_sampler] > 0} {
     if {[get_collection_size $demo_rng_sampler] != 2} {error "Expected exactly two fresh RNG sampling registers"}
-    set demo_rng_first_d [get_pins -compatibility_mode -nowarn {tpm|demo_enabled.subsystem|u_operation|u_source|g_fresh.u_entropy|sample_sync[0]|d}]
+    set demo_rng_first_d [get_pins -compatibility_mode -nowarn {*u_operation|u_source|g_fresh.u_entropy|sample_sync[0]|d}]
     if {[get_collection_size $demo_rng_first_d] != 1} {error "Expected exactly one fresh RNG first-stage D pin"}
     set_false_path -to $demo_rng_first_d
 }
