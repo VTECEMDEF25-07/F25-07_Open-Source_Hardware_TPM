@@ -18,6 +18,7 @@ The scripts reference board hardware under Project/DE25/Fan Controller. Keep gen
 
 See [RNG simulations](RNG%20Module/README.md) for the two relocated PR #38 benches. Their serial capture hardware assets are under `Testing/Hardware/RNG Module/`.
 
+See [Asymmetric Module simulations](Asymmetric%20Module/README.md) for PR #40 testbenches and Python vector runners.
  symmetric-module
 See [symmetric simulations](Symmetric%20Module/README.md) for the five Questa suites, waveform guidance and the software-HMAC demonstration. Reusable RTL is under `Source Code/Symmetric Module/`.
 
