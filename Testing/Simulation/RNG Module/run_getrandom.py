@@ -1,4 +1,4 @@
-"""Run GetRandom with a test-only SHA service, independently checked by hashlib.
+"""Run GetRandom against the shared SHA RTL and verify the standalone SHA model.
 
 Author: Aaron Grossman, with Codex assistance. Python standard library + Questa.
 Production Verilog is compiled separately from SystemVerilog test sources.
@@ -66,9 +66,15 @@ initial begin
     rtl = repo / 'Source Code/RNG Module'
     run('rtl-compile', 'vlog', '-vlog01compat', '+define+SIMULATION',
         *[rtl / (n + '.v') for n in ['RNG', 'tpm2_get_random', 'random_number_generation', 'entropy_source', 'ring_osc']])
+    hash_rtl = repo / 'Source Code/Hash Module'
+    shared_bench = here.parent / 'Hash Module/tb_hash_subsystem.sv'
+    run('hash-compile', 'vlog', '-vlog01compat', *sorted(hash_rtl.glob('*.v')))
     run('test-compile', 'vlog', '-sv', here / 'sha256_test_model.sv',
-        here / 'tb_tpm2_get_random.v', build / 'tb_sha_model.sv')
-    for top, marker in [('tb_sha_model', 'PASS SHA model:'), ('tb_tpm2_get_random', 'ALL TESTS PASSED')]:
+        here / 'tb_tpm2_get_random.v', build / 'tb_sha_model.sv', shared_bench)
+    suites = [('tb_sha_model', 'PASS SHA model:'),
+              ('tb_hash_subsystem', 'HASH_SUBSYSTEM_SHARED_PASS'),
+              ('tb_tpm2_get_random', 'ALL TESTS PASSED')]
+    for top, marker in suites:
         output = run(top, 'vsim', '-c', '-onfinish', 'exit', top, '-do',
                      'onerror {quit -code 1}; onbreak {quit -code 1}; run -all; quit -code 0')
         if marker not in output or '  FAIL' in output or 'GLOBAL TIMEOUT' in output:
