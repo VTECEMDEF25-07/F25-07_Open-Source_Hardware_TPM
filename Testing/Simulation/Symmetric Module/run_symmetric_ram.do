@@ -11,7 +11,7 @@ file mkdir $run_root
 cd $run_root
 vlib work_ram
 set sym_root [file join $project_root {Source Code} {Symmetric Module}]
-foreach name {aes_sbox.v aes_inv_sbox.v aes_key_mem.v aes_encipher_block.v aes_decipher_block.v aes_core.v aes.v cfb_block.v encrypt_decrypt2_ram_controller.v symmetric_ram_top.v} {
+foreach name {AES/aes_sbox.v AES/aes_inv_sbox.v AES/aes_key_mem.v AES/aes_encipher_block.v AES/aes_decipher_block.v AES/aes_core.v AES/aes.v Controllers/cfb_block.v Controllers/primitive_controller.v Controllers/session_parameter_controller.v Controllers/kdfa_control.v symmetric_top.v} {
     vlog -vlog01compat -work work_ram [file join $sym_root $name]
 }
 vlog -sv -work work_ram [file join $runner_root symmetric_test_ram.sv] [file join $runner_root tb_symmetric_ram.sv]

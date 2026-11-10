@@ -40,33 +40,11 @@ Follow the waveform in this order:
 Case 1 expects ciphertext `dc7e84bfda79164b7ecd8486985d3860`.
 Case 2 expects plaintext `6bc1bee22e409f96e93d7e117393172a`.
 
-## 2. Test the EncryptDecrypt2 controller
+## 2. Test the primitive path
 
-```tcl
-do {<repository>/Testing/Simulation/Symmetric Module/run_encrypt_decrypt2_controller.do}
-```
-
-This isolates the controller using a **mock CFB worker**. Its distinctive
-result is test data, not calculated ciphertext. This lets you inspect request
-capture, validation, and waiting independently of AES.
-
-| `test_case` | What happens |
-|---|---|
-| 1 | Capture encryption inputs, then change caller buses |
-| 2 | Prepare decryption and reject replay of a held start |
-| 3 | Reject a different command code |
-| 4 | Reject an invalid key flag |
-| 5 | Reject a mode other than the internal CFB code |
-| 6 | Reject more than 16 bytes |
-| 7 | Forward a five-byte job |
-| 8 | Forward worker error status |
-| 9 | Reset while waiting; recover with a fresh job |
-
-Inspect `cfb_start_o`, `cfb_key_o`, `cfb_iv_o`, `cfb_data_o`, and direction.
-The mock waits five cycles before `cfb_done_i`. `done_o` must wait for that
-response. Invalid jobs must not assert `cfb_start_o`.
-
-States: 0=IDLE, 1=ISSUE, 2=WAIT_CFB, 3=DONE, 4=RELEASE.
+Run the [unified RAM suite](README.md#ram-backed-multi-block-suite). The top
+uses `session_protect_i` to select the primitive or session path. Observe
+`ram_req_valid_o` and `ram_rsp_valid_i` to follow each byte transfer.
 
 ## 3. Test the session parameter controller
 
@@ -112,15 +90,6 @@ Six cases inspect message construction, handshake backpressure, held results,
 invalid labels, HMAC failure and reset. It uses fake HMAC. XOR construction
 is additionally checked in the session-controller test above.
 
-## 5. Everything connected through symm_top
-
-```tcl
-do {<repository>/Testing/Simulation/Symmetric Module/run_symmetric_top.do}
-```
-
-Fourteen cases exercise both controllers connected to real AES/CFB, with the
-existing fake HMAC. This checks the integration after the isolated tests.
-
 ## Reading and saving the waves
 
 - Look at `test_case` to identify the scenario.
@@ -135,5 +104,5 @@ existing fake HMAC. This checks the integration after the isolated tests.
   The signal values are preserved; you may need to add the desired signals
   from the recorded hierarchy to the Wave window again.
 
-No tests here establish full TPM compliance. The current implementation still
-has fixed session lengths, one-chunk jobs, and a fake HMAC placeholder.
+These tests exercise the symmetric RTL with test inputs. Host TPM command
+handling and authorization require separate integration tests.

@@ -1,16 +1,26 @@
-// Bounded EncryptDecrypt2 streaming controller. Resolved AES-256/CFB descriptors
-// only; authorization, command parsing and production RAM arbitration are upstream.
+// Filename: primitive_controller.v
+// Author: Makeda Solomon; refactor assisted by Codex
+// Date: October 13, 2026
+// Description: Validate a decoded EncryptDecrypt2 job and process it through
+// shared AES-256/CFB. Upstream resolves the key handle, authorization and mode.
 `default_nettype none
-module encrypt_decrypt2_ram_controller #(
+module primitive_controller #(
     parameter MAX_SYM_DATA_BYTES = 1024,
     parameter RAM_ADDR_WIDTH = 12
 )(
     input wire clock_i, reset_n_i, start_i,
+
+    // Caller supplies decoded command inputs and an already resolved object key.
+    input wire [15:0] command_code_i,
+    input wire key_valid_i,
+    input wire [2:0] mode_i,
     input wire [255:0] key_i,
     input wire [127:0] iv_i,
     input wire decrypt_i,
     input wire [RAM_ADDR_WIDTH-1:0] input_base_i, output_base_i,
     input wire [31:0] data_length_i,
+
+    // Response returned to symm_top. Output bytes are written to the buffer.
     output wire busy_o,
     output reg done_o, error_o,
     output reg [11:0] tpm_rc_o,
@@ -27,11 +37,15 @@ module encrypt_decrypt2_ram_controller #(
     input wire [7:0] ram_rsp_data_i,
     input wire ram_rsp_error_i,
 
+
+    // Prepared request sent to the shared CFB worker.
     output wire cfb_start_o,
     output reg [255:0] cfb_key_o,
     output reg [127:0] cfb_iv_o, cfb_data_o,
     output reg [4:0] cfb_bytes_o,
     output reg cfb_decrypt_o,
+
+    // Response from the shared CFB worker.
     input wire cfb_done_i,
     input wire [11:0] cfb_rc_i,
     input wire [127:0] cfb_data_i, cfb_iv_i
@@ -110,6 +124,7 @@ module encrypt_decrypt2_ram_controller #(
         end else begin
             done_o <= 0;
             case (state_reg)
+                // Capture inputs. Only valid AES-256/CFB jobs proceed to the worker.
                 IDLE: if (start_i) begin
                     // Validate before narrowing the length or touching RAM.
                     error_o <= 0;
@@ -117,7 +132,19 @@ module encrypt_decrypt2_ram_controller #(
                     final_iv_o <= iv_i;
                     completed_length_o <= 0;
                     offset_reg <= 0;
-                    if (data_length_i > MAX_SYM_DATA_BYTES || invalid_range_w) begin
+                    if (command_code_i != 16'h0193) begin
+                        error_o <= 1;
+                        tpm_rc_o <= 12'h143;
+                        state_reg <= FINISH;
+                    end else if (!key_valid_i) begin
+                        error_o <= 1;
+                        tpm_rc_o <= 12'h09c;
+                        state_reg <= FINISH;
+                    end else if (mode_i != 3'd1) begin
+                        error_o <= 1;
+                        tpm_rc_o <= 12'h089;
+                        state_reg <= FINISH;
+                    end else if (data_length_i > MAX_SYM_DATA_BYTES || invalid_range_w) begin
                         error_o <= 1;
                         tpm_rc_o <= 12'h095; // TPM_RC_SIZE: invalid local descriptor
                         state_reg <= FINISH;
@@ -157,7 +184,9 @@ module encrypt_decrypt2_ram_controller #(
                         end
                     end
                 end
+                // Pulse worker start for one cycle. No KDFa is needed for this path.
                 ISSUE: state_reg <= WAIT_CFB;
+                // Wait for the worker before writing the chunk back.
                 WAIT_CFB: if (cfb_done_i) begin
                     if (cfb_rc_i != 0) begin
                         error_o <= 1;
@@ -192,7 +221,8 @@ module encrypt_decrypt2_ram_controller #(
                     end
                 end
                 FINISH: begin
-                    // Retain public result metadata; erase temporary secrets/data.
+                    // Publish done for one clock and erase this controller's key copy.
+                    // Retain result metadata for the caller.
                     cfb_key_o <= 0;
                     cfb_iv_o <= 0;
                     cfb_data_o <= 0;
@@ -208,6 +238,7 @@ module encrypt_decrypt2_ram_controller #(
                     done_o <= 1;
                     state_reg <= RELEASE;
                 end
+                // Wait for start to fall before accepting another job.
                 RELEASE: if (!start_i) state_reg <= IDLE;
                 default: begin
                     error_o <= 1;
