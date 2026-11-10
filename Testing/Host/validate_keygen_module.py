@@ -34,6 +34,7 @@ def measure(client, samples, record, save=lambda: None):
                   core_cycle_measurement=False, samples_requested=samples, messages_per_key=len(MESSAGES), keys=[])
     save()
     for index in range(samples):
+        generation_request_id = getattr(client, 'next_id', None)
         start = time.monotonic_ns()
         handle, public = client.generate_rsa_public()
         elapsed = (time.monotonic_ns() - start) / 1e9
@@ -48,6 +49,7 @@ def measure(client, samples, record, save=lambda: None):
         seen.add(n)
         key = dict(sample=index + 1, public_modulus_hex=f'{n:0512x}', public_exponent=e,
                    handle=f'0x{handle:08x}', generation_host_elapsed_s=elapsed,
+                   generation_request_id=generation_request_id, generation_core_cycles=None,
                    public_checks_pass=True, roundtrips=[])
         record['keys'].append(key)
         save()
@@ -56,12 +58,16 @@ def measure(client, samples, record, save=lambda: None):
             ciphertext = public.encrypt_on_laptop(message)
             if len(ciphertext) != 256:
                 raise RuntimeError('Public RSA ciphertext width changed')
+            private_request_id = getattr(client, 'next_id', None)
             start = time.monotonic_ns()
             returned = client.decrypt_rsa(handle, ciphertext)
             decrypt_elapsed = (time.monotonic_ns() - start) / 1e9
             if returned != message:
                 raise RuntimeError(f'Actual FPGA private result mismatch key={index + 1} case={case + 1}')
             key['roundtrips'].append(dict(case=case + 1, message_bytes=len(message),
+                request_id=private_request_id,handle=f'0x{handle:08x}',
+                message_hex=message.hex(),ciphertext_hex=ciphertext.hex(),
+                returned_plaintext_hex=returned.hex(),worker_cycles64=None,
                 expected_sha256=hashlib.sha256(message).hexdigest(),
                 returned_sha256=hashlib.sha256(returned).hexdigest(), actual_plaintext_match=True,
                 private_decrypt_host_elapsed_s=decrypt_elapsed))
@@ -92,9 +98,10 @@ def main():
     sys.path.insert(0, str(root))
     from de25_customer_evidence import load_phase1
     phase1 = load_phase1(a.phase1_evidence, a.image_sha256)
-    record = dict(status='RUNNING', module='KEYGEN', evidence_kind='HARDWARE',
+    record = dict(status='RUNNING', schema_version=1,module='KEYGEN', evidence_kind='HARDWARE',
         source_revision=phase1['source_commit'], sof_sha256=a.image_sha256,
         spi_hz=phase1['spi_hz'], phase1_evidence=str(a.phase1_evidence.resolve()),
+        exact_log_path=str(a.output.resolve()),host_script_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         started_utc=datetime.now(timezone.utc).isoformat(), requested_samples=a.samples)
     a.output.parent.mkdir(parents=True, exist_ok=True)
     def save():

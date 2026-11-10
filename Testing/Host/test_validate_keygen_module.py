@@ -73,6 +73,11 @@ class Tests(unittest.TestCase):
         self.assertFalse(r['core_cycle_measurement'])
         self.assertFalse(r['private_context_exported'])
         self.assertEqual([c['message_bytes'] for c in r['keys'][0]['roundtrips']], [len(m) for m in MESSAGES])
+        for case,message in zip(r['keys'][0]['roundtrips'],MESSAGES):
+            self.assertEqual(bytes.fromhex(case['message_hex']),message)
+            self.assertEqual(bytes.fromhex(case['returned_plaintext_hex']),message)
+            self.assertEqual(len(bytes.fromhex(case['ciphertext_hex'])),256)
+            self.assertIsNone(case['worker_cycles64'])
 
     def test_duplicate_modulus(self):
         f = Fake(); f.duplicate = True
