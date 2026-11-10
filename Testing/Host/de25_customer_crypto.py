@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 RSA_WIDTH_BITS=2048
 RSA_BYTES=RSA_WIDTH_BITS//8
-RSA_MAX_MESSAGE_BYTES=249
+RSA_MAX_MESSAGE_BYTES=240
 AES_MAX_MESSAGE_BYTES=1024
 
 
@@ -37,7 +37,7 @@ def expected_cfb_final_iv(ciphertext: bytes, initial_iv: bytes) -> bytes:
 
 def encode_rsa_demo_message(message: bytes) -> bytes:
     if len(message)>RSA_MAX_MESSAGE_BYTES:
-        raise ValueError('Raw RSA teaching frame accepts <=249 message bytes')
+        raise ValueError('Raw RSA teaching frame accepts <=240 message bytes')
     # Exact lead/worker freeze: byte0 zero, DE25, u16 BE length, message, zero tail.
     return b'\0DE25'+len(message).to_bytes(2,'big')+message+bytes(RSA_BYTES-7-len(message))
 

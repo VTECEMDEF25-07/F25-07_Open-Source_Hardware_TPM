@@ -23,17 +23,17 @@ class CryptoTests(unittest.TestCase):
             with self.assertRaises(ValueError): crypto.aes_encrypt_on_laptop(key,iv,pt)
 
     def test_rsa_encoding_zero_exact_length_and_unicode(self):
-        for message in (b'',b'a\0b','FPGA decrypts café'.encode(),bytes(range(249))):
+        for message in (b'',b'a\0b','FPGA decrypts café'.encode(),bytes(range(240))):
             frame=crypto.encode_rsa_demo_message(message)
             self.assertEqual(len(frame),256); self.assertEqual(frame[:5],b'\0DE25')
             self.assertEqual(int.from_bytes(frame[5:7],'big'),len(message))
             self.assertEqual(crypto.validate_rsa_demo_frame(frame),message)
-        with self.assertRaises(ValueError): crypto.encode_rsa_demo_message(bytes(250))
-        with self.assertRaises(ValueError): crypto.utf8_message('é'*125,249)
+        with self.assertRaises(ValueError): crypto.encode_rsa_demo_message(bytes(241))
+        with self.assertRaises(ValueError): crypto.utf8_message('é'*121,240)
 
     def test_rsa_malformed_frames_rejected(self):
         frame=crypto.encode_rsa_demo_message(b'hello')
-        bad=[frame[:-1],b'X'+frame[1:],frame[:5]+(250).to_bytes(2,'big')+frame[7:],frame[:-1]+b'X']
+        bad=[frame[:-1],b'X'+frame[1:],frame[:5]+(241).to_bytes(2,'big')+frame[7:],frame[:-1]+b'X']
         for b in bad:
             with self.assertRaises(ValueError): crypto.validate_rsa_demo_frame(b)
 
@@ -43,7 +43,7 @@ class CryptoTests(unittest.TestCase):
         self.assertTrue(fixtures['test_only'])
         key=fixtures['results'][0]['key']; n=int(key['n'],0); e=int(key['e'],0); d=int(key['d'],0)
         public=crypto.FpgaRsaPublicKey.from_fpga(n.to_bytes(256,'big'),e.to_bytes(4,'big'))
-        for msg in (b'',b'Actual FPGA private operation is required in the customer run.',bytes(249)):
+        for msg in (b'',b'Actual FPGA private operation is required in the customer run.',bytes(240)):
             c=public.encrypt_on_laptop(msg); self.assertEqual(len(c),256)
             # Test fixture private computation exists only here, never in the customer client.
             decoded=pow(int.from_bytes(c,'big'),d,n).to_bytes(256,'big')

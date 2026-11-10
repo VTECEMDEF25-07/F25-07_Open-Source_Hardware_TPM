@@ -1,11 +1,14 @@
 """Software-only gate tests. Fixtures here never claim real board acceptance."""
-import copy,unittest
+import unittest
 from de25_customer_evidence import PHASE1_SUITES,validate_phase1
 
 
 def fixture():
     return dict(hardware=True,status='PASS',assertions_unchanged=True,sof_sha256='a'*64,
-                source_commit='b'*40,suites=[dict(name=n,status='PASS',completed=True,errors=0,assertions=i)
+                source_commit='b'*40,suite_count=8,assertion_count=28,failure_count=0,completion_marker=True,
+                core_hz=50000000,spi_hz=100000,log_path='actual-hardware.log',started_utc='2026-11-10T05:55:00Z',
+                ended_utc='2026-11-10T05:55:01Z',
+                suites=[dict(name=n,completed=True,failures=0,assertion_calls=i)
                 for i,n in enumerate(PHASE1_SUITES)])
 
 
@@ -22,7 +25,7 @@ class EvidenceTests(unittest.TestCase):
             with self.assertRaises(ValueError): validate_phase1(f,'a'*64)
 
     def test_failure_incomplete_or_missing_counts_rejected(self):
-        for field,value in (('errors',1),('errors',False),('completed',False),('status','FAIL'),('assertions',None)):
+        for field,value in (('failures',1),('failures',False),('completed',False),('status','FAIL'),('assertion_calls',None)):
             f=fixture(); f['suites'][4][field]=value
             with self.assertRaises(ValueError): validate_phase1(f,'a'*64)
 
