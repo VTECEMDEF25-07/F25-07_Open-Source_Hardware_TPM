@@ -106,9 +106,12 @@ def final_iv(ciphertext: bytes, initial_iv: bytes) -> bytes:
     return ciphertext[-count:] + bytes(16-count)
 
 
-def run_demo(transport, message: bytes, repeat: int = 2, expected_modexp_width: int = 2048) -> list[dict]:
+def run_demo(transport, message: bytes, repeat: int = 2, expected_modexp_width: int = 2048,
+             expected_provider_mode: int = 1) -> list[dict]:
     if expected_modexp_width not in (256, 1024, 2048):
         raise ValueError("Unsupported expected public MODEXP width")
+    if expected_provider_mode not in (0, 1):
+        raise ValueError("Explicit expected provider must be TEST or FRESH_UNQUALIFIED")
     evidence = []
     def exchange(command, rc=0):
         raw = bytes(transport.transact(command, timeout_s=185))
@@ -117,10 +120,14 @@ def run_demo(transport, message: bytes, repeat: int = 2, expected_modexp_width: 
         return raw
     exchange(packet(0x144, b"\0\0"))  # Startup(CLEAR); transport owns reset/recovery.
     caps = parse_control(exchange(control(0, 1)), 0, expected_modexp_width)
+    if caps["mode"] != expected_provider_mode:
+        raise AssertionError(f"Expected provider {MODES[expected_provider_mode]}, got {MODES[caps['mode']]}")
     print(MODES[caps["mode"]], flush=True)
     print(f"Public MODEXP capability: {caps['width']} bits (explicitly expected {expected_modexp_width})", flush=True)
     if caps["mode"] == 2 or caps["state"] != 0:
         raise AssertionError("Demo provider unavailable")
+    print("Cipher verification: independent public-fixture oracle" if caps["mode"] == 1 else
+          "Cipher verification: fresh-key roundtrip only; SHA independently checked; no secret-key export", flush=True)
     ident = 2
     for iteration in range(repeat):
         generated = parse_control(exchange(control(1, ident)), 1, expected_modexp_width); ident += 1
@@ -185,6 +192,8 @@ def main():
     parser.add_argument("--message", default="DE25 internal-key crypto demo: encrypt, decrypt, independently verify.")
     parser.add_argument("--repeat", type=int, default=2)
     parser.add_argument("--evidence", type=Path)
+    parser.add_argument("--expected-provider", choices=("test", "fresh-unqualified"), default="test",
+                        help="Require exact provider provenance; fresh hardware needs explicit fresh-unqualified")
     parser.add_argument("--expected-modexp-width", type=int, choices=(256, 1024, 2048), default=2048,
                         help="Require exact CAPS/MODEXP width (default: 2048); explicitly select 1024 for the bounded DE25 demo")
     args = parser.parse_args()
@@ -198,7 +207,8 @@ def main():
     module, factory = args.transport.rsplit(":",1)
     transport = getattr(importlib.import_module(module), factory)()
     try:
-        evidence = run_demo(transport, message, args.repeat, args.expected_modexp_width)
+        evidence = run_demo(transport, message, args.repeat, args.expected_modexp_width,
+                            1 if args.expected_provider == "test" else 0)
         if args.evidence:
             args.evidence.write_text(json.dumps(dict(status="PASS", transactions=evidence),indent=2),encoding="utf-8")
     finally:

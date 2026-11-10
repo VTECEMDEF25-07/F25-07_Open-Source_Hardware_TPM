@@ -14,6 +14,19 @@ def reply(opcode, width, result=b"", mode=1):
 
 
 class WidthTests(unittest.TestCase):
+    def test_provider_mismatch_rejected_before_generation(self):
+        for actual, expected in ((0, 1), (1, 0)):
+            class Transport:
+                def __init__(self): self.calls = []
+                def transact(self, command, timeout_s):
+                    self.calls.append(command)
+                    return struct.pack(">HII", 0x8001, 10, 0) if len(self.calls) == 1 else reply(0, 1024, mode=actual)
+            transport = Transport()
+            with self.assertRaisesRegex(AssertionError, "Expected provider"):
+                demo.run_demo(transport, b"message", expected_modexp_width=1024,
+                              expected_provider_mode=expected)
+            self.assertEqual(len(transport.calls), 2)
+
     def test_default_remains_strict_2048(self):
         self.assertEqual(demo.parse_control(reply(0,2048),0)["width"],2048)
         for width in (1024,256):
