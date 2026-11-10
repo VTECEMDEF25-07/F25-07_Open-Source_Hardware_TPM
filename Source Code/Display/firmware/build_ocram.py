@@ -42,8 +42,13 @@ if options.strict_align:flags.append('-mstrict-align')
 elf=OUT/'lcd_ocram.elf'
 sources=['start.S','main.c','status.c','board.c']+(['cold_init.c','runtime.c'] if options.cold else [])
 run([gcc,*flags,*[linux(SRC/n) for n in sources],'-Wl,--build-id=none','-Wl,-Map='+linux(OUT/'lcd_ocram.map'),'-T'+linux(SRC/'ocram.ld'),'-o',linux(elf)])
-for fmt,name in [('ihex','lcd_ocram.hex'),('binary','lcd_ocram.bin')]:
-    run([linux(TOOL/'aarch64-none-elf-objcopy'),'-O',fmt,linux(elf),linux(OUT/name)])
+# Quartus HPS download groups must start at 16-byte addresses. Direct ELF->HEX
+# restarts records at each section (e.g. old .rodata at 0x2e88), even within one
+# PT_LOAD. Canonicalize through the raw image at address zero: preserve every
+# linked byte/address and fill existing inter-section holes with zero.
+objcopy=linux(TOOL/'aarch64-none-elf-objcopy')
+run([objcopy,'-O','binary',linux(elf),linux(OUT/'lcd_ocram.bin')])
+run([objcopy,'-I','binary','-O','ihex','--change-addresses=0',linux(OUT/'lcd_ocram.bin'),linux(OUT/'lcd_ocram.hex')])
 for program,args,name in [('readelf',['-h','-S','-l','-s'],'readelf.txt'),('size',['-A'],'size.txt'),('objdump',['-d'],'disassembly.txt')]:
     (OUT/name).write_bytes(run([linux(TOOL/('aarch64-none-elf-'+program)),*args,linux(elf)]))
 exe=OUT/'host_test'

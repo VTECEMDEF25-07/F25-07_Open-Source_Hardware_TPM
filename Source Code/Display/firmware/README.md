@@ -57,6 +57,17 @@ adds delay and therefore this image is for root-cause capture, not performance
 measurement. Build it into a fresh `--output-dir`, preserving earlier artifacts.
 # Post-page diagnostic candidates (2026-11-10)
 
+Packaging correction: direct ELF-to-IHEX conversion restarted data records at
+`.rodata=0x2e88`; Quartus BITASM rejected that HPS data-group start before board
+configuration. The builder now converts ELF to a raw binary, then raw binary
+to IHEX at zero. It preserves all linked addresses and load bytes, including
+the existing zero-filled holes. The linker script and CPU instructions remain
+unchanged; no post-link byte shifting is used.
+Use the new separately hashed `strict-canonical` profile; the old `strict-align`
+HEX is retained as failure evidence. Preflight now checks every data-record
+start and ELF LOAD start for 16-byte alignment and compares ELF load bytes
+against HEX, in addition to all existing handoff/range/hash checks.
+
 `build_ocram.py --strict-align` applies `-mstrict-align` to every target C unit,
 in addition to the existing `-mgeneral-regs-only`. The separate exception-only
 build deliberately retains the prior compiler alignment behavior for diagnosis.
