@@ -21,7 +21,7 @@ def run(command, cwd, log, timeout=1800):
     return data,elapsed
 
 
-def fixtures(root,build):
+def fixtures(root,build,selected=None):
     corpus=root/'Testing/Simulation/Key Generation/reference/expected_keys.json'
     keys=json.loads(corpus.read_text())['results'][:2]
     rows=[]
@@ -46,10 +46,17 @@ def fixtures(root,build):
             expected=pow(cipher,d,n)
             assert expected==value
             rows.append((n,d,cipher,expected))
+    if selected is not None:
+        if len(selected)<2 or len(set(selected))!=len(selected) or any(i<0 or i>=len(rows) for i in selected):
+            raise ValueError('Select at least two distinct in-range vector indexes')
+        rows=[rows[i] for i in selected]
+    if len({row[0] for row in rows})!=2:
+        raise ValueError('Private-worker regression must cover both fixture keys')
     (build/'private_vectors.txt').write_text(str(len(rows))+'\n'+''.join(
         ' '.join(f'{x:0512x}' for x in row)+'\n' for row in rows),encoding='ascii')
     (build/'oracle.json').write_text(json.dumps({'test_only':True,'rsa_bits':2048,
-        'keys':2,'cases':len(rows),'oracle':'Python public/private pow and n=p*q/canonical inverse',
+        'keys':2,'cases':len(rows),'selected_source_indexes':selected,
+        'oracle':'Python public/private pow and n=p*q/canonical inverse',
         'source_corpus_sha256':hashlib.sha256(corpus.read_bytes()).hexdigest()},indent=2)+'\n')
     return corpus,len(rows)
 
@@ -71,6 +78,7 @@ def main():
     parser.add_argument('--math-source-root',type=Path)
     parser.add_argument('--compact',action='store_true')
     parser.add_argument('--suite',choices=('control','real','all'),default='all')
+    parser.add_argument('--vector-indices',help='Focused comma-separated original vector indexes; default all six')
     args=parser.parse_args()
     root=Path(__file__).resolve().parents[4]
     kg=(args.math_source_root or root/'Source Code/Key Generation').resolve()
@@ -78,7 +86,8 @@ def main():
     bench=root/'Testing/Simulation/Asymmetric Module/tb_demo_rsa_private_worker.sv'
     worker=root/'Source Code/Asymmetric Module/demo_rsa_private_worker.v'
     sources=[worker,kg/'rtl/arithmetic/keygen_math.v',*sorted((kg/'IP').glob('*.v')),bench]
-    corpus,count=fixtures(root,build)
+    selected=[int(x) for x in args.vector_indices.split(',')] if args.vector_indices else None
+    corpus,count=fixtures(root,build,selected)
     inputs=sources+[Path(__file__).resolve(),corpus]
     before={str(p):hashlib.sha256(p.read_bytes()).hexdigest() for p in inputs}
     variants=[]
