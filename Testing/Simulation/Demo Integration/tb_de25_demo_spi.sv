@@ -7,6 +7,11 @@ TPM_TOP #(.ENABLE_DEMO_COMMANDS(1),.DEMO_PROVIDER_MODE(1),.DEMO_MODEXP_WIDTH(WID
  .aes_key_request_ready_i(1'b0),.aes_key_reply_valid_i(1'b0),.aes_resolved_key_i(256'd0),.aes_key_reply_code_i(32'h101));
 reg [7:0] packet[0:1099],response[0:1099];
 reg [31:0] handle,old_handle;
+integer accepted_ownerships=0, before_ownerships;
+reg [7:0] retry_copy[0:37];
+always @(posedge clk) if(dut.rst_n &&
+ dut.demo_enabled.subsystem.ownership_valid && dut.demo_enabled.subsystem.ownership_ready &&
+ dut.demo_enabled.subsystem.ownership_accept) accepted_ownerships<=accepted_ownerships+1;
 localparam B=WIDTH/8;
 task automatic shift(input [7:0] val,output reg [7:0] got);
   for(integer i=7;i>=0;i=i-1) begin
@@ -111,6 +116,28 @@ task automatic startup;
  ready_cmd();header(16'h8001,12,32'h144);packet[10]=0;packet[11]=0;send_cmd(12,10,0);
  end
 endtask
+// Send a real command but leave its completion unread for recovery injections.
+task automatic launch_control(input [7:0] opcode,input [31:0] id);
+ integer n;
+ begin
+ ready_cmd();n=opcode==3?26+3*B:26;header(16'h8001,n,32'h20000100);
+ for(integer i=10;i<n;i=i+1)packet[i]=0;
+ packet[10]=1;packet[11]=opcode;
+ {packet[14],packet[15],packet[16],packet[17]}=id;
+ for(integer off=0;off<n;off=off+64)transfer(0,16'h0024,n-off>64?64:n-off,off);
+ write_one(16'h0018,8'h20);
+ end
+endtask
+task automatic after_recovery(input [31:0] id,input bit committed);
+ begin
+ repeat(10000)@(posedge clk);startup();control(0,0,99,0);
+ if({response[14],response[15],response[16],response[17]}!==id ||
+    !response[25][3] || response[25][0]!==committed)
+  $fatal(1,"Bad recovery history id=%h flags=%h",{response[14],response[15],response[16],response[17]},response[25]);
+ if(committed && {response[18],response[19],response[20],response[21]}!==32'h80000001)
+  $fatal(1,"Committed handle lost at recovery");
+ end
+endtask
 initial begin
  #3;rst=1;#7;rst=0;#200;rst=1;
  repeat(10000)@(posedge clk);
@@ -140,6 +167,40 @@ initial begin
  send_cmd(26+3*B,38+B,0);
  for(integer i=0;i<B;i=i+1)if(response[38+i]!==expected_modexp[i])$fatal(1,"MODEXP reference byte%0d expected%h got%h",i,expected_modexp[i],response[38+i]);
  $display("DEMO_MODEXP_MATCH WIDTH=%0d",WIDTH);
+ // FIFO responseRetry retains the copied reply after execution scratch clears.
+ control(0,0,7,0);for(integer i=0;i<38;i=i+1)retry_copy[i]=response[i];
+ write_one(16'h0018,8'h02);transfer(1,16'h0024,38);
+ for(integer i=0;i<38;i=i+1)if(response[i]!==retry_copy[i])$fatal(1,"FIFO retry byte%0d",i);
+ // Retry then release a partially consumed response; next admission follows full scrub.
+ write_one(16'h0018,8'h02);transfer(1,16'h0024,11);ready_cmd();
+ for(integer i=0;i<4096;i=i+1)begin
+  if(dut.io.fifo_register_space.io_fifo.internal_buffer.mem[i]!==0)$fatal(1,"FIFO scrub byte%0d",i);
+  if(dut.io.command_response_buffer.cmdBuffer.mem[i]!==0)$fatal(1,"CRB scrub byte%0d",i);
+ end
+ // Abort during public operand staging records the current outer ID, before MX launch.
+ launch_control(3,41);wait(dut.supervisor_job_accept);@(posedge clk);#1;
+ if(dut.supervisor_id!==41)$fatal(1,"Late public staging admission metadata");
+ @(negedge clk);force dut.transport_abort=1'b1;@(posedge clk);#1;release dut.transport_abort;
+ after_recovery(41,0);
+ // Recovery pending wins a coincident ownership edge at BOTH core and store.
+ before_ownerships=accepted_ownerships;launch_control(1,42);
+ wait(dut.demo_enabled.subsystem.ownership_valid && dut.demo_enabled.subsystem.ownership_ready);
+ @(negedge clk);force dut.transport_abort=1'b1;#1;
+ if(dut.demo_enabled.subsystem.ownership_valid && dut.demo_enabled.subsystem.ownership_ready)
+  $fatal(1,"Ownership not suppressed on pending recovery");
+ @(posedge clk);#1;release dut.transport_abort;after_recovery(42,0);
+ if(accepted_ownerships!=before_ownerships)$fatal(1,"Ownership accepted at abort edge");
+ // The operation deadline can be registered on an accepted ownership edge.
+ // Its report-ready then drops; supervisor must still observe the held record.
+ before_ownerships=accepted_ownerships;launch_control(1,43);
+ wait(dut.demo_enabled.subsystem.ownership_valid && dut.demo_enabled.subsystem.ownership_ready);
+ @(negedge clk);force dut.demo_enabled.subsystem.u_operation.cycles_reg=64'd8999999999;
+ @(posedge clk);#1;release dut.demo_enabled.subsystem.u_operation.cycles_reg;
+ if(accepted_ownerships!=before_ownerships+1)$fatal(1,"Deadline test missed actual ownership edge");
+ after_recovery(43,1);
+ control(1,0,44,0);handle={response[18],response[19],response[20],response[21]};
+ control(0,0,45,0);if(response[25][3])$fatal(1,"Old recovery attributed to next successful job");
+ aes(0,handle,0); // live owned key exists immediately before reset
  // Full reset invalidates cached references; no old key returned.
  rst=0;#200;rst=1;repeat(10000)@(posedge clk);startup();aes(0,handle,32'h18b);
  control(0,0,7,0);

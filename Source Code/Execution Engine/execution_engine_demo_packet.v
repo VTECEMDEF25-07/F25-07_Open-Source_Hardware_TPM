@@ -16,6 +16,7 @@ module execution_engine_demo_packet #(
     input wire [3:0] supervisor_last_reason_i,
     output wire busy_o, scrub_done_o, output wire recovery_required_o,
     input wire aes_client_active_i, output wire store_use_allowed_o,
+    output wire outer_job_accept_o, output wire [31:0] outer_job_id_o,
     output wire gen_job_valid_o, input wire gen_job_ready_i,
     output wire [1:0] gen_job_profile_o, gen_job_mode_o,
     output wire [31:0] gen_job_id_o,
@@ -70,6 +71,8 @@ module execution_engine_demo_packet #(
     reg [7:0] reply_state;
     reg [11:0] reply_length;
     wire c_request_ready, c_input_ready, c_output_valid, c_response_valid, c_busy, c_recovery;
+    assign outer_job_accept_o = reset_n_i && state == SUBMIT && c_request_ready && opcode != 0;
+    assign outer_job_id_o = request_id;
     wire [7:0] c_output_data, c_response_state;
     wire [31:0] c_response_code, c_response_id, c_response_handle,
         c_response_operation, c_response_cleanup;

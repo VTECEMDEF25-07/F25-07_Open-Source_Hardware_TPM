@@ -37,6 +37,14 @@ set spi_reset_clear [get_pins -compatibility_mode $spi_reset_patterns]
 if {[get_collection_size $spi_reset_clear] < 40} {error "Missing SCK-domain asynchronous reset pins"}
 set_false_path -from [get_registers {tpm_release_reg[1]}] -to $spi_reset_clear
 
+# Demo recovery also resets the SCK domain while the host holds CS high/SCK low.
+# Except only these supervisor controls into SCK asynchronous clear pins. Core
+# reset recovery/removal and synchronizer interstage data remain fully timed.
+set demo_reset_sources [get_registers -nowarn {*supervisor*release_sync* *supervisor*reset_count*}]
+if {[get_collection_size $demo_reset_sources] > 0} {
+    set_false_path -from $demo_reset_sources -to $spi_reset_clear
+}
+
 # SPI uses its own external clock and held-data CDC mailboxes.
 set spi_sck_port spi_clock_i
 set spi_mosi_port spi_mosi_i

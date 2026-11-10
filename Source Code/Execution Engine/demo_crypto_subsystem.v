@@ -3,6 +3,7 @@ module demo_crypto_subsystem #(parameter WIDTH=2048, DEMO_PROVIDER_MODE=1, IP_TY
  parameter DEVICE_FAMILY="Agilex 5") (
     input wire  clock_i,
     input wire  reset_n_i,
+    input wire  recovery_pending_i,
     input wire  start_i,
     input wire  operational_i,
     input wire [15:0] command_tag_i,
@@ -100,6 +101,9 @@ module demo_crypto_subsystem #(parameter WIDTH=2048, DEMO_PROVIDER_MODE=1, IP_TY
     wire  op_release_rsp_ready;
     wire  op_release_rsp_valid;
     wire  op_release_valid;
+    wire  operation_receiver_error;
+    wire  outer_job_accept;
+    wire [31:0] outer_job_id;
     wire  ownership_accept;
     wire  ownership_ready;
     wire  ownership_valid;
@@ -136,6 +140,7 @@ module demo_crypto_subsystem #(parameter WIDTH=2048, DEMO_PROVIDER_MODE=1, IP_TY
     wire  result_last;
     wire  result_ready;
     wire  result_valid;
+    wire  store_abort;
     wire [31:0] store_release_handle;
     wire  store_release_ready;
     wire [31:0] store_release_rsp_code;
@@ -159,9 +164,12 @@ module demo_crypto_subsystem #(parameter WIDTH=2048, DEMO_PROVIDER_MODE=1, IP_TY
     always @(posedge clock_i or negedge reset_n_i)
         if(!reset_n_i) release_owner_op <= 0;
         else if(store_release_valid && store_release_ready) release_owner_op <= choose_op;
-    assign job_accept_o = (job_valid && job_ready) || (modexp_job_valid && modexp_job_ready);
-    assign job_id_o = job_valid ? job_id : modexp_job_id;
-    assign commit_o = commit_valid && commit_ready;
+    assign operation_receiver_error = receiver_error || recovery_pending_i;
+    assign store_abort = abort || recovery_pending_i;
+    assign job_accept_o = outer_job_accept;
+    assign job_id_o = outer_job_id;
+    // Supervision observes the stable commit record independently of op readiness.
+    assign commit_o = commit_valid;
     assign commit_handle_o = commit_handle;
 
     demo_keygen_operation #(.DEMO_PROVIDER_MODE(DEMO_PROVIDER_MODE),.IP_TYPE(IP_TYPE),.DEVICE_FAMILY(DEVICE_FAMILY)) u_operation (
@@ -194,7 +202,7 @@ module demo_crypto_subsystem #(parameter WIDTH=2048, DEMO_PROVIDER_MODE=1, IP_TY
         .reserve_id_o(reserve_id),
         .reserve_demo_use_o(reserve_demo_use),
         .receiver_ready_i(receiver_ready),
-        .receiver_error_i(receiver_error),
+        .receiver_error_i(operation_receiver_error),
         .receiver_error_code_i(receiver_error_code),
         .receiver_scrub_done_i(receiver_scrub_done),
         .result_valid_o(result_valid),
@@ -237,7 +245,7 @@ module demo_crypto_subsystem #(parameter WIDTH=2048, DEMO_PROVIDER_MODE=1, IP_TY
         .receiver_error_o(receiver_error),
         .receiver_error_code_o(receiver_error_code),
         .receiver_scrub_done_o(receiver_scrub_done),
-        .abort_i(abort),
+        .abort_i(store_abort),
         .result_valid_i(result_valid),
         .result_ready_o(result_ready),
         .result_data_i(result_data),
@@ -318,6 +326,8 @@ module demo_crypto_subsystem #(parameter WIDTH=2048, DEMO_PROVIDER_MODE=1, IP_TY
         .recovery_required_o(recovery_required_o),
         .aes_client_active_i(aes_client_active_i),
         .store_use_allowed_o(store_use_allowed),
+        .outer_job_accept_o(outer_job_accept),
+        .outer_job_id_o(outer_job_id),
         .gen_job_valid_o(job_valid),
         .gen_job_ready_i(job_ready),
         .gen_job_profile_o(job_profile),

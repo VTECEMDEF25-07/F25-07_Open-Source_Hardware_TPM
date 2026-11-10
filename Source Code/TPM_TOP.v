@@ -46,7 +46,7 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
 
 	wire		rst_n;
 	wire board_reset_n = SPI_RST_n & RESET_n;
-    wire recovery_reset_n, transport_abort, packet_recovery, aes_recovery;
+    wire recovery_reset_n, recovery_pending, transport_abort, packet_recovery, aes_recovery;
     wire supervisor_recovered, supervisor_committed;
     wire [31:0] supervisor_id, supervisor_handle, supervisor_job_id, supervisor_commit_handle;
     wire [3:0] supervisor_reason;
@@ -61,12 +61,14 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
             .transport_abort_i(transport_abort), .job_accept_i(supervisor_job_accept),
             .job_id_i(supervisor_job_id), .commit_i(supervisor_commit),
             .commit_handle_i(supervisor_commit_handle), .crypto_reset_n_o(recovery_reset_n),
+            .recovery_pending_o(recovery_pending),
             .recovered_o(supervisor_recovered), .last_id_o(supervisor_id),
             .last_handle_o(supervisor_handle), .last_committed_o(supervisor_committed),
             .last_reason_o(supervisor_reason)
         );
     end else begin : recovery_disabled
         assign recovery_reset_n=1'b1;
+        assign recovery_pending=1'b0;
         assign supervisor_recovered=0;assign supervisor_id=0;assign supervisor_handle=0;
         assign supervisor_committed=0;assign supervisor_reason=0;
     end endgenerate
@@ -148,7 +150,7 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
     generate if (ENABLE_DEMO_COMMANDS) begin : demo_enabled
         demo_crypto_subsystem #(.WIDTH(DEMO_MODEXP_WIDTH),.DEMO_PROVIDER_MODE(DEMO_PROVIDER_MODE),
             .IP_TYPE(IP_TYPE),.DEVICE_FAMILY(DEVICE_FAMILY)) subsystem (
-            .clock_i(CLOCK_50),.reset_n_i(rst_n),.start_i(execStart && select_demo),
+            .clock_i(CLOCK_50),.reset_n_i(rst_n),.recovery_pending_i(recovery_pending),.start_i(execStart && select_demo),
             .operational_i(op_state == 3'b011),.command_tag_i(commandTag),.command_size_i(commandSize),
             .command_addr_o(demo_cmd_addr),.command_byte_i(exec_cmd_byte),
             .response_valid_o(demo_rsp_valid),.response_code_o(demo_rsp_code),

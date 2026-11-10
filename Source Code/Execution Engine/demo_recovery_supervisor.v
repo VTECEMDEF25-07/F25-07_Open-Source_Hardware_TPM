@@ -7,7 +7,7 @@ module demo_recovery_supervisor #(
     input wire active_i, recovery_request_i, transport_abort_i,
     input wire job_accept_i, input wire [31:0] job_id_i,
     input wire commit_i, input wire [31:0] commit_handle_i,
-    output wire crypto_reset_n_o,
+    output wire crypto_reset_n_o, recovery_pending_o,
     output reg recovered_o,
     output reg [31:0] last_id_o, last_handle_o,
     output reg last_committed_o,
@@ -18,6 +18,8 @@ module demo_recovery_supervisor #(
     reg [1:0] release_sync;
     wire deadline=active_i && elapsed>=DEADLINE_CYCLES-1;
     wire trigger=recovery_request_i || transport_abort_i || deadline;
+    // Qualify core/store transfer acceptance BEFORE the edge asserting reset.
+    assign recovery_pending_o=crypto_reset_n_o && trigger;
     assign crypto_reset_n_o=reset_n_i && reset_count==0 && release_sync[1];
     always @(posedge clock_i or negedge reset_n_i) begin
         if(!reset_n_i) begin
@@ -36,6 +38,7 @@ module demo_recovery_supervisor #(
             else elapsed<=0;
             if(crypto_reset_n_o && job_accept_i) begin
                 last_id_o<=job_id_i;last_handle_o<=0;last_committed_o<=0;
+                recovered_o<=0;last_reason_o<=0;
             end
             // Ownership at this edge remains a historical fact even on recovery.
             if(crypto_reset_n_o && commit_i) begin
