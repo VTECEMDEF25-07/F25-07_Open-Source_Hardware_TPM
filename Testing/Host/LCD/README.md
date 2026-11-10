@@ -120,8 +120,10 @@ fails before opening. PySerial3.5 is installed; import/help/tests never open it.
 
 UART is115200/8N1, no flow control,50ms read timeout and250ms write timeout.
 Desired DTR/RTS are low before opening and never changed while open; driver
-opening transients are not physically verified. No buffer reset or flush discards
-boot output. Each bounded valid3-field actual snapshot is sent as canonical ASCII
+opening transients are not physically verified. The helper makes no explicit
+buffer-reset/flush call, but installed PySerial3.5's Windows `open()` itself
+purges pending RX/TX bytes. Start capture before boot where possible; a late open
+can lose the one-shot banner and is inconclusive. Each bounded valid3-field actual snapshot is sent as canonical ASCII
 JSON; duplicate heartbeats are preserved. Malformed/oversized input, short write
 or disconnect produces a nonzero exit. UART raw bytes and parsed FRAME_SENT
 acknowledgments go to separate JSON log events on stdout, never back to stdin.
