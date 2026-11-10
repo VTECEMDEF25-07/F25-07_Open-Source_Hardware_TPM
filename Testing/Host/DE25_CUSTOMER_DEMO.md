@@ -25,7 +25,8 @@ Its output label and the capture directory must be new; neither is reused.
 
 Both stages default to1MHz through the named native Windows D2XX adapter; use
 `--spi-hz 100000` only for an accepted slower profile. The launcher forwards the
-chosen rate to the crypto child's `DE25_SPI_HZ`. No driver install or FPGA program
+chosen rate to the crypto child's `DE25_SPI_HZ`. Both child Python processes use
+explicit UTF-8 for input/output, including redirected recordings. No driver install or FPGA program
 is performed. Supply the actual frozen programmed image commit/hash, even if a
 later host-only commit changes checkout HEAD. Existing transport factory resets
 the crypto subsystem at session start.

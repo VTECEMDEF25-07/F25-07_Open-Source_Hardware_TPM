@@ -2,7 +2,7 @@
 from argparse import Namespace
 from datetime import timedelta
 from pathlib import Path
-import contextlib,hashlib,io,json,subprocess,tempfile,unittest
+import contextlib,hashlib,io,json,os,subprocess,sys,tempfile,unittest
 from unittest.mock import patch
 import de25_customer_demo_launcher as launcher
 from test_de25_customer_evidence import fixture
@@ -48,6 +48,8 @@ class LauncherTests(unittest.TestCase):
     def customer_process(self,argv,environment):
         self.calls.append(('customer',argv))
         self.assertEqual(environment['DE25_SPI_HZ'],'1000000')
+        self.assertEqual(environment['PYTHONUTF8'],'1')
+        self.assertEqual(environment['PYTHONIOENCODING'],'utf-8')
         self.assertTrue((self.args.record_dir/'phase1/result.json').is_file())
         self.assertEqual(argv[argv.index('--message')+1],self.args.message)
         (self.args.record_dir/'summary.json').write_text(json.dumps(dict(status='PASS',source_commit='b'*40,sof_sha256='a'*64)))
@@ -107,6 +109,13 @@ class LauncherTests(unittest.TestCase):
     def test_crypto_error_never_creates_successful_session(self):
         with self.assertRaises(launcher.SessionError):self.execute(customer=lambda argv,env:1)
         self.assertEqual(json.loads((self.args.record_dir/'launcher.result.json').read_text())['status'],'FAIL')
+
+    def test_phase1_child_output_is_utf8_with_legacy_parent_encoding(self):
+        # A tiny Python child only; never the hardware runner or a driver.
+        with patch.dict(os.environ,{'PYTHONUTF8':'0','PYTHONIOENCODING':'cp1252'}):
+            result=launcher.run_phase1([sys.executable,'-c',"print('OFFLINE λ 🌐')"])
+        self.assertEqual(result.returncode,0,result.stdout)
+        self.assertEqual(result.stdout.strip(),'OFFLINE λ 🌐')
 
 
 if __name__=='__main__':unittest.main()
