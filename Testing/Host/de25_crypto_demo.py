@@ -55,7 +55,9 @@ def parse_reply(raw: bytes, expected_rc: int = 0) -> tuple[int, bytes]:
     return tag, raw[10:]
 
 
-def parse_control(raw: bytes, opcode: int) -> dict:
+def parse_control(raw: bytes, opcode: int, expected_modexp_width: int = 2048) -> dict:
+    if expected_modexp_width not in (256, 1024, 2048):
+        raise ValueError("Expected MODEXP width must be 256, 1024, or 2048")
     tag, p = parse_reply(raw)
     if tag != 0x8001 or len(p) < 28:
         raise AssertionError("Invalid demo control response")
@@ -68,8 +70,8 @@ def parse_control(raw: bytes, opcode: int) -> dict:
     if bool(flags & 2) != (mode == 1):
         raise AssertionError("Provider/test provenance mismatch")
     if opcode in (0, 3):
-        if width != 2048:
-            raise AssertionError(f"Expected full 2048-bit target, got {width}")
+        if width != expected_modexp_width:
+            raise AssertionError(f"Expected {expected_modexp_width}-bit public MODEXP, got {width}")
     elif width != 0:
         raise AssertionError("Nonzero reserved field")
     if len(p) != 28 + (width // 8 if opcode == 3 else 0):
@@ -104,7 +106,9 @@ def final_iv(ciphertext: bytes, initial_iv: bytes) -> bytes:
     return ciphertext[-count:] + bytes(16-count)
 
 
-def run_demo(transport, message: bytes, repeat: int = 2) -> list[dict]:
+def run_demo(transport, message: bytes, repeat: int = 2, expected_modexp_width: int = 2048) -> list[dict]:
+    if expected_modexp_width not in (256, 1024, 2048):
+        raise ValueError("Unsupported expected public MODEXP width")
     evidence = []
     def exchange(command, rc=0):
         raw = bytes(transport.transact(command, timeout_s=185))
@@ -112,13 +116,14 @@ def run_demo(transport, message: bytes, repeat: int = 2) -> list[dict]:
         evidence.append(dict(command=command.hex(), response=raw.hex(), expected_rc=rc))
         return raw
     exchange(packet(0x144, b"\0\0"))  # Startup(CLEAR); transport owns reset/recovery.
-    caps = parse_control(exchange(control(0, 1)), 0)
+    caps = parse_control(exchange(control(0, 1)), 0, expected_modexp_width)
     print(MODES[caps["mode"]], flush=True)
+    print(f"Public MODEXP capability: {caps['width']} bits (explicitly expected {expected_modexp_width})", flush=True)
     if caps["mode"] == 2 or caps["state"] != 0:
         raise AssertionError("Demo provider unavailable")
     ident = 2
     for iteration in range(repeat):
-        generated = parse_control(exchange(control(1, ident)), 1); ident += 1
+        generated = parse_control(exchange(control(1, ident)), 1, expected_modexp_width); ident += 1
         if generated["operation"] or generated["cleanup"] or not generated["flags"] & 1:
             raise AssertionError("Generation incomplete/uncommitted")
         if generated["mode"] != caps["mode"] or not generated["handle"]:
@@ -138,19 +143,21 @@ def run_demo(transport, message: bytes, repeat: int = 2) -> list[dict]:
                 raise AssertionError("Independent host SHA256 mismatch")
             if hashed[34:] != bytes.fromhex("8024400000070000"):
                 raise AssertionError("Hash null ticket mismatch")
-        parse_control(exchange(control(2, ident, handle)), 2); ident += 1
+        parse_control(exchange(control(2, ident, handle)), 2, expected_modexp_width); ident += 1
         exchange(aes_packet(handle, message, iv), 0x18B)
         print(f"round {iteration+1}: AES/IV/plaintext/SHA/flush-denial PASS", flush=True)
-    # Full-width public raw modular exponentiation, independently checked.
+    # Public raw modular exponentiation at the explicitly matched capability width.
     width = caps["width"]; b = width//8
     modulus = (1 << width) - 159
     base = (1 << (width-7)) + 12345
     exponent = 65537
     operands = b"".join(x.to_bytes(b, "big") for x in (base, exponent, modulus))
-    mx = parse_control(exchange(control(3, ident, operands=operands)), 3)
+    mx = parse_control(exchange(control(3, ident, operands=operands)), 3, expected_modexp_width)
     if mx["operation"] or mx["cleanup"] or int.from_bytes(mx["result"], "big") != pow(base, exponent, modulus):
-        raise AssertionError("Independent full-width public MODEXP mismatch")
-    print("2048-bit public MODEXP/Python pow PASS", flush=True)
+        raise AssertionError(f"Independent {width}-bit public MODEXP mismatch")
+    print(f"{width}-bit public MODEXP/Python pow PASS" +
+          (" (full 2048-bit target)" if width == 2048 else
+           " (explicit configured demo width; no 2048-bit hardware claim)"), flush=True)
     if caps["mode"] == 0:
         print("Fresh-key result is a functional roundtrip; no entropy-quality claim.", flush=True)
     return evidence
@@ -178,6 +185,8 @@ def main():
     parser.add_argument("--message", default="DE25 internal-key crypto demo: encrypt, decrypt, independently verify.")
     parser.add_argument("--repeat", type=int, default=2)
     parser.add_argument("--evidence", type=Path)
+    parser.add_argument("--expected-modexp-width", type=int, choices=(256, 1024, 2048), default=2048,
+                        help="Require exact CAPS/MODEXP width (default: 2048); explicitly select 1024 for the bounded DE25 demo")
     args = parser.parse_args()
     if args.self_test:
         self_test(); return
@@ -189,7 +198,7 @@ def main():
     module, factory = args.transport.rsplit(":",1)
     transport = getattr(importlib.import_module(module), factory)()
     try:
-        evidence = run_demo(transport, message, args.repeat)
+        evidence = run_demo(transport, message, args.repeat, args.expected_modexp_width)
         if args.evidence:
             args.evidence.write_text(json.dumps(dict(status="PASS", transactions=evidence),indent=2),encoding="utf-8")
     finally:
