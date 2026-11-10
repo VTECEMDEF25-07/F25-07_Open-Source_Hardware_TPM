@@ -1872,7 +1872,12 @@ endmodule
 // Scoped EncryptDecrypt2 packet path. Accepts AES-256 CFB and one empty
 // password authorization record. Permission comes from the object service.
 // The packet scratch buffer is reused in place and contains no key objects.
-module execution_engine_aes_packet (
+module execution_engine_aes_packet #(
+    parameter ENABLE_DEMO_LIFECYCLE=0
+)(
+    // Demo build retains response until final FIFO copy and sweeps all scratch.
+    input wire response_consumed_i,
+    output wire busy_o, scrub_done_o, recovery_required_o,
     input wire clock_i, reset_n_i, start_i, operational_i,
     input wire [15:0] command_tag_i,
     input wire [31:0] command_size_i,
@@ -1891,9 +1896,19 @@ module execution_engine_aes_packet (
     input wire [255:0] resolved_key_i,
     input wire [31:0] key_reply_code_i
 );
-    localparam [2:0] IDLE=0, READ_WAIT=1, READ_BYTE=2, LAUNCH=3,
-        WAIT_RESULT=4, REPLY=5;
-    reg [2:0] state;
+    localparam [3:0] IDLE=0, READ_WAIT=1, READ_BYTE=2, LAUNCH=3,
+        WAIT_RESULT=4, REPLY=5, SCRUB=6, SECRET_CLEAR_WAIT=7, HOLD_REPLY=8,
+        WORKER_RELEASE=9;
+    reg [3:0] state;
+    reg [9:0] scrub_index;
+    reg [1:0] release_count;
+    reg scrub_for_reply, error_scrubbed, worker_reset_n;
+    reg [31:0] saved_job_length;
+    reg [127:0] saved_job_iv;
+    wire local_reset_n = ENABLE_DEMO_LIFECYCLE ? worker_reset_n : reset_n_i;
+    assign busy_o = reset_n_i && state != IDLE;
+    assign scrub_done_o = reset_n_i && state == IDLE;
+    assign recovery_required_o = 1'b0; // Global supervisor owns stalls/abort recovery.
     reg [31:0] handle;
     reg [15:0] data_length;
     reg [127:0] iv;
@@ -1910,32 +1925,35 @@ module execution_engine_aes_packet (
     wire [2:0] aes_mode;
     wire [9:0] aes_in_base, aes_out_base, ram_addr;
     wire [31:0] aes_length, aes_completed, job_rc, job_length;
+    wire [31:0] public_job_length = ENABLE_DEMO_LIFECYCLE ? saved_job_length : job_length;
+    wire [127:0] public_job_iv = ENABLE_DEMO_LIFECYCLE ? saved_job_iv : job_iv;
+
     wire [11:0] aes_rc;
     wire ram_req_valid, ram_req_write, ram_rsp_ready;
     wire [7:0] ram_write_data;
     reg ram_rsp_valid;
     reg [7:0] ram_read_data;
-    wire [11:0] reply_data_end = 12'd6 + job_length[11:0];
-    wire [15:0] parameter_size = job_length[15:0] + 16'd20;
+    wire [11:0] reply_data_end = 12'd6 + public_job_length[11:0];
+    wire [15:0] parameter_size = public_job_length[15:0] + 16'd20;
     wire [11:0] reply_iv_byte = response_addr_i - reply_data_end - 12'd2;
 
     // Successful session-tagged response: parameterSize, outData, ivOut,
     // and a password acknowledgment (empty nonce, continueSession, empty HMAC).
-    assign response_length_o = success ? 12'd39 + job_length[11:0] : 12'd10;
+    assign response_length_o = success ? 12'd39 + public_job_length[11:0] : 12'd10;
     always @* begin
         response_byte_o = 0;
         case (response_addr_i)
             12'd2: response_byte_o = parameter_size[15:8];
             12'd3: response_byte_o = parameter_size[7:0];
-            12'd4: response_byte_o = job_length[15:8];
-            12'd5: response_byte_o = job_length[7:0];
+            12'd4: response_byte_o = public_job_length[15:8];
+            12'd5: response_byte_o = public_job_length[7:0];
             default: begin
                 if (response_addr_i >= 6 && response_addr_i < reply_data_end)
                     response_byte_o = payload[response_addr_i-6];
                 else if (response_addr_i == reply_data_end + 1)
                     response_byte_o = 8'd16;
                 else if (reply_iv_byte < 16)
-                    response_byte_o = job_iv[127-reply_iv_byte*8 -: 8];
+                    response_byte_o = public_job_iv[127-reply_iv_byte*8 -: 8];
                 else if (response_addr_i == reply_data_end + 20)
                     response_byte_o = 8'd1;
             end
@@ -1943,17 +1961,23 @@ module execution_engine_aes_packet (
     end
 
     always @(posedge clock_i) begin
-        if (state == READ_BYTE && command_addr_o >= 29 && command_addr_o < data_end)
+        if (ENABLE_DEMO_LIFECYCLE && reset_n_i && state == SCRUB)
+            payload[scrub_index] <= 0;
+        else if (reset_n_i && state == READ_BYTE && command_addr_o >= 29 && command_addr_o < data_end)
             payload[command_addr_o-29] <= command_byte_i;
-        else if (ram_req_valid && !ram_rsp_valid && ram_req_write)
+        else if (reset_n_i && ram_req_valid && !ram_rsp_valid && ram_req_write)
             payload[ram_addr] <= ram_write_data;
-        if (ram_req_valid && !ram_rsp_valid && !ram_req_write)
+        if (!reset_n_i || (ENABLE_DEMO_LIFECYCLE && state == SCRUB)) ram_read_data <= 0;
+        else if (ram_req_valid && !ram_rsp_valid && !ram_req_write)
             ram_read_data <= payload[ram_addr];
     end
 
     always @(posedge clock_i or negedge reset_n_i) begin
         if (!reset_n_i) begin
-            state <= IDLE;
+            state <= ENABLE_DEMO_LIFECYCLE ? SCRUB : IDLE;
+            scrub_index <= 0; release_count <= 0; scrub_for_reply <= 0;
+            error_scrubbed <= 0; worker_reset_n <= 0;
+            saved_job_length <= 0; saved_job_iv <= 0;
             command_addr_o <= 0;
             response_valid_o <= 0;
             response_code_o <= 0;
@@ -1970,6 +1994,8 @@ module execution_engine_aes_packet (
             if (ram_req_valid && !ram_rsp_valid) ram_rsp_valid <= 1;
             case (state)
                 IDLE: if (start_i) begin
+                    error_scrubbed <= 0; scrub_for_reply <= 0;
+                    saved_job_length <= 0; saved_job_iv <= 0;
                     success <= 0;
                     response_code_o <= 0;
                     command_addr_o <= 12'd10;
@@ -2041,19 +2067,45 @@ module execution_engine_aes_packet (
                 WAIT_RESULT: if (job_done) begin
                     response_code_o <= job_rc;
                     success <= job_rc == 0;
-                    state <= REPLY;
+                    saved_job_length <= job_rc == 0 ? job_length : 0;
+                    saved_job_iv <= job_rc == 0 ? job_iv : 0;
+                    if (ENABLE_DEMO_LIFECYCLE) begin
+                        worker_reset_n <= 0; release_count <= 0; state <= SECRET_CLEAR_WAIT;
+                    end else state <= REPLY;
                 end
                 REPLY: begin
-                    response_valid_o <= 1;
-                    state <= IDLE;
+                    if (ENABLE_DEMO_LIFECYCLE && !success && !error_scrubbed) begin
+                        worker_reset_n <= 0; scrub_index <= 0;
+                        scrub_for_reply <= 1; state <= SCRUB;
+                    end else begin
+                        response_valid_o <= 1;
+                        state <= ENABLE_DEMO_LIFECYCLE ? HOLD_REPLY : IDLE;
+                    end
                 end
+                SECRET_CLEAR_WAIT: if (release_count == 2) state <= REPLY;
+                    else release_count <= release_count + 1'b1;
+                HOLD_REPLY: if (response_consumed_i) begin
+                    scrub_index <= 0; scrub_for_reply <= 0;
+                    saved_job_iv <= 0; saved_job_length <= 0;
+                    field <= 0; iv <= 0; data_length <= 0; handle <= 0;
+                    worker_reset_n <= 0; state <= SCRUB;
+                end
+                SCRUB: if (scrub_index == 1023) begin
+                    scrub_index <= 0;
+                    if (scrub_for_reply) begin error_scrubbed <= 1; state <= REPLY; end
+                    else begin
+                        worker_reset_n <= 1; release_count <= 0; state <= WORKER_RELEASE;
+                    end
+                end else scrub_index <= scrub_index + 1'b1;
+                WORKER_RELEASE: if (release_count == 2) state <= IDLE;
+                    else release_count <= release_count + 1'b1;
                 default: state <= IDLE;
             endcase
         end
     end
 
     execution_engine_encryptdecrypt2 #(.RAM_ADDR_WIDTH(10)) job (
-        .clock_i(clock_i), .reset_n_i(reset_n_i), .start_i(state == LAUNCH),
+        .clock_i(clock_i), .reset_n_i(local_reset_n), .start_i(state == LAUNCH),
         .key_handle_i(handle), .data_length_i({16'd0,data_length}),
         .input_base_i(10'd0), .output_base_i(10'd0), .iv_i(iv),
         .decrypt_i(decrypt), .mode_i(3'd1), .key_request_o(key_request_o),
@@ -2070,7 +2122,7 @@ module execution_engine_aes_packet (
     );
 
     symm_top #(.RAM_ADDR_WIDTH(10), .MAX_SECRET_BYTES(32), .MAX_NONCE_BYTES(32)) aes (
-        .clock_i(clock_i), .reset_n_i(reset_n_i), .start_i(aes_start),
+        .clock_i(clock_i), .reset_n_i(local_reset_n), .start_i(aes_start),
         .command_code_i(16'h0193), .key_valid_i(1'b1), .session_protect_i(1'b0),
         .session_valid_i(1'b0), .session_decrypt_i(1'b0), .session_encrypt_i(1'b0),
         .session_use_xor_i(1'b0), .mode_i(aes_mode),
