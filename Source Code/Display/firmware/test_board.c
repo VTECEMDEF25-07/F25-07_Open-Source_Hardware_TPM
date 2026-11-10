@@ -70,6 +70,7 @@ int main(void) {
     assert(strstr(uart_log,"RESET_LOW_BEFORE") && strstr(uart_log,"RESET_HIGH_AFTER"));checks++;
     assert(strstr(uart_log,"DELAY_BEGIN") && strstr(uart_log,"DELAY_END"));checks++;
     assert(strstr(uart_log,"SPI_BEGIN") && strstr(uart_log,"SPI_END") && strstr(uart_log,"LCD_INIT_END"));checks++;
+    assert(strstr(uart_log,"PRE_PAGE"));checks++;
     assert((gpio_data&((1U<<10)|(1U<<18)))==((1U<<10)|(1U<<18)));checks++;
     uint8_t frame[1024];for(unsigned i=0;i<sizeof frame;i++)frame[i]=(uint8_t)(i^(i>>8));
     unsigned before=bytes;assert(lcd_frame(frame));assert(bytes-before==1048);checks++;
@@ -95,6 +96,10 @@ int main(void) {
     assert(lcd_frame(frame)==0 && strstr(uart_log,"SPI_TNF_WAIT") && strstr(uart_log,"SPI_TNF_FAIL"));checks++;
     stuck=2;uart_used=0;uart_log[0]=0;
     assert(lcd_frame(frame)==0 && strstr(uart_log,"SPI_BUSY_WAIT") && strstr(uart_log,"SPI_BUSY_FAIL"));checks++;
+    uart_used=0;uart_log[0]=0;unsigned pump_before=pulses;
+    lcd_exception_uart(0x96000021,0x2310,0x1231,0x30c50830,0x1200);
+    assert(strstr(uart_log,"LCD_EXCEPTION ESR=0000000096000021 ELR=0000000000002310 FAR=0000000000001231 SCTLR=0000000030C50830 SP=0000000000001200\r\n"));checks++;
+    assert(pulses==pump_before);checks++;
     printf("PASS board transport %u checks; UART1 divisors, mode0 500kHz request, clear-before-on,132-column DDRAM,128-column frames, RX pumping and SPI timeout\n",checks);
     return 0;
 }

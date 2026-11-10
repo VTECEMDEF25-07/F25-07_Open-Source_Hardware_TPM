@@ -82,6 +82,22 @@ exception:
     lsl x0,x0,#16
     orr x0,x0,x3
     str w0,[x4,#8]
+    // UART is established only after stage 2. Never retry a reporting fault.
+    ldr w5,[x4,#4]
+    cmp w5,#2
+    b.lo park
+    ldr x5,=lcd_exception_reported
+    ldr w6,[x5]
+    cbnz w6,park
+    mov w6,#1
+    str w6,[x5]
+    ldr x5,=lcd_exception
+    ldp x0,x1,[x5]
+    ldr x2,[x5,#16]
+    // Entry guard permits only EL3, so this system-register read is valid.
+    mrs x3,sctlr_el3
+    mov x4,sp
+    bl lcd_exception_uart
     b park
 .balign 2048
 vectors:

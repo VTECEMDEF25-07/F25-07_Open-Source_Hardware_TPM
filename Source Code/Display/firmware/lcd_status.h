@@ -18,4 +18,5 @@ void rx_pump(void);
 int lcd_diag_begin(void);
 void lcd_uart_diag(const char *,uint32_t,uint64_t,uint64_t,uint32_t);
 void lcd_diag_quiet(void);
+void lcd_exception_uart(uint64_t,uint64_t,uint64_t,uint64_t,uint64_t);
 #endif

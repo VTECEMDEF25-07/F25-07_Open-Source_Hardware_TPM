@@ -55,3 +55,21 @@ No PLL, clock-gate, counter-enable/frequency or reset-init recipe changed in thi
 diagnostic. GPIO reset sequence and SPI contents remain the same; UART logging
 adds delay and therefore this image is for root-cause capture, not performance
 measurement. Build it into a fresh `--output-dir`, preserving earlier artifacts.
+# Post-page diagnostic candidates (2026-11-10)
+
+`build_ocram.py --strict-align` applies `-mstrict-align` to every target C unit,
+in addition to the existing `-mgeneral-regs-only`. The separate exception-only
+build deliberately retains the prior compiler alignment behavior for diagnosis.
+The original UART diagnostic contained `sturh w21,[sp,#49]` at 0x2310 after
+the completed 20ms delay and before the first page SPI call. This is consistent
+with an alignment fault with MMU off; it is not confirmed until target evidence.
+The exception-only candidate moves that instruction to 0x2498; the strict build
+uses byte stores at 0x24a0/0x24a4/0x24a8 for the three page-command bytes.
+
+Both new candidates add PRE_PAGE and raw SCTLR readback, plus a one-attempt
+stage>=2 exception UART report of ESR/ELR/FAR/SCTLR/SP. Fatal TX has bounded
+UART polls and no timer, RX pump, or parser dependency. A nested reporting fault
+parks; a stalled MMIO transaction itself cannot be bounded in software. Reporter
+assumes the current SP remains valid, as expected for the suspected odd data
+store; it is not a general recovery mechanism. No SCTLR/MMU/clock writes added.
+

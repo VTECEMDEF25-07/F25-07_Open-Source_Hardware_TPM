@@ -13,6 +13,7 @@ static inline void wr(uintptr_t a,uint32_t v) {de25_wr(a,v);}
 static uint32_t hz;
 static unsigned diag_enabled;
 static unsigned diag_tx_failed;
+volatile uint32_t lcd_exception_reported;
 #ifdef DE25_HOST_TEST
 uint64_t de25_test_ticks(void);
 uint32_t de25_test_tick_hz(void);
@@ -94,6 +95,26 @@ static void diag_puts(const char *s) {
 static void diag_hex(uint64_t n,unsigned digits) {
     char s[17];for(unsigned i=0;i<digits;i++)s[i]="0123456789ABCDEF"[(n>>((digits-1-i)*4))&15];s[digits]=0;diag_puts(s);
 }
+/* Fatal path: no RX pump, timer, parser, heap, or normal diagnostic state.
+ * Assembly guards stage>=2 and one attempt; a nested fault parks immediately. */
+static int fatal_puts(const char *s) {
+    while(*s){unsigned budget=1000000;
+        while(!(rd(UART+0x14)&32))if(!--budget)return 0;
+        wr(UART,(unsigned char)*s++);
+    }return 1;
+}
+static int fatal_hex(uint64_t n) {
+    char s[17];for(unsigned i=0;i<16;i++)s[i]="0123456789ABCDEF"[(n>>((15-i)*4))&15];s[16]=0;
+    return fatal_puts(s);
+}
+void lcd_exception_uart(uint64_t esr,uint64_t elr,uint64_t far,uint64_t sctlr,uint64_t fault_sp) {
+    if(!fatal_puts("LCD_EXCEPTION ESR=") || !fatal_hex(esr))return;
+    if(!fatal_puts(" ELR=") || !fatal_hex(elr))return;
+    if(!fatal_puts(" FAR=") || !fatal_hex(far))return;
+    if(!fatal_puts(" SCTLR=") || !fatal_hex(sctlr))return;
+    if(!fatal_puts(" SP=") || !fatal_hex(fault_sp))return;
+    (void)fatal_puts("\r\n");
+}
 void lcd_uart_diag(const char *tag,uint32_t ok,uint64_t t0,uint64_t t1,uint32_t detail) {
     if(!diag_enabled)return;
     diag_puts("LCD_DIAG ");diag_puts(tag);diag_puts(" S=");diag_hex(lcd_diag.stage,8);
@@ -141,6 +162,11 @@ int lcd_init(void) {
     gpio(RESET,1);trace_step("RESET_HIGH_AFTER");
     if(!delay_us(62500))return 0;
     if(!send(c,sizeof c,0) || !delay_us(20000))return 0;
+    trace_step("PRE_PAGE");
+#ifndef DE25_HOST_TEST
+    {uint64_t ctl;__asm__ volatile("mrs %0,sctlr_el3":"=r"(ctl));
+     lcd_uart_diag("PRE_PAGE_SCTLR",1,ctl,ctl,0);}
+#endif
     for(unsigned page=0;page<8;page++){uint8_t a[]={(uint8_t)(0xb0+page),0x10,0};if(!send(a,3,0)||!send(zero,132,1))return 0;}
     c[0]=0xaf;if(!send(c,1,0))return 0;gpio(BACKLIGHT,1);
     trace_step("LCD_INIT_END");return 1;

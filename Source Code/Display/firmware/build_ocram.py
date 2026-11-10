@@ -5,6 +5,7 @@ REPO=Path(__file__).resolve().parents[3]
 parser=argparse.ArgumentParser()
 parser.add_argument('--runtime-root',required=True,help='Project-local baremetal directory containing the pinned toolchain')
 parser.add_argument('--output-dir',help='Separate build/evidence directory; never point at the preserved owner build-cold')
+parser.add_argument('--strict-align',action='store_true',help='Require naturally aligned target memory accesses throughout all target C translation units')
 options=parser.parse_args()
 options.cold=True
 ROOT=Path(options.runtime_root).resolve()
@@ -37,6 +38,7 @@ for code in range(32,91):
 gcc=linux(TOOL/'aarch64-none-elf-gcc')
 version=run([gcc,'--version']).decode()
 flags=['-std=c11','-Os','-g','-Wall','-Wextra','-Werror','-Wno-misleading-indentation','-ffreestanding','-fno-builtin','-fno-stack-protector','-fno-pie','-mgeneral-regs-only','-march=armv8-a','-nostdlib','-I'+linux(SRC)]
+if options.strict_align:flags.append('-mstrict-align')
 elf=OUT/'lcd_ocram.elf'
 sources=['start.S','main.c','status.c','board.c']+(['cold_init.c','runtime.c'] if options.cold else [])
 run([gcc,*flags,*[linux(SRC/n) for n in sources],'-Wl,--build-id=none','-Wl,-Map='+linux(OUT/'lcd_ocram.map'),'-T'+linux(SRC/'ocram.ld'),'-o',linux(elf)])
