@@ -69,8 +69,11 @@ module keygen_core #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5"
     wire [6:0] aes_index;
     wire [3:0] aes_status;
     assign request_ready_o=running && state_reg==IDLE && peers_ready_i && !private_lease_reg;
+    // Core IDLE excludes AES work/results: AES_RUN leaves only when the AES
+    // terminal handshake also returns AES to IDLE. Generation peers may be
+    // closed here; a private lease uses its already-owned stored key.
     assign private_open_ready_o=running && PRIVATE_RSA_ENABLE && state_reg==IDLE && !private_lease_reg &&
-        !request_valid_i && engine_ready && work_ready && aes_request_ready;
+        !request_valid_i && engine_ready && work_ready;
     assign private_active_o=running && PRIVATE_RSA_ENABLE && private_lease_reg;
     assign private_cmd_ready_o=private_access && !private_close_valid_i && engine_cmd_ready;
     assign private_rsp_valid_o=private_access && engine_rsp_valid;
