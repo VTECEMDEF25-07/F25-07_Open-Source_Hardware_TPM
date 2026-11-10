@@ -53,7 +53,7 @@ def compile_cpp(obj, build, executable, log):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--width', type=int, choices=(32, 256, 2048), default=32)
+    parser.add_argument('--width', type=int, choices=(32, 256, 1024, 2048), default=32)
     parser.add_argument('--build-dir', type=Path, required=True)
     parser.add_argument('--deadline-tests', action='store_true')
     parser.add_argument('--prior', action='store_true')
