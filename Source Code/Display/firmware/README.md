@@ -29,3 +29,29 @@ Host evidence:225 cold-init checks validate all register offsets/duplicate/magic
 The fixed SDM binary layout is pinned to official Trusted Firmware-A commit `cf1b7fe657a3215423ab397363cc4fa1a0e6399f` Agilex5 handoff structure. Register/clock metadata is from the actually generated Pro26.1 DE25 island. PLL helper subset is adapted from Altera baremetal-drivers commit `66bdcc347564c5698a8997169bce83a31647d618`, MIT-0 (license included). Baked kit PLL settings, global firewall opening and broad reset writes were excluded. Membus error/timeout propagation was strengthened. The new island's generated handoff must be reviewed again after the lead's combined fit; IO-control words and actual SDM launch contract cannot be proven by this offline build.
 
 Lead-only next gates: combine the accepted island with the passing crypto source; full fit/timing/RO/SPI/cooling review; inspect actual SDM handoff/boot contract; package a volatile SOF with this candidate HEX; observe UART1 diagnostic/banner; fixed glass frame; actual status relay/sticky completion and stale behavior. No board load, debug attach, SD/QSPI write or boot-switch change was performed here.
+
+## One-time post-banner UART diagnostic
+
+The separate diagnostic build adds `LCD_DIAG` checkpoints until the first
+`FRAME_SENT`, then quiets them. UART diagnostic output polls only UART LSR with
+an iteration cap; it does not depend on a functioning generic-counter deadline.
+It reports actual main stage/error, raw64-bit CNTPCT samples and a detail word.
+`COUNTER_PROBE` brackets a fixed UART marker; detail is CNTFRQ (software metadata,
+not a measured counter rate), followed by read-only CNTCR at0x10d01000. Error22
+means no counter change across that UART-only probe;23 is diagnostic TX budget.
+Board initialization already required at least one counter increment before the
+banner, so silence after the banner does not prove a counter disabled throughout
+startup. Continuous operation/rate is still a target observation.
+
+Reset low/high have before/after checkpoints. Each delay prints begin/end and
+raw ticks/poll count; no change over4096 polling iterations produces
+`DELAY_NO_TICKS` and returns failure instead of waiting the full10million-poll
+budget. Each SPI call prints begin/end; FIFO/busy waits/failures include raw SR.
+For `SPI_BEGIN`, detail is bytecount|(D_C<<16). `MAIN_INIT_FAIL`/`MAIN_FRAME_FAIL`
+print the latched error20/21 before parking. An OK checkpoint only describes
+software execution; it is never SPI readback, target timing or optical proof.
+
+No PLL, clock-gate, counter-enable/frequency or reset-init recipe changed in this
+diagnostic. GPIO reset sequence and SPI contents remain the same; UART logging
+adds delay and therefore this image is for root-cause capture, not performance
+measurement. Build it into a fresh `--output-dir`, preserving earlier artifacts.

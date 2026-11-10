@@ -11,6 +11,8 @@
 static inline uint32_t rd(uintptr_t a) {return de25_rd(a);}
 static inline void wr(uintptr_t a,uint32_t v) {de25_wr(a,v);}
 static uint32_t hz;
+static unsigned diag_enabled;
+static unsigned diag_tx_failed;
 #ifdef DE25_HOST_TEST
 uint64_t de25_test_ticks(void);
 uint32_t de25_test_tick_hz(void);
@@ -21,8 +23,18 @@ uint64_t ticks(void) {uint64_t n;__asm__ volatile("isb; mrs %0,cntpct_el0":"=r"(
 uint32_t tick_hz(void) {uint64_t n;__asm__ volatile("mrs %0,cntfrq_el0":"=r"(n));return (uint32_t)n;}
 #endif
 static int delay_us(uint32_t us) {
-    uint64_t start=ticks(),dt=((uint64_t)hz*us+999999)/1000000;unsigned budget=10000000;
-    while(ticks()-start<dt){rx_pump();if(!--budget)return 0;}return 1;
+    uint64_t start=ticks(),dt=((uint64_t)hz*us+999999)/1000000,last=start,now=start;
+    unsigned budget=10000000,polled=0;
+    lcd_uart_diag("DELAY_BEGIN",1,start,start,us);
+    while((now=ticks())-start<dt){
+        rx_pump();polled++;
+        if((polled&4095U)==0){
+            if(now==last){lcd_uart_diag("DELAY_NO_TICKS",0,start,now,polled);return 0;}
+            last=now;
+        }
+        if(!--budget){lcd_uart_diag("DELAY_BUDGET",0,start,now,polled);return 0;}
+    }
+    lcd_uart_diag("DELAY_END",1,start,now,polled);return 1;
 }
 static uint32_t ho(unsigned off) {return __builtin_bswap32(rd(0x7f000UL+off));}
 static uint32_t pll(unsigned globoff,unsigned moff) {
@@ -71,23 +83,67 @@ void uart_puts(const char *s) {
     while(*s) {uint64_t start=ticks();unsigned budget=1000000;while(!(rd(UART+0x14)&32)){rx_pump();if(!--budget || ticks()-start>hz/10)return;}
         wr(UART,(unsigned char)*s++);rx_pump();}
 }
+/* Diagnostic TX intentionally has no generic-counter deadline dependency. */
+static void diag_puts(const char *s) {
+    if(diag_tx_failed)return;
+    while(*s){unsigned budget=1000000;
+        while(!(rd(UART+0x14)&32)){rx_pump();if(!--budget){diag_tx_failed=1;return;}}
+        wr(UART,(unsigned char)*s++);rx_pump();
+    }
+}
+static void diag_hex(uint64_t n,unsigned digits) {
+    char s[17];for(unsigned i=0;i<digits;i++)s[i]="0123456789ABCDEF"[(n>>((digits-1-i)*4))&15];s[digits]=0;diag_puts(s);
+}
+void lcd_uart_diag(const char *tag,uint32_t ok,uint64_t t0,uint64_t t1,uint32_t detail) {
+    if(!diag_enabled)return;
+    diag_puts("LCD_DIAG ");diag_puts(tag);diag_puts(" S=");diag_hex(lcd_diag.stage,8);
+    diag_puts(" E=");diag_hex(lcd_diag.error,8);diag_puts(" OK=");diag_hex(ok,8);
+    diag_puts(" T0=");diag_hex(t0,16);diag_puts(" T1=");diag_hex(t1,16);
+    diag_puts(" D=");diag_hex(detail,8);diag_puts("\r\n");
+}
+int lcd_diag_begin(void) {
+    diag_enabled=1;diag_tx_failed=0;uint64_t t0=ticks();
+    diag_puts("LCD_DIAG UART_CLOCK_PROBE ...............................................................\r\n");
+    uint64_t t1=ticks();if(t1==t0)lcd_diag.error=22;
+    lcd_uart_diag("COUNTER_PROBE",t1!=t0,t0,t1,tick_hz());
+    /* PLAT_TIMER_BASE_ADDR/CNTCR0 matches pinned official SoCFPGA timer init.
+     * Readback only: no enable/frequency/clock/reset change in this diagnostic. */
+    diag_puts("LCD_DIAG CNTCR=");diag_hex(rd(0x10d01000),8);diag_puts("\r\n");
+    if(diag_tx_failed){lcd_diag.error=23;return 0;}
+    return t1!=t0;
+}
+void lcd_diag_quiet(void) {diag_enabled=0;}
+static void trace_step(const char *tag) {uint64_t t=ticks();lcd_uart_diag(tag,1,t,t,0);}
 static void gpio(uint32_t mask,int set) {wr(GPIO,set?rd(GPIO)|mask:rd(GPIO)&~mask);}
 static int send(const uint8_t *p,unsigned n,int data) {
+    unsigned requested=n;uint64_t begin=ticks();
+    lcd_uart_diag("SPI_BEGIN",1,begin,begin,(n&65535U)|((unsigned)data<<16));
     gpio(DC,data);
     while(n) {
         unsigned chunk=n>16?16:n;uint64_t start=ticks();unsigned budget=1000000;
-        for(unsigned i=0;i<chunk;i++) {while(!(rd(SPI+0x28)&2)){rx_pump();if(!--budget || ticks()-start>hz/10)return 0;}wr(SPI+0x60,*p++);}
-        while((rd(SPI+0x28)&5)!=4){rx_pump();if(!--budget || ticks()-start>hz/10)return 0;}
+        uint32_t initial_sr=rd(SPI+0x28);
+        if(!(initial_sr&2))lcd_uart_diag("SPI_TNF_WAIT",1,begin,ticks(),initial_sr);
+        for(unsigned i=0;i<chunk;i++) {while(!(rd(SPI+0x28)&2)){rx_pump();if(!--budget || ticks()-start>hz/10){lcd_uart_diag("SPI_TNF_FAIL",0,begin,ticks(),rd(SPI+0x28));return 0;}}wr(SPI+0x60,*p++);}
+        initial_sr=rd(SPI+0x28);
+        if((initial_sr&5)!=4)lcd_uart_diag("SPI_BUSY_WAIT",1,begin,ticks(),initial_sr);
+        while((rd(SPI+0x28)&5)!=4){rx_pump();if(!--budget || ticks()-start>hz/10){lcd_uart_diag("SPI_BUSY_FAIL",0,begin,ticks(),rd(SPI+0x28));return 0;}}
         rx_pump();n-=chunk;
     }
+    lcd_uart_diag("SPI_END",1,begin,ticks(),requested);
     return 1;
 }
 int lcd_init(void) {
     static const uint8_t zero[132]={0};uint8_t c[]={0xae,0xc8,0x2f,0x40};
-    gpio(RESET,0);if(!delay_us(62500))return 0;gpio(RESET,1);if(!delay_us(62500))return 0;
+    trace_step("RESET_LOW_BEFORE");
+    gpio(RESET,0);trace_step("RESET_LOW_AFTER");
+    if(!delay_us(62500))return 0;
+    trace_step("RESET_HIGH_BEFORE");
+    gpio(RESET,1);trace_step("RESET_HIGH_AFTER");
+    if(!delay_us(62500))return 0;
     if(!send(c,sizeof c,0) || !delay_us(20000))return 0;
     for(unsigned page=0;page<8;page++){uint8_t a[]={(uint8_t)(0xb0+page),0x10,0};if(!send(a,3,0)||!send(zero,132,1))return 0;}
-    c[0]=0xaf;if(!send(c,1,0))return 0;gpio(BACKLIGHT,1);return 1;
+    c[0]=0xaf;if(!send(c,1,0))return 0;gpio(BACKLIGHT,1);
+    trace_step("LCD_INIT_END");return 1;
 }
 int lcd_frame(const uint8_t *f) {
     for(unsigned page=0;page<8;page++){uint8_t a[]={(uint8_t)(0xb0+page),0x10,0};if(!send(a,3,0)||!send(f+128*page,128,1))return 0;}
