@@ -230,12 +230,14 @@ module tb_demo_memory;
             want=(err || wr)?0:model[addr];
             tick; m_valid=0;
             ck(m_rsp_valid && m_error===err && m_rdata===want,"RAM registered response/reference");
+            ck(ram.response_data===want,"physical synchronous read latch matches reply");
             if(!err && wr) model[addr]=data;
             // Permission/address may change after request, not response contents.
             m_allowed=!permission; m_addr=4095; m_wdata=~data;
             for(a=0;a<stalls;a=a+1) begin
                 ck(!m_ready && !clear_ready,"RAM response blocks request and clear");
                 tick; ck(m_rsp_valid && m_error===err && m_rdata===want,"RAM response stable");
+                ck(ram.response_data===want,"physical read latch freezes under reply stall");
             end
             m_rsp_ready=1; tick; m_rsp_ready=0;
             ck(!m_rsp_valid && m_rdata===0 && ram.response_data===0,"RAM response latch erased");
@@ -254,6 +256,7 @@ module tb_demo_memory;
                 ck(!m_ready && !m_rsp_valid,"no traffic while clearing"); tick; a=a+1;
             end
             ck(clear_done && ram_scrubbed && a<=1026,"bounded byte sweep done");
+            ck(ram.response_data===0 && ram.bytes[1024]===0,"clear physically refreshes read latch and zero sentinel");
             for(a=0;a<1024;a=a+1) begin
                 ck(ram.bytes[a]===0,"all byte RAM physically zero"); model[a]=0;
             end
@@ -349,6 +352,12 @@ module tb_demo_memory;
         while(!m_ready) tick;
         for(i=0;i<1024;i=i+1) begin ck(ram.bytes[i]===0,"RAM zero after reset"); model[i]=0; end
         ck(!m_rsp_valid && ram.response_data===0,"no stale RAM reply after reset");
+        mem_transaction(16,1,8'hfa,1,2);
+        m_allowed=1; m_valid=1; m_write=0; m_addr=16; tick; m_valid=0;
+        ck(m_rsp_valid && ram.response_data===8'hfa,"nonzero read latch before reset");
+        reset_all; while(!m_ready) tick;
+        ck(ram.response_data===0 && ram.bytes[1024]===0,"reset sweep physically refreshes retained RAM read latch");
+        model[16]=0; cases=cases+1;
         clear_valid=1; tick; clear_valid=0; repeat(20) tick; reset_all;
         while(!m_ready) tick; ck(!clear_done,"reset aborts clear completion");
         mem_transaction(16,0,0,1,4); cases=cases+1;

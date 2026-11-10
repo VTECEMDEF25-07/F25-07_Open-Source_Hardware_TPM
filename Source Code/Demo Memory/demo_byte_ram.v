@@ -24,7 +24,10 @@ module demo_byte_ram (
         if (!reset_n_i) reset_sync <= 0;
         else reset_sync <= {reset_sync[0],1'b1};
 
-    reg [7:0] bytes [0:1023];
+    // Address 1024 is a private, permanently-zero sentinel, never host accessible.
+    // Reading it erases the registered RAM output without a reset/mux on that
+    // register, preserving the synchronous memory inference template.
+    reg [7:0] bytes [0:1024];
     reg clearing, scrubbed, clear_pending, clear_done;
     reg [10:0] scrub_index;
     reg response_valid, response_error;
@@ -38,26 +41,46 @@ module demo_byte_ram (
     assign ram_rsp_rdata_o = ram_rsp_valid_o ? response_data : 8'd0;
     assign ram_rsp_error_o = ram_rsp_valid_o && response_error;
 
+    wire request_fire = ram_req_valid_i && ram_req_ready_o;
+    wire permitted = access_allowed_i && ram_req_addr_i < 1024;
+    wire scrub_write = active && clearing && scrub_index <= 1024;
+    wire user_write = request_fire && permitted && ram_req_write_i;
+    wire [10:0] write_address = scrub_write ? scrub_index : {1'b0,ram_req_addr_i[9:0]};
+    wire [7:0] write_data = scrub_write ? 8'd0 : ram_req_wdata_i;
+    wire scrub_refresh = active && clearing && scrub_index == 1025;
+    wire consume_reply = active && response_valid && ram_rsp_ready_i;
+    wire read_enable = request_fire || consume_reply || scrub_refresh;
+    wire [10:0] read_address = request_fire && permitted && !ram_req_write_i ?
+        {1'b0,ram_req_addr_i[9:0]} : 11'd1024;
+
+    // No asynchronous/synchronous reset on the array or its read register.
+    // Reset invalidates the protocol immediately; scrub makes physical contents
+    // and this latch zero before admission. Read enable freezes a held reply.
+    always @(posedge clock_i) begin
+        if (scrub_write || user_write) bytes[write_address] <= write_data;
+        if (read_enable) response_data <= bytes[read_address];
+    end
+
     always @(posedge clock_i or negedge reset_n_i) begin
         if (!reset_n_i) begin
             clearing <= 1; scrubbed <= 0; scrub_index <= 0;
             clear_pending <= 0; clear_done <= 0;
-            response_valid <= 0; response_data <= 0; response_error <= 0;
+            response_valid <= 0; response_error <= 0;
         end else if (!active) begin
             clearing <= 1; scrubbed <= 0; scrub_index <= 0;
             clear_pending <= 0; clear_done <= 0;
-            response_valid <= 0; response_data <= 0; response_error <= 0;
+            response_valid <= 0; response_error <= 0;
         end else begin
             if (response_valid && ram_rsp_ready_i) begin
-                response_valid <= 0; response_data <= 0; response_error <= 0;
+                response_valid <= 0; response_error <= 0;
             end
             if (clear_done && clear_done_ready_i) clear_done <= 0;
             if (clearing) begin
-                if (scrub_index < 1024) begin
-                    bytes[scrub_index[9:0]] <= 0;
+                if (scrub_index <= 1024) begin
                     scrub_index <= scrub_index + 1'b1;
                 end else begin
-                    response_data <= 0; response_error <= 0;
+                    // The posedge RAM process concurrently reads the zero sentinel.
+                    response_error <= 0;
                     clearing <= 0; scrubbed <= 1;
                     if (clear_pending) clear_done <= 1;
                     clear_pending <= 0;
@@ -66,13 +89,12 @@ module demo_byte_ram (
                 clearing <= 1; scrubbed <= 0; scrub_index <= 0;
                 clear_pending <= 1;
             end else if (ram_req_valid_i && ram_req_ready_o) begin
-                response_valid <= 1; response_data <= 0;
+                response_valid <= 1;
                 response_error <= !access_allowed_i || ram_req_addr_i >= 1024;
                 if (access_allowed_i && ram_req_addr_i < 1024) begin
                     if (ram_req_write_i) begin
-                        bytes[ram_req_addr_i[9:0]] <= ram_req_wdata_i;
                         scrubbed <= 0;
-                    end else response_data <= bytes[ram_req_addr_i[9:0]];
+                    end
                 end
             end
         end

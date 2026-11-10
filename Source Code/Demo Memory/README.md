@@ -68,10 +68,21 @@ Permission is sampled on request acceptance. Every read/write receives exactly
 one registered held response; write data replies are zero. The output latch is
 zeroed after consumption. Only one transaction is outstanding; a bubble is
 permitted. Clear cannot interrupt an outstanding reply. Clear has priority over
-a simultaneous request and sweeps 1024 bytes plus one latch-clear/completion
-edge, then holds `clear_done_valid_o` until consumed. Reset startup performs the
+a simultaneous request and sweeps 1024 public bytes plus one private zero byte
+at internal address 1024, then reads that zero byte to clear the physical output
+register before completion (1026 edges total). It holds `clear_done_valid_o`
+until consumed. Reset startup performs the
 same sweep without an unsolicited clear completion. `scrub_done_o` deasserts
 on a valid write or explicit clear and asserts after the full physical sweep.
+
+RAM writes and the synchronous read register are in a pure positive-edge process,
+separate from resettable protocol control. The internal sentinel is inaccessible
+through the public port, never receives user data and is initialized by the sweep.
+Each read reply holds the physical read register under stalls; consumption reads
+the sentinel to erase that register on the same edge. Write/denied replies also
+read the sentinel, keeping their registered data zero. No response latency or
+public capacity changes. Reset hides stale read data immediately and wipes the
+array and read latch before re-admission; it does not reset the RAM primitive.
 
 The integrator owns the external single-owner mux and access lease. No keys,
 seeds, d, p or q belong in scratch. At WIDTH=2048, fixed public MODEXP offsets
