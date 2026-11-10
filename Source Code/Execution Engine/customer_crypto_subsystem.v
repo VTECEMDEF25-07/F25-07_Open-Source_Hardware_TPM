@@ -435,7 +435,8 @@ module customer_crypto_subsystem #(parameter WIDTH=2048, DEMO_PROVIDER_MODE=0, I
         .job_accept_o(job_accept_o),
         .job_id_o(job_id_o)
     );
-    demo_keygen_operation #(.DEMO_PROVIDER_MODE(DEMO_PROVIDER_MODE),.IP_TYPE(IP_TYPE),.DEVICE_FAMILY(DEVICE_FAMILY),.PRIVATE_RSA_ENABLE(1)) u_operation (
+    demo_keygen_operation #(.DEMO_PROVIDER_MODE(DEMO_PROVIDER_MODE),.IP_TYPE(IP_TYPE),.DEVICE_FAMILY(DEVICE_FAMILY),.PRIVATE_RSA_ENABLE(1),
+      .ENTROPY_WARMUP_CYCLES(4096),.ENTROPY_SAMPLE_DIV(1024)) u_operation (
         .clock_i(clock_i),
         .reset_n_i(reset_n_i),
         .job_valid_i(pkt_gen_job_valid),

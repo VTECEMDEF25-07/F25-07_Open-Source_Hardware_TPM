@@ -38,6 +38,7 @@ module tb_customer_crypto_subsystem_control;
     endtask
     initial begin
         repeat(2)step;reset_n=1;idle_models;repeat(3)step;
+        check(dut.u_operation.ENTROPY_WARMUP_CYCLES==4096 && dut.u_operation.ENTROPY_SAMPLE_DIV==1024,"explicit promoted customer entropy profile");
         check(dut.u_packet.operational_i,"startup readiness reaches packet");
         check(!busy && scrubbed,"idle aggregate");
         check(!legacy_ready && !legacy_valid && legacy_key==0 && legacy_code==0,"legacy lookup disabled");
