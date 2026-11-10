@@ -35,6 +35,8 @@ def main():
              repo / 'Source Code/Management Module/management_module.v',
              repo / 'Source Code/Execution Engine/execution_engine.v']
     paths += sorted((repo / 'Source Code/IO Interface').glob('*.v'))
+    # TPM_TOP now instantiates the real shared SHA subsystem for TPM2_Hash.
+    paths += sorted((repo / 'Source Code/Hash Module').glob('*.v'))
     paths += sorted((repo / 'Source Code/Key Generation/IP').glob('*.v'))
     paths += sorted((repo / 'Source Code/Key Generation/rtl').rglob('*.v'))
     hashes = {}

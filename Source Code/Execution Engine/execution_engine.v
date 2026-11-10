@@ -1580,14 +1580,517 @@ module execution_engine(
 	end
 endmodule
 
+// Scoped host command executor. The CRB provides a synchronous packet read
+// and reads the response payload by offset after response_valid pulses.
+//
+// TCG TPM 2.0 Library Part 3, section 5 describes the processing stages.
+// Section 15.4 defines the Hash request and reply. This executor implements
+// the no-session SHA-256 case with TPM_RH_NULL. The SHA math lives downstream.
+module execution_engine_hash (
+    input wire clock_i, reset_n_i, start_i, operational_i,
+    input wire [15:0] command_tag_i,
+    input wire [31:0] command_code_i, command_size_i,
+    // Full packet byte address, including the 10-byte command header.
+    output reg [11:0] command_addr_o,
+    input wire [7:0] command_byte_i,
+    output reg response_valid_o,
+    output reg [31:0] response_code_o,
+    output wire [11:0] response_length_o,
+    // Response payload offset. The CRB writes the response header separately.
+    input wire [11:0] response_addr_i,
+    output reg [7:0] response_byte_o,
+    output wire hash_request_o,
+    input wire hash_grant_i,
+    output wire [7:0] hash_data_o,
+    output wire hash_valid_o, hash_end_o,
+    input wire hash_ready_i,
+    input wire [255:0] hash_digest_i,
+    input wire hash_digest_valid_i,
+    output wire hash_digest_ready_o
+);
+    localparam [3:0] IDLE=0, READ_WAIT=1, READ_FIELD=2, REQUEST=3,
+        DATA_WAIT=4, SEND=5, DIGEST=6, RESPOND=7;
+    localparam [31:0] RC_BAD_TAG=32'h01e, RC_INITIALIZE=32'h100,
+        RC_FAILURE=32'h101, RC_COMMAND_SIZE=32'h142, RC_COMMAND_CODE=32'h143,
+        RC_SIZE_DATA=32'h1d5, RC_HASH_ALG=32'h2c3, RC_VALUE_HIERARCHY=32'h3c4;
+    reg [3:0] state;
+    reg [2:0] field_index;
+    reg [15:0] data_length;
+    reg [31:0] field_bytes;
+    reg [11:0] remaining;
+    reg [255:0] digest;
+    reg success;
+    // Assemble multibyte packet fields in wire order, most significant byte first.
+    wire [31:0] next_field = {field_bytes[23:0], command_byte_i};
 
+    // Request/grant reserves SHA. Ready/valid then transfers each message byte.
+    assign hash_request_o = reset_n_i && state == REQUEST;
+    assign hash_data_o = command_byte_i;
+    assign hash_valid_o = reset_n_i && state == SEND && remaining != 0;
+    // End accompanies the last byte, or travels alone for an empty input.
+    assign hash_end_o = reset_n_i && state == SEND && remaining <= 1;
+    assign hash_digest_ready_o = reset_n_i && state == DIGEST;
+    assign response_length_o = success ? 12'd52 : 12'd10;
 
+    // A successful reply has 10 header bytes and 42 payload bytes.
+    // Payload 0..1 is the TPM2B_DIGEST length (32), 2..33 is the digest,
+    // and 34..41 is the null TPMT_TK_HASHCHECK (tag, hierarchy, empty proof).
+    // Keep the digest available while the CRB reads the payload by offset.
+    always @* begin
+        response_byte_o = 0;
+        case (response_addr_i)
+            12'd1: response_byte_o = 8'h20;
+            12'd34: response_byte_o = 8'h80;
+            12'd35: response_byte_o = 8'h24;
+            12'd36: response_byte_o = 8'h40;
+            12'd39: response_byte_o = 8'h07;
+            default: if (response_addr_i >= 2 && response_addr_i < 34)
+                response_byte_o = digest[255-(response_addr_i-2)*8 -: 8];
+        endcase
+    end
 
+    always @(posedge clock_i or negedge reset_n_i) begin
+        if (!reset_n_i) begin
+            state <= IDLE;
+            command_addr_o <= 0;
+            field_index <= 0;
+            field_bytes <= 0;
+            data_length <= 0;
+            remaining <= 0;
+            digest <= 0;
+            success <= 0;
+            response_valid_o <= 0;
+            response_code_o <= 0;
+        end else begin
+            response_valid_o <= 0;
+            case (state)
+                IDLE: if (start_i) begin
+                    success <= 0;
+                    digest <= 0;
+                    response_code_o <= 0;
+                    // Reject requests outside the supported path before touching SHA.
+                    // No key handle lookup or authorization is needed for this case.
+                    if (command_tag_i != 16'h8001 && command_tag_i != 16'h8002) begin
+                        response_code_o <= RC_BAD_TAG;
+                        state <= RESPOND;
+                    end else if (command_code_i != 32'h0000017d) begin
+                        response_code_o <= RC_COMMAND_CODE;
+                        state <= RESPOND;
+                    end else if (command_size_i < 18 || command_size_i > 1042) begin
+                        response_code_o <= RC_COMMAND_SIZE;
+                        state <= RESPOND;
+                    end else if (!operational_i) begin
+                        response_code_o <= RC_INITIALIZE;
+                        state <= RESPOND;
+                    end else if (command_tag_i != 16'h8001) begin
+                        response_code_o <= RC_FAILURE;
+                        state <= RESPOND;
+                    end else begin
+                        command_addr_o <= 12'd10;
+                        field_index <= 0;
+                        field_bytes <= 0;
+                        state <= READ_WAIT;
+                    end
+                end
+                // The CRB packet RAM returns data one clock after the address.
+                // Hash layout after the header: 2-byte size, data, 2-byte
+                // hash algorithm, and 4-byte hierarchy selector.
+                READ_WAIT: state <= READ_FIELD;
+                READ_FIELD: begin
+                    field_bytes <= next_field;
+                    field_index <= field_index + 1'b1;
+                    command_addr_o <= command_addr_o + 1'b1;
+                    state <= READ_WAIT;
+                    case (field_index)
+                        // Check the total size before jumping over the data to
+                        // validate the algorithm and hierarchy fields.
+                        3'd1: begin
+                            data_length <= next_field[15:0];
+                            if (next_field[15:0] > 1024 ||
+                                ({16'd0,next_field[15:0]} + 32'd18) != command_size_i) begin
+                                response_code_o <= RC_SIZE_DATA;
+                                state <= RESPOND;
+                            end else command_addr_o <= 12'd12 + next_field[11:0];
+                        end
+                        3'd3: if (next_field[15:0] != 16'h000b) begin
+                            response_code_o <= RC_HASH_ALG;
+                            state <= RESPOND;
+                        end
+                        3'd7: if (next_field != 32'h40000007) begin
+                            response_code_o <= RC_VALUE_HIERARCHY;
+                            state <= RESPOND;
+                        end else begin
+                            remaining <= data_length[11:0];
+                            // Return to the first payload byte. Only message
+                            // bytes go to SHA, excluding all framing fields.
+                            command_addr_o <= 12'd12;
+                            state <= REQUEST;
+                        end
+                        default: begin end
+                    endcase
+                end
+                REQUEST: if (hash_grant_i) state <= DATA_WAIT;
+                DATA_WAIT: state <= SEND;
+                // The read address stays put during SHA backpressure, so the
+                // byte and end flag stay stable until accepted.
+                SEND: if (hash_ready_i) begin
+                    if (remaining <= 1) state <= DIGEST;
+                    else begin
+                        remaining <= remaining - 1'b1;
+                        command_addr_o <= command_addr_o + 1'b1;
+                        state <= DATA_WAIT;
+                    end
+                end
+                // A real SHA digest completes a successful command. Latch it
+                // before telling the CRB it can begin returning response bytes.
+                DIGEST: if (hash_digest_valid_i) begin
+                    digest <= hash_digest_i;
+                    success <= 1;
+                    state <= RESPOND;
+                end
+                RESPOND: begin
+                    response_valid_o <= 1;
+                    state <= IDLE;
+                end
+                default: state <= IDLE;
+            endcase
+        end
+    end
+endmodule
 
+// EncryptDecrypt2 execution after packet decoding. The object service returns
+// a resolved key only on success, or a TPM error for lookup/authorization.
+// The board host path does not instantiate this handler until that service exists.
+module execution_engine_encryptdecrypt2 #(
+    parameter RAM_ADDR_WIDTH=12
+) (
+    input wire clock_i, reset_n_i, start_i,
+    input wire [31:0] key_handle_i, data_length_i,
+    input wire [RAM_ADDR_WIDTH-1:0] input_base_i, output_base_i,
+    input wire [127:0] iv_i,
+    input wire decrypt_i,
+    input wire [2:0] mode_i,
+    output wire key_request_o,
+    input wire key_request_ready_i,
+    output reg [31:0] key_handle_o,
+    input wire key_reply_valid_i,
+    output wire key_reply_ready_o,
+    input wire [255:0] resolved_key_i,
+    input wire [31:0] key_reply_code_i,
 
+    output wire aes_start_o,
+    output reg [255:0] aes_key_o,
+    output reg [127:0] aes_iv_o,
+    output reg aes_decrypt_o,
+    output reg [2:0] aes_mode_o,
+    output reg [RAM_ADDR_WIDTH-1:0] aes_input_base_o, aes_output_base_o,
+    output reg [31:0] aes_length_o,
+    input wire aes_busy_i, aes_done_i,
+    input wire [11:0] aes_rc_i,
+    input wire [127:0] aes_final_iv_i,
+    input wire [31:0] aes_completed_length_i,
 
+    output wire busy_o,
+    output reg done_o,
+    output reg [31:0] response_code_o, response_length_o,
+    output reg [127:0] response_iv_o
+);
+    localparam [2:0] IDLE=0, LOOKUP=1, KEY_REPLY=2, LAUNCH=3,
+        AES_WAIT=4, COMPLETE=5, RELEASE=6;
+    reg [2:0] state;
 
+    assign busy_o = reset_n_i && state != IDLE;
+    assign key_request_o = reset_n_i && state == LOOKUP;
+    assign key_reply_ready_o = reset_n_i && state == KEY_REPLY;
+    assign aes_start_o = reset_n_i && state == LAUNCH && !aes_busy_i;
 
+    always @(posedge clock_i or negedge reset_n_i) begin
+        if (!reset_n_i) begin
+            state <= IDLE;
+            key_handle_o <= 0;
+            aes_key_o <= 0;
+            aes_iv_o <= 0;
+            aes_decrypt_o <= 0;
+            aes_mode_o <= 0;
+            aes_input_base_o <= 0;
+            aes_output_base_o <= 0;
+            aes_length_o <= 0;
+            done_o <= 0;
+            response_code_o <= 0;
+            response_length_o <= 0;
+            response_iv_o <= 0;
+        end else begin
+            done_o <= 0;
+            case (state)
+                IDLE: if (start_i) begin
+                    key_handle_o <= key_handle_i;
+                    aes_iv_o <= iv_i;
+                    aes_decrypt_o <= decrypt_i;
+                    aes_mode_o <= mode_i;
+                    aes_input_base_o <= input_base_i;
+                    aes_output_base_o <= output_base_i;
+                    aes_length_o <= data_length_i;
+                    response_code_o <= 0;
+                    response_length_o <= 0;
+                    response_iv_o <= 0;
+                    state <= LOOKUP;
+                end
+                LOOKUP: if (key_request_ready_i) state <= KEY_REPLY;
+                KEY_REPLY: if (key_reply_valid_i) begin
+                    if (key_reply_code_i != 0) begin
+                        response_code_o <= key_reply_code_i;
+                        state <= COMPLETE;
+                    end else begin
+                        aes_key_o <= resolved_key_i;
+                        state <= LAUNCH;
+                    end
+                end
+                LAUNCH: if (aes_start_o) begin
+                    // The symmetric controller captures the key on this edge.
+                    aes_key_o <= 0;
+                    state <= AES_WAIT;
+                end
+                AES_WAIT: if (aes_done_i) begin
+                    response_code_o <= {20'd0,aes_rc_i};
+                    if (aes_rc_i == 0) begin
+                        response_length_o <= aes_completed_length_i;
+                        response_iv_o <= aes_final_iv_i;
+                    end
+                    state <= COMPLETE;
+                end
+                COMPLETE: begin
+                    done_o <= 1;
+                    state <= RELEASE;
+                end
+                RELEASE: if (!start_i && !aes_busy_i) state <= IDLE;
+                default: state <= IDLE;
+            endcase
+        end
+    end
+endmodule
 
+// Scoped EncryptDecrypt2 packet path. Accepts AES-256 CFB and one empty
+// password authorization record. Permission comes from the object service.
+// The packet scratch buffer is reused in place and contains no key objects.
+module execution_engine_aes_packet (
+    input wire clock_i, reset_n_i, start_i, operational_i,
+    input wire [15:0] command_tag_i,
+    input wire [31:0] command_size_i,
+    output reg [11:0] command_addr_o,
+    input wire [7:0] command_byte_i,
+    output reg response_valid_o,
+    output reg [31:0] response_code_o,
+    output wire [11:0] response_length_o,
+    input wire [11:0] response_addr_i,
+    output reg [7:0] response_byte_o,
+    output wire key_request_o,
+    input wire key_request_ready_i,
+    output wire [31:0] key_handle_o,
+    input wire key_reply_valid_i,
+    output wire key_reply_ready_o,
+    input wire [255:0] resolved_key_i,
+    input wire [31:0] key_reply_code_i
+);
+    localparam [2:0] IDLE=0, READ_WAIT=1, READ_BYTE=2, LAUNCH=3,
+        WAIT_RESULT=4, REPLY=5;
+    reg [2:0] state;
+    reg [31:0] handle;
+    reg [15:0] data_length;
+    reg [127:0] iv;
+    reg decrypt, success;
+    reg [71:0] field;
+    reg [7:0] payload [0:1023];
+    wire [71:0] next_field = {field[63:0],command_byte_i};
+    wire [11:0] data_end = 12'd29 + data_length[11:0];
+    wire [11:0] trailer_offset = command_addr_o - data_end;
 
+    wire aes_start, aes_busy, aes_done, decrypt_job, job_done;
+    wire [255:0] aes_key;
+    wire [127:0] aes_iv, aes_final_iv, job_iv;
+    wire [2:0] aes_mode;
+    wire [9:0] aes_in_base, aes_out_base, ram_addr;
+    wire [31:0] aes_length, aes_completed, job_rc, job_length;
+    wire [11:0] aes_rc;
+    wire ram_req_valid, ram_req_write, ram_rsp_ready;
+    wire [7:0] ram_write_data;
+    reg ram_rsp_valid;
+    reg [7:0] ram_read_data;
+    wire [11:0] reply_data_end = 12'd6 + job_length[11:0];
+    wire [15:0] parameter_size = job_length[15:0] + 16'd20;
+    wire [11:0] reply_iv_byte = response_addr_i - reply_data_end - 12'd2;
 
+    // Successful session-tagged response: parameterSize, outData, ivOut,
+    // and a password acknowledgment (empty nonce, continueSession, empty HMAC).
+    assign response_length_o = success ? 12'd39 + job_length[11:0] : 12'd10;
+    always @* begin
+        response_byte_o = 0;
+        case (response_addr_i)
+            12'd2: response_byte_o = parameter_size[15:8];
+            12'd3: response_byte_o = parameter_size[7:0];
+            12'd4: response_byte_o = job_length[15:8];
+            12'd5: response_byte_o = job_length[7:0];
+            default: begin
+                if (response_addr_i >= 6 && response_addr_i < reply_data_end)
+                    response_byte_o = payload[response_addr_i-6];
+                else if (response_addr_i == reply_data_end + 1)
+                    response_byte_o = 8'd16;
+                else if (reply_iv_byte < 16)
+                    response_byte_o = job_iv[127-reply_iv_byte*8 -: 8];
+                else if (response_addr_i == reply_data_end + 20)
+                    response_byte_o = 8'd1;
+            end
+        endcase
+    end
+
+    always @(posedge clock_i) begin
+        if (state == READ_BYTE && command_addr_o >= 29 && command_addr_o < data_end)
+            payload[command_addr_o-29] <= command_byte_i;
+        else if (ram_req_valid && !ram_rsp_valid && ram_req_write)
+            payload[ram_addr] <= ram_write_data;
+        if (ram_req_valid && !ram_rsp_valid && !ram_req_write)
+            ram_read_data <= payload[ram_addr];
+    end
+
+    always @(posedge clock_i or negedge reset_n_i) begin
+        if (!reset_n_i) begin
+            state <= IDLE;
+            command_addr_o <= 0;
+            response_valid_o <= 0;
+            response_code_o <= 0;
+            ram_rsp_valid <= 0;
+            field <= 0;
+            handle <= 0;
+            data_length <= 0;
+            iv <= 0;
+            decrypt <= 0;
+            success <= 0;
+        end else begin
+            response_valid_o <= 0;
+            if (ram_rsp_ready) ram_rsp_valid <= 0;
+            if (ram_req_valid && !ram_rsp_valid) ram_rsp_valid <= 1;
+            case (state)
+                IDLE: if (start_i) begin
+                    success <= 0;
+                    response_code_o <= 0;
+                    command_addr_o <= 12'd10;
+                    data_length <= 0;
+                    field <= 0;
+                    iv <= 0;
+                    state <= REPLY;
+                    if (command_tag_i != 16'h8001 && command_tag_i != 16'h8002)
+                        response_code_o <= 32'h01e;
+                    else if (!operational_i)
+                        response_code_o <= 32'h100;
+                    else if (command_tag_i != 16'h8002)
+                        response_code_o <= 32'h125;
+                    else if (command_size_i < 50 || command_size_i > 1074)
+                        response_code_o <= 32'h142;
+                    else state <= READ_WAIT;
+                end
+                READ_WAIT: state <= READ_BYTE;
+                READ_BYTE: begin
+                    field <= next_field;
+                    command_addr_o <= command_addr_o + 1'b1;
+                    state <= READ_WAIT;
+                    case (command_addr_o)
+                        12'd13: handle <= next_field[31:0];
+                        12'd17: if (next_field[31:0] != 9) begin
+                            response_code_o <= 32'h144;
+                            state <= REPLY;
+                        end
+                        // Only a single TPM_RS_PW record with empty nonce and
+                        // password is supported. Ignore its continueSession bit.
+                        12'd26: if ((next_field & 72'hfffffffffffffeffff) != 72'h400000090000000000) begin
+                            response_code_o <= 32'h101;
+                            state <= REPLY;
+                        end
+                        12'd28: begin
+                            data_length <= next_field[15:0];
+                            if (next_field[15:0] > 1024 ||
+                                {16'd0,next_field[15:0]} + 32'd50 != command_size_i) begin
+                                response_code_o <= 32'h1d5;
+                                state <= REPLY;
+                            end
+                        end
+                        default: if (command_addr_o >= data_end) begin
+                            case (trailer_offset)
+                                12'd0: begin
+                                    decrypt <= command_byte_i[0];
+                                    if (command_byte_i > 1) begin
+                                        response_code_o <= 32'h2c4;
+                                        state <= REPLY;
+                                    end
+                                end
+                                12'd2: if (next_field[15:0] != 16'h0043) begin
+                                    response_code_o <= 32'h3c9;
+                                    state <= REPLY;
+                                end
+                                12'd4: if (next_field[15:0] != 16'd16) begin
+                                    response_code_o <= 32'h4d5;
+                                    state <= REPLY;
+                                end
+                                default: if (trailer_offset >= 5) begin
+                                    iv <= {iv[119:0],command_byte_i};
+                                    if (trailer_offset == 20) state <= LAUNCH;
+                                end
+                            endcase
+                        end
+                    endcase
+                end
+                LAUNCH: state <= WAIT_RESULT;
+                WAIT_RESULT: if (job_done) begin
+                    response_code_o <= job_rc;
+                    success <= job_rc == 0;
+                    state <= REPLY;
+                end
+                REPLY: begin
+                    response_valid_o <= 1;
+                    state <= IDLE;
+                end
+                default: state <= IDLE;
+            endcase
+        end
+    end
+
+    execution_engine_encryptdecrypt2 #(.RAM_ADDR_WIDTH(10)) job (
+        .clock_i(clock_i), .reset_n_i(reset_n_i), .start_i(state == LAUNCH),
+        .key_handle_i(handle), .data_length_i({16'd0,data_length}),
+        .input_base_i(10'd0), .output_base_i(10'd0), .iv_i(iv),
+        .decrypt_i(decrypt), .mode_i(3'd1), .key_request_o(key_request_o),
+        .key_request_ready_i(key_request_ready_i), .key_handle_o(key_handle_o),
+        .key_reply_valid_i(key_reply_valid_i), .key_reply_ready_o(key_reply_ready_o),
+        .resolved_key_i(resolved_key_i), .key_reply_code_i(key_reply_code_i),
+        .aes_start_o(aes_start), .aes_key_o(aes_key), .aes_iv_o(aes_iv),
+        .aes_decrypt_o(decrypt_job), .aes_mode_o(aes_mode), .aes_input_base_o(aes_in_base),
+        .aes_output_base_o(aes_out_base), .aes_length_o(aes_length),
+        .aes_busy_i(aes_busy), .aes_done_i(aes_done), .aes_rc_i(aes_rc),
+        .aes_final_iv_i(aes_final_iv), .aes_completed_length_i(aes_completed),
+        .busy_o(), .done_o(job_done), .response_code_o(job_rc),
+        .response_length_o(job_length), .response_iv_o(job_iv)
+    );
+
+    symm_top #(.RAM_ADDR_WIDTH(10), .MAX_SECRET_BYTES(32), .MAX_NONCE_BYTES(32)) aes (
+        .clock_i(clock_i), .reset_n_i(reset_n_i), .start_i(aes_start),
+        .command_code_i(16'h0193), .key_valid_i(1'b1), .session_protect_i(1'b0),
+        .session_valid_i(1'b0), .session_decrypt_i(1'b0), .session_encrypt_i(1'b0),
+        .session_use_xor_i(1'b0), .mode_i(aes_mode),
+        .session_value_i(256'd0), .session_value_bytes_i(16'd0),
+        .nonce_newer_i(256'd0), .nonce_older_i(256'd0),
+        .nonce_newer_bytes_i(16'd0), .nonce_older_bytes_i(16'd0),
+        .hmac_start_o(), .hmac_key_data_o(), .hmac_message_data_o(),
+        .hmac_key_valid_o(), .hmac_key_end_o(), .hmac_key_ready_i(1'b0),
+        .hmac_message_valid_o(), .hmac_message_end_o(), .hmac_message_ready_i(1'b0),
+        .hmac_busy_i(1'b0), .hmac_digest_i(256'd0), .hmac_digest_valid_i(1'b0),
+        .hmac_digest_ready_o(),
+        .key_i(aes_key), .iv_i(aes_iv), .decrypt_i(decrypt_job),
+        .input_base_i(aes_in_base), .output_base_i(aes_out_base),
+        .data_length_i(aes_length), .busy_o(aes_busy), .done_o(aes_done),
+        .error_o(), .tpm_rc_o(aes_rc), .final_iv_o(aes_final_iv),
+        .completed_length_o(aes_completed),
+        .ram_req_valid_o(ram_req_valid), .ram_req_ready_i(!ram_rsp_valid),
+        .ram_req_write_o(ram_req_write), .ram_req_addr_o(ram_addr),
+        .ram_req_data_o(ram_write_data), .ram_rsp_valid_i(ram_rsp_valid),
+        .ram_rsp_ready_o(ram_rsp_ready), .ram_rsp_data_i(ram_read_data),
+        .ram_rsp_error_i(1'b0)
+    );
+endmodule

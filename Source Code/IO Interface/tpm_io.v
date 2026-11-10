@@ -10,8 +10,16 @@
 // General Description:
 //	Wrapper module to combine induvidual I/O submodules into a single module.
 	
-module	tpm_io
+module	tpm_io #(parameter SCOPED_COMMANDS = 0,
+    parameter ENABLE_ENCRYPTDECRYPT2 = 0,
+    parameter PRESERVE_LEGACY_COMMANDS = 0)
 (
+    // Pass packet reads and response payload reads between the CRB and the top.
+    input wire [11:0] exec_cmd_addr_i,
+    output wire [7:0] exec_cmd_byte_o,
+    input wire [11:0] exec_rsp_length_i,
+    output wire [11:0] exec_rsp_addr_o,
+    input wire [7:0] exec_rsp_byte_i,
 	input		clock50_i,	// 50 MHz	(sysclock, arbitrary)
 	input		reset_n_i,
 	
@@ -107,8 +115,13 @@ module	tpm_io
 		.c_execDone_i(c_execDone), .c_execAck_o(c_execAck)
 	);
 	
-	tpm_crb command_response_buffer
+	tpm_crb #(.SCOPED_COMMANDS(SCOPED_COMMANDS),
+        .PRESERVE_LEGACY_COMMANDS(PRESERVE_LEGACY_COMMANDS),
+        .ENABLE_ENCRYPTDECRYPT2(ENABLE_ENCRYPTDECRYPT2)) command_response_buffer
 	(
+        .exec_cmd_addr_i(exec_cmd_addr_i), .exec_cmd_byte_o(exec_cmd_byte_o),
+        .exec_rsp_length_i(exec_rsp_length_i), .exec_rsp_addr_o(exec_rsp_addr_o),
+        .exec_rsp_byte_i(exec_rsp_byte_i),
 		.clock_i(clock50_i), .reset_n_i(reset_n_i),
 		.locality_i(locality_o), .cmdAbort_i(1'b0),
 		.cmdSize_i(commandSize_o), .rspSize_o(c_rspSize),
