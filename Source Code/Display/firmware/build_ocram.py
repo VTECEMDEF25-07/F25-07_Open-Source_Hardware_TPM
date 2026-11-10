@@ -4,13 +4,13 @@ import argparse,hashlib, importlib.util, json, struct, subprocess, sys
 REPO=Path(__file__).resolve().parents[3]
 parser=argparse.ArgumentParser()
 parser.add_argument('--runtime-root',required=True,help='Project-local baremetal directory containing the pinned toolchain')
-parser.add_argument('--output-dir',help='New evidence directory; refuses an existing directory to preserve previous builds')
+parser.add_argument('--output-dir',help='Separate build/evidence directory; never point at the preserved owner build-cold')
 options=parser.parse_args()
 options.cold=True
 ROOT=Path(options.runtime_root).resolve()
 SRC=Path(__file__).resolve().parent
-OUT=Path(options.output_dir).resolve() if options.output_dir else ROOT/('build-cold' if options.cold else 'build')
-OUT.mkdir(parents=True,exist_ok=not bool(options.output_dir))
+OUT=Path(options.output_dir).resolve() if options.output_dir else ROOT/'build-cold'
+OUT.mkdir(parents=True,exist_ok=True)
 (OUT/'warnings.log').write_bytes(b'')
 TOOL=ROOT/'toolchain/arm-gnu-toolchain-13.2.rel1-x86_64-aarch64-none-elf/bin'
 archive=ROOT/'toolchain/arm-gnu-toolchain-13.2.rel1-x86_64-aarch64-none-elf.tar.xz'

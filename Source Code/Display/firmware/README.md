@@ -8,6 +8,10 @@ From repository root:
 python 'Source Code/Display/firmware/build_ocram.py' --runtime-root '<absolute class-root>/AI/tmp/overnight-lcd/baremetal'
 ```
 
+For lead rebuilds, add `--output-dir '<separate lead-owned evidence directory>'`.
+The option was verified with a separate build producing the identical reviewed
+HEX/binary; it preserves the original owner's `build-cold/` ELF and manifest.
+
 The runtime root contains the officially downloaded/checksum-verified Arm GNU13.2.Rel1 x86_64 Linux `aarch64-none-elf` toolchain. It runs through WSL Ubuntu24.04; native WSL gcc runs host tests. No global install, target load or FPGA build. The builder records complete commands, compiler/source/output hashes, ELF load segments, sizes and test logs under `build-cold/`. It compares all176 parser/render cases against the prior tested Python renderer. The146 valid fresh/stale frames cover73 snapshots, plus30 malformed-record rejections.
 
 Initialization follows this order:
