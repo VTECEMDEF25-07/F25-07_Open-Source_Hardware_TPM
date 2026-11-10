@@ -104,6 +104,8 @@ def run_customer_flow(client,recorder,phase1,allow_export,auto=False,message=DEF
     recorder.emit('rsa-keygen-submit','RSA: requesting a real RNG-driven RSA2048 key pair on the FPGA. Waiting for actual hardware completion...')
     rsa_start=time.monotonic(); rsa_handle,public=client.generate_rsa_public()
     rsa_gen_s=time.monotonic()-rsa_start
+    recorder.emit('rsa-keygen-time',f'RSA key generation took {rsa_gen_s:.2f} seconds.',
+                  generation_s=rsa_gen_s)
     nhex=public.modulus.to_bytes(256,'big').hex()
     recorder.emit('rsa-keygen-complete',f'FPGA RSA public key: n[2048]={nhex[:64]}...; e={public.exponent}. Private context stays on FPGA.',
                   handle=rsa_handle,modulus_hex=nhex,public_exponent=public.exponent,
