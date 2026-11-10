@@ -46,7 +46,7 @@ class Tests(unittest.TestCase):
         for code in range(16):
             for mode in range(4):
                 rec=lcd.decode_snapshot(snapshot(code,mode,255,0x12345678,0xffffffff))
-                lines=lcd.status_lines(rec)
+                lines=lcd.diagnostic_status_lines(rec)
                 self.assertIn(lcd.MODES[mode],lines)
                 self.assertIn(lcd.STATES[code] if code<10 else 'UNKNOWN HW STATE',lines)
                 self.assertIn('OP 12345678',lines)
@@ -55,6 +55,25 @@ class Tests(unittest.TestCase):
                 self.assertTrue(any(frame)); frames.add(frame)
         self.assertGreaterEqual(len(frames),40)
 
+    def test_customer_display(self):
+        expected = {0: 'READY', 1: 'RUNNING SELF TESTS', 3: 'GENERATING AES KEY',
+                    4: 'GENERATING RSA KEY', 5: 'ENTER MESSAGE ON PC',
+                    6: 'DECRYPTING AES', 7: 'DECRYPTING RSA', 9: 'HARDWARE ERROR'}
+        for code, label in expected.items():
+            lines = lcd.status_lines(lcd.decode_snapshot(snapshot(code)))
+            self.assertIn(label, lines)
+            self.assertNotIn('FRESH UNQUALIFIED', lines)
+            self.assertFalse(any(line.startswith(('OP ', 'DETAIL ', 'SEQ ')) for line in lines))
+            self.assertEqual(len(lcd.render(lines)), 1024)
+        for detail, label in ((2, 'AES DECRYPTED'), (4, 'RSA DECRYPTED')):
+            record = lcd.decode_snapshot(snapshot(8, detail=detail))
+            self.assertIn('MESSAGE RECEIVED', lcd.status_lines(record))
+            self.assertIn(label, lcd.status_lines(record))
+            self.assertNotIn('MESSAGE RECEIVED', lcd.status_lines(record, stale=True))
+        self.assertIn('START DEMO ON LAPTOP', lcd.status_lines())
+        self.assertIn('RNG UNAVAILABLE', lcd.status_lines(lcd.decode_snapshot(snapshot(0, mode=2))))
+        self.assertIn('TEST KEYS ONLY', lcd.status_lines(lcd.decode_snapshot(snapshot(0, mode=1))))
+
     def test_exact_font_pixel_orientation(self):
         # Independent known letter A: each column is one page byte, bit0 at top.
         self.assertEqual(lcd.render(['A'])[:6],bytes((0x7e,0x09,0x09,0x09,0x7e,0)))
@@ -62,20 +81,20 @@ class Tests(unittest.TestCase):
         self.assertEqual(lcd.render([' ']),bytes(1024))
 
     def test_reset_stale_error_text(self):
-        self.assertNotIn('READY',lcd.status_lines(lcd.decode_snapshot(snapshot(valid=False))))
-        self.assertIn('WAIT HW STATUS',lcd.status_lines())
-        lines=lcd.status_lines(lcd.decode_snapshot(snapshot(8)),stale=True)
+        self.assertNotIn('READY',lcd.diagnostic_status_lines(lcd.decode_snapshot(snapshot(valid=False))))
+        self.assertIn('WAIT HW STATUS',lcd.diagnostic_status_lines())
+        lines=lcd.diagnostic_status_lines(lcd.decode_snapshot(snapshot(8)),stale=True)
         self.assertIn('STATUS STALE',lines); self.assertNotIn('DONE',lines)
-        self.assertIn('INVALID HW SNAPSHOT',lcd.status_lines(invalid=True))
+        self.assertIn('INVALID HW SNAPSHOT',lcd.diagnostic_status_lines(invalid=True))
 
     def test_actual_completed_opcode_retained(self):
         for detail,label in ((2,'AES DECRYPT DONE'),(4,'RSA DECRYPT DONE')):
             record=lcd.decode_snapshot(snapshot(8,detail=detail))
-            self.assertIn(label,lcd.status_lines(record))
-            self.assertNotIn(label,lcd.status_lines(record,stale=True))
-            self.assertEqual(len(lcd.render(lcd.status_lines(record))),1024)
-        self.assertIn('DONE',lcd.status_lines(lcd.decode_snapshot(snapshot(8,detail=1))))
-        self.assertNotIn('AES DECRYPT DONE',lcd.status_lines(lcd.decode_snapshot(snapshot(4,detail=2))))
+            self.assertIn(label,lcd.diagnostic_status_lines(record))
+            self.assertNotIn(label,lcd.diagnostic_status_lines(record,stale=True))
+            self.assertEqual(len(lcd.render(lcd.diagnostic_status_lines(record))),1024)
+        self.assertIn('DONE',lcd.diagnostic_status_lines(lcd.decode_snapshot(snapshot(8,detail=1))))
+        self.assertNotIn('AES DECRYPT DONE',lcd.diagnostic_status_lines(lcd.decode_snapshot(snapshot(4,detail=2))))
 
     def test_invalid_input_rejected(self):
         invalid=[{},dict(snapshot(),message='pretend done'),snapshot(-1),snapshot(op=-1),
@@ -104,7 +123,7 @@ class Tests(unittest.TestCase):
         self.assertTrue(cap.on)
         self.assertTrue(all(not any(page) for page in cap.ram))
         for code in range(10):
-            frame=lcd.render(lcd.status_lines(lcd.decode_snapshot(snapshot(code))))
+            frame=lcd.render(lcd.diagnostic_status_lines(lcd.decode_snapshot(snapshot(code))))
             before=len(cap.events); driver.display(frame)
             self.assertEqual(len(cap.events)-before,16)
             for page in range(8):

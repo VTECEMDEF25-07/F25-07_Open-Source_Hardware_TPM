@@ -34,21 +34,19 @@ static void text(uint8_t *f,unsigned row,const char *s) {
         col++;
     }
 }
-static void hexline(uint8_t *f,unsigned row,const char *prefix,uint32_t n,unsigned digits) {
-    char b[24]; unsigned j=0; while(*prefix)b[j++]=*prefix++;
-    for(unsigned k=digits;k;k--)b[j++]="0123456789ABCDEF"[(n>>((k-1)*4))&15]; b[j]=0; text(f,row,b);
-}
 void render_status(uint8_t f[1024],const struct snapshot *s,int stale) {
-    static const char *states[]={"READY","STARTUP / PHASE I","RNG PREPARE","AES256 KEYGEN","RSA KEYGEN","WAITING FOR INPUT","AES DECRYPT","RSA PRIVATE DECRYPT","DONE","HARDWARE ERROR"};
-    static const char *modes[]={"FRESH UNQUALIFIED","TEST ONLY","UNAVAILABLE","INVALID PROVIDER"};
+    static const char *states[]={"READY","RUNNING SELF TESTS","PREPARING RANDOM DATA","GENERATING AES KEY","GENERATING RSA KEY","ENTER MESSAGE ON PC","DECRYPTING AES","DECRYPTING RSA","OPERATION COMPLETE","HARDWARE ERROR"};
     for(unsigned i=0;i<1024;i++)f[i]=0;
     text(f,0,"DE25 CRYPTO DEMO");
-    if(!s || !(s->status_word&128)) {text(f,2,"WAIT HW STATUS");text(f,4,"NO ACTIVE SNAPSHOT");return;}
-    uint32_t w=s->status_word,code=w&15,detail=(w>>16)&255;
-    const char *state=code<10?states[code]:"UNKNOWN HW STATE";
-    if(code==8 && detail==2)state="AES DECRYPT DONE";
-    if(code==8 && detail==4)state="RSA DECRYPT DONE";
-    text(f,1,modes[(w>>4)&3]);text(f,3,stale?"STATUS STALE":state);
-    hexline(f,4,"OP ",s->operation_id,8);hexline(f,5,"DETAIL ",detail,2);hexline(f,6,"SEQ ",s->sequence,8);
-    text(f,7,stale?"LAST HW SNAPSHOT":"ACTUAL HW STATUS");
+    if(!s || !(s->status_word&128)) {text(f,3,"START DEMO ON LAPTOP");return;}
+    if(stale) {text(f,3,"DEMO NOT CONNECTED");text(f,5,"START DEMO ON LAPTOP");return;}
+    uint32_t w=s->status_word,code=w&15,detail=(w>>16)&255,mode=(w>>4)&3;
+    if(mode>=2) {text(f,3,"RNG UNAVAILABLE");return;}
+    const char *state=code<10?states[code]:"HARDWARE ERROR";
+    if(code==8 && (detail==2 || detail==4)) {
+        state="MESSAGE RECEIVED";
+        text(f,5,detail==2?"AES DECRYPTED":"RSA DECRYPTED");
+    }
+    text(f,3,state);
+    if(mode==1)text(f,7,"TEST KEYS ONLY");
 }

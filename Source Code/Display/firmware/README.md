@@ -6,6 +6,14 @@ The guarded entry requires core0, EL3, little endian and MMU/caches disabled.
 
 ## Validated build
 
+The customer display uses plain operation messages and omits provider qualification,
+operation IDs, detail codes and sequence counters. Raw snapshot fields and frame
+acknowledgements remain available in host logs; `diagnostic_status_lines` retains
+the engineering renderer. No input or stale input prompts the user to start the
+laptop demo. Unavailable RNG and test-key mode remain visibly identified.
+RNG assessment scope and limits are recorded separately in validation results;
+the display change does not change RNG qualification or crypto logic.
+
 Use Windows Python, WSL Ubuntu-24.04 and the pinned official Arm GNU13.2.Rel1
 AArch64 toolchain already placed under a separate runtime directory. The builder
 checks archive SHA256

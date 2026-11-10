@@ -82,7 +82,7 @@ def decode_snapshot(record):
                 detail=(word >> 16) & 255, mode=(word >> 4) & 3)
 
 
-def status_lines(record=None, *, stale=False, invalid=False):
+def diagnostic_status_lines(record=None, *, stale=False, invalid=False):
     if invalid:
         return ['DE25 CRYPTO DEMO', '', 'INVALID HW SNAPSHOT', '', 'NO SUCCESS CLAIM']
     if record is None or not record['valid']:
@@ -95,6 +95,29 @@ def status_lines(record=None, *, stale=False, invalid=False):
             'STATUS STALE' if stale else state_text,
             f"OP {record['operation_id']:08X}", f"DETAIL {record['detail']:02X}",
             f"SEQ {record['sequence']:08X}", 'LAST HW SNAPSHOT' if stale else 'ACTUAL HW STATUS']
+
+
+def status_lines(record=None, *, stale=False, invalid=False):
+    """Customer display: real operation states; raw diagnostics stay in logs."""
+    title = 'DE25 CRYPTO DEMO'
+    if invalid:
+        return [title, '', '', 'HARDWARE ERROR']
+    if record is None or not record['valid']:
+        return [title, '', '', 'START DEMO ON LAPTOP']
+    if stale:
+        return [title, '', '', 'DEMO NOT CONNECTED', '', 'START DEMO ON LAPTOP']
+    if record['mode'] >= 2:
+        return [title, '', '', 'RNG UNAVAILABLE']
+    states = ('READY', 'RUNNING SELF TESTS', 'PREPARING RANDOM DATA',
+              'GENERATING AES KEY', 'GENERATING RSA KEY', 'ENTER MESSAGE ON PC',
+              'DECRYPTING AES', 'DECRYPTING RSA', 'OPERATION COMPLETE', 'HARDWARE ERROR')
+    state = states[record['code']] if record['code'] < len(states) else 'HARDWARE ERROR'
+    subtitle = ''
+    if record['code'] == 8 and record['detail'] in (2, 4):
+        state = 'MESSAGE RECEIVED'
+        subtitle = 'AES DECRYPTED' if record['detail'] == 2 else 'RSA DECRYPTED'
+    return [title, '', '', state, '', subtitle, '',
+            'TEST KEYS ONLY' if record['mode'] == 1 else '']
 
 
 def render(lines):
