@@ -1,4 +1,10 @@
-# DE25 bounded crypto demo
+# Historical DE25 bounded crypto demo
+
+**Current customer flow:** see [DE25_CUSTOMER_DEMO.md](DE25_CUSTOMER_DEMO.md).
+The current board project supports actual FPGA RSA2048 generation/private
+decryption and disposable AES256 DEMO export. The instructions below describe
+the earlier internal-AES/public1024 fallback images and require their matching
+historical configuration; they do not describe the current board build.
 
 The DE25 project explicitly enables the demo with a **50 MHz core**, **1024-bit
 public modular exponentiation**, and the experimental **FRESH_UNQUALIFIED**

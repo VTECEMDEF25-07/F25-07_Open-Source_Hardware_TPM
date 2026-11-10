@@ -1,5 +1,33 @@
 # Interactive DE25 customer demo — v2
 
+## Hardware-validated configuration — 10 November 2026
+
+The customer configuration at source
+`cb97a8e2f2fe09f8b1894117716f9239a3cd39ab` passed a full DE25 fit,
+all-corner timing/clock/CDC/structure and placed-oscillator checks at50MHz.
+It uses34,742 ALMs (74%),27 RAM blocks and4 DSP blocks. The tested SOF SHA256 is
+`ab65b1ec0ff4292eeada9d53326728999c4e78ac3d390df0fbcb26cea62fd13a`.
+Later documentation commits do not change the tested RTL or board configuration.
+
+Actual same-image one-command execution passed all eight original PhaseI suites
+(84 assertion calls, zero failures), fresh FPGA AES256 generation/disposable DEMO
+export, laptop AES-CFB encryption and FPGA plaintext recovery, then fresh FPGA
+RSA2048 generation, public n/e export, laptop public encryption and FPGA private
+decryption. An independent matrix passed24/24 private decryptions across three
+distinct freshly generated RSA2048 keys. Median worker latency was155136253.5
+cycles (3.10272507s at50MHz), including native close/scrub acknowledgement;
+median host request/response time was3.12691475s and includes SPI/polling.
+
+The selected raw-source profile is4096 warmup cycles and sample divider1024;
+legacy defaults remain8/1. Provider status stays FRESH_UNQUALIFIED and the
+health-qualified flag stays false. Separate raw-source diagnostic assessment
+does not qualify this final placement. Physical LCD glass is not accepted by
+this crypto-only image. A separate HPS/LCD integration remains independently gated.
+
+The AES1024-byte message buffer and raw-source divider1024 are unrelated to
+RSA2048 key width. The older public-MODEXP demo is retained as historical fallback,
+not the current customer flow.
+
 This new flow is separate from the old internal-AES/public-MODEXP demonstration.
 It requires the final2048-bit private-RSA customer image and actual same-image
 PhaseI acceptance. The original eight enabled suites must complete with unchanged
