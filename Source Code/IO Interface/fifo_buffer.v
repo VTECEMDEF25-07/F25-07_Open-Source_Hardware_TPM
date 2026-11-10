@@ -58,6 +58,7 @@ module	fifo_buffer #(parameter ENABLE_DEMO_COMMANDS = 0)
 	input		[11:0]	c_cmdInAddr_i,	// CRB-controlled buffer address during command transmission
 	input		[11:0]	c_rspInAddr_i	// CRB-controlled buffer address during response transmission
 );
+    reg [11:0] demo_scrub_addr;
 	
 	// connections and instantiation of the internal buffer
 	reg		bufWren_n;
@@ -155,7 +156,6 @@ module	fifo_buffer #(parameter ENABLE_DEMO_COMMANDS = 0)
 		endcase
 	end
 	
-    reg [11:0] demo_scrub_addr;
     always @(posedge clock_i or negedge reset_n_i)
         if (!reset_n_i) demo_scrub_addr <= 0;
         else if (state != DemoScrub) demo_scrub_addr <= 0;
