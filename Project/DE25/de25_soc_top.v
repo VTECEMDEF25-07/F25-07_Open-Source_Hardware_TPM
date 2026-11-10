@@ -41,6 +41,7 @@ module de25_soc_top #(parameter IP_TYPE = `FPGA_IP_TYPE,
     wire tpm_reset_n;
     reg [1:0] board_release_reg;
     reg [1:0] tpm_release_reg;
+    reg [1:0] crypto_release_reg;
 
     assign board_reset_n = board_reset_n_i && !configuration_reset;
     assign tpm_reset_n = board_reset_n && spi_reset_n_i && clock_locked;
@@ -71,16 +72,25 @@ module de25_soc_top #(parameter IP_TYPE = `FPGA_IP_TYPE,
             tpm_release_reg <= {tpm_release_reg[0], 1'b1};
     end
 
+    // Retain the related 100MHz release chain, then release 50MHz consumers
+    // on their falling edge. Assertion still propagates asynchronously.
+    always @(negedge clock_50 or negedge tpm_release_reg[1]) begin
+        if (!tpm_release_reg[1])
+            crypto_release_reg <= 2'b00;
+        else
+            crypto_release_reg <= {crypto_release_reg[0], 1'b1};
+    end
+
     // Select the FPGA resource backend at the TPM boundary.
     TPM_TOP #(.IP_TYPE(IP_TYPE), .DEVICE_FAMILY("Agilex 5"),
         .ENABLE_DEMO_COMMANDS(ENABLE_DEMO_COMMANDS),.DEMO_PROVIDER_MODE(DEMO_PROVIDER_MODE),
         .DEMO_MODEXP_WIDTH(DEMO_MODEXP_WIDTH),.CUSTOMER_DEMO_ENABLE(CUSTOMER_DEMO_ENABLE),
         .DEMO_AES_EXPORT_ENABLE(DEMO_AES_EXPORT_ENABLE)) tpm (
         .CLOCK_50(clock_50),
-        .RESET_n(tpm_release_reg[1]),
+        .RESET_n(crypto_release_reg[1]),
         .SPI_CLOCK(spi_clock_i),
         .SPI_CS_n(spi_cs_n_i),
-        .SPI_RST_n(tpm_release_reg[1]),
+        .SPI_RST_n(crypto_release_reg[1]),
         .SPI_MOSI(spi_mosi_i),
         .SPI_MISO(spi_miso_o),
         .SPI_PIRQ_n(interrupt_n_o)

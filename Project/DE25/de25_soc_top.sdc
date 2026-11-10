@@ -35,7 +35,9 @@ foreach name {rx_bit_count_reg rx_shift_reg rx_mailbox_reg rx_toggle_reg tx_bit_
 }
 set spi_reset_clear [get_pins -compatibility_mode $spi_reset_patterns]
 if {[get_collection_size $spi_reset_clear] < 40} {error "Missing SCK-domain asynchronous reset pins"}
-set_false_path -from [get_registers {tpm_release_reg[1]}] -to $spi_reset_clear
+set crypto_release_source [get_registers {crypto_release_reg[1]}]
+if {[get_collection_size $crypto_release_source]!=1} {error "Expected exactly one50MHz crypto reset release source"}
+set_false_path -from $crypto_release_source -to $spi_reset_clear
 
 # Demo recovery also resets the SCK domain while the host holds CS high/SCK low.
 # Except only these supervisor controls into SCK asynchronous clear pins. Core
