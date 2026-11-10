@@ -43,7 +43,8 @@ module tb_keygen_lifecycle #(parameter IP_TYPE = 0);
  initial begin
   if (dut.engine.IP_TYPE != IP_TYPE ||
       dut.engine.math.IP_TYPE != IP_TYPE || dut.engine.pair_check.IP_TYPE != IP_TYPE ||
-      dut.engine.math.multiply.IP_TYPE != IP_TYPE || dut.engine.math.scratch.IP_TYPE != IP_TYPE ||
+      dut.engine.math.legacy.implementation.multiply.IP_TYPE != IP_TYPE ||
+      dut.engine.math.legacy.implementation.scratch.IP_TYPE != IP_TYPE ||
       dut.engine.pair_check.multiplier.IP_TYPE != IP_TYPE || dut.engine.pair_check.private_ram.IP_TYPE != IP_TYPE)
    $fatal(1,"IP_TYPE was not propagated to every resource");
   $display("PASS IP_TYPE propagation=%0d",IP_TYPE);
