@@ -1,7 +1,7 @@
 // Frozen demo v0.1 operation owner. Aaron Grossman; Codex-assisted implementation.
 // Secret words remain between provider, unchanged keygen_core, and protected store.
 module demo_keygen_operation #(
-    parameter integer DEMO_PROVIDER_MODE=1, IP_TYPE=0,
+    parameter integer DEMO_PROVIDER_MODE=1, IP_TYPE=0,PRIVATE_RSA_ENABLE=0,
     parameter DEVICE_FAMILY="Agilex 5",
     parameter [63:0] DEADLINE_CYCLES=64'd9000000000,
     parameter [31:0] CLEANUP_CYCLES=32'd4096
@@ -29,7 +29,17 @@ module demo_keygen_operation #(
     input wire commit_valid_i,output wire commit_ready_o,input wire [31:0] commit_handle_i,commit_id_i,
     input wire [1:0] commit_mode_i,
     output wire release_valid_o,input wire release_ready_i,output wire [31:0] release_handle_o,
-    input wire release_rsp_valid_i,output wire release_rsp_ready_o,input wire [31:0] release_rsp_code_i
+    input wire release_rsp_valid_i,output wire release_rsp_ready_o,input wire [31:0] release_rsp_code_i,
+    input wire private_open_valid_i,output wire private_open_ready_o,private_active_o,
+    input wire private_cmd_valid_i,output wire private_cmd_ready_o,
+    input wire [7:0] private_cmd_op_i,
+    input wire [31:0] private_cmd_arg0_i,private_cmd_arg1_i,private_cmd_arg2_i,private_cmd_arg3_i,
+    output wire private_rsp_valid_o,input wire private_rsp_ready_i,output wire [7:0] private_rsp_status_o,
+    input wire private_mem_write_en_i,private_mem_read_en_i,input wire [11:0] private_mem_address_i,
+    input wire [31:0] private_mem_write_data_i,output wire private_mem_ready_o,private_mem_read_valid_o,
+    output wire [31:0] private_mem_read_data_o,
+    input wire private_close_valid_i,output wire private_close_ready_o,
+    output wire private_close_rsp_valid_o,input wire private_close_rsp_ready_i
 );
     localparam IDLE=0,VALIDATE=1,RESERVE=2,OPEN=3,OPEN_WAIT=4,REQUEST=5,RUN=6,
         CLOSE=7,CLOSE_WAIT=8,RECONCILE=9,RELEASE=10,RELEASE_WAIT=11,
@@ -50,6 +60,8 @@ module demo_keygen_operation #(
     wire source_fault,source_ready,source_scrub,word_valid,word_ready;
     wire [31:0] word_data;
     wire core_request_ready,core_status_valid,core_ownership_ready,core_discard,core_generation_ready;
+    wire core_private_open_ready;
+    wire private_admissible=running && boot_done && state_reg==IDLE && source_ready && !job_valid_i;
     wire [3:0] core_status;
     wire [31:0] core_status_id,core_result_data,core_result_id;
     wire core_result_valid,core_component_last,core_result_last;
@@ -63,10 +75,11 @@ module demo_keygen_operation #(
         ((state_reg==RECONCILE || state_reg==RECEIVER_CLEAR || state_reg==ACK_CORE) && failure));
     assign abort_o=running && (abort_active || recovery_required_o);
     assign busy_o=running && state_reg!=IDLE;
-    assign available_o=running && boot_done && state_reg==IDLE && source_ready && !recovery_required_o;
+    assign available_o=running && boot_done && state_reg==IDLE && source_ready && !recovery_required_o && !private_active_o;
+    assign private_open_ready_o=private_admissible && core_private_open_ready;
     assign job_ready_o=available_o;
     assign done_valid_o=running && state_reg==DONE;
-    assign scrub_done_o=running && boot_done && source_scrub && (state_reg==IDLE || state_reg==DONE);
+    assign scrub_done_o=running && boot_done && source_scrub && !private_active_o && (state_reg==IDLE || state_reg==DONE);
     assign reserve_valid_o=running && state_reg==RESERVE;
     assign reserve_profile_o=done_profile_o;assign reserve_mode_o=done_mode_o;
     assign reserve_id_o=done_id_o;assign reserve_demo_use_o=1'b1;
@@ -95,7 +108,7 @@ module demo_keygen_operation #(
         .close_id_i(done_id_o),.close_failed_i(failure),
         .close_rsp_valid_o(source_close_valid),.close_rsp_ready_i(state_reg==CLOSE_WAIT),
         .close_rsp_error_o(source_close_error),.service_ready_o(source_ready),.scrub_done_o(source_scrub));
-    keygen_core #(.IP_TYPE(IP_TYPE),.DEVICE_FAMILY(DEVICE_FAMILY)) u_core(
+    keygen_core #(.IP_TYPE(IP_TYPE),.DEVICE_FAMILY(DEVICE_FAMILY),.PRIVATE_RSA_ENABLE(PRIVATE_RSA_ENABLE)) u_core(
         .clock_i(clock_i),.reset_n_i(reset_n_i),
         .peers_ready_i(source_open_reg && reserved_reg && !abort_o),
         .request_valid_i(state_reg==REQUEST && receiver_ready_i && !abort_o && running),.request_ready_o(core_request_ready),
@@ -108,7 +121,18 @@ module demo_keygen_operation #(
         .ownership_valid_i(ownership_valid_i && !abort_o),.ownership_ready_o(core_ownership_ready),
         .ownership_accept_i(ownership_accept_i),.result_discard_o(core_discard),
         .status_valid_o(core_status_valid),.status_ready_i(state_reg==ACK_CORE),
-        .status_code_o(core_status),.status_id_o(core_status_id));
+        .status_code_o(core_status),.status_id_o(core_status_id),
+        .private_open_valid_i(private_admissible && private_open_valid_i),.private_open_ready_o(core_private_open_ready),
+        .private_active_o(private_active_o),.private_cmd_valid_i(private_cmd_valid_i),.private_cmd_ready_o(private_cmd_ready_o),
+        .private_cmd_op_i(private_cmd_op_i),.private_cmd_arg0_i(private_cmd_arg0_i),.private_cmd_arg1_i(private_cmd_arg1_i),
+        .private_cmd_arg2_i(private_cmd_arg2_i),.private_cmd_arg3_i(private_cmd_arg3_i),
+        .private_rsp_valid_o(private_rsp_valid_o),.private_rsp_ready_i(private_rsp_ready_i),.private_rsp_status_o(private_rsp_status_o),
+        .private_mem_write_en_i(private_mem_write_en_i),.private_mem_read_en_i(private_mem_read_en_i),
+        .private_mem_address_i(private_mem_address_i),.private_mem_write_data_i(private_mem_write_data_i),
+        .private_mem_ready_o(private_mem_ready_o),.private_mem_read_valid_o(private_mem_read_valid_o),
+        .private_mem_read_data_o(private_mem_read_data_o),.private_close_valid_i(private_close_valid_i),
+        .private_close_ready_o(private_close_ready_o),.private_close_rsp_valid_o(private_close_rsp_valid_o),
+        .private_close_rsp_ready_i(private_close_rsp_ready_i));
     always @(posedge clock_i or negedge reset_n_i) begin
         if(!reset_n_i) reset_release_reg<=0;
         else reset_release_reg<={reset_release_reg[0],1'b1};

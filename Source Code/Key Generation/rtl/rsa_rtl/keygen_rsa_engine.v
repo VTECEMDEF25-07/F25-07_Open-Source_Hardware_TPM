@@ -8,7 +8,8 @@
 // Shared protected arithmetic/services fabric for either RSA controller.
 
 // IP_TYPE: 0 = Generic, 1 = Altera, 2 = reserved Xilinx (unsupported).
-module keygen_rsa_engine #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5") (
+module keygen_rsa_engine #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
+    parameter PRIVATE_RSA_ENABLE=0) (
     input wire clock_i, input wire reset_n_i, output wire ready_o,
     input wire cmd_valid_i, output wire cmd_ready_o,
     input wire [7:0] cmd_op_i,
@@ -17,7 +18,8 @@ module keygen_rsa_engine #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agi
     input wire generation_valid_i,output wire generation_ready_o,
     input wire [31:0] generation_data_i,input wire generation_failed_i,
     input wire mem_read_en_i,input wire [11:0] mem_address_i,
-    output wire mem_ready_o,output wire mem_read_valid_o,output wire [31:0] mem_read_data_o
+    output wire mem_ready_o,output wire mem_read_valid_o,output wire [31:0] mem_read_data_o,
+    input wire mem_write_en_i,input wire [31:0] mem_write_data_i
 );
     reg [1:0] target_reg;
     wire service_select=(cmd_op_i>=8'h30 && cmd_op_i<=8'h34);
@@ -31,6 +33,8 @@ module keygen_rsa_engine #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agi
     wire [1023:0] pair_p,pair_q;
     wire [2047:0] pair_n;
     wire [3:0] pair_status;
+    wire pair_private_valid,pair_private_ready;
+    wire [31:0] pair_private_data;wire [5:0] pair_private_index;
     assign ready_o=reset_n_i && target_reg==0 && math_cmd_ready && service_cmd_ready;
     assign cmd_ready_o=ready_o && (service_select ? private_ready : math_cmd_ready);
     assign rsp_valid_o=reset_n_i && ((target_reg==1 && math_rsp_valid) || (target_reg==2 && service_rsp_valid));
@@ -43,18 +47,20 @@ module keygen_rsa_engine #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agi
         else if(cmd_valid_i && cmd_ready_o) target_reg<=service_select ? 2:1;
         else if(rsp_valid_o && rsp_ready_i) target_reg<=0;
     end
-    keygen_math #(.MAX_LIMBS(32), .IP_TYPE(IP_TYPE), .DEVICE_FAMILY(DEVICE_FAMILY)) math (
+    keygen_math #(.MAX_LIMBS(PRIVATE_RSA_ENABLE ? 64 : 32),.COMPACT_STORAGE(PRIVATE_RSA_ENABLE),
+        .IP_TYPE(IP_TYPE), .DEVICE_FAMILY(DEVICE_FAMILY)) math (
         .clock_i(clock_i),.reset_n_i(reset_n_i),
         .cmd_valid_i(cmd_valid_i && target_reg==0 && !service_select),.cmd_ready_o(math_cmd_ready),
         .cmd_op_i(cmd_op_i),.cmd_arg0_i(cmd_arg0_i),.cmd_arg1_i(cmd_arg1_i),.cmd_arg2_i(cmd_arg2_i),.cmd_arg3_i(cmd_arg3_i),
         .rsp_valid_o(math_rsp_valid),.rsp_ready_i(rsp_ready_i && target_reg==1),.rsp_status_o(math_rsp_status),
-        .mem_write_en_i(service_write_en && target_reg==2),
+        .mem_write_en_i((service_write_en && target_reg==2) ||
+            (PRIVATE_RSA_ENABLE && target_reg==0 && !cmd_valid_i && mem_write_en_i)),
         .mem_read_en_i((target_reg==2) ? service_read_en : (mem_read_en_i && target_reg==0 && !cmd_valid_i)),
         .mem_address_i((target_reg==2) ? service_address : mem_address_i),
-        .mem_write_data_i(service_write_data),.mem_ready_o(private_ready),
+        .mem_write_data_i(target_reg==2 ? service_write_data : mem_write_data_i),.mem_ready_o(private_ready),
         .mem_read_valid_o(private_read_valid),.mem_read_data_o(private_read_data)
     );
-    keygen_rsa_services services (
+    keygen_rsa_services #(.PRIVATE_RSA_ENABLE(PRIVATE_RSA_ENABLE)) services (
         .clock_i(clock_i),.reset_n_i(reset_n_i),
         .cmd_valid_i(cmd_valid_i && cmd_ready_o && service_select),.cmd_ready_o(service_cmd_ready),
         .cmd_op_i(cmd_op_i),.cmd_arg0_i(cmd_arg0_i),.cmd_arg1_i(cmd_arg1_i),.cmd_arg2_i(cmd_arg2_i),.cmd_arg3_i(cmd_arg3_i),
@@ -65,11 +71,14 @@ module keygen_rsa_engine #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agi
         .mem_write_data_o(service_write_data),.mem_ready_i(private_ready && target_reg==2),
         .mem_read_valid_i(private_read_valid && target_reg==2),.mem_read_data_i(private_read_data),
         .pair_start_valid_o(pair_start_valid),.pair_start_ready_i(pair_start_ready),.pair_p_o(pair_p),.pair_q_o(pair_q),
-        .pair_result_valid_i(pair_result_valid),.pair_result_ready_o(pair_result_ready),.pair_n_i(pair_n),.pair_status_i(pair_status)
+        .pair_result_valid_i(pair_result_valid),.pair_result_ready_o(pair_result_ready),.pair_n_i(pair_n),.pair_status_i(pair_status),
+        .pair_private_valid_i(pair_private_valid),.pair_private_ready_o(pair_private_ready),
+        .pair_private_data_i(pair_private_data),.pair_private_index_i(pair_private_index)
     );
-    keygen_pair_check #(.IP_TYPE(IP_TYPE), .DEVICE_FAMILY(DEVICE_FAMILY)) pair_check (
+    keygen_pair_check #(.IP_TYPE(IP_TYPE), .DEVICE_FAMILY(DEVICE_FAMILY),.PRIVATE_RSA_ENABLE(PRIVATE_RSA_ENABLE)) pair_check (
         .clock_i(clock_i),.reset_n_i(reset_n_i),.start_valid_i(pair_start_valid),.start_ready_o(pair_start_ready),
         .p_i(pair_p),.q_i(pair_q),.result_valid_o(pair_result_valid),.result_ready_i(pair_result_ready),
-        .n_o(pair_n),.status_o(pair_status)
+        .n_o(pair_n),.status_o(pair_status),.private_valid_o(pair_private_valid),
+        .private_ready_i(pair_private_ready),.private_data_o(pair_private_data),.private_index_o(pair_private_index)
     );
 endmodule

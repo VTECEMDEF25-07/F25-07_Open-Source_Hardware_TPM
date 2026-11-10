@@ -7,7 +7,7 @@
 
 // Fixed-profile RSA services; CPU receives predicates, never private operands.
 // Scratch addresses are 32-bit words. All operand accesses use the private port.
-module keygen_rsa_services (
+module keygen_rsa_services #(parameter PRIVATE_RSA_ENABLE=0) (
     input wire clock_i, input wire reset_n_i,
     input wire cmd_valid_i, output wire cmd_ready_o,
     input wire [7:0] cmd_op_i,
@@ -21,7 +21,9 @@ module keygen_rsa_services (
     output wire pair_start_valid_o, input wire pair_start_ready_i,
     output wire [1023:0] pair_p_o, pair_q_o,
     input wire pair_result_valid_i, output wire pair_result_ready_o,
-    input wire [2047:0] pair_n_i, input wire [3:0] pair_status_i
+    input wire [2047:0] pair_n_i, input wire [3:0] pair_status_i,
+    input wire pair_private_valid_i, output wire pair_private_ready_o,
+    input wire [31:0] pair_private_data_i, input wire [5:0] pair_private_index_i
 );
     localparam [4:0] IDLE=0,DRAW=1,READ_REQ=2,READ_WAIT=3,CHECK=4,
         MOD_BITS=5,FACTOR=6,WRITE_PREP=7,RESPONSE=8,PAIR_START=9,PAIR_WAIT=10,PAIR_WRITE=11;
@@ -111,12 +113,14 @@ module keygen_rsa_services (
     assign generation_ready_o = reset_n_i && (state_reg==DRAW) && mem_ready_i && !generation_failed_i;
     assign mem_read_en_o = reset_n_i && (state_reg==READ_REQ);
     assign mem_write_en_o = reset_n_i && (((state_reg==DRAW) && generation_valid_i && !generation_failed_i) ||
-        state_reg==WRITE_PREP || state_reg==PAIR_WRITE);
+        state_reg==WRITE_PREP || state_reg==PAIR_WRITE ||
+        (PRIVATE_RSA_ENABLE && state_reg==PAIR_WAIT && pair_private_valid_i));
     assign mem_address_o = (state_reg==READ_REQ) ? read_base_reg+{5'd0,index_reg} : write_address;
     assign mem_write_data_o = mem_write_en_o ? write_word : 32'd0;
     assign pair_start_valid_o = reset_n_i && state_reg==PAIR_START;
     assign pair_p_o = peer_reg;
     assign pair_q_o = value_reg;
+    assign pair_private_ready_o=reset_n_i && PRIVATE_RSA_ENABLE && state_reg==PAIR_WAIT && mem_ready_i;
     assign pair_result_ready_o = reset_n_i && ((state_reg==PAIR_WAIT && pair_result_valid_i && pair_status_i!=0) ||
         (state_reg==PAIR_WRITE && mem_ready_i && index_reg==63));
     assign difference = (value_reg>=peer_reg) ? value_reg-peer_reg : peer_reg-value_reg;
@@ -140,6 +144,9 @@ module keygen_rsa_services (
         end else if(state_reg==PAIR_WRITE) begin
             write_address=12'd224+{5'd0,index_reg};
             write_word=pair_n_i[index_reg*32 +: 32];
+        end else if(PRIVATE_RSA_ENABLE && state_reg==PAIR_WAIT)begin
+            write_address=12'd384+{6'd0,pair_private_index_i};
+            write_word=pair_private_data_i;
         end
     end
 
