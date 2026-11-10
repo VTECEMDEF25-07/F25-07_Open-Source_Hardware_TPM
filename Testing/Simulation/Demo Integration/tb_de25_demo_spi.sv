@@ -96,6 +96,12 @@ task automatic aes(input bit decrypt,input [31:0] h,input [31:0] rc);
  send_cmd(90,rc==0?79:10,rc);
  if(rc==0)for(integer i=0;i<40;i=i+1)
   if(response[16+i]!==expected[319-8*i -:8])$fatal(1,"Independent AES byte%0d expected%h got%h",i,expected[319-8*i -:8],response[16+i]);
+ if(rc==0) begin
+  for(integer i=0;i<8;i=i+1)
+   if(response[58+i]!==CT[63-8*i -:8])$fatal(1,"Independent final IV prefix byte%0d",i);
+  for(integer i=8;i<16;i=i+1)
+   if(response[58+i]!==0)$fatal(1,"Independent partial final IV padding byte%0d",i);
+ end
  end
 endtask
 task automatic startup;
