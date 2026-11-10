@@ -87,8 +87,12 @@ def status_lines(record=None, *, stale=False, invalid=False):
         return ['DE25 CRYPTO DEMO', '', 'INVALID HW SNAPSHOT', '', 'NO SUCCESS CLAIM']
     if record is None or not record['valid']:
         return ['DE25 CRYPTO DEMO', '', 'WAIT HW STATUS', '', 'NO ACTIVE SNAPSHOT']
+    state_text = STATES[record['code']] if record['code'] < 10 else 'UNKNOWN HW STATE'
+    if record['code'] == 8:
+        # Lead-approved sticky DONE detail is the actual completed FPGA opcode.
+        state_text = {2:'AES DECRYPT DONE',4:'RSA DECRYPT DONE'}.get(record['detail'],state_text)
     return ['DE25 CRYPTO DEMO', MODES[record['mode']], '',
-            'STATUS STALE' if stale else STATES[record['code']] if record['code'] < 10 else 'UNKNOWN HW STATE',
+            'STATUS STALE' if stale else state_text,
             f"OP {record['operation_id']:08X}", f"DETAIL {record['detail']:02X}",
             f"SEQ {record['sequence']:08X}", 'LAST HW SNAPSHOT' if stale else 'ACTUAL HW STATUS']
 

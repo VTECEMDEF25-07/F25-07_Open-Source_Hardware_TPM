@@ -51,6 +51,11 @@ are version1;23:16 actualdetail;15:8 reserved0;7 captured-valid;6 error;5:4 prov
 diagnostic UNKNOWN HW STATE with error flag. Provider0FRESH UNQUALIFIED,1TEST ONLY,
 2UNAVAILABLE; unsupported3 is labeled invalid. No key/plaintext appears on screen.
 Detail is an actual subphase/error code in hex, not a guessed percentage.
+For sticky DONE state8 only, hardware lead approved detail2=completed AES decrypt
+and detail4=completed RSA private decrypt. These render AES DECRYPT DONE / RSA
+DECRYPT DONE, so a completed operation is visible even if its busy phase finished
+between250ms polls. This is a retained hardware completion, not a replayed busy
+animation or a claim that the busy phase was observed. Stale still overrides it.
 
 ## Run on an already verified HPS Linux
 

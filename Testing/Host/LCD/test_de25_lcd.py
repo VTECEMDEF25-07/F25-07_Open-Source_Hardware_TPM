@@ -68,6 +68,15 @@ class Tests(unittest.TestCase):
         self.assertIn('STATUS STALE',lines); self.assertNotIn('DONE',lines)
         self.assertIn('INVALID HW SNAPSHOT',lcd.status_lines(invalid=True))
 
+    def test_actual_completed_opcode_retained(self):
+        for detail,label in ((2,'AES DECRYPT DONE'),(4,'RSA DECRYPT DONE')):
+            record=lcd.decode_snapshot(snapshot(8,detail=detail))
+            self.assertIn(label,lcd.status_lines(record))
+            self.assertNotIn(label,lcd.status_lines(record,stale=True))
+            self.assertEqual(len(lcd.render(lcd.status_lines(record))),1024)
+        self.assertIn('DONE',lcd.status_lines(lcd.decode_snapshot(snapshot(8,detail=1))))
+        self.assertNotIn('AES DECRYPT DONE',lcd.status_lines(lcd.decode_snapshot(snapshot(4,detail=2))))
+
     def test_invalid_input_rejected(self):
         invalid=[{},dict(snapshot(),message='pretend done'),snapshot(-1),snapshot(op=-1),
                  snapshot(seq=2**32),dict(snapshot(),sequence=True),snapshot(valid=False,code=9)]
