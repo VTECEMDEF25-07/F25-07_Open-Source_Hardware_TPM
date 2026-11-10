@@ -3,6 +3,15 @@
 .section .text.start,"ax"
 .global _start
 _start:
+    // Reject unsupported entry state before stack, BSS, literal loads or MMIO.
+    mrs x0, CurrentEL
+    cmp x0, #12
+    b.ne entry_rejected_el
+    mrs x0, sctlr_el3
+    tbnz x0, #25, entry_rejected_endian
+    mov x1, #0x1005                  // M(bit0), C(bit2), I(bit12)
+    tst x0, x1
+    b.ne entry_rejected_control
     msr daifset, #15
     mrs x0, mpidr_el1
     and x0, x0, #0xffffff
@@ -32,6 +41,21 @@ _start:
 park:
     wfe
     b park
+.global entry_rejected_el
+entry_rejected_el:
+    mov x19, #90
+9:  wfe
+    b 9b
+.global entry_rejected_endian
+entry_rejected_endian:
+    mov x19, #91
+10: wfe
+    b 10b
+.global entry_rejected_control
+entry_rejected_control:
+    mov x19, #92
+11: wfe
+    b 11b
 exception:
     msr daifset, #15
     mrs x3, CurrentEL
