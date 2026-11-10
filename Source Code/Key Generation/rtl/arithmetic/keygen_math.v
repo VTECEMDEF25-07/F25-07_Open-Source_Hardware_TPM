@@ -478,88 +478,13 @@ module keygen_math_compact #(parameter MAX_LIMBS = 64, parameter IP_TYPE = 0, pa
     localparam COPY_R2_B=0, COPY_ZERO_A=1, COPY_A_R2=2, COPY_ZERO_T=3,
                COPY_BASE_INIT=4, COPY_A_B=5, COPY_BASE_B=6, COPY_ONE_B=7;
 
-
-    wire [7:0] a_ra = (state_reg == CMP || state_reg == CHECK_A || state_reg == R2_COMPARE) ? compare_index_reg :
-                        (state_reg == PRODUCT_NEXT ? outer_reg : index_reg);
-    wire [7:0] b_ra = (state_reg == CMP || state_reg == CHECK_B) ? compare_index_reg :
-                        (state_reg == MONT_AB ? outer_reg : index_reg);
-    wire [7:0] n_ra = (state_reg == PREPARE || state_reg == INVERSE_START) ? 8'd0 :
-                        ((state_reg == CHECK_A || state_reg == CHECK_B || state_reg == R2_COMPARE || state_reg == MONT_COMPARE) ? compare_index_reg : index_reg);
-    wire [7:0] t_ra = (state_reg == MULT_WAIT && mult_mode_reg == MULT_SCHOOL) ? outer_reg + index_reg :
-                        (state_reg == MONT_FACTOR ? 8'd0 :
-                         (state_reg == MONT_COMPARE ? compare_index_reg :
-                          (state_reg == MONT_SHIFT ? length_reg + 8'd1 : index_reg)));
-    reg a_we;
-    reg [7:0] a_wa;
-    reg [31:0] a_wd;
     wire [31:0] a_data, a_next;
-    keygen_math_bank #(.DEPTH(MAX_LIMBS)) bank_a (
-        .clock_i(clock_i),.write_en_i(a_we && reset_n_i),.write_address_i(a_wa),.write_data_i(a_wd),
-        .read_address_a_i(a_ra),.read_address_b_i(index_reg+8'd1),.read_data_a_o(a_data),.read_data_b_o(a_next));
-    task write_a; input [7:0] address; input [31:0] value;
-        begin a_we <= 1; a_wa <= address; a_wd <= value; end
-    endtask
-    reg b_we;
-    reg [7:0] b_wa;
-    reg [31:0] b_wd;
     wire [31:0] b_data, b_unused;
-    keygen_math_bank #(.DEPTH(MAX_LIMBS)) bank_b (
-        .clock_i(clock_i),.write_en_i(b_we && reset_n_i),.write_address_i(b_wa),.write_data_i(b_wd),
-        .read_address_a_i(b_ra),.read_address_b_i(b_ra),.read_data_a_o(b_data),.read_data_b_o(b_unused));
-    task write_b; input [7:0] address; input [31:0] value;
-        begin b_we <= 1; b_wa <= address; b_wd <= value; end
-    endtask
-    reg n_we;
-    reg [7:0] n_wa;
-    reg [31:0] n_wd;
     wire [31:0] n_data, n_high;
-    keygen_math_bank #(.DEPTH(MAX_LIMBS)) bank_n (
-        .clock_i(clock_i),.write_en_i(n_we && reset_n_i),.write_address_i(n_wa),.write_data_i(n_wd),
-        .read_address_a_i(n_ra),.read_address_b_i(length_reg-8'd1),.read_data_a_o(n_data),.read_data_b_o(n_high));
-    task write_n; input [7:0] address; input [31:0] value;
-        begin n_we <= 1; n_wa <= address; n_wd <= value; end
-    endtask
-    reg r2_we;
-    reg [7:0] r2_wa;
-    reg [31:0] r2_wd;
     wire [31:0] r2_data, r2_unused;
-    keygen_math_bank #(.DEPTH(MAX_LIMBS)) bank_r2 (
-        .clock_i(clock_i),.write_en_i(r2_we && reset_n_i),.write_address_i(r2_wa),.write_data_i(r2_wd),
-        .read_address_a_i(index_reg),.read_address_b_i(index_reg),.read_data_a_o(r2_data),.read_data_b_o(r2_unused));
-    task write_r2; input [7:0] address; input [31:0] value;
-        begin r2_we <= 1; r2_wa <= address; r2_wd <= value; end
-    endtask
-    reg exp_we;
-    reg [7:0] exp_wa;
-    reg [31:0] exp_wd;
     wire [31:0] exp_data, exp_unused;
-    keygen_math_bank #(.DEPTH(MAX_LIMBS)) bank_exp (
-        .clock_i(clock_i),.write_en_i(exp_we && reset_n_i),.write_address_i(exp_wa),.write_data_i(exp_wd),
-        .read_address_a_i({2'b0,exponent_bit_reg[10:5]}),.read_address_b_i({2'b0,exponent_bit_reg[10:5]}),.read_data_a_o(exp_data),.read_data_b_o(exp_unused));
-    task write_exp; input [7:0] address; input [31:0] value;
-        begin exp_we <= 1; exp_wa <= address; exp_wd <= value; end
-    endtask
-    reg base_we;
-    reg [7:0] base_wa;
-    reg [31:0] base_wd;
     wire [31:0] base_data, base_unused;
-    keygen_math_bank #(.DEPTH(MAX_LIMBS)) bank_base (
-        .clock_i(clock_i),.write_en_i(base_we && reset_n_i),.write_address_i(base_wa),.write_data_i(base_wd),
-        .read_address_a_i(index_reg),.read_address_b_i(index_reg),.read_data_a_o(base_data),.read_data_b_o(base_unused));
-    task write_base; input [7:0] address; input [31:0] value;
-        begin base_we <= 1; base_wa <= address; base_wd <= value; end
-    endtask
-    reg t_we;
-    reg [7:0] t_wa;
-    reg [31:0] t_wd;
     wire [31:0] t_data, t_high;
-    keygen_math_bank #(.DEPTH(2*MAX_LIMBS+2)) bank_t (
-        .clock_i(clock_i),.write_en_i(t_we && reset_n_i),.write_address_i(t_wa),.write_data_i(t_wd),
-        .read_address_a_i(t_ra),.read_address_b_i({1'b0,length_reg}),.read_data_a_o(t_data),.read_data_b_o(t_high));
-    task write_t; input [7:0] address; input [31:0] value;
-        begin t_we <= 1; t_wa <= address; t_wd <= value; end
-    endtask
-
     reg context_valid_reg;
     reg [31:0] inverse_reg, nprime_reg, factor_reg, carry_reg;
     reg borrow_reg;
@@ -584,6 +509,81 @@ module keygen_math_compact #(parameter MAX_LIMBS = 64, parameter IP_TYPE = 0, pa
     wire [31:0] ram_read_data;
     reg private_read_valid_reg;
     integer clear_index;
+
+
+    wire [7:0] a_ra = (state_reg == CMP || state_reg == CHECK_A || state_reg == R2_COMPARE) ? compare_index_reg :
+                        (state_reg == PRODUCT_NEXT ? outer_reg : index_reg);
+    wire [7:0] b_ra = (state_reg == CMP || state_reg == CHECK_B) ? compare_index_reg :
+                        (state_reg == MONT_AB ? outer_reg : index_reg);
+    wire [7:0] n_ra = (state_reg == PREPARE || state_reg == INVERSE_START) ? 8'd0 :
+                        ((state_reg == CHECK_A || state_reg == CHECK_B || state_reg == R2_COMPARE || state_reg == MONT_COMPARE) ? compare_index_reg : index_reg);
+    wire [7:0] t_ra = (state_reg == MULT_WAIT && mult_mode_reg == MULT_SCHOOL) ? outer_reg + index_reg :
+                        (state_reg == MONT_FACTOR ? 8'd0 :
+                         (state_reg == MONT_COMPARE ? compare_index_reg :
+                          (state_reg == MONT_SHIFT ? length_reg + 8'd1 : index_reg)));
+    reg a_we;
+    reg [7:0] a_wa;
+    reg [31:0] a_wd;
+    keygen_math_bank #(.DEPTH(MAX_LIMBS), .IP_TYPE(IP_TYPE), .DEVICE_FAMILY(DEVICE_FAMILY)) bank_a (
+        .clock_i(clock_i),.reset_n_i(reset_n_i),.write_en_i(a_we && reset_n_i),.write_address_i(a_wa),.write_data_i(a_wd),
+        .read_address_a_i(a_ra),.read_address_b_i(index_reg+8'd1),.read_data_a_o(a_data),.read_data_b_o(a_next));
+    task write_a; input [7:0] address; input [31:0] value;
+        begin a_we <= 1; a_wa <= address; a_wd <= value; end
+    endtask
+    reg b_we;
+    reg [7:0] b_wa;
+    reg [31:0] b_wd;
+    keygen_math_bank #(.DEPTH(MAX_LIMBS), .IP_TYPE(IP_TYPE), .DEVICE_FAMILY(DEVICE_FAMILY)) bank_b (
+        .clock_i(clock_i),.reset_n_i(reset_n_i),.write_en_i(b_we && reset_n_i),.write_address_i(b_wa),.write_data_i(b_wd),
+        .read_address_a_i(b_ra),.read_address_b_i(b_ra),.read_data_a_o(b_data),.read_data_b_o(b_unused));
+    task write_b; input [7:0] address; input [31:0] value;
+        begin b_we <= 1; b_wa <= address; b_wd <= value; end
+    endtask
+    reg n_we;
+    reg [7:0] n_wa;
+    reg [31:0] n_wd;
+    keygen_math_bank #(.DEPTH(MAX_LIMBS), .IP_TYPE(IP_TYPE), .DEVICE_FAMILY(DEVICE_FAMILY)) bank_n (
+        .clock_i(clock_i),.reset_n_i(reset_n_i),.write_en_i(n_we && reset_n_i),.write_address_i(n_wa),.write_data_i(n_wd),
+        .read_address_a_i(n_ra),.read_address_b_i(length_reg-8'd1),.read_data_a_o(n_data),.read_data_b_o(n_high));
+    task write_n; input [7:0] address; input [31:0] value;
+        begin n_we <= 1; n_wa <= address; n_wd <= value; end
+    endtask
+    reg r2_we;
+    reg [7:0] r2_wa;
+    reg [31:0] r2_wd;
+    keygen_math_bank #(.DEPTH(MAX_LIMBS), .IP_TYPE(IP_TYPE), .DEVICE_FAMILY(DEVICE_FAMILY)) bank_r2 (
+        .clock_i(clock_i),.reset_n_i(reset_n_i),.write_en_i(r2_we && reset_n_i),.write_address_i(r2_wa),.write_data_i(r2_wd),
+        .read_address_a_i(index_reg),.read_address_b_i(index_reg),.read_data_a_o(r2_data),.read_data_b_o(r2_unused));
+    task write_r2; input [7:0] address; input [31:0] value;
+        begin r2_we <= 1; r2_wa <= address; r2_wd <= value; end
+    endtask
+    reg exp_we;
+    reg [7:0] exp_wa;
+    reg [31:0] exp_wd;
+    keygen_math_bank #(.DEPTH(MAX_LIMBS), .IP_TYPE(IP_TYPE), .DEVICE_FAMILY(DEVICE_FAMILY)) bank_exp (
+        .clock_i(clock_i),.reset_n_i(reset_n_i),.write_en_i(exp_we && reset_n_i),.write_address_i(exp_wa),.write_data_i(exp_wd),
+        .read_address_a_i({2'b0,exponent_bit_reg[10:5]}),.read_address_b_i({2'b0,exponent_bit_reg[10:5]}),.read_data_a_o(exp_data),.read_data_b_o(exp_unused));
+    task write_exp; input [7:0] address; input [31:0] value;
+        begin exp_we <= 1; exp_wa <= address; exp_wd <= value; end
+    endtask
+    reg base_we;
+    reg [7:0] base_wa;
+    reg [31:0] base_wd;
+    keygen_math_bank #(.DEPTH(MAX_LIMBS), .IP_TYPE(IP_TYPE), .DEVICE_FAMILY(DEVICE_FAMILY)) bank_base (
+        .clock_i(clock_i),.reset_n_i(reset_n_i),.write_en_i(base_we && reset_n_i),.write_address_i(base_wa),.write_data_i(base_wd),
+        .read_address_a_i(index_reg),.read_address_b_i(index_reg),.read_data_a_o(base_data),.read_data_b_o(base_unused));
+    task write_base; input [7:0] address; input [31:0] value;
+        begin base_we <= 1; base_wa <= address; base_wd <= value; end
+    endtask
+    reg t_we;
+    reg [7:0] t_wa;
+    reg [31:0] t_wd;
+    keygen_math_bank #(.DEPTH(2*MAX_LIMBS+2), .IP_TYPE(IP_TYPE), .DEVICE_FAMILY(DEVICE_FAMILY)) bank_t (
+        .clock_i(clock_i),.reset_n_i(reset_n_i),.write_en_i(t_we && reset_n_i),.write_address_i(t_wa),.write_data_i(t_wd),
+        .read_address_a_i(t_ra),.read_address_b_i({1'b0,length_reg}),.read_data_a_o(t_data),.read_data_b_o(t_high));
+    task write_t; input [7:0] address; input [31:0] value;
+        begin t_we <= 1; t_wa <= address; t_wd <= value; end
+    endtask
 
     assign cmd_ready_o = reset_n_i && execute_reg && state_reg == IDLE;
     assign rsp_valid_o = reset_n_i && state_reg == RESPONSE;
@@ -967,11 +967,37 @@ endmodule
 
 // Synchronous operand storage. No asynchronous RAM reset: CLEAR sweeps every
 // used word before exposing ready. Write forwarding defines same-edge collisions.
-module keygen_math_bank #(parameter DEPTH=64) (
-    input clock_i, input write_en_i, input [7:0] write_address_i,
+module keygen_math_bank #(parameter DEPTH=64, parameter IP_TYPE=0, parameter DEVICE_FAMILY="Agilex 5") (
+    input clock_i, input reset_n_i, input write_en_i, input [7:0] write_address_i,
     input [31:0] write_data_i, input [7:0] read_address_a_i, read_address_b_i,
-    output reg [31:0] read_data_a_o, read_data_b_o
+    output wire [31:0] read_data_a_o, read_data_b_o
 );
+    function integer address_width;
+        input integer depth;
+        integer remaining;
+        begin
+            remaining=depth-1; address_width=0;
+            while(remaining>0) begin address_width=address_width+1; remaining=remaining>>1; end
+            if(address_width==0) address_width=1;
+        end
+    endfunction
+    localparam AW=address_width(DEPTH);
+    generate if (IP_TYPE == 1) begin : block_ip
+        // Explicit vendor RAM prevents synthesis from absorbing feedback-read
+        // registers into large asynchronous mux banks. Both readers use the
+        // already verified one-edge, new-data-on-collision resource contract.
+        keygen_ram32 #(.ADDRESS_WIDTH(AW),.IP_TYPE(1),.DEVICE_FAMILY(DEVICE_FAMILY)) reader_a (
+            .clock_i(clock_i),.reset_n_i(reset_n_i),.clock_en_i(1'b1),
+            .write_en_i(write_en_i),.write_address_i(write_address_i[AW-1:0]),.write_data_i(write_data_i),
+            .read_en_i(1'b1),.read_address_i(read_address_a_i[AW-1:0]),.read_valid_o(),.read_data_o(read_data_a_o));
+        keygen_ram32 #(.ADDRESS_WIDTH(AW),.IP_TYPE(1),.DEVICE_FAMILY(DEVICE_FAMILY)) reader_b (
+            .clock_i(clock_i),.reset_n_i(reset_n_i),.clock_en_i(1'b1),
+            .write_en_i(write_en_i),.write_address_i(write_address_i[AW-1:0]),.write_data_i(write_data_i),
+            .read_en_i(1'b1),.read_address_i(read_address_b_i[AW-1:0]),.read_valid_o(),.read_data_o(read_data_b_o));
+    end else begin : portable
+    reg [31:0] read_a_reg, read_b_reg;
+    assign read_data_a_o=read_a_reg;
+    assign read_data_b_o=read_b_reg;
     // Replicated simple-dual-port banks avoid a three-port inferred memory.
     // Synthesis can merge identical read addresses for single-reader banks.
     (* ramstyle = "M20K" *) reg [31:0] memory_a [0:DEPTH-1];
@@ -981,9 +1007,10 @@ module keygen_math_bank #(parameter DEPTH=64) (
             memory_a[write_address_i] <= write_data_i;
             memory_b[write_address_i] <= write_data_i;
         end
-        if (write_en_i && write_address_i == read_address_a_i) read_data_a_o <= write_data_i;
-        else read_data_a_o <= memory_a[read_address_a_i];
-        if (write_en_i && write_address_i == read_address_b_i) read_data_b_o <= write_data_i;
-        else read_data_b_o <= memory_b[read_address_b_i];
+        if (write_en_i && write_address_i == read_address_a_i) read_a_reg <= write_data_i;
+        else read_a_reg <= memory_a[read_address_a_i];
+        if (write_en_i && write_address_i == read_address_b_i) read_b_reg <= write_data_i;
+        else read_b_reg <= memory_b[read_address_b_i];
     end
+    end endgenerate
 endmodule
