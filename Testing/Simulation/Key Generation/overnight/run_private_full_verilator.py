@@ -16,7 +16,7 @@ def main():
     p.add_argument('--reuse', action='store_true')
     p.add_argument('--entropy-source', type=Path)
     p.add_argument('--top', choices=['tb_keygen_full', 'tb_pair_private', 'tb_private_lease', 'tb_private_store',
-        'tb_keygen_aes_core','tb_keygen_lifecycle','tb_demo_operation_cycles','tb_entropy_profiles'], default='tb_keygen_full')
+        'tb_keygen_aes_core','tb_keygen_lifecycle','tb_demo_operation_cycles','tb_entropy_profiles','tb_rsa_admission'], default='tb_keygen_full')
     a = p.parse_args()
     build, prepared = a.build.resolve(), a.prepared.resolve()
     if os.name == 'nt':
@@ -91,7 +91,7 @@ def main():
     marker={'tb_keygen_full':'PASS FULL_RSA','tb_pair_private':'PASS pair check:','tb_private_lease':'PASS PRIVATE_LEASE',
         'tb_private_store':'PASS PRIVATE_STORE','tb_keygen_aes_core':'PASS AES_CORE',
         'tb_keygen_lifecycle':'PASS CORE_LIFECYCLE','tb_demo_operation_cycles':'DEMO_OPERATION_PASS',
-        'tb_entropy_profiles':'PASS ENTROPY_PROFILES'}[a.top]
+        'tb_entropy_profiles':'PASS ENTROPY_PROFILES','tb_rsa_admission':'PASS RSA_ADMISSION_ALL'}[a.top]
     assert marker in out, 'no complete private keygen pass'
     assert hashes == {str(f): digest(f) for f in files}, 'sources changed during simulation'
     manifest.write_text(json.dumps(dict(status='PASS', source_sha256=hashes, binary_sha256=digest(binary),

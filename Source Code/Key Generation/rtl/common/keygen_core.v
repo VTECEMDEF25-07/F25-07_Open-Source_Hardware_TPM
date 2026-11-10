@@ -125,7 +125,9 @@ module keygen_core #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5"
         .status_code_o(aes_status),.status_id_o(aes_status_id)
     );
     keygen_rsa_controller controller (
-        .clock_i(clock_i),.reset_n_i(engine_reset_n),.work_valid_i(state_reg==RSA_START && !rsa_fault),
+        // Match RSA_START admission below: the controller must not leave IDLE
+        // before the core can enter RSA_RUN and expose generation transfers.
+        .clock_i(clock_i),.reset_n_i(engine_reset_n),.work_valid_i(state_reg==RSA_START && !rsa_fault && engine_ready),
         .work_ready_o(work_ready),.completion_valid_o(completion_valid),
         .completion_ready_i(state_reg==RSA_RUN && !rsa_fault),.completion_status_o(completion_status),
         .cmd_valid_o(cmd_valid),.cmd_ready_i(cmd_ready),.cmd_op_o(cmd_op),
