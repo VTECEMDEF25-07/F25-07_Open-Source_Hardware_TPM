@@ -14,8 +14,9 @@ def main():
     p.add_argument('--build', type=Path, required=True)
     p.add_argument('--prepared', type=Path, required=True)
     p.add_argument('--reuse', action='store_true')
+    p.add_argument('--entropy-source', type=Path)
     p.add_argument('--top', choices=['tb_keygen_full', 'tb_pair_private', 'tb_private_lease', 'tb_private_store',
-        'tb_keygen_aes_core','tb_keygen_lifecycle','tb_demo_operation_cycles'], default='tb_keygen_full')
+        'tb_keygen_aes_core','tb_keygen_lifecycle','tb_demo_operation_cycles','tb_entropy_profiles'], default='tb_keygen_full')
     a = p.parse_args()
     build, prepared = a.build.resolve(), a.prepared.resolve()
     if os.name == 'nt':
@@ -26,6 +27,8 @@ def main():
                    '--build', wsl(build), '--prepared', wsl(prepared), '--top', a.top]
         if a.reuse:
             command += ['--reuse']
+        if a.entropy_source:
+            command += ['--entropy-source', wsl(a.entropy_source)]
         subprocess.run(command, check=True)
         return
     repo = Path(__file__).resolve().parents[4]
@@ -38,10 +41,15 @@ def main():
     files += [verification / 'testbench/fixtures/keygen_test_source.v', test]
     if a.top=='tb_private_store':
         files += [repo/'Source Code/Demo Memory/demo_volatile_store.v']
-    if a.top=='tb_demo_operation_cycles':
+    if a.top in ('tb_demo_operation_cycles','tb_entropy_profiles'):
         files += sorted((source/'integration').glob('*.v'))
         files += sorted((repo/'Source Code/Hash Module').glob('*.v'))
-        files += [repo/'Source Code/RNG Module'/(n+'.v') for n in ('ring_osc','entropy_source','random_number_generation')]
+        if a.top=='tb_entropy_profiles':
+            assert a.entropy_source, '--entropy-source must name the frozen assessed dependency'
+            assert hashlib.sha256(a.entropy_source.read_bytes()).hexdigest()=='2b0b727f93b1ab725e41e1a556c526fa48469f638a65f6f836cc650aa55a0a89'
+            files += [a.entropy_source,repo/'Source Code/RNG Module/random_number_generation.v']
+        else:
+            files += [repo/'Source Code/RNG Module'/(n+'.v') for n in ('ring_osc','entropy_source','random_number_generation')]
         files += [repo/'Source Code/Demo Memory/demo_volatile_store.v']
     build.mkdir(parents=True, exist_ok=True)
     obj = build / 'obj'
@@ -66,7 +74,7 @@ def main():
                          '--Mdir', obj, '-Wno-fatal', '-DSIMULATION','-I'+str(prepared),
                          # Existing shared SHA uses Verilog2005 $clog2. The
                          # separate native vlog01 compatibility gate remains.
-                         ('+1364-2005ext+v' if a.top=='tb_demo_operation_cycles' else '+1364-2001ext+v'),
+                         ('+1364-2005ext+v' if a.top in ('tb_demo_operation_cycles','tb_entropy_profiles') else '+1364-2001ext+v'),
                          '+1800-2017ext+sv', *[f for f in files if f.suffix!='.vh']])
         vr = Path('/usr/share/verilator/include')
         run('compile', ['g++', '-O2', '-std=c++20', '-pthread', '-I' + str(obj), '-I' + str(vr), '-I' + str(vr / 'vltstd'),
@@ -82,7 +90,8 @@ def main():
     out = run('simulation', [binary,*arguments], timeout=3600)
     marker={'tb_keygen_full':'PASS FULL_RSA','tb_pair_private':'PASS pair check:','tb_private_lease':'PASS PRIVATE_LEASE',
         'tb_private_store':'PASS PRIVATE_STORE','tb_keygen_aes_core':'PASS AES_CORE',
-        'tb_keygen_lifecycle':'PASS CORE_LIFECYCLE','tb_demo_operation_cycles':'DEMO_OPERATION_PASS'}[a.top]
+        'tb_keygen_lifecycle':'PASS CORE_LIFECYCLE','tb_demo_operation_cycles':'DEMO_OPERATION_PASS',
+        'tb_entropy_profiles':'PASS ENTROPY_PROFILES'}[a.top]
     assert marker in out, 'no complete private keygen pass'
     assert hashes == {str(f): digest(f) for f in files}, 'sources changed during simulation'
     manifest.write_text(json.dumps(dict(status='PASS', source_sha256=hashes, binary_sha256=digest(binary),
