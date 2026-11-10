@@ -42,13 +42,12 @@ module de1_soc_top #(parameter IP_TYPE = `FPGA_IP_TYPE)
 	assign	LEDR[9:1] = 9'b0;
 	
 	
-	wire	CLOCK_100;
-	de1_clock PLL0( .refclk(CLOCK_50), .rst(~RESET_N), .outclk_0(CLOCK_100) );
+// Common SPI and TPM state run directly at the board 50 MHz clock.
 	
 	// One vendor setting feeds all TPM resources; Cyclone V selects M10K RAM.
 	TPM_TOP #(.IP_TYPE(IP_TYPE), .DEVICE_FAMILY("Cyclone V")) tpm
 	(
-		.CLOCK_50(CLOCK_50), .CLOCK_100(CLOCK_100),
+		.CLOCK_50(CLOCK_50),
 		.RESET_n(RESET_N),
 		.SPI_CLOCK(GPIO_1_2),
 		.SPI_CS_n(GPIO_1_5),

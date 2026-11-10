@@ -18,10 +18,14 @@ The scripts reference board hardware under Project/DE25/Fan Controller. Keep gen
 
 See [RNG simulations](RNG%20Module/README.md) for the two relocated PR #38 benches. Their serial capture hardware assets are under `Testing/Hardware/RNG Module/`.
 
+See [Asymmetric Module simulations](Asymmetric%20Module/README.md) for PR #40 testbenches and Python vector runners.
  symmetric-module
 See [symmetric simulations](Symmetric%20Module/README.md) for the five Questa suites, waveform guidance and the software-HMAC demonstration. Reusable RTL is under `Source Code/Symmetric Module/`.
 
 ## Key generation
 
 See [Key Generation/README.md](Key%20Generation/README.md) for the independent reference, core/resource/arithmetic benches and runners. Reusable HDL stays under `Source Code/Key Generation/`; fixtures here are test-only.
- main
+
+## Common SPI
+
+See the [SPI guide](../../Source%20Code/IO%20Interface/SPI.md#verification) for serializer and original-TPM assertion replays on both board models. Tests are under `IO Interface/`; the DE25 adapter is under `DE25/tests/`. DE1 replay uses its board top directly.

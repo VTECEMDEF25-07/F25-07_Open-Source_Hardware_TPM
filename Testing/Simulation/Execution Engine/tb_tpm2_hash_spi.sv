@@ -1,9 +1,8 @@
 `timescale 1ns/1ns
 module tb_tpm2_hash_spi #(parameter ENABLE_AES_TEST = 0);
-reg clk=0, clk100=0, rst=0, sck=0, cs=1, mosi=0;
+reg clk=0, rst=0, sck=0, cs=1, mosi=0;
 wire miso, irq;
 always #10 clk=~clk;
-always #5 clk100=~clk100;
 localparam [255:0] KEY = 256'h000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f;
 wire key_request, key_reply_ready;
 wire [31:0] key_handle;
@@ -20,7 +19,7 @@ always @(posedge clk) begin
     key_reply_valid <= 0;
 end
 
-TPM_TOP #(.ENABLE_ENCRYPTDECRYPT2(ENABLE_AES_TEST)) dut(.CLOCK_50(clk),.CLOCK_100(clk100),.RESET_n(rst),
+TPM_TOP #(.ENABLE_ENCRYPTDECRYPT2(ENABLE_AES_TEST)) dut(.CLOCK_50(clk),.RESET_n(rst),
 .SPI_CLOCK(sck),.SPI_CS_n(cs),.SPI_RST_n(rst),.SPI_MOSI(mosi),.SPI_MISO(miso),.SPI_PIRQ_n(irq),
 .aes_key_request_o(key_request), .aes_key_request_ready_i(1'b1), .aes_key_handle_o(key_handle),
 .aes_key_reply_valid_i(key_reply_valid), .aes_key_reply_ready_o(key_reply_ready),
