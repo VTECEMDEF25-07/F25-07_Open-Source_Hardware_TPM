@@ -13,7 +13,8 @@
 `define FPGA_IP_TYPE 1
 
 module de25_soc_top #(parameter IP_TYPE = `FPGA_IP_TYPE,
-    parameter ENABLE_DEMO_COMMANDS=0, DEMO_PROVIDER_MODE=1, DEMO_MODEXP_WIDTH=2048) (
+    parameter ENABLE_DEMO_COMMANDS=0, DEMO_PROVIDER_MODE=1, DEMO_MODEXP_WIDTH=2048,
+    parameter CUSTOMER_DEMO_ENABLE=0, DEMO_AES_EXPORT_ENABLE=0) (
     input clock_i,
     input board_reset_n_i,
     input spi_clock_i,
@@ -64,7 +65,8 @@ module de25_soc_top #(parameter IP_TYPE = `FPGA_IP_TYPE,
     // Select the FPGA resource backend at the TPM boundary.
     TPM_TOP #(.IP_TYPE(IP_TYPE), .DEVICE_FAMILY("Agilex 5"),
         .ENABLE_DEMO_COMMANDS(ENABLE_DEMO_COMMANDS),.DEMO_PROVIDER_MODE(DEMO_PROVIDER_MODE),
-        .DEMO_MODEXP_WIDTH(DEMO_MODEXP_WIDTH)) tpm (
+        .DEMO_MODEXP_WIDTH(DEMO_MODEXP_WIDTH),.CUSTOMER_DEMO_ENABLE(CUSTOMER_DEMO_ENABLE),
+        .DEMO_AES_EXPORT_ENABLE(DEMO_AES_EXPORT_ENABLE)) tpm (
         .CLOCK_50(clock_50),
         .RESET_n(tpm_release_reg[1]),
         .SPI_CLOCK(spi_clock_i),

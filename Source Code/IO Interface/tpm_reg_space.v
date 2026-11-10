@@ -20,10 +20,14 @@
 `define READ 1
 `define WRITE 0
 
-module	tpm_reg_space #(parameter ENABLE_DEMO_COMMANDS = 0)
+module	tpm_reg_space #(parameter ENABLE_DEMO_COMMANDS = 0, parameter CUSTOMER_DEMO_ENABLE = 0)
 (
 	input			clock_i,
 	input			reset_n_i,
+    input wire [31:0] snapshot_status_word_i,
+    input wire [31:0] snapshot_operation_id_i,
+    input wire [31:0] snapshot_sequence_i,
+    input wire [511:0] metrics_snapshot_i,
     input wire demo_admit_i,
     output wire demo_transport_abort_o,
 	
@@ -523,6 +527,19 @@ module	tpm_reg_space #(parameter ENABLE_DEMO_COMMANDS = 0)
 				r_requestUse[t_address_i[15:12]] <= t_writeByte_i[1] | t_writeByte_i[3];
 			end
 		end
+        // Independent read-only locality-zero telemetry, available during CRB busy.
+        else if (CUSTOMER_DEMO_ENABLE && t_req_i && !f_fifoAccess && l_allowAccess &&
+                 t_address_i[15:12]==0 && t_address_i[11:0]>=12'hF80 && t_address_i[11:0]<=12'hF8F) begin
+            if (t_dir_i) case (t_address_i[3:2])
+                0,3: t_readByte_o <= snapshot_sequence_i[8*t_address_i[1:0] +: 8];
+                1: t_readByte_o <= snapshot_status_word_i[8*t_address_i[1:0] +: 8];
+                2: t_readByte_o <= snapshot_operation_id_i[8*t_address_i[1:0] +: 8];
+            endcase
+        end
+        else if (CUSTOMER_DEMO_ENABLE && t_req_i && !f_fifoAccess && l_allowAccess &&
+                 t_address_i[15:12]==0 && t_address_i[11:0]>=12'hFA0 && t_address_i[11:0]<=12'hFDF) begin
+            if (t_dir_i) t_readByte_o <= metrics_snapshot_i[8*(t_address_i[11:0]-12'hFA0) +: 8];
+        end
 		// all other FIFO registers read and write behaviors
 		else if (t_req_i & ~f_fifoAccess & l_allowAccess) case (t_address_i[11:0])
 		12'h00B:

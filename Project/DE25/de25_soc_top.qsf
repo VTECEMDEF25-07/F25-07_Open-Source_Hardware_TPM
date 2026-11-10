@@ -112,7 +112,14 @@ set_instance_assignment -name GLOBAL_SIGNAL OFF -to "spi_clock_i"
 # Frozen v0.1 explicit demo build; default RTL parameters remain disabled.
 set_parameter -name ENABLE_DEMO_COMMANDS 1
 set_parameter -name DEMO_PROVIDER_MODE 0
-set_parameter -name DEMO_MODEXP_WIDTH 1024
+set_parameter -name DEMO_MODEXP_WIDTH 2048
+set_parameter -name CUSTOMER_DEMO_ENABLE 1
+set_parameter -name DEMO_AES_EXPORT_ENABLE 1
+set_global_assignment -name VERILOG_FILE "../../Source Code/Execution Engine/customer_crypto_subsystem.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/Execution Engine/customer_demo_packet.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/Execution Engine/customer_aes_worker.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/Asymmetric Module/demo_rsa_private_worker.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/Display/demo_lcd_status.v"
 set_global_assignment -name VERILOG_FILE "../../Source Code/Demo Memory/demo_byte_ram.v"
 set_global_assignment -name VERILOG_FILE "../../Source Code/Demo Memory/demo_volatile_store.v"
 set_global_assignment -name VERILOG_FILE "../../Source Code/Symmetric Module/symmetric_top.v"

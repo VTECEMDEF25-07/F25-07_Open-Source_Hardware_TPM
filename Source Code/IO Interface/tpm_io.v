@@ -13,6 +13,7 @@
 module	tpm_io #(parameter SCOPED_COMMANDS = 0,
     parameter ENABLE_ENCRYPTDECRYPT2 = 0,
     parameter ENABLE_DEMO_COMMANDS = 0,
+    parameter CUSTOMER_DEMO_ENABLE = 0,
     parameter PRESERVE_LEGACY_COMMANDS = 0)
 (
     // Pass packet reads and response payload reads between the CRB and the top.
@@ -21,6 +22,10 @@ module	tpm_io #(parameter SCOPED_COMMANDS = 0,
     input wire [11:0] exec_rsp_length_i,
     output wire [11:0] exec_rsp_addr_o,
     input wire [7:0] exec_rsp_byte_i,
+    input wire [31:0] snapshot_status_word_i,
+    input wire [31:0] snapshot_operation_id_i,
+    input wire [31:0] snapshot_sequence_i,
+    input wire [511:0] metrics_snapshot_i,
     input wire demo_admit_i,
     output wire exec_response_consumed_o,
     output wire demo_transport_abort_o,
@@ -104,8 +109,10 @@ module	tpm_io #(parameter SCOPED_COMMANDS = 0,
 	
 	wire crb_scrub_done;
     assign exec_response_consumed_o = c_rspDone;
-    tpm_reg_space #(.ENABLE_DEMO_COMMANDS(ENABLE_DEMO_COMMANDS)) fifo_register_space
+    tpm_reg_space #(.ENABLE_DEMO_COMMANDS(ENABLE_DEMO_COMMANDS),.CUSTOMER_DEMO_ENABLE(CUSTOMER_DEMO_ENABLE)) fifo_register_space
 	(
+        .snapshot_status_word_i(snapshot_status_word_i),.snapshot_operation_id_i(snapshot_operation_id_i),
+        .snapshot_sequence_i(snapshot_sequence_i),.metrics_snapshot_i(metrics_snapshot_i),
 		.clock_i(clock50_i), .reset_n_i(reset_n_i),
         .demo_admit_i(demo_admit_i && crb_scrub_done),
         .demo_transport_abort_o(demo_transport_abort_o),
@@ -125,6 +132,7 @@ module	tpm_io #(parameter SCOPED_COMMANDS = 0,
 	
 	tpm_crb #(.SCOPED_COMMANDS(SCOPED_COMMANDS),
         .PRESERVE_LEGACY_COMMANDS(PRESERVE_LEGACY_COMMANDS),
+        .CUSTOMER_DEMO_ENABLE(CUSTOMER_DEMO_ENABLE),
         .ENABLE_ENCRYPTDECRYPT2(ENABLE_ENCRYPTDECRYPT2),
         .ENABLE_DEMO_COMMANDS(ENABLE_DEMO_COMMANDS)) command_response_buffer
 	(

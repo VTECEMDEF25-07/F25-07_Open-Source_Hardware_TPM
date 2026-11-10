@@ -21,6 +21,7 @@
 module	tpm_crb #(parameter SCOPED_COMMANDS = 0,
     parameter ENABLE_ENCRYPTDECRYPT2 = 0,
     parameter ENABLE_DEMO_COMMANDS = 0,
+    parameter CUSTOMER_DEMO_ENABLE = 0,
     parameter PRESERVE_LEGACY_COMMANDS = 0)
 (
     // The executor reads the saved command by packet address. The CRB reads
@@ -120,6 +121,7 @@ module	tpm_crb #(parameter SCOPED_COMMANDS = 0,
 	reg	[11:0]	ci_size;	// transfer size
 	reg		ci_restart;	// reset the transfer fsm
 	wire		ci_wren;	// write enable pulse for transfers
+    wire ci_prefetch;
 	wire	[11:0]	ci_rel;		// relative address for current byte
 	
 	// relative address explanation:
@@ -136,7 +138,7 @@ module	tpm_crb #(parameter SCOPED_COMMANDS = 0,
 		.clock_i(clock_i), .reset_n_i(reset_n_i),
 		.start_i(ci_start), .restart_i(ci_restart), .done_o(ci_done),
 		.size_in_i(ci_size), .addr_o(ci_addr), .wren_n_o(ci_wren),
-		.rel_addr_o(ci_rel)
+		.rel_addr_o(ci_rel),.prefetch_o(ci_prefetch)
 	);
 	
 	
@@ -191,18 +193,21 @@ module	tpm_crb #(parameter SCOPED_COMMANDS = 0,
     // Disabled AES still takes the scoped rejection path, never legacy stubs.
     wire scoped_command_en = SCOPED_COMMANDS && (!PRESERVE_LEGACY_COMMANDS ||
         commandCode_o == `TPM_CC_Hash || commandCode_o == 32'h00000193 ||
-        (ENABLE_DEMO_COMMANDS && commandCode_o == 32'h20000100));
+        (ENABLE_DEMO_COMMANDS && commandCode_o == (CUSTOMER_DEMO_ENABLE ? 32'h20000101 : 32'h20000100)));
     wire scoped_startup = commandCode_o == `TPM_CC_Startup &&
         cmd_st == `TPM_ST_NO_SESSIONS && cmdSize_i == 32'd12;
     wire read_scoped_params = scoped_startup ||
         (commandCode_o == `TPM_CC_Hash && cmdSize_i >= 32'd18 && cmdSize_i <= 32'd1042) ||
         (ENABLE_ENCRYPTDECRYPT2 && commandCode_o == 32'h00000193 &&
          cmdSize_i >= 32'd50 && cmdSize_i <= 32'd1074) ||
-        (ENABLE_DEMO_COMMANDS && commandCode_o == 32'h20000100 &&
-         cmdSize_i >= 32'd26 && cmdSize_i <= 32'd794);
+        (ENABLE_DEMO_COMMANDS && commandCode_o == (CUSTOMER_DEMO_ENABLE ? 32'h20000101 : 32'h20000100) &&
+         cmdSize_i >= 32'd26 && cmdSize_i <= (CUSTOMER_DEMO_ENABLE ? 32'd1068 : 32'd794));
     assign exec_cmd_byte_o = cmdOut;
     // Strip the 10-byte header offset when indexing the executor payload.
-    assign exec_rsp_addr_o = ci_addr - 12'd10;
+    // On the current byte's write edge, prefetch the next registered RAM byte.
+    // The inherited transfer FSM then has its UpdateAddr/Write0 cycles to stage it.
+    assign exec_rsp_addr_o = ci_addr - 12'd10 +
+        ((CUSTOMER_DEMO_ENABLE && commandCode_o==32'h20000101 && ci_prefetch) ? 12'd1 : 12'd0);
 	// proc_ee: is the command processed by the execution engine?
 	// badRead: does the fully read number of bytes mismatch from the command header indicated cmdSize_i?
 	// setup_mm: has the management module been setup? (it requires an extra pulse on initialization)
@@ -978,6 +983,7 @@ module	CRB_TRANS
 	input		[11:0]	size_in_i,	// size of transfer
 	output	reg	[11:0]	addr_o,		// address
 	output			wren_n_o,		// write enable active low
+    output wire prefetch_o,
 	
 	output		[11:0]	rel_addr_o	// relative address
 );
@@ -1070,6 +1076,7 @@ module	CRB_TRANS
 	
 	// static assignments
 	assign	wren_n_o = state != Write1;
+    assign prefetch_o = state == Write1 || state == UpdateAddr;
 	assign	done_o = state == Complete;
 	assign	rel_addr_o = addr_o - prev_index;
 	

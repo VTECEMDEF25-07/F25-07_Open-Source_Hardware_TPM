@@ -20,6 +20,7 @@
 // IP_TYPE: 0 = Generic, 1 = Altera, 2 = reserved Xilinx (unsupported).
 module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
     parameter ENABLE_ENCRYPTDECRYPT2 = 0, parameter ENABLE_DEMO_COMMANDS = 0,
+    parameter CUSTOMER_DEMO_ENABLE = 0, parameter DEMO_AES_EXPORT_ENABLE = 0,
     parameter DEMO_PROVIDER_MODE = 1, parameter DEMO_MODEXP_WIDTH = 2048)
 (
 	input		CLOCK_50,	// 50 MHz sysclock
@@ -122,7 +123,7 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
     // the inherited parser/management/engine routes for every other command.
     wire scoped_command_en = commandCode == 32'h0000017d ||
         commandCode == 32'h00000193 ||
-        (ENABLE_DEMO_COMMANDS && commandCode == 32'h20000100);
+        (ENABLE_DEMO_COMMANDS && commandCode == (CUSTOMER_DEMO_ENABLE ? 32'h20000101 : 32'h20000100));
     wire legacy_response_ready;
     wire [11:0] exec_cmd_addr, exec_rsp_addr, exec_rsp_length;
     wire [7:0] exec_cmd_byte, exec_rsp_byte, hash_data;
@@ -133,13 +134,15 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
 
     // Command policy and packet fields are handled here. The SHA subsystem
     // receives only the validated message stream and returns its digest.
-    wire select_demo = ENABLE_DEMO_COMMANDS && commandCode == 32'h20000100;
-    wire select_aes = (ENABLE_ENCRYPTDECRYPT2 || ENABLE_DEMO_COMMANDS) && commandCode == 32'h00000193;
+    wire select_demo = ENABLE_DEMO_COMMANDS && commandCode == (CUSTOMER_DEMO_ENABLE ? 32'h20000101 : 32'h20000100);
+    wire select_aes = ((ENABLE_ENCRYPTDECRYPT2 || ENABLE_DEMO_COMMANDS) && !CUSTOMER_DEMO_ENABLE) && commandCode == 32'h00000193;
     wire [11:0] hash_cmd_addr, hash_rsp_length, aes_cmd_addr, aes_rsp_length;
     wire [7:0] hash_rsp_byte, aes_rsp_byte;
     wire [31:0] hash_rsp_code, aes_rsp_code;
     wire hash_rsp_valid, aes_rsp_valid;
 
+    wire [31:0] snapshot_status_word,snapshot_operation_id,snapshot_sequence;
+    wire [511:0] metrics_snapshot;
     wire [11:0] demo_cmd_addr, demo_rsp_length;
     wire [7:0] demo_rsp_byte;
     wire [31:0] demo_rsp_code;
@@ -148,6 +151,28 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
     wire [255:0] service_key;
     wire [31:0] service_key_reply_code;
     generate if (ENABLE_DEMO_COMMANDS) begin : demo_enabled
+        if (CUSTOMER_DEMO_ENABLE) begin : customer
+        customer_crypto_subsystem #(.DEMO_AES_EXPORT_ENABLE(DEMO_AES_EXPORT_ENABLE),.WIDTH(DEMO_MODEXP_WIDTH),.DEMO_PROVIDER_MODE(DEMO_PROVIDER_MODE),
+            .IP_TYPE(IP_TYPE),.DEVICE_FAMILY(DEVICE_FAMILY)) subsystem (
+            .clock_i(CLOCK_50),.reset_n_i(rst_n),.recovery_pending_i(recovery_pending),.start_i(execStart && select_demo),
+            .operational_i(op_state == 3'b011),.command_tag_i(commandTag),.command_size_i(commandSize),
+            .command_addr_o(demo_cmd_addr),.command_byte_i(exec_cmd_byte),
+            .response_valid_o(demo_rsp_valid),.response_code_o(demo_rsp_code),
+            .response_length_o(demo_rsp_length),.response_addr_i(exec_rsp_addr),.response_byte_o(demo_rsp_byte),
+            .response_consumed_i(exec_response_consumed && select_demo),
+            .busy_o(demo_busy),.scrub_done_o(demo_scrub_done),.recovery_required_o(packet_recovery),
+            .aes_client_active_i(aes_busy),.key_request_i(aes_key_request_o),
+            .key_request_ready_o(service_key_request_ready),.key_handle_i(aes_key_handle_o),
+            .key_reply_valid_o(service_key_reply_valid),.key_reply_ready_i(aes_key_reply_ready_o),
+            .resolved_key_o(service_key),.key_reply_code_o(service_key_reply_code),
+            .supervisor_recovered_i(supervisor_recovered),.supervisor_last_id_i(supervisor_id),
+            .supervisor_last_handle_i(supervisor_handle),.supervisor_last_committed_i(supervisor_committed),
+            .supervisor_last_reason_i(supervisor_reason),.job_accept_o(supervisor_job_accept),
+            .job_id_o(supervisor_job_id),.commit_o(supervisor_commit),.commit_handle_o(supervisor_commit_handle),
+            .snapshot_status_word_o(snapshot_status_word),.snapshot_operation_id_o(snapshot_operation_id),
+            .snapshot_sequence_o(snapshot_sequence),.metrics_snapshot_o(metrics_snapshot)
+        );
+        end else begin : bounded
         demo_crypto_subsystem #(.WIDTH(DEMO_MODEXP_WIDTH),.DEMO_PROVIDER_MODE(DEMO_PROVIDER_MODE),
             .IP_TYPE(IP_TYPE),.DEVICE_FAMILY(DEVICE_FAMILY)) subsystem (
             .clock_i(CLOCK_50),.reset_n_i(rst_n),.recovery_pending_i(recovery_pending),.start_i(execStart && select_demo),
@@ -166,7 +191,10 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
             .supervisor_last_reason_i(supervisor_reason),.job_accept_o(supervisor_job_accept),
             .job_id_o(supervisor_job_id),.commit_o(supervisor_commit),.commit_handle_o(supervisor_commit_handle)
         );
+        assign snapshot_status_word=0;assign snapshot_operation_id=0;assign snapshot_sequence=0;assign metrics_snapshot=0;
+        end
     end else begin : demo_disabled
+        assign snapshot_status_word=0;assign snapshot_operation_id=0;assign snapshot_sequence=0;assign metrics_snapshot=0;
         assign demo_cmd_addr=0;assign demo_rsp_length=0;assign demo_rsp_byte=0;
         assign demo_rsp_code=0;assign demo_rsp_valid=0;assign demo_busy=0;assign demo_scrub_done=1;
         assign packet_recovery=0;assign supervisor_job_accept=0;assign supervisor_job_id=0;
@@ -177,13 +205,13 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
     end endgenerate
 
     assign exec_cmd_addr = select_demo ? demo_cmd_addr : select_aes ? aes_cmd_addr : hash_cmd_addr;
-    assign exec_rsp_length = select_demo ? demo_rsp_length : select_aes ? aes_rsp_length : hash_rsp_length;
+    assign exec_rsp_length = select_demo ? (CUSTOMER_DEMO_ENABLE ? demo_rsp_length + 12'd10 : demo_rsp_length) : select_aes ? aes_rsp_length : hash_rsp_length;
     assign exec_rsp_byte = select_demo ? demo_rsp_byte : select_aes ? aes_rsp_byte : hash_rsp_byte;
     assign exec_rsp_code = select_demo ? demo_rsp_code : select_aes ? aes_rsp_code : hash_rsp_code;
     assign responseReady = scoped_command_en ?
         (select_demo ? demo_rsp_valid : select_aes ? aes_rsp_valid : hash_rsp_valid) : legacy_response_ready;
 
-    generate if (ENABLE_ENCRYPTDECRYPT2 || ENABLE_DEMO_COMMANDS) begin : aes_command_enabled
+    generate if ((ENABLE_ENCRYPTDECRYPT2 || ENABLE_DEMO_COMMANDS) && !CUSTOMER_DEMO_ENABLE) begin : aes_command_enabled
         execution_engine_aes_packet #(.ENABLE_DEMO_LIFECYCLE(ENABLE_DEMO_COMMANDS)) aes_command (
             .clock_i(CLOCK_50), .reset_n_i(rst_n),
             .start_i(execStart && select_aes), .operational_i(op_state == 3'b011),
@@ -242,8 +270,8 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
     );
 
 	tpm_io #(.SCOPED_COMMANDS(1), .PRESERVE_LEGACY_COMMANDS(1),
-        .ENABLE_ENCRYPTDECRYPT2(ENABLE_ENCRYPTDECRYPT2 || ENABLE_DEMO_COMMANDS),
-        .ENABLE_DEMO_COMMANDS(ENABLE_DEMO_COMMANDS)) io
+        .ENABLE_ENCRYPTDECRYPT2((ENABLE_ENCRYPTDECRYPT2 || ENABLE_DEMO_COMMANDS) && !CUSTOMER_DEMO_ENABLE),
+        .ENABLE_DEMO_COMMANDS(ENABLE_DEMO_COMMANDS),.CUSTOMER_DEMO_ENABLE(CUSTOMER_DEMO_ENABLE)) io
 	(
 		.clock50_i(CLOCK_50),
 		.reset_n_i(rst_n),
@@ -256,6 +284,8 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
         .exec_cmd_addr_i(exec_cmd_addr), .exec_cmd_byte_o(exec_cmd_byte),
         .exec_rsp_length_i(exec_rsp_length), .exec_rsp_addr_o(exec_rsp_addr),
         .exec_rsp_byte_i(exec_rsp_byte),
+        .snapshot_status_word_i(snapshot_status_word),.snapshot_operation_id_i(snapshot_operation_id),
+        .snapshot_sequence_i(snapshot_sequence),.metrics_snapshot_i(metrics_snapshot),
         .demo_admit_i(demo_scrub_done && aes_scrub_done),
         .exec_response_consumed_o(exec_response_consumed),
         .demo_transport_abort_o(transport_abort),
