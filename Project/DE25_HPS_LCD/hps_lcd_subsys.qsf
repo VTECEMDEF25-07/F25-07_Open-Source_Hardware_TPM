@@ -1,0 +1,9 @@
+set_global_assignment -name FAMILY "Agilex 5"
+set_global_assignment -name DEVICE A5ED013BB32AE4SCS
+set_global_assignment -name TOP_LEVEL_ENTITY hps_lcd_island
+set_global_assignment -name NUM_PARALLEL_PROCESSORS 1
+set_global_assignment -name PWRMGT_VOLTAGE_OUTPUT_FORMAT "LINEAR FORMAT"
+set_global_assignment -name PWRMGT_LINEAR_FORMAT_N "-12"
+set_global_assignment -name LAST_QUARTUS_VERSION "26.1.0 Pro Edition"
+set_global_assignment -name IP_FILE ip/hps_lcd_subsys/hps_lcd_subsys_agilex_hps.ip
+set_global_assignment -name QSYS_FILE hps_lcd_subsys.qsys

@@ -42,6 +42,11 @@ set_location_assignment PIN_BH118 -to fan_i2c_sda
 set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to fan_i2c_sda
 set_global_assignment -name SEARCH_PATH "../../Source Code/IO Interface"
 set_global_assignment -name VERILOG_FILE "de25_soc_top.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/Display/hps_lcd_island.v"
+# Fully generated source: include system wrapper AND its separately generated IP QIP.
+set_global_assignment -name QIP_FILE "../DE25_HPS_LCD/hps_lcd_subsys/hps_lcd_subsys.qip"
+set_global_assignment -name QIP_FILE "../DE25_HPS_LCD/ip/hps_lcd_subsys/hps_lcd_subsys_agilex_hps/hps_lcd_subsys_agilex_hps.qip"
+# Fixed HPS_LOCATION/1.8V bindings are carried by the generated IP QIP.
 set_global_assignment -name VERILOG_FILE "de25_clock.v"
 set_global_assignment -name VERILOG_FILE "../../Source Code/TPM_TOP.v"
 set_global_assignment -name VERILOG_FILE "../../Source Code/Management Module/management_module.v"
@@ -61,6 +66,7 @@ set_global_assignment -name VERILOG_FILE "Fan Controller/I2C_READ_DATA.v"
 set_global_assignment -name VERILOG_FILE "Fan Controller/I2C_WRITE_BYTE.v"
 set_global_assignment -name VERILOG_FILE "Fan Controller/I2C_WRITE_POINTER.v"
 set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to {tpm_release_reg[*]}
+set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to {crypto_release_reg[*]}
 set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to {board_release_reg[*]}
 set_global_assignment -name LAST_QUARTUS_VERSION "26.1.0 Pro Edition"
 set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS INPUT TRI-STATED"

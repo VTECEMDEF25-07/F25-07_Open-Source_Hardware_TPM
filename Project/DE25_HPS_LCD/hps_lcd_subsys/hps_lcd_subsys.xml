@@ -1,0 +1,532 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<deploy
+ date="2026.11.10.01:57:12"
+ outputDirectory="C:/Users/aaron/seadrive_root/aaronhen/My Libraries/Aaron Files - SSD/2026-2027/Fall/ECE 4806 - Senior Design Project/AI/tmp/overnight-lcd/repo/Project/DE25_HPS_LCD/hps_lcd_subsys/">
+ <perimeter>
+  <parameter
+     name="AUTO_GENERATION_ID"
+     type="Integer"
+     defaultValue="0"
+     onHdl="0"
+     affectsHdl="1" />
+  <parameter
+     name="AUTO_UNIQUE_ID"
+     type="String"
+     defaultValue=""
+     onHdl="0"
+     affectsHdl="1" />
+  <parameter
+     name="AUTO_DEVICE_FAMILY"
+     type="String"
+     defaultValue="Agilex 5"
+     onHdl="0"
+     affectsHdl="1" />
+  <parameter
+     name="AUTO_DEVICE"
+     type="String"
+     defaultValue="A5ED013BB32AE4SCS"
+     onHdl="0"
+     affectsHdl="1" />
+  <parameter
+     name="AUTO_DEVICE_SPEEDGRADE"
+     type="String"
+     defaultValue="4"
+     onHdl="0"
+     affectsHdl="1" />
+  <parameter
+     name="AUTO_BOARD"
+     type="String"
+     defaultValue="default"
+     onHdl="0"
+     affectsHdl="1" />
+  <interface name="hps_io" kind="conduit" start="0">
+   <property name="associatedClock" value="" />
+   <property name="associatedReset" value="" />
+   <property name="prSafe" value="false" />
+   <port
+       name="hps_io_hps_osc_clk"
+       direction="input"
+       role="hps_osc_clk"
+       width="1" />
+   <port name="hps_io_spim0_clk" direction="output" role="spim0_clk" width="1" />
+   <port
+       name="hps_io_spim0_mosi"
+       direction="output"
+       role="spim0_mosi"
+       width="1" />
+   <port
+       name="hps_io_spim0_ss0_n"
+       direction="output"
+       role="spim0_ss0_n"
+       width="1" />
+   <port name="hps_io_uart1_tx" direction="output" role="uart1_tx" width="1" />
+   <port name="hps_io_uart1_rx" direction="input" role="uart1_rx" width="1" />
+   <port name="hps_io_gpio34" direction="bidir" role="gpio34" width="1" />
+   <port name="hps_io_gpio35" direction="bidir" role="gpio35" width="1" />
+   <port name="hps_io_gpio42" direction="bidir" role="gpio42" width="1" />
+  </interface>
+ </perimeter>
+ <entity kind="hps_lcd_subsys" version="1.0" name="hps_lcd_subsys">
+  <parameter name="AUTO_GENERATION_ID" value="0" />
+  <parameter name="AUTO_DEVICE" value="A5ED013BB32AE4SCS" />
+  <parameter name="AUTO_DEVICE_FAMILY" value="Agilex 5" />
+  <parameter name="AUTO_BOARD" value="default" />
+  <parameter name="AUTO_UNIQUE_ID" value="" />
+  <parameter name="AUTO_DEVICE_SPEEDGRADE" value="4" />
+  <generatedFiles>
+   <file
+       path="C:\Users\aaron\seadrive_root\aaronhen\My Libraries\Aaron Files - SSD\2026-2027\Fall\ECE 4806 - Senior Design Project\AI\tmp\overnight-lcd\repo\Project\DE25_HPS_LCD\hps_lcd_subsys\synth\hps_lcd_subsys.v"
+       attributes="CONTAINS_INLINE_CONFIGURATION" />
+  </generatedFiles>
+  <childGeneratedFiles>
+   <file
+       path="C:\Users\aaron\seadrive_root\aaronhen\My Libraries\Aaron Files - SSD\2026-2027\Fall\ECE 4806 - Senior Design Project\AI\tmp\overnight-lcd\repo\Project\DE25_HPS_LCD\hps_lcd_subsys\synth\hps_lcd_subsys.v"
+       attributes="CONTAINS_INLINE_CONFIGURATION" />
+  </childGeneratedFiles>
+  <sourceFiles>
+   <file
+       path="C:/Users/aaron/seadrive_root/aaronhen/My Libraries/Aaron Files - SSD/2026-2027/Fall/ECE 4806 - Senior Design Project/AI/tmp/overnight-lcd/repo/Project/DE25_HPS_LCD/hps_lcd_subsys.qsys" />
+  </sourceFiles>
+  <childSourceFiles/>
+  <messages>
+   <message level="Info" culprit="hps_lcd_subsys">"Generating: hps_lcd_subsys"</message>
+   <message level="Info" culprit="hps_lcd_subsys">"Generating: hps_lcd_subsys_agilex_hps"</message>
+  </messages>
+ </entity>
+ <entity
+   kind="altera_generic_component"
+   version="1.0"
+   name="hps_lcd_subsys_agilex_hps">
+  <parameter
+     name="cpuHashInfo"
+     value="&lt;cpuHashInfoDefinition&gt;
+    &lt;cpuHashInfoMap/&gt;
+&lt;/cpuHashInfoDefinition&gt;" />
+  <parameter name="hlsFile" value="" />
+  <parameter name="AUTO_BOARD" value="default" />
+  <parameter name="AUTO_DEVICE_FAMILY" value="Agilex 5" />
+  <parameter
+     name="defaultBoundary"
+     value="&lt;boundaryDefinition&gt;
+    &lt;interfaces&gt;
+        &lt;interface&gt;
+            &lt;name&gt;h2f_reset&lt;/name&gt;
+            &lt;type&gt;reset&lt;/type&gt;
+            &lt;isStart&gt;true&lt;/isStart&gt;
+            &lt;ports&gt;
+                &lt;port&gt;
+                    &lt;name&gt;h2f_reset_reset&lt;/name&gt;
+                    &lt;role&gt;reset&lt;/role&gt;
+                    &lt;direction&gt;Output&lt;/direction&gt;
+                    &lt;width&gt;1&lt;/width&gt;
+                    &lt;lowerBound&gt;0&lt;/lowerBound&gt;
+                    &lt;vhdlType&gt;STD_LOGIC&lt;/vhdlType&gt;
+                    &lt;terminationValue&gt;0&lt;/terminationValue&gt;
+                &lt;/port&gt;
+            &lt;/ports&gt;
+            &lt;assignments&gt;
+                &lt;assignmentValueMap/&gt;
+            &lt;/assignments&gt;
+            &lt;parameters&gt;
+                &lt;parameterValueMap&gt;
+                    &lt;entry&gt;
+                        &lt;key&gt;associatedClock&lt;/key&gt;
+                    &lt;/entry&gt;
+                    &lt;entry&gt;
+                        &lt;key&gt;associatedDirectReset&lt;/key&gt;
+                    &lt;/entry&gt;
+                    &lt;entry&gt;
+                        &lt;key&gt;associatedResetSinks&lt;/key&gt;
+                        &lt;value&gt;none&lt;/value&gt;
+                    &lt;/entry&gt;
+                    &lt;entry&gt;
+                        &lt;key&gt;synchronousEdges&lt;/key&gt;
+                        &lt;value&gt;NONE&lt;/value&gt;
+                    &lt;/entry&gt;
+                &lt;/parameterValueMap&gt;
+            &lt;/parameters&gt;
+        &lt;/interface&gt;
+        &lt;interface&gt;
+            &lt;name&gt;hps_io&lt;/name&gt;
+            &lt;type&gt;conduit&lt;/type&gt;
+            &lt;isStart&gt;false&lt;/isStart&gt;
+            &lt;ports&gt;
+                &lt;port&gt;
+                    &lt;name&gt;hps_io_hps_osc_clk&lt;/name&gt;
+                    &lt;role&gt;hps_osc_clk&lt;/role&gt;
+                    &lt;direction&gt;Input&lt;/direction&gt;
+                    &lt;width&gt;1&lt;/width&gt;
+                    &lt;lowerBound&gt;0&lt;/lowerBound&gt;
+                    &lt;vhdlType&gt;STD_LOGIC&lt;/vhdlType&gt;
+                    &lt;terminationValue&gt;0&lt;/terminationValue&gt;
+                &lt;/port&gt;
+                &lt;port&gt;
+                    &lt;name&gt;hps_io_spim0_clk&lt;/name&gt;
+                    &lt;role&gt;spim0_clk&lt;/role&gt;
+                    &lt;direction&gt;Output&lt;/direction&gt;
+                    &lt;width&gt;1&lt;/width&gt;
+                    &lt;lowerBound&gt;0&lt;/lowerBound&gt;
+                    &lt;vhdlType&gt;STD_LOGIC&lt;/vhdlType&gt;
+                    &lt;terminationValue&gt;0&lt;/terminationValue&gt;
+                &lt;/port&gt;
+                &lt;port&gt;
+                    &lt;name&gt;hps_io_spim0_mosi&lt;/name&gt;
+                    &lt;role&gt;spim0_mosi&lt;/role&gt;
+                    &lt;direction&gt;Output&lt;/direction&gt;
+                    &lt;width&gt;1&lt;/width&gt;
+                    &lt;lowerBound&gt;0&lt;/lowerBound&gt;
+                    &lt;vhdlType&gt;STD_LOGIC&lt;/vhdlType&gt;
+                    &lt;terminationValue&gt;0&lt;/terminationValue&gt;
+                &lt;/port&gt;
+                &lt;port&gt;
+                    &lt;name&gt;hps_io_spim0_ss0_n&lt;/name&gt;
+                    &lt;role&gt;spim0_ss0_n&lt;/role&gt;
+                    &lt;direction&gt;Output&lt;/direction&gt;
+                    &lt;width&gt;1&lt;/width&gt;
+                    &lt;lowerBound&gt;0&lt;/lowerBound&gt;
+                    &lt;vhdlType&gt;STD_LOGIC&lt;/vhdlType&gt;
+                    &lt;terminationValue&gt;0&lt;/terminationValue&gt;
+                &lt;/port&gt;
+                &lt;port&gt;
+                    &lt;name&gt;hps_io_uart1_tx&lt;/name&gt;
+                    &lt;role&gt;uart1_tx&lt;/role&gt;
+                    &lt;direction&gt;Output&lt;/direction&gt;
+                    &lt;width&gt;1&lt;/width&gt;
+                    &lt;lowerBound&gt;0&lt;/lowerBound&gt;
+                    &lt;vhdlType&gt;STD_LOGIC&lt;/vhdlType&gt;
+                    &lt;terminationValue&gt;0&lt;/terminationValue&gt;
+                &lt;/port&gt;
+                &lt;port&gt;
+                    &lt;name&gt;hps_io_uart1_rx&lt;/name&gt;
+                    &lt;role&gt;uart1_rx&lt;/role&gt;
+                    &lt;direction&gt;Input&lt;/direction&gt;
+                    &lt;width&gt;1&lt;/width&gt;
+                    &lt;lowerBound&gt;0&lt;/lowerBound&gt;
+                    &lt;vhdlType&gt;STD_LOGIC&lt;/vhdlType&gt;
+                    &lt;terminationValue&gt;0&lt;/terminationValue&gt;
+                &lt;/port&gt;
+                &lt;port&gt;
+                    &lt;name&gt;hps_io_gpio34&lt;/name&gt;
+                    &lt;role&gt;gpio34&lt;/role&gt;
+                    &lt;direction&gt;Bidir&lt;/direction&gt;
+                    &lt;width&gt;1&lt;/width&gt;
+                    &lt;lowerBound&gt;0&lt;/lowerBound&gt;
+                    &lt;vhdlType&gt;STD_LOGIC&lt;/vhdlType&gt;
+                    &lt;terminationValue&gt;0&lt;/terminationValue&gt;
+                &lt;/port&gt;
+                &lt;port&gt;
+                    &lt;name&gt;hps_io_gpio35&lt;/name&gt;
+                    &lt;role&gt;gpio35&lt;/role&gt;
+                    &lt;direction&gt;Bidir&lt;/direction&gt;
+                    &lt;width&gt;1&lt;/width&gt;
+                    &lt;lowerBound&gt;0&lt;/lowerBound&gt;
+                    &lt;vhdlType&gt;STD_LOGIC&lt;/vhdlType&gt;
+                    &lt;terminationValue&gt;0&lt;/terminationValue&gt;
+                &lt;/port&gt;
+                &lt;port&gt;
+                    &lt;name&gt;hps_io_gpio42&lt;/name&gt;
+                    &lt;role&gt;gpio42&lt;/role&gt;
+                    &lt;direction&gt;Bidir&lt;/direction&gt;
+                    &lt;width&gt;1&lt;/width&gt;
+                    &lt;lowerBound&gt;0&lt;/lowerBound&gt;
+                    &lt;vhdlType&gt;STD_LOGIC&lt;/vhdlType&gt;
+                    &lt;terminationValue&gt;0&lt;/terminationValue&gt;
+                &lt;/port&gt;
+            &lt;/ports&gt;
+            &lt;assignments&gt;
+                &lt;assignmentValueMap/&gt;
+            &lt;/assignments&gt;
+            &lt;parameters&gt;
+                &lt;parameterValueMap&gt;
+                    &lt;entry&gt;
+                        &lt;key&gt;associatedClock&lt;/key&gt;
+                    &lt;/entry&gt;
+                    &lt;entry&gt;
+                        &lt;key&gt;associatedReset&lt;/key&gt;
+                    &lt;/entry&gt;
+                    &lt;entry&gt;
+                        &lt;key&gt;prSafe&lt;/key&gt;
+                        &lt;value&gt;false&lt;/value&gt;
+                    &lt;/entry&gt;
+                &lt;/parameterValueMap&gt;
+            &lt;/parameters&gt;
+        &lt;/interface&gt;
+    &lt;/interfaces&gt;
+&lt;/boundaryDefinition&gt;" />
+  <parameter name="device_family" value="Agilex 5" />
+  <parameter name="bspCpu" value="true" />
+  <parameter
+     name="componentDefinition"
+     value="&lt;componentDefinition&gt;
+    &lt;boundary&gt;
+        &lt;interfaces&gt;
+            &lt;interface&gt;
+                &lt;name&gt;h2f_reset&lt;/name&gt;
+                &lt;type&gt;reset&lt;/type&gt;
+                &lt;isStart&gt;true&lt;/isStart&gt;
+                &lt;ports&gt;
+                    &lt;port&gt;
+                        &lt;name&gt;h2f_reset_reset&lt;/name&gt;
+                        &lt;role&gt;reset&lt;/role&gt;
+                        &lt;direction&gt;Output&lt;/direction&gt;
+                        &lt;width&gt;1&lt;/width&gt;
+                        &lt;lowerBound&gt;0&lt;/lowerBound&gt;
+                        &lt;vhdlType&gt;STD_LOGIC&lt;/vhdlType&gt;
+                        &lt;terminationValue&gt;0&lt;/terminationValue&gt;
+                    &lt;/port&gt;
+                &lt;/ports&gt;
+                &lt;assignments&gt;
+                    &lt;assignmentValueMap/&gt;
+                &lt;/assignments&gt;
+                &lt;parameters&gt;
+                    &lt;parameterValueMap&gt;
+                        &lt;entry&gt;
+                            &lt;key&gt;associatedClock&lt;/key&gt;
+                        &lt;/entry&gt;
+                        &lt;entry&gt;
+                            &lt;key&gt;associatedDirectReset&lt;/key&gt;
+                        &lt;/entry&gt;
+                        &lt;entry&gt;
+                            &lt;key&gt;associatedResetSinks&lt;/key&gt;
+                            &lt;value&gt;none&lt;/value&gt;
+                        &lt;/entry&gt;
+                        &lt;entry&gt;
+                            &lt;key&gt;synchronousEdges&lt;/key&gt;
+                            &lt;value&gt;NONE&lt;/value&gt;
+                        &lt;/entry&gt;
+                    &lt;/parameterValueMap&gt;
+                &lt;/parameters&gt;
+            &lt;/interface&gt;
+            &lt;interface&gt;
+                &lt;name&gt;hps_io&lt;/name&gt;
+                &lt;type&gt;conduit&lt;/type&gt;
+                &lt;isStart&gt;false&lt;/isStart&gt;
+                &lt;ports&gt;
+                    &lt;port&gt;
+                        &lt;name&gt;hps_io_hps_osc_clk&lt;/name&gt;
+                        &lt;role&gt;hps_osc_clk&lt;/role&gt;
+                        &lt;direction&gt;Input&lt;/direction&gt;
+                        &lt;width&gt;1&lt;/width&gt;
+                        &lt;lowerBound&gt;0&lt;/lowerBound&gt;
+                        &lt;vhdlType&gt;STD_LOGIC&lt;/vhdlType&gt;
+                        &lt;terminationValue&gt;0&lt;/terminationValue&gt;
+                    &lt;/port&gt;
+                    &lt;port&gt;
+                        &lt;name&gt;hps_io_spim0_clk&lt;/name&gt;
+                        &lt;role&gt;spim0_clk&lt;/role&gt;
+                        &lt;direction&gt;Output&lt;/direction&gt;
+                        &lt;width&gt;1&lt;/width&gt;
+                        &lt;lowerBound&gt;0&lt;/lowerBound&gt;
+                        &lt;vhdlType&gt;STD_LOGIC&lt;/vhdlType&gt;
+                        &lt;terminationValue&gt;0&lt;/terminationValue&gt;
+                    &lt;/port&gt;
+                    &lt;port&gt;
+                        &lt;name&gt;hps_io_spim0_mosi&lt;/name&gt;
+                        &lt;role&gt;spim0_mosi&lt;/role&gt;
+                        &lt;direction&gt;Output&lt;/direction&gt;
+                        &lt;width&gt;1&lt;/width&gt;
+                        &lt;lowerBound&gt;0&lt;/lowerBound&gt;
+                        &lt;vhdlType&gt;STD_LOGIC&lt;/vhdlType&gt;
+                        &lt;terminationValue&gt;0&lt;/terminationValue&gt;
+                    &lt;/port&gt;
+                    &lt;port&gt;
+                        &lt;name&gt;hps_io_spim0_ss0_n&lt;/name&gt;
+                        &lt;role&gt;spim0_ss0_n&lt;/role&gt;
+                        &lt;direction&gt;Output&lt;/direction&gt;
+                        &lt;width&gt;1&lt;/width&gt;
+                        &lt;lowerBound&gt;0&lt;/lowerBound&gt;
+                        &lt;vhdlType&gt;STD_LOGIC&lt;/vhdlType&gt;
+                        &lt;terminationValue&gt;0&lt;/terminationValue&gt;
+                    &lt;/port&gt;
+                    &lt;port&gt;
+                        &lt;name&gt;hps_io_uart1_tx&lt;/name&gt;
+                        &lt;role&gt;uart1_tx&lt;/role&gt;
+                        &lt;direction&gt;Output&lt;/direction&gt;
+                        &lt;width&gt;1&lt;/width&gt;
+                        &lt;lowerBound&gt;0&lt;/lowerBound&gt;
+                        &lt;vhdlType&gt;STD_LOGIC&lt;/vhdlType&gt;
+                        &lt;terminationValue&gt;0&lt;/terminationValue&gt;
+                    &lt;/port&gt;
+                    &lt;port&gt;
+                        &lt;name&gt;hps_io_uart1_rx&lt;/name&gt;
+                        &lt;role&gt;uart1_rx&lt;/role&gt;
+                        &lt;direction&gt;Input&lt;/direction&gt;
+                        &lt;width&gt;1&lt;/width&gt;
+                        &lt;lowerBound&gt;0&lt;/lowerBound&gt;
+                        &lt;vhdlType&gt;STD_LOGIC&lt;/vhdlType&gt;
+                        &lt;terminationValue&gt;0&lt;/terminationValue&gt;
+                    &lt;/port&gt;
+                    &lt;port&gt;
+                        &lt;name&gt;hps_io_gpio34&lt;/name&gt;
+                        &lt;role&gt;gpio34&lt;/role&gt;
+                        &lt;direction&gt;Bidir&lt;/direction&gt;
+                        &lt;width&gt;1&lt;/width&gt;
+                        &lt;lowerBound&gt;0&lt;/lowerBound&gt;
+                        &lt;vhdlType&gt;STD_LOGIC&lt;/vhdlType&gt;
+                        &lt;terminationValue&gt;0&lt;/terminationValue&gt;
+                    &lt;/port&gt;
+                    &lt;port&gt;
+                        &lt;name&gt;hps_io_gpio35&lt;/name&gt;
+                        &lt;role&gt;gpio35&lt;/role&gt;
+                        &lt;direction&gt;Bidir&lt;/direction&gt;
+                        &lt;width&gt;1&lt;/width&gt;
+                        &lt;lowerBound&gt;0&lt;/lowerBound&gt;
+                        &lt;vhdlType&gt;STD_LOGIC&lt;/vhdlType&gt;
+                        &lt;terminationValue&gt;0&lt;/terminationValue&gt;
+                    &lt;/port&gt;
+                    &lt;port&gt;
+                        &lt;name&gt;hps_io_gpio42&lt;/name&gt;
+                        &lt;role&gt;gpio42&lt;/role&gt;
+                        &lt;direction&gt;Bidir&lt;/direction&gt;
+                        &lt;width&gt;1&lt;/width&gt;
+                        &lt;lowerBound&gt;0&lt;/lowerBound&gt;
+                        &lt;vhdlType&gt;STD_LOGIC&lt;/vhdlType&gt;
+                        &lt;terminationValue&gt;0&lt;/terminationValue&gt;
+                    &lt;/port&gt;
+                &lt;/ports&gt;
+                &lt;assignments&gt;
+                    &lt;assignmentValueMap/&gt;
+                &lt;/assignments&gt;
+                &lt;parameters&gt;
+                    &lt;parameterValueMap&gt;
+                        &lt;entry&gt;
+                            &lt;key&gt;associatedClock&lt;/key&gt;
+                        &lt;/entry&gt;
+                        &lt;entry&gt;
+                            &lt;key&gt;associatedReset&lt;/key&gt;
+                        &lt;/entry&gt;
+                        &lt;entry&gt;
+                            &lt;key&gt;prSafe&lt;/key&gt;
+                            &lt;value&gt;false&lt;/value&gt;
+                        &lt;/entry&gt;
+                    &lt;/parameterValueMap&gt;
+                &lt;/parameters&gt;
+            &lt;/interface&gt;
+        &lt;/interfaces&gt;
+    &lt;/boundary&gt;
+    &lt;originalModuleInfo&gt;
+        &lt;className&gt;intel_agilex_5_soc&lt;/className&gt;
+        &lt;version&gt;14.0.0&lt;/version&gt;
+        &lt;displayName&gt;Hard Processor System IP&lt;/displayName&gt;
+    &lt;/originalModuleInfo&gt;
+    &lt;systemInfoParameterDescriptors&gt;
+        &lt;descriptors&gt;
+            &lt;descriptor&gt;
+                &lt;parameterDefaultValue&gt;&lt;/parameterDefaultValue&gt;
+                &lt;parameterName&gt;AUTO_BOARD&lt;/parameterName&gt;
+                &lt;parameterType&gt;java.lang.String&lt;/parameterType&gt;
+                &lt;systemInfotype&gt;BOARD&lt;/systemInfotype&gt;
+            &lt;/descriptor&gt;
+            &lt;descriptor&gt;
+                &lt;parameterDefaultValue&gt;&lt;/parameterDefaultValue&gt;
+                &lt;parameterName&gt;AUTO_DEVICE_SPEEDGRADE&lt;/parameterName&gt;
+                &lt;parameterType&gt;java.lang.String&lt;/parameterType&gt;
+                &lt;systemInfotype&gt;DEVICE_SPEEDGRADE&lt;/systemInfotype&gt;
+            &lt;/descriptor&gt;
+            &lt;descriptor&gt;
+                &lt;parameterDefaultValue&gt;&lt;/parameterDefaultValue&gt;
+                &lt;parameterName&gt;device_family&lt;/parameterName&gt;
+                &lt;parameterType&gt;java.lang.String&lt;/parameterType&gt;
+                &lt;systemInfotype&gt;DEVICE_FAMILY&lt;/systemInfotype&gt;
+            &lt;/descriptor&gt;
+            &lt;descriptor&gt;
+                &lt;parameterDefaultValue&gt;&lt;/parameterDefaultValue&gt;
+                &lt;parameterName&gt;device_name&lt;/parameterName&gt;
+                &lt;parameterType&gt;java.lang.String&lt;/parameterType&gt;
+                &lt;systemInfotype&gt;DEVICE&lt;/systemInfotype&gt;
+            &lt;/descriptor&gt;
+            &lt;descriptor&gt;
+                &lt;parameterDefaultValue&gt;&lt;/parameterDefaultValue&gt;
+                &lt;parameterName&gt;device_trait_iobank_rev&lt;/parameterName&gt;
+                &lt;parameterType&gt;java.lang.String&lt;/parameterType&gt;
+                &lt;systemInfoArgs&gt;DEVICE_IOBANK_REVISION&lt;/systemInfoArgs&gt;
+                &lt;systemInfotype&gt;PART_TRAIT&lt;/systemInfotype&gt;
+            &lt;/descriptor&gt;
+        &lt;/descriptors&gt;
+    &lt;/systemInfoParameterDescriptors&gt;
+    &lt;systemInfos&gt;
+        &lt;connPtSystemInfos/&gt;
+    &lt;/systemInfos&gt;
+&lt;/componentDefinition&gt;" />
+  <parameter name="cpuInfo" value="" />
+  <parameter name="AUTO_DEVICE_SPEEDGRADE" value="4" />
+  <parameter
+     name="logicalView"
+     value="ip/hps_lcd_subsys/hps_lcd_subsys_agilex_hps.ip" />
+  <parameter
+     name="moduleAssignmentDefinition"
+     value="&lt;assignmentDefinition&gt;
+    &lt;assignmentValueMap&gt;
+        &lt;entry&gt;
+            &lt;key&gt;embeddedsw.CMacro.CPU_FREQ&lt;/key&gt;
+            &lt;value&gt;50000000u&lt;/value&gt;
+        &lt;/entry&gt;
+        &lt;entry&gt;
+            &lt;key&gt;embeddedsw.configuration.cpuArchitecture&lt;/key&gt;
+            &lt;value&gt;sm_hps&lt;/value&gt;
+        &lt;/entry&gt;
+    &lt;/assignmentValueMap&gt;
+&lt;/assignmentDefinition&gt;" />
+  <parameter
+     name="transformParameters"
+     value="&lt;transformParameterDescriptorDefinitionList/&gt;" />
+  <parameter name="device_name" value="A5ED013BB32AE4SCS" />
+  <parameter name="svInterfaceDefinition" value="" />
+  <parameter name="device_trait_iobank_rev" value="IO96B_REVB1" />
+  <parameter name="AUTO_DEVICE" value="A5ED013BB32AE4SCS" />
+  <parameter
+     name="hdlParameters"
+     value="&lt;hdlParameterDescriptorDefinitionList/&gt;" />
+  <parameter
+     name="generationInfoDefinition"
+     value="&lt;generationInfoDefinition&gt;
+    &lt;hdlLibraryName&gt;hps_lcd_subsys_agilex_hps&lt;/hdlLibraryName&gt;
+    &lt;fileSets&gt;
+        &lt;fileSet&gt;
+            &lt;fileSetName&gt;hps_lcd_subsys_agilex_hps&lt;/fileSetName&gt;
+            &lt;fileSetFixedName&gt;hps_lcd_subsys_agilex_hps&lt;/fileSetFixedName&gt;
+            &lt;fileSetKind&gt;QUARTUS_SYNTH&lt;/fileSetKind&gt;
+            &lt;fileSetFiles/&gt;
+            &lt;fileSetFileChangeDefs/&gt;
+        &lt;/fileSet&gt;
+        &lt;fileSet&gt;
+            &lt;fileSetName&gt;hps_lcd_subsys_agilex_hps&lt;/fileSetName&gt;
+            &lt;fileSetFixedName&gt;hps_lcd_subsys_agilex_hps&lt;/fileSetFixedName&gt;
+            &lt;fileSetKind&gt;SIM_VERILOG&lt;/fileSetKind&gt;
+            &lt;fileSetFiles/&gt;
+            &lt;fileSetFileChangeDefs/&gt;
+        &lt;/fileSet&gt;
+        &lt;fileSet&gt;
+            &lt;fileSetName&gt;hps_lcd_subsys_agilex_hps&lt;/fileSetName&gt;
+            &lt;fileSetFixedName&gt;hps_lcd_subsys_agilex_hps&lt;/fileSetFixedName&gt;
+            &lt;fileSetKind&gt;SIM_VHDL&lt;/fileSetKind&gt;
+            &lt;fileSetFiles/&gt;
+            &lt;fileSetFileChangeDefs/&gt;
+        &lt;/fileSet&gt;
+        &lt;fileSet&gt;
+            &lt;fileSetName&gt;hps_lcd_subsys_agilex_hps&lt;/fileSetName&gt;
+            &lt;fileSetFixedName&gt;hps_lcd_subsys_agilex_hps&lt;/fileSetFixedName&gt;
+            &lt;fileSetKind&gt;CDC&lt;/fileSetKind&gt;
+            &lt;fileSetFiles/&gt;
+            &lt;fileSetFileChangeDefs/&gt;
+        &lt;/fileSet&gt;
+        &lt;fileSet&gt;
+            &lt;fileSetName&gt;hps_lcd_subsys_agilex_hps&lt;/fileSetName&gt;
+            &lt;fileSetFixedName&gt;hps_lcd_subsys_agilex_hps&lt;/fileSetFixedName&gt;
+            &lt;fileSetKind&gt;CDC_VHDL&lt;/fileSetKind&gt;
+            &lt;fileSetFiles/&gt;
+            &lt;fileSetFileChangeDefs/&gt;
+        &lt;/fileSet&gt;
+    &lt;/fileSets&gt;
+&lt;/generationInfoDefinition&gt;" />
+  <parameter name="liveModuleName" value="agilex_hps" />
+  <generatedFiles/>
+  <childGeneratedFiles/>
+  <sourceFiles/>
+  <childSourceFiles/>
+  <instantiator instantiator="hps_lcd_subsys" as="agilex_hps" />
+  <messages>
+   <message level="Info" culprit="hps_lcd_subsys">"Generating: hps_lcd_subsys_agilex_hps"</message>
+  </messages>
+ </entity>
+</deploy>

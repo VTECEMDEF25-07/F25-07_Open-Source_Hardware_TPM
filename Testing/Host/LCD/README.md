@@ -100,3 +100,44 @@ lead must still integrate actual FSM signals/live-register serialization, prove
 HPS access, and obtain a physical screen observation or explicitly report that
 gate as blocked. No standalone tests here prove LCD power, glass, wiring, actual
 SCLK, screen orientation/contrast or new-demo physical acceptance.
+# Bare-metal UART relay
+
+`de25_lcd_uart_relay.py` replaces the Linux/SSH transport only when the lead has
+validated the HPS-only OCRAM image. It uses the existing unchanged customer
+`DE25_LCD_COMMAND_JSON` child-stdin seam. Example argv, with absolute paths:
+
+```json
+["python","<checkout>/Testing/Host/LCD/de25_lcd_uart_relay.py","--port","COM7","--expected-serial","TRWZCK53B"]
+```
+
+No helper invocation here proves a live HPS or LCD. Lead alone opens COM7;
+COM5/other ports and automatic selection are rejected. It checks discovered
+serial/hardware serial and descriptor for conflicts; an optional
+`--expected-description` pins a known descriptor substring. If the device has
+only a descriptor and no serial metadata, it logs that reduced identity level.
+An absent device, no identity information, mismatched serial or an SPI descriptor
+fails before opening. PySerial3.5 is installed; import/help/tests never open it.
+
+UART is115200/8N1, no flow control,50ms read timeout and250ms write timeout.
+Desired DTR/RTS are low before opening and never changed while open; driver
+opening transients are not physically verified. The helper makes no explicit
+buffer-reset/flush call, but installed PySerial3.5's Windows `open()` itself
+purges pending RX/TX bytes. Start capture before boot where possible; a late open
+can lose the one-shot banner and is inconclusive. Each bounded valid3-field actual snapshot is sent as canonical ASCII
+JSON; duplicate heartbeats are preserved. Malformed/oversized input, short write
+or disconnect produces a nonzero exit. UART raw bytes and parsed FRAME_SENT
+acknowledgments go to separate JSON log events on stdout, never back to stdin.
+Every ack explicitly records `glass_verified:false`.
+
+For a lead-owned5second boot capture with **zero snapshot writes**:
+
+```powershell
+python '<checkout>/Testing/Host/LCD/de25_lcd_uart_relay.py' --port COM7 --capture-only --capture-seconds 5
+```
+
+Capture is capped at30seconds. Relay EOF allows0.5seconds to drain acknowledgments;
+stdin joins and close are bounded. Tests use fake serial only:
+
+```powershell
+python -m unittest discover -s 'Testing/Host/LCD' -p 'test_de25_lcd_uart_relay.py' -v
+```
