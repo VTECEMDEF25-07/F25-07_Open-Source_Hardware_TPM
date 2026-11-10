@@ -4,7 +4,8 @@ module demo_keygen_operation #(
     parameter integer DEMO_PROVIDER_MODE=1, IP_TYPE=0,PRIVATE_RSA_ENABLE=0,
     parameter DEVICE_FAMILY="Agilex 5",
     parameter [63:0] DEADLINE_CYCLES=64'd9000000000,
-    parameter [31:0] CLEANUP_CYCLES=32'd4096
+    parameter [31:0] CLEANUP_CYCLES=32'd4096,
+    parameter integer ENTROPY_WARMUP_CYCLES=8, ENTROPY_SAMPLE_DIV=1
 ) (
     input wire clock_i,reset_n_i,
     input wire job_valid_i,output wire job_ready_o,
@@ -101,7 +102,9 @@ module demo_keygen_operation #(
     assign release_handle_o=done_handle_o;
     assign release_rsp_ready_o=running && state_reg==RELEASE_WAIT;
     assign word_ready=core_generation_ready && !abort_o && state_reg==RUN;
-    demo_generation_service #(.DEMO_PROVIDER_MODE(DEMO_PROVIDER_MODE)) u_source(
+    demo_generation_service #(.DEMO_PROVIDER_MODE(DEMO_PROVIDER_MODE),
+        .ENTROPY_WARMUP_CYCLES(ENTROPY_WARMUP_CYCLES),
+        .ENTROPY_SAMPLE_DIV(ENTROPY_SAMPLE_DIV)) u_source(
         .clock_i(clock_i),.reset_n_i(reset_n_i),
         .open_valid_i(state_reg==OPEN && running),.open_ready_o(source_open_ready),
         .open_profile_i(done_profile_o),.open_id_i(done_id_o),.open_mode_i(done_mode_o),

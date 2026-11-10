@@ -4,7 +4,8 @@
 module demo_generation_service #(
     parameter integer DEMO_PROVIDER_MODE=1,
     parameter integer SEED_BLOCKS=3, RESEED_BLOCKS=2,
-    parameter [47:0] RESEED_INTERVAL=48'd1024
+    parameter [47:0] RESEED_INTERVAL=48'd1024,
+    parameter integer ENTROPY_WARMUP_CYCLES=8, ENTROPY_SAMPLE_DIV=1
 ) (
     input wire clock_i, reset_n_i,
     input wire open_valid_i, output wire open_ready_o,
@@ -69,7 +70,8 @@ module demo_generation_service #(
         reg [2:0] index_reg;
         reg full_reg,pending_reg,protocol_fault_reg;
         wire gen_req=provider_running && state_reg==ACTIVE && !full_reg && !protocol_fault_reg;
-        entropy_source u_entropy(.clk(clock_i),.rst_n(provider_running),.enable(provider_running),
+        entropy_source #(.WARMUP_CYCLES(ENTROPY_WARMUP_CYCLES),
+            .SAMPLE_DIV(ENTROPY_SAMPLE_DIV)) u_entropy(.clk(clock_i),.rst_n(provider_running),.enable(provider_running),
             .entropy_output(entropy),.entropy_valid(entropy_valid),.raw_sample(),.raw_sample_valid());
         random_number_generation #(.SEED_BLOCKS(SEED_BLOCKS),.RESEED_BLOCKS(RESEED_BLOCKS),
             .RESEED_INTERVAL(RESEED_INTERVAL)) u_drbg(.clk(clock_i),.rst_n(provider_running),
