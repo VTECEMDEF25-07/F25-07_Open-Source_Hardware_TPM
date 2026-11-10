@@ -19,7 +19,9 @@ def main():
     run(['vlog','-sv',td/'tb_customer_demo_packet.sv'],'compile-bench')
     for name,params,marker in [('enabled',[],'CUSTOMER_PACKET_PASS'),
                                ('export-disabled',['-gEXPORT_ENABLED=0'],'CUSTOMER_PACKET_DISABLED_PASS'),
-                               ('deadline',['-gWATCHDOG_TEST=1'],'CUSTOMER_PACKET_TIMEOUT_PASS')]:
+                               ('deadline',['-gWATCHDOG_TEST=1'],'CUSTOMER_PACKET_TIMEOUT_PASS'),
+                               ('early-success',['-gBAD_TERMINAL_TEST=1'],'CUSTOMER_PACKET_BAD_TERMINAL_PASS'),
+                               ('early-wrong-id',['-gBAD_TERMINAL_TEST=2'],'CUSTOMER_PACKET_BAD_TERMINAL_PASS')]:
         run(['vsim','-c','-voptargs=+acc','-onfinish','stop']+params+
             ['work.tb_customer_demo_packet','-do','run -all; quit -force -code 0'],name+'-simulation',marker)
     print('CUSTOMER_PACKET_SUITE_PASS (service-model simulation only)')

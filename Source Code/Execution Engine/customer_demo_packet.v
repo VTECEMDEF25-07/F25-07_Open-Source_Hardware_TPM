@@ -103,6 +103,7 @@ module customer_demo_packet #(
     reg [9:0] ram_write_addr,response_ram_addr;
     reg [7:0] ram_write_data;
     wire aes_mode=opcode==2;
+    wire worker_terminal_window=state==WORK_WAIT || state==STREAM_ADDR || state==STREAM_WAIT || state==STREAM_SEND;
     wire aes_output_fire=aes_output_valid_i && aes_output_ready_o;
     wire rsa_output_fire=rsa_output_valid_i && rsa_output_ready_o;
     wire [11:0] completed_output_count={1'b0,output_count}+(aes_output_fire || rsa_output_fire);
@@ -146,8 +147,10 @@ module customer_demo_packet #(
     assign rsa_input_data_o=internal_read_data;
     assign aes_output_ready_o=reset_n_i && worker_active && opcode==2 && output_count<data_length;
     assign rsa_output_ready_o=reset_n_i && worker_active && opcode==4 && output_count<256;
-    assign aes_status_ready_o=reset_n_i && state==WORK_WAIT && aes_mode && aes_scrub_done_i;
-    assign rsa_status_ready_o=reset_n_i && state==WORK_WAIT && !aes_mode;
+    // A worker can reject a descriptor/private-store lookup before accepting
+    // ciphertext. Its held terminal status must also be consumed while streaming.
+    assign aes_status_ready_o=reset_n_i && worker_active && worker_terminal_window && aes_mode && aes_scrub_done_i;
+    assign rsa_status_ready_o=reset_n_i && worker_active && worker_terminal_window && !aes_mode;
     assign rsa_job_valid_o=reset_n_i && state==RSA_JOB;
     assign rsa_job_id_o=request_id;
     assign rsa_key_handle_o=request_handle;
@@ -257,7 +260,7 @@ module customer_demo_packet #(
     task recover;
         begin
             recovery_required_o<=1; aes_use_allowed_o<=0; rsa_use_allowed_o<=0;
-            aes_key<=0; state<=RECOVERY; sticky_state<=9; sticky_detail<=8'hff;
+            worker_active<=0; aes_key<=0; state<=RECOVERY; sticky_state<=9; sticky_detail<=8'hff;
         end
     endtask
 
@@ -285,7 +288,18 @@ module customer_demo_packet #(
                 (state!=IDLE && elapsed>=DEADLINE_CYCLES) ||
                 (worker_active && ((opcode==2 && aes_output_valid_i && output_count>=data_length) ||
                                    (opcode==4 && rsa_output_valid_i && output_count>=256))))) recover;
-            else case(state)
+            else if(worker_active && state!=WORK_WAIT &&
+                    ((aes_mode && aes_status_valid_i && aes_status_ready_o) ||
+                     (!aes_mode && rsa_status_valid_i && rsa_status_ready_o))) begin
+                worker_active<=0;
+                if(!aes_mode && rsa_status_id_i!=request_id) recover;
+                else if((aes_mode ? aes_status_code_i : rsa_status_code_i)==0) recover;
+                else begin
+                    if(aes_mode) last_aes_cycles<=aes_status_cycles_i;
+                    else last_rsa_cycles<=rsa_status_cycles_i;
+                    fail(aes_mode ? aes_status_code_i : rsa_status_code_i);
+                end
+            end else case(state)
                 SCRUB: if(scrub_index==1023) begin scrub_index<=0; latch_count<=0; state<=SCRUB_LATCH; end
                     else scrub_index<=scrub_index+1'b1;
                 SCRUB_LATCH: if(latch_count==2) state<=scrub_for_reply ? ANNOUNCE : IDLE;

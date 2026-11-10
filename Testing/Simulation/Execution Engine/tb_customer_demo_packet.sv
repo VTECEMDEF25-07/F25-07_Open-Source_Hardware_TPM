@@ -1,6 +1,7 @@
 
 `timescale 1ns/1ps
-module tb_customer_demo_packet #(parameter EXPORT_ENABLED=1, parameter WATCHDOG_TEST=0);
+module tb_customer_demo_packet #(parameter EXPORT_ENABLED=1, parameter WATCHDOG_TEST=0,
+ parameter BAD_TERMINAL_TEST=0);
 reg  clock_i;
 reg  reset_n_i;
 reg  start_i;
@@ -124,6 +125,7 @@ reg [31:0] model_handle=0,next_handle=32'h80000001,model_gen_id=0;
 reg [1:0] model_profile=0,model_gen_profile=0;
 reg [3:0] inject_gen_error=0;
 reg early_gen=0,inject_aes_error=0,inject_bad_status_id=0;
+reg inject_aes_early=0,inject_rsa_early=0;
 reg aes_active=0,aes_outputting=0,rsa_active=0,rsa_outputting=0;
 reg [7:0] got;
 reg passed=0;
@@ -139,11 +141,11 @@ always @* begin
  release_ready_i=1; key_request_ready_i=cycle%3!=0; public_request_ready_i=cycle%3!=0;
  resolved_key_i=key_reply_valid_i && key_reply_code_i==0 ? KEY : 0;
  aes_job_ready_i=!aes_active && !aes_status_valid_i;
- aes_input_ready_i=aes_active && !aes_outputting && aes_in<aes_n && cycle%3!=0;
+ aes_input_ready_i=aes_active && !inject_aes_early && !aes_outputting && aes_in<aes_n && cycle%3!=0;
  aes_output_valid_i=aes_outputting && aes_out<(inject_aes_error ? aes_n/2 : aes_n);
  aes_output_data_i=aes_buffer[aes_out]^8'h5a;
  rsa_job_ready_i=!rsa_active && !rsa_status_valid_i;
- rsa_input_ready_i=rsa_active && !rsa_outputting && rsa_in<256 && cycle%3!=0;
+ rsa_input_ready_i=rsa_active && !inject_rsa_early && !rsa_outputting && rsa_in<256 && cycle%3!=0;
  rsa_output_valid_i=rsa_outputting && rsa_out<256;
  rsa_output_data_i=rsa_frame[rsa_out];
  rsa_phase_i=rsa_outputting ? 4'd9 : 4'd3; rsa_progress_i=rsa_outputting ? rsa_out : rsa_in;
@@ -197,6 +199,10 @@ always @(posedge clock_i) begin
    if(aes_job_key_o!==KEY)$fatal(1,"wrong AES key/byte order");
    aes_jobs<=aes_jobs+1; aes_n<=aes_job_bytes_o; aes_in<=0; aes_out<=0;
    aes_active<=1; aes_outputting<=aes_job_bytes_o==0; aes_scrub_done_i<=0;
+   if(inject_aes_early)begin
+    aes_status_valid_i<=1;aes_status_code_i<='h095;aes_status_result_bytes_i<=0;
+    aes_status_iv_i<=0;aes_status_cycles_i<=19;aes_finish<=7;aes_outputting<=0;
+   end
   end
   if(aes_input_valid_o && aes_input_ready_i) begin
    if(aes_input_data_o!==(aes_in%256))$fatal(1,"AES input byte%0d got%h",aes_in,aes_input_data_o);
@@ -216,6 +222,9 @@ always @(posedge clock_i) begin
    if(rsa_key_handle_o!==model_handle || !rsa_use_allowed_o || rsa_ciphertext_bytes_o!=256)$fatal(1,"RSA descriptor/permission");
    rsa_jobs<=rsa_jobs+1; rsa_active<=1;rsa_in<=0;rsa_out<=0;rsa_outputting<=0;
    rsa_status_id_i<=rsa_job_id_o+(inject_bad_status_id ? 1 : 0);
+   if(inject_rsa_early)begin
+    rsa_finish<=7;rsa_status_code_i<='h18b;rsa_status_result_bytes_i<=0;
+   end
   end
   if(rsa_input_valid_o && rsa_input_ready_i) begin
    if(rsa_input_data_o!==(rsa_in%256))$fatal(1,"RSA input byte%0d",rsa_in);
@@ -225,7 +234,10 @@ always @(posedge clock_i) begin
   if(rsa_outputting && rsa_out==256)begin rsa_outputting<=0;rsa_finish<=7; end
   if(rsa_finish>0) begin
    rsa_finish<=rsa_finish-1;
-   if(rsa_finish==1)begin rsa_status_valid_i<=1;rsa_status_code_i<=0;rsa_status_result_bytes_i<=256;rsa_status_cycles_i<=2468;end
+   if(rsa_finish==1)begin
+    rsa_status_valid_i<=1;rsa_status_code_i<=inject_rsa_early && BAD_TERMINAL_TEST!=1 ? 'h18b : 0;
+    rsa_status_result_bytes_i<=inject_rsa_early ? 0 : 256;rsa_status_cycles_i<=2468;
+   end
   end
   if(rsa_status_valid_i && rsa_status_ready_o)begin rsa_status_valid_i<=0;rsa_active<=0; end
   if(response_valid_o && (cleanup_delay>0 || aes_finish>0 || rsa_finish>0))$fatal(1,"published before cleanup");
@@ -399,12 +411,27 @@ rsa_progress_i=0;
  if(!aes_use_allowed_o || !aes_client_active_o)$fatal(1,"export permission/lease");consume;
  aes_command(0,10,0);aes_command(1,11,0);aes_command(17,12,0);aes_command(1024,13,0);
  inject_aes_error=1;aes_command(16,14,'h101);inject_aes_error=0;aes_command(2,15,0);
+ // Worker terminal errors after cleanup may precede the first input-ready.
+ inject_aes_early=1;aes_command(17,17,'h095);
+ if(aes_in!=0 || recovery_required_o)$fatal(1,"early AES rejection not consumed cleanly");
+ inject_aes_early=0;aes_command(1,18,0);
  prepare(2,16,32'h80000001,0,61);packet[42]=0;packet[43]=16;launch;response('h095,0,2,16);consume;
  prepare(3,50,0,0,26);launch;response(0,292,3,50);word(8,32'h80000002);
  equalbyte(28,1);equalbyte(29,0);
  for(integer k=0;k<64;k=k+1)word(30+k*4,nword(k));
  equalbyte(286,0);equalbyte(287,4);word(288,32'h10001);
  if(releases!=1 || public_reads!=65 || !rsa_use_allowed_o || aes_use_allowed_o)$fatal(1,"replacement/public scope");consume;
+ if(BAD_TERMINAL_TEST)begin
+  inject_rsa_early=1;inject_bad_status_id=BAD_TERMINAL_TEST==2;
+  prepare(4,58,32'h80000002,0,284);packet[26]=1;packet[27]=0;launch;
+  cycles=0;while(!recovery_required_o)begin tick;cycles++;if(cycles>1000)$fatal(1,"early success/ID mismatch not locked");end
+  if(response_valid_o || rsa_input_valid_o || rsa_use_allowed_o || aes_use_allowed_o || !busy_o)
+   $fatal(1,"early malformed terminal fabricated response/reuse");
+  passed=1;$display("CUSTOMER_PACKET_BAD_TERMINAL_PASS kind=%0d",BAD_TERMINAL_TEST);$finish;
+ end
+ inject_rsa_early=1;rsa_command(15,57,'h18b);
+ if(rsa_in!=0 || recovery_required_o)$fatal(1,"early RSA rejection not consumed cleanly");
+ inject_rsa_early=0;
  frame(15,0,0);rsa_command(15,51,0);
  frame(0,0,0);rsa_command(0,52,0);
  frame(240,0,0);rsa_command(240,53,0);

@@ -10,8 +10,8 @@
 - Snapshot inputs must be an already coherent actual status snapshot. Opcode 5 latches all three inputs together.
 - Export is disabled by default. Enable `DEMO_AES_EXPORT_ENABLE` explicitly for the authorized demo image.
 
-Run `python Testing/Simulation/Execution\ Engine/run_customer_packet.py` using native Questa. The runner bounds each process to 60 seconds and requires a success marker as well as no simulator errors/fatals.
+Run `python "Testing/Simulation/Execution Engine/run_customer_packet.py"` using native Questa. The runner bounds each process to 60 seconds and requires a success marker as well as no simulator errors/fatals.
 
-The enabled service-model test passed 1,884 checks, including AES lengths 0/1/17/1024, partial-result failure and retry, public 65-word reads, RSA frame lengths 0/15/240, malformed magic/length/final-tail rejection, cleanup gates, reset, and full payload/key/read-latch clearing. Separate configurations passed export-disabled and shortened-deadline lockout checks. Production Verilog-2001 and the SystemVerilog bench compiled with zero errors and zero warnings.
+The enabled service-model test passes 1,918 checks, including AES lengths 0/1/17/1024, partial-result failure and retry, public 65-word reads, RSA frame lengths 0/15/240, malformed magic/length/final-tail rejection, cleanup gates, reset, and full payload/key/read-latch clearing. AES and RSA early rejection before the first input-ready must return their real nonzero status after cleanup without waiting for the packet deadline; a subsequent valid operation must work. Separate configurations cover export-disabled, shortened-deadline lockout, unexpected early success, and early terminal wrong operation ID. Production Verilog-2001 and the SystemVerilog bench compile with zero errors and zero warnings.
 
 These are packet/control simulations with modeled crypto services. They do not establish AES/RSA arithmetic correctness, Quartus fit/timing, physical hardware behavior, Phase I acceptance on a new image, or LCD glass behavior. No FPGA or driver is opened by this runner.
