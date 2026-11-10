@@ -23,6 +23,15 @@ module de25_soc_top #(parameter IP_TYPE = `FPGA_IP_TYPE,
     input spi_reset_n_i,
     output spi_miso_o,
     output interrupt_n_o,
+    input hps_osc_clk25_i,
+    input hps_uart1_rx_i,
+    output hps_uart1_tx_o,
+    output hps_spim0_clk_o,
+    output hps_spim0_mosi_o,
+    output hps_spim0_ss0_n_o,
+    inout hps_gpio34_io,
+    inout hps_gpio35_io,
+    inout hps_gpio42_io,
     inout fan_i2c_scl,
     inout fan_i2c_sda
 );
@@ -75,6 +84,14 @@ module de25_soc_top #(parameter IP_TYPE = `FPGA_IP_TYPE,
         .SPI_MOSI(spi_mosi_i),
         .SPI_MISO(spi_miso_o),
         .SPI_PIRQ_n(interrupt_n_o)
+    );
+
+    // Dedicated HPS-only LCD island: no fabric bridge, clock or TPM/fan reset coupling.
+    hps_lcd_island lcd_hps (
+        .hps_osc_clk25_i(hps_osc_clk25_i),.hps_uart1_rx_i(hps_uart1_rx_i),
+        .hps_uart1_tx_o(hps_uart1_tx_o),.hps_spim0_clk_o(hps_spim0_clk_o),
+        .hps_spim0_mosi_o(hps_spim0_mosi_o),.hps_spim0_ss0_n_o(hps_spim0_ss0_n_o),
+        .hps_gpio34_io(hps_gpio34_io),.hps_gpio35_io(hps_gpio35_io),.hps_gpio42_io(hps_gpio42_io)
     );
 
     // Cooling remains autonomous during SPI reset.
