@@ -9,6 +9,7 @@ import json
 import math
 from pathlib import Path
 import subprocess
+import importlib.util
 
 
 def main():
@@ -93,6 +94,37 @@ def main():
     pair = pair.replace('always @(negedge clock_i)private_ready=(cycles%7<4);',
                         'integer stall_cycle=0;always @(negedge clock_i)begin stall_cycle=stall_cycle+1;private_ready=(stall_cycle%7<4);end')
     (build / 'tb_pair_private.sv').write_text(pair)
+    operation = (verification/'integration/tb_demo_operation.sv').read_text()
+    operation = operation.replace('module tb_demo_operation;', 'module tb_demo_operation_cycles;')
+    operation = operation.replace('integer jobs=0,commits=0,done_count=0;', '''
+wire[63:0] done_cycles;
+reg[63:0] observed_cycle=0,accepted_cycle=0,held_cycles=0;
+reg previous_done=0;
+always @(posedge clk)begin
+ observed_cycle<=observed_cycle+1;
+ if(!rst)previous_done<=0;
+ else begin
+  if(jv&&jr)accepted_cycle<=observed_cycle;
+  if(dv&&!previous_done)begin
+   if(done_cycles!==observed_cycle-accepted_cycle-1)$fatal(1,"accepted-job cycle count mismatch got%0d expected%0d",done_cycles,observed_cycle-accepted_cycle-1);
+   held_cycles<=done_cycles;
+  end
+  if(dv&&previous_done&&done_cycles!==held_cycles)$fatal(1,"DONE backpressure changed cycles");
+  if(!dv&&done_cycles!==0)$fatal(1,"cycle count visible outside held DONE");
+  previous_done<=dv;
+ end
+end
+integer jobs=0,commits=0,done_count=0;''')
+    operation = operation.replace('.done_ownership_committed_o(committed)',
+                                  '.done_cycles_o(done_cycles),.done_ownership_committed_o(committed)')
+    (build/'tb_demo_operation_cycles.sv').write_text(operation)
+    spec=importlib.util.spec_from_file_location('demo_generation_reference',verification/'integration/run_demo_generation.py')
+    reference=importlib.util.module_from_spec(spec);spec.loader.exec_module(reference)
+    entropy,fresh,test=reference.vectors()
+    vector_lines=['initial begin']
+    vector_lines += [f"entropy_fixture[{i}]=256'h{x.hex()};" for i,x in enumerate(entropy)]
+    vector_lines += [f"expected[{i}]=MODE==0 ? 256'h{f.hex()} : 256'h{t.hex()};" for i,(f,t) in enumerate(zip(fresh,test))]
+    (build/'demo_vectors.vh').write_text('\n'.join(vector_lines+['end\n']))
     subprocess.run(['python', str(verification / 'reference/pair_vectors.py'), str(build / 'pair_vectors.mem')], check=True)
     source = repo / 'Source Code'
     files = sorted((source / 'Key Generation/rtl').rglob('*.v')) + sorted((source / 'Key Generation/IP').glob('*.v'))

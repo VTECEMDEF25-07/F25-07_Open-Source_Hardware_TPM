@@ -14,7 +14,8 @@ def main():
     p.add_argument('--build', type=Path, required=True)
     p.add_argument('--prepared', type=Path, required=True)
     p.add_argument('--reuse', action='store_true')
-    p.add_argument('--top', choices=['tb_keygen_full', 'tb_pair_private', 'tb_private_lease', 'tb_private_store'], default='tb_keygen_full')
+    p.add_argument('--top', choices=['tb_keygen_full', 'tb_pair_private', 'tb_private_lease', 'tb_private_store',
+        'tb_keygen_aes_core','tb_keygen_lifecycle','tb_demo_operation_cycles'], default='tb_keygen_full')
     a = p.parse_args()
     build, prepared = a.build.resolve(), a.prepared.resolve()
     if os.name == 'nt':
@@ -31,9 +32,16 @@ def main():
     source = repo / 'Source Code/Key Generation'
     verification = repo / 'Testing/Simulation/Key Generation'
     files = sorted((source / 'rtl').rglob('*.v')) + sorted((source / 'IP').glob('*.v'))
-    test = prepared / (a.top + '.sv') if a.top in ('tb_keygen_full','tb_pair_private') else Path(__file__).with_name(a.top+'.sv')
+    test = prepared / (a.top + '.sv') if a.top in ('tb_keygen_full','tb_pair_private','tb_demo_operation_cycles') else (
+        verification/'testbench'/(a.top+'.sv') if a.top in ('tb_keygen_aes_core','tb_keygen_lifecycle') else Path(__file__).with_name(a.top+'.sv'))
+    private_mode=int('.PRIVATE_RSA_ENABLE(1)' in test.read_text())
     files += [verification / 'testbench/fixtures/keygen_test_source.v', test]
     if a.top=='tb_private_store':
+        files += [repo/'Source Code/Demo Memory/demo_volatile_store.v']
+    if a.top=='tb_demo_operation_cycles':
+        files += sorted((source/'integration').glob('*.v'))
+        files += sorted((repo/'Source Code/Hash Module').glob('*.v'))
+        files += [repo/'Source Code/RNG Module'/(n+'.v') for n in ('ring_osc','entropy_source','random_number_generation')]
         files += [repo/'Source Code/Demo Memory/demo_volatile_store.v']
     build.mkdir(parents=True, exist_ok=True)
     obj = build / 'obj'
@@ -41,6 +49,9 @@ def main():
     def digest(path):
         return hashlib.sha256(path.read_bytes()).hexdigest()
     hashes = {str(f): digest(f) for f in files}
+    if a.top=='tb_demo_operation_cycles':
+        files.append(prepared/'demo_vectors.vh')
+        hashes[str(prepared/'demo_vectors.vh')]=digest(prepared/'demo_vectors.vh')
     manifest = build / 'manifest.json'
     def run(label, arguments, timeout=1800):
         result = subprocess.run(list(map(str, arguments)), cwd=build, stdout=subprocess.PIPE,
@@ -52,7 +63,11 @@ def main():
         return result.stdout
     if not a.reuse:
         run('elaborate', ['verilator', '--cc', '--exe', '--main', '--timing', '--top-module', a.top,
-                         '--Mdir', obj, '-Wno-fatal', '+1364-2001ext+v', '+1800-2017ext+sv', *files])
+                         '--Mdir', obj, '-Wno-fatal', '-DSIMULATION','-I'+str(prepared),
+                         # Existing shared SHA uses Verilog2005 $clog2. The
+                         # separate native vlog01 compatibility gate remains.
+                         ('+1364-2005ext+v' if a.top=='tb_demo_operation_cycles' else '+1364-2001ext+v'),
+                         '+1800-2017ext+sv', *[f for f in files if f.suffix!='.vh']])
         vr = Path('/usr/share/verilator/include')
         run('compile', ['g++', '-O2', '-std=c++20', '-pthread', '-I' + str(obj), '-I' + str(vr), '-I' + str(vr / 'vltstd'),
                         *sorted(obj.glob('*.cpp')), *[vr / x for x in ('verilated.cpp', 'verilated_timing.cpp', 'verilated_threads.cpp')], '-o', binary])
@@ -65,11 +80,13 @@ def main():
         (build/'pair_vectors.mem').write_bytes((prepared/'pair_vectors.mem').read_bytes())
     arguments=['+DIRECTED', '+STALLS', '+WORDS=384', '+EXPECTED=' + str(prepared / 'expected.hex'), '+STIMULUS=' + str(prepared / 'stimulus.hex')] if a.top=='tb_keygen_full' else []
     out = run('simulation', [binary,*arguments], timeout=3600)
-    marker={'tb_keygen_full':'PASS FULL_RSA','tb_pair_private':'PASS pair check:','tb_private_lease':'PASS PRIVATE_LEASE','tb_private_store':'PASS PRIVATE_STORE'}[a.top]
+    marker={'tb_keygen_full':'PASS FULL_RSA','tb_pair_private':'PASS pair check:','tb_private_lease':'PASS PRIVATE_LEASE',
+        'tb_private_store':'PASS PRIVATE_STORE','tb_keygen_aes_core':'PASS AES_CORE',
+        'tb_keygen_lifecycle':'PASS CORE_LIFECYCLE','tb_demo_operation_cycles':'DEMO_OPERATION_PASS'}[a.top]
     assert marker in out, 'no complete private keygen pass'
     assert hashes == {str(f): digest(f) for f in files}, 'sources changed during simulation'
     manifest.write_text(json.dumps(dict(status='PASS', source_sha256=hashes, binary_sha256=digest(binary),
-        directed_public_fixture=True, fresh_rng_claim=False, private_mode=1, simulator='Verilator'), indent=2))
+        directed_public_fixture=True, fresh_rng_claim=False, private_mode=private_mode, simulator='Verilator'), indent=2))
 
 
 if __name__ == '__main__':
