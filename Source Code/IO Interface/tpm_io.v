@@ -11,7 +11,8 @@
 //	Wrapper module to combine induvidual I/O submodules into a single module.
 	
 module	tpm_io #(parameter SCOPED_COMMANDS = 0,
-    parameter ENABLE_ENCRYPTDECRYPT2 = 0)
+    parameter ENABLE_ENCRYPTDECRYPT2 = 0,
+    parameter PRESERVE_LEGACY_COMMANDS = 0)
 (
     // Pass packet reads and response payload reads between the CRB and the top.
     input wire [11:0] exec_cmd_addr_i,
@@ -116,6 +117,7 @@ module	tpm_io #(parameter SCOPED_COMMANDS = 0,
 	);
 	
 	tpm_crb #(.SCOPED_COMMANDS(SCOPED_COMMANDS),
+        .PRESERVE_LEGACY_COMMANDS(PRESERVE_LEGACY_COMMANDS),
         .ENABLE_ENCRYPTDECRYPT2(ENABLE_ENCRYPTDECRYPT2)) command_response_buffer
 	(
         .exec_cmd_addr_i(exec_cmd_addr_i), .exec_cmd_byte_o(exec_cmd_byte_o),
