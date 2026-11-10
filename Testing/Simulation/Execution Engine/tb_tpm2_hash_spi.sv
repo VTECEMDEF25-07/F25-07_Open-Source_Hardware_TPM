@@ -104,6 +104,8 @@ initial begin
  #3; rst=1; #7; rst=0; #200; rst=1; #1000;
  write_one(16'h0000,8'h02); transfer(1,16'h0000,1);
  if (response[0] !== 8'ha1) $fatal(1,"Locality 0 was not granted");
+ repeat (2) begin
+ write_one(16'h0018,8'h40);
  write_one(16'h0018,8'h40);
  {packet[0],packet[1],packet[2],packet[3],packet[4],packet[5],packet[6],packet[7],packet[8],packet[9],packet[10],packet[11]}=96'h80010000000c000001440000;
  transfer(0,16'h0024,10); packet[0]=0; packet[1]=0; transfer(0,16'h0024,2);
@@ -118,6 +120,7 @@ initial begin
  $fatal(1,"Bad hash header %h",{response[0],response[1],response[2],response[3],response[4],response[5],response[6],response[7],response[8],response[9],response[10],response[11]});
  for(integer n=0;n<32;n=n+1) if(response[12+n]!==ABC[255-n*8 -:8]) $fatal(1,"Wrong digest byte %d",n);
  if({response[44],response[45],response[46],response[47],response[48],response[49],response[50],response[51]}!==64'h8024400000070000) $fatal(1,"Bad ticket");
+ end
  if (ENABLE_AES_TEST) begin
    aes_packet(0,32'h80000000,PLAINTEXT,0,0);
    aes_packet(1,32'h80000000,CIPHERTEXT,0,0);
