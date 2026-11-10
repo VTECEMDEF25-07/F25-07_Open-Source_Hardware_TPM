@@ -101,7 +101,8 @@ def execute_session(args,phase1_process=run_phase1,customer_process=run_customer
         result=phase1_process(argv)
         output=result.stdout or ''
         (root/'phase1-runner.stdout.txt').write_text(output,encoding='utf-8')
-        print(output,end='' if output.endswith('\n') else '\n',flush=True)
+        if not getattr(args,'quiet_phase1',False):
+            print(output,end='' if output.endswith('\n') else '\n',flush=True)
         report['phase1_return_code']=result.returncode
         if result.returncode!=0:raise SessionError('Original Phase I execution failed; customer crypto was not started')
         phase_result=phase_dir/'result.json'
@@ -146,6 +147,7 @@ def main():
     p.add_argument('--transport',default='de25_customer_transport:factory')
     p.add_argument('--status-relay')
     p.add_argument('--auto',action='store_true')
+    p.add_argument('--quiet-phase1',action='store_true',help='Keep full native output in logs; display the eight results once in the customer flow')
     p.add_argument('--message');p.add_argument('--rsa-message')
     args=p.parse_args()
     if not args.allow_demo_key_export:p.error('--allow-demo-key-export is mandatory for this DEMO-only flow')

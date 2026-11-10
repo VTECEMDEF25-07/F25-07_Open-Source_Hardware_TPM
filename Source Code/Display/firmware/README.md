@@ -1,5 +1,13 @@
 # DE25 OCRAM LCD firmware
 
+The plaintext display extension accepts a bounded `plaintext_b64`, `algorithm`
+(2=AES,4=RSA), `operation_id`, `sequence` record only when it matches the actual
+current DONE snapshot. The host forwards verified FPGA-returned bytes, never
+the typed input as a substitute. Up to126 bytes fill six21-character lines;
+overflow is clipped and unsupported glyphs appear as `?`. Lowercase ASCII is
+supported. Completed text remains visible until another hardware operation.
+`TEXT_SENT <operation_id> <algorithm> <visible_bytes>` acknowledges frame writes.
+
 This freestanding AArch64 payload drives the dedicated HPS UART1/SPIM0/GPIO
 LCD island. It uses OCRAM only: no DDR, Linux, SD-card or persistent-media setup.
 The guarded entry requires core0, EL3, little endian and MMU/caches disabled.

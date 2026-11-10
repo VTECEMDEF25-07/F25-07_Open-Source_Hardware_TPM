@@ -1,5 +1,5 @@
 """Bounded actual-status relay unit checks; no subprocess/HPS/hardware is opened."""
-import json,queue,unittest
+import base64,json,queue,unittest
 from unittest.mock import Mock
 from de25_customer_lcd_relay import Relay
 
@@ -11,6 +11,21 @@ def relay():
 
 
 class RelayTests(unittest.TestCase):
+    def test_actual_plaintext_is_bound_to_done_and_survives_heartbeat_backpressure(self):
+        r=relay();r.messages=queue.Queue(maxsize=8)
+        actual=dict(status_word=0x01020088,operation_id=3,sequence=12);r(actual)
+        r.show_plaintext(2,b'Hello, Lenovo!'+bytes(200))
+        for _ in range(20):r(actual)
+        packets=r.messages.get_nowait().splitlines()
+        self.assertEqual(json.loads(packets[0]),actual)
+        record=json.loads(packets[1])
+        self.assertEqual(base64.b64decode(record['plaintext_b64']),(b'Hello, Lenovo!'+bytes(200))[:126])
+        self.assertEqual((record['operation_id'],record['sequence'],record['algorithm']),(3,12,2))
+        self.assertLessEqual(len(json.dumps(record,separators=(',',':')))+1,256)
+        with self.assertRaises(ValueError):r.show_plaintext(4,b'wrong algorithm')
+        r(dict(status_word=0x01000084,operation_id=4,sequence=14))
+        with self.assertRaises(ValueError):r.show_plaintext(2,b'not done')
+
     def test_exact_snapshot_forwarded_without_state_invention(self):
         r=relay(); a=dict(status_word=0x01000084,operation_id=42,sequence=8)
         r(a); self.assertEqual(json.loads(r.pending.get_nowait()),a)

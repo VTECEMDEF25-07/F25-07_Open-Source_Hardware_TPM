@@ -5,7 +5,7 @@ validated SSH command running the LCD service. No shell and no connection at
 import. This relays actual status only; pipe success is not physical glass proof.
 """
 from pathlib import Path
-import json,os,queue,subprocess,threading
+import base64,json,os,queue,subprocess,threading
 
 
 class Relay:
@@ -20,6 +20,7 @@ class Relay:
             text=True,encoding='utf-8',bufsize=1,shell=False,
             creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
         self.pending=queue.Queue(maxsize=1); self.stopping=threading.Event(); self.error=None
+        self.messages=queue.Queue(maxsize=8);self.last_snapshot=None
         self.worker=threading.Thread(target=self._write,daemon=True); self.worker.start()
 
     def __call__(self,snapshot:dict):
@@ -29,6 +30,7 @@ class Relay:
             raise ValueError('LCD snapshot fields must be uint32 integers')
         if self.error or self.process.poll() is not None:
             raise RuntimeError(f'LCD status relay is unavailable: {self.error or self.process.returncode}')
+        self.last_snapshot=dict(snapshot)
         payload=json.dumps(snapshot,separators=(',',':'))+'\n'
         try: self.pending.put_nowait(payload)
         except queue.Full:
@@ -37,11 +39,28 @@ class Relay:
             except queue.Empty: pass
             self.pending.put_nowait(payload)
 
+    def show_plaintext(self,algorithm:int,plaintext:bytes):
+        if algorithm not in (2,4) or not isinstance(plaintext,bytes) or len(plaintext)>1024:
+            raise ValueError('Require actual returned AES/RSA plaintext bytes')
+        s=self.last_snapshot
+        if s is None or s['status_word']&15!=8 or (s['status_word']>>16)&255!=algorithm:
+            raise ValueError('Plaintext requires matching actual FPGA DONE snapshot')
+        record=dict(plaintext_b64=base64.b64encode(plaintext[:126]).decode('ascii'),algorithm=algorithm,
+                    operation_id=s['operation_id'],sequence=s['sequence'])
+        payload=json.dumps(record,separators=(',',':'))+'\n'
+        assert len(payload.encode('ascii'))<=256
+        if self.error or self.process.poll() is not None:raise RuntimeError('LCD relay unavailable')
+        # Preserve DONE-before-text ordering even when the ordinary heartbeat
+        # queue is being coalesced. This is the actual observed tuple again.
+        self.messages.put(json.dumps(s,separators=(',',':'))+'\n'+payload,timeout=.5)
+
     def _write(self):
         try:
-            while not self.stopping.is_set() or not self.pending.empty():
-                try: payload=self.pending.get(timeout=.1)
-                except queue.Empty: continue
+            while not self.stopping.is_set() or not self.pending.empty() or not self.messages.empty():
+                try:payload=self.messages.get_nowait()
+                except queue.Empty:
+                    try: payload=self.pending.get(timeout=.1)
+                    except queue.Empty: continue
                 self.process.stdin.write(payload); self.process.stdin.flush()
         except BaseException as exc: self.error=exc
 

@@ -1,5 +1,13 @@
 # Interactive DE25 customer demo — v2
 
+The plaintext LCD extension forwards the **actual verified FPGA-returned** AES
+and RSA plaintext after decryption. Each display message binds to the matching
+DONE operation/sequence; ordinary heartbeat backpressure cannot discard it.
+The screen shows AES/RSA DECRYPTED and up to126 bytes, clipping overflow. Text
+remains visible after the client exits until a new operation begins. The class
+workspace launcher `AI/DE25_Demo.py` configures UART/SPI, creates a new recording,
+and runs the original suites before interactive encryption/decryption.
+
 ## Hardware-validated configuration — 10 November 2026
 
 ### Current combined HPS/crypto configuration

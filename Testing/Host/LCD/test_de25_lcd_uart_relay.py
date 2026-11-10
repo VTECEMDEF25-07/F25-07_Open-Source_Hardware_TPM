@@ -1,4 +1,5 @@
 import builtins
+import base64
 import contextlib
 import io
 import json
@@ -57,6 +58,18 @@ class FakeSerial:
 
 
 class Tests(unittest.TestCase):
+    def test_plaintext_wire_bounds_and_real_frame_ack(self):
+        record=dict(plaintext_b64=base64.b64encode(bytes(range(126))).decode(),algorithm=4,
+                    operation_id=0xffffffff,sequence=0xffffffff)
+        encoded=(json.dumps(record,separators=(',',':'))+'\n').encode()
+        self.assertLessEqual(len(encoded),256);self.assertEqual(json.loads(relay.parse_record(encoded)),record)
+        for value in ['A===','AB==',base64.b64encode(bytes(127)).decode()]:
+            bad=dict(record,plaintext_b64=value)
+            with self.assertRaises(ValueError):relay.parse_record((json.dumps(bad)+'\n').encode())
+        serial,transport,events=self.transport()
+        serial.reads=[b'TEXT_SENT 00000005 4 003B\r\n'];transport.pump()
+        self.assertEqual(events[-1],('text_frame_sent_ack',dict(operation_id=5,algorithm=4,visible_bytes=59,glass_verified=False)))
+
     def transport(self):
         serial = FakeSerial()
         events = []

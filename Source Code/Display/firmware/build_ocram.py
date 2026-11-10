@@ -31,10 +31,10 @@ def run(args,**kw):
 spec=importlib.util.spec_from_file_location('reference',REPO/'Testing/Host/LCD/de25_lcd.py')
 ref=importlib.util.module_from_spec(spec);spec.loader.exec_module(ref)
 font=[]
-for code in range(32,91):
+for code in range(32,127):
     rows=ref.PATTERNS.get(chr(code),ref.PATTERNS['?']).split()
     font.append([sum((rows[y][x]=='1')<<y for y in range(7)) for x in range(5)])
-(SRC/'font.h').write_text('/* Generated from tested original de25_lcd.py PATTERNS. */\nstatic const unsigned char font[59][5]={\n'+',\n'.join('{'+','.join(map(str,row))+'}' for row in font)+'\n};\n',newline='\n')
+(SRC/'font.h').write_text('/* Generated from de25_lcd.py PATTERNS. */\nstatic const unsigned char font[95][5]={\n'+',\n'.join('{'+','.join(map(str,row))+'}' for row in font)+'\n};\n',newline='\n')
 gcc=linux(TOOL/'aarch64-none-elf-gcc')
 version=run([gcc,'--version']).decode()
 flags=['-std=c11','-Os','-g','-Wall','-Wextra','-Werror','-Wno-misleading-indentation','-ffreestanding','-fno-builtin','-fno-stack-protector','-fno-pie','-mgeneral-regs-only','-march=armv8-a','-nostdlib','-I'+linux(SRC)]
@@ -83,6 +83,9 @@ if options.cold:
     board_log=run([linux(board_exe)]).decode()
     (OUT/'board_tests.log').write_text(board_log)
     cold_log+=board_log
+    plain_exe=OUT/'test_plaintext'
+    run(['gcc','-std=c11','-Wall','-Wextra','-Werror','-Wno-misleading-indentation','-fsanitize=undefined,bounds','-I'+linux(SRC),linux(SRC/'test_plaintext.c'),linux(SRC/'status.c'),'-o',linux(plain_exe)])
+    plain_log=run([linux(plain_exe)]).decode();(OUT/'plaintext_tests.log').write_text(plain_log);cold_log+=plain_log
 for stale in [False,True]:
     raw=run([linux(exe),*(['stale'] if stale else [])],input=('\n'.join(validlines+badlines)+'\n').encode())
     offset=0

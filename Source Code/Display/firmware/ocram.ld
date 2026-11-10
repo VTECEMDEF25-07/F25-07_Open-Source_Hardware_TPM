@@ -5,7 +5,7 @@ SECTIONS {
  .text : { KEEP(*(.text.start)) *(.text*) } > OCRAM :text
  .rodata : { *(.rodata*) } > OCRAM :text
  .data : { *(.data*) } > OCRAM :data
- .bss (NOLOAD) : { . = ALIGN(8); __bss_start = .; *(.bss*) *(COMMON) . = ALIGN(8); __bss_end = .; } > OCRAM :data
+ .bss ALIGN(16) (NOLOAD) : { . = ALIGN(16); __bss_start = .; *(.bss*) *(COMMON) . = ALIGN(8); __bss_end = .; } > OCRAM :data
  .stack (NOLOAD) : { . = ALIGN(16); . += 16384; _stack_top = .; } > OCRAM :data
  /DISCARD/ : { *(.comment*) *(.note*) *(.eh_frame*) }
  ASSERT(_stack_top <= 0x7f000, "OCRAM image overlaps SDM handoff")

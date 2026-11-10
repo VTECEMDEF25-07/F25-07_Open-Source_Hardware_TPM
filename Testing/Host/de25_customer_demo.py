@@ -90,6 +90,8 @@ def run_customer_flow(client,recorder,phase1,allow_export,auto=False,message=DEF
                       returned_plaintext=returned.decode('utf-8'),plaintext_match=True,final_iv_match=True,
                       final_iv_hex=ivout.hex(),decrypt_s=aes_dec_s,location='FPGA')
         recorder.emit('aes-pass','AES: laptop encryption -> FPGA decryption -> exact plaintext match PASS.')
+        if status_relay is not None and hasattr(status_relay,'show_plaintext'):
+            status_relay.show_plaintext(2,returned)
         aes_result=dict(handle=f'0x{aes_handle:08x}',message=plaintext.decode('utf-8'),ciphertext_hex=ciphertext.hex(),
                         initial_iv_hex=iv.hex(),final_iv_hex=ivout.hex(),returned_plaintext=returned.decode('utf-8'),
                         plaintext_match=True,iv_match=True,generation_s=aes_gen_s,decrypt_s=aes_dec_s,
@@ -121,6 +123,8 @@ def run_customer_flow(client,recorder,phase1,allow_export,auto=False,message=DEF
                   returned_plaintext=rsa_returned.decode('utf-8'),plaintext_match=True,
                   decrypt_s=rsa_dec_s,location='FPGA',operation='private decryption')
     recorder.emit('rsa-pass','RSA: FPGA key generation -> laptop PUBLIC encryption -> FPGA PRIVATE decryption PASS.')
+    if status_relay is not None and hasattr(status_relay,'show_plaintext'):
+        status_relay.show_plaintext(4,rsa_returned)
     recorder.emit('customer-flow-pass','CUSTOMER AES / RSA FLOW PASS. LCD glass acceptance remains tied to separate physical evidence.',
                   phase1_passed=8,phase1_total=8,aes_match=True,rsa_private_match=True)
     summary=dict(status='PASS',scope='customer AES/RSA functional flow; not a standalone public MODEXP demo',

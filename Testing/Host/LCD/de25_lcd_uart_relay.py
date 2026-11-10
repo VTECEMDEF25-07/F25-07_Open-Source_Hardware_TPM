@@ -5,6 +5,7 @@ No serial import, enumeration or device opening occurs on import/help. The lead
 alone runs this against hardware. UART FRAME_SENT is never optical glass proof.
 """
 import argparse
+import base64
 import json
 import queue
 import re
@@ -30,7 +31,18 @@ def parse_record(line):
     if not isinstance(line, bytes) or not line.endswith(b'\n') or len(line) > MAX_RECORD or b'\0' in line:
         raise ValueError('require a complete ASCII JSON line of at most256 bytes')
     record = json.loads(line.decode('ascii'), object_pairs_hook=unique_object)
-    decode_snapshot(record)  # Same uint32/version/reserved/error/provider semantics.
+    if not isinstance(record,dict):raise ValueError('Require a JSON object')
+    if 'plaintext_b64' in record:
+        if set(record)!={'plaintext_b64','algorithm','operation_id','sequence'}:
+            raise ValueError('Invalid plaintext record fields')
+        if type(record['algorithm']) is not int or record['algorithm'] not in (2,4):raise ValueError('Invalid plaintext algorithm')
+        if any(type(record[k]) is not int or not 0<=record[k]<=0xffffffff for k in ('operation_id','sequence')):
+            raise ValueError('Invalid plaintext identifiers')
+        payload=record['plaintext_b64']
+        if not isinstance(payload,str):raise ValueError('Require base64 plaintext')
+        raw=base64.b64decode(payload,validate=True)
+        if len(raw)>126 or base64.b64encode(raw).decode('ascii')!=payload:raise ValueError('Invalid plaintext length/encoding')
+    else:decode_snapshot(record)  # Same uint32/version/reserved/error/provider semantics.
     return (json.dumps(record, separators=(',', ':'), ensure_ascii=True) + '\n').encode('ascii')
 
 
@@ -90,7 +102,8 @@ class Transport:
         payload = parse_record(payload)
         if self.serial.write(payload) != len(payload):
             raise OSError('short UART write; tuple delivery is unknown')
-        self.emit('snapshot_sent', json=json.loads(payload))
+        record=json.loads(payload)
+        self.emit('plaintext_sent' if 'plaintext_b64' in record else 'snapshot_sent',json=record)
 
     def pump(self):
         raw = self.serial.read(256)
@@ -110,6 +123,10 @@ class Transport:
                 match = re.fullmatch(rb'FRAME_SENT ([0-9A-F]{8})\r?\n', line)
                 if match:
                     self.emit('frame_sent_ack', sequence=int(match.group(1), 16), glass_verified=False)
+                text_match=re.fullmatch(rb'TEXT_SENT ([0-9A-F]{8}) ([24]) ([0-9A-F]{4})\r?\n',line)
+                if text_match:
+                    self.emit('text_frame_sent_ack',operation_id=int(text_match[1],16),algorithm=int(text_match[2]),
+                              visible_bytes=int(text_match[3],16),glass_verified=False)
                 self.partial.clear()
             elif len(self.partial) == 256:
                 self.emit('uart_line_overflow', limit=256)
