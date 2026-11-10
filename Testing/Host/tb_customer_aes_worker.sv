@@ -98,10 +98,11 @@ module tb_customer_aes_worker;
         if(recovery_required_o)$fatal(1,"invalid descriptor poisoned reusable worker");
         reset_abort();
         ram_error();
+        illegal_state();
         input_timeout();
         cleanup_timeout();
         successfully_completed=1;
-        $display("CUSTOMER_AES_WORKER_PASS vectors=52 bytes=12866 invalid_length reset_abort ram_error input_timeout cleanup_timeout cycles");$finish;
+        $display("CUSTOMER_AES_WORKER_PASS vectors=52 bytes=12866 invalid_length reset_abort ram_error illegal_state input_timeout cleanup_timeout cycles");$finish;
     end
     task reset_abort;
         begin_job(16);input_valid_i=1;input_data_i=8'hab;
@@ -136,6 +137,14 @@ module tb_customer_aes_worker;
         repeat(5)@(negedge clock_i);if(status_valid_o || job_ready_o)$fatal(1,"late cleanup made failed job reusable");
         reset_n_i=0;repeat(4)@(negedge clock_i);reset_n_i=1;wait_ready();
         $display("CUSTOMER_AES_CLEANUP_TIMEOUT_PASS");
+    endtask
+    task illegal_state;
+        n=0;begin_job(0);force dut.state=4'd15;
+        @(posedge clock_i);@(negedge clock_i);release dut.state;
+        finish_status(32'h101,0,0);
+        if(!recovery_required_o || job_ready_o)$fatal(1,"invalid state did not failclosed");
+        reset_n_i=0;repeat(4)@(negedge clock_i);reset_n_i=1;wait_ready();
+        $display("CUSTOMER_AES_ILLEGAL_STATE_PASS");
     endtask
     task input_timeout;
         n=0;begin_job(1);finish_status(32'h101,0,0);

@@ -156,7 +156,11 @@ module customer_aes_worker #(
                     state<=recovery_required_o?LOCKED:IDLE;
                 end
                 LOCKED:begin key<=0;iv<=0;core_enable<=0;result_byte<=0;end
-                default:begin recovery_required_o<=1;key<=0;iv<=0;core_enable<=0;state<=CLEAR_REQ;end
+                default:begin
+                    recovery_required_o<=1;status_code_o<=32'h101;status_result_bytes_o<=0;
+                    status_iv_o<=0;key<=0;iv<=0;core_enable<=0;result_byte<=0;
+                    cleanup_cycles<=0;state<=CLEAR_REQ;
+                end
             endcase
         end
     end
