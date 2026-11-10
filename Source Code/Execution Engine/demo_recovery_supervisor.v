@@ -38,7 +38,7 @@ module demo_recovery_supervisor #(
             else elapsed<=0;
             if(crypto_reset_n_o && job_accept_i) begin
                 last_id_o<=job_id_i;last_handle_o<=0;last_committed_o<=0;
-                recovered_o<=0;last_reason_o<=0;
+                if(!trigger) begin recovered_o<=0;last_reason_o<=0;end
             end
             // Ownership at this edge remains a historical fact even on recovery.
             if(crypto_reset_n_o && commit_i) begin
