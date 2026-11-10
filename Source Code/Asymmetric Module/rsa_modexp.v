@@ -8,6 +8,7 @@
 // Modification History:
 // Date        By   Version  Change Description
 // 11/09/2026  SMC  1.0      Added interface and register naming conventions.
+// 11/09/2026  AG/Codex 1.1  Reused precompute subtraction sign for selection.
 ////////////////////////////////////////////////////////////////////////////////
 
 `timescale 1ns/1ps
@@ -79,13 +80,19 @@ module rsa_modexp #(parameter WIDTH = 2048)(
 
     wire [WIDTH:0] precompute_doubled;
     wire [WIDTH:0] modulus_extended;
+    wire [WIDTH:0] precompute_subtracted;
     wire [WIDTH:0] precompute_next;
 
     assign precompute_doubled = {1'b0, precompute_reg} << 1;
     assign modulus_extended = {1'b0, n_reg};
-    assign precompute_next = (precompute_doubled >= modulus_extended)
-                           ? precompute_doubled - modulus_extended
-                           : precompute_doubled;
+    // In PRECOMPUTE, 0 <= precompute_reg < n_reg < 2^WIDTH. Thus
+    // -2^WIDTH < (2*precompute_reg - n_reg) < 2^WIDTH, so the WIDTH+1
+    // subtraction's top bit is the exact negative-result test. Reuse this
+    // subtraction instead of a separate wide comparator and subtractor.
+    // This is range-dependent, not a general unsigned-subtraction borrow rule.
+    assign precompute_subtracted = precompute_doubled - modulus_extended;
+    assign precompute_next = precompute_subtracted[WIDTH]
+                           ? precompute_doubled : precompute_subtracted;
 
     // Build R mod n and R^2 mod n by repeated doubling from 1. For a value
     // already below n, doubling is below 2*n, so one subtraction is sufficient.
