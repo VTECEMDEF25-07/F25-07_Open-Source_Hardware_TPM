@@ -52,11 +52,17 @@ def validate_new_execution(path,source,image,started,ended,hz):
     return record
 
 
+def utf8_environment():
+    environment=os.environ.copy()
+    environment.update(PYTHONUTF8='1',PYTHONIOENCODING='utf-8')
+    return environment
+
+
 def run_phase1(argv):
     # The verified runner bounds its native tester to 120 seconds and releases
     # the existing named hardware mutex in finally. No shell is involved.
     return subprocess.run(argv,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,
-                          text=True,encoding='utf-8',errors='replace',shell=False)
+                          text=True,encoding='utf-8',errors='replace',shell=False,env=utf8_environment())
 
 
 def run_customer(argv,environment):
@@ -113,7 +119,7 @@ def execute_session(args,phase1_process=run_phase1,customer_process=run_customer
         if args.auto:command.append('--auto')
         for option,value in [('--message',args.message),('--rsa-message',args.rsa_message),('--status-relay',args.status_relay)]:
             if value is not None:command.extend([option,value])
-        environment=os.environ.copy();environment['DE25_SPI_HZ']=str(args.spi_hz)
+        environment=utf8_environment();environment['DE25_SPI_HZ']=str(args.spi_hz)
         report['customer_argv']=command;report['customer_spi_hz']=args.spi_hz;save()
         print('PHASE I: new 8/8 PASS verified. Starting the customer AES/RSA flow.',flush=True)
         code=customer_process(command,environment);report['customer_return_code']=code
