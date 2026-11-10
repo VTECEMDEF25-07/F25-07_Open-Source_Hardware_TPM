@@ -108,3 +108,35 @@ set_instance_assignment -name FAST_OUTPUT_REGISTER OFF -to "spi_miso_o"
 
 # Use ordinary fabric registers so the pin-clocked front end can use local SCK routing.
 set_instance_assignment -name GLOBAL_SIGNAL OFF -to "spi_clock_i"
+
+# Frozen v0.1 explicit demo build; default RTL parameters remain disabled.
+set_parameter -name ENABLE_DEMO_COMMANDS 1
+set_parameter -name DEMO_PROVIDER_MODE 1
+set_parameter -name DEMO_MODEXP_WIDTH 2048
+set_global_assignment -name VERILOG_FILE "../../Source Code/Demo Memory/demo_byte_ram.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/Demo Memory/demo_volatile_store.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/Symmetric Module/symmetric_top.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/Key Generation/integration/demo_generation_service.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/Key Generation/integration/demo_keygen_operation.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/Key Generation/integration/demo_test_source.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/Execution Engine/demo_crypto_subsystem.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/Execution Engine/demo_recovery_supervisor.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/Execution Engine/execution_engine_demo_packet.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/Execution Engine/demo_aes_coordinator.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/Asymmetric Module/demo_modexp_adapter.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/Asymmetric Module/rsa_modexp.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/Asymmetric Module/montgomery_mult.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/RNG Module/ring_osc.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/RNG Module/entropy_source.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/RNG Module/random_number_generation.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/Symmetric Module/AES/aes.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/Symmetric Module/AES/aes_core.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/Symmetric Module/AES/aes_decipher_block.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/Symmetric Module/AES/aes_encipher_block.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/Symmetric Module/AES/aes_inv_sbox.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/Symmetric Module/AES/aes_key_mem.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/Symmetric Module/AES/aes_sbox.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/Symmetric Module/Controllers/cfb_block.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/Symmetric Module/Controllers/kdfa_control.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/Symmetric Module/Controllers/primitive_controller.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/Symmetric Module/Controllers/session_parameter_controller.v"

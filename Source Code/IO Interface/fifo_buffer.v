@@ -16,10 +16,12 @@
 //	store response data as it is being read from the I/O system,
 //	and to move command/response data back and forth from the CRB (Command/Reponse Buffer).
 
-module	fifo_buffer
+module	fifo_buffer #(parameter ENABLE_DEMO_COMMANDS = 0)
 (
 	input			clock_i,
 	input			reset_n_i,
+    input wire demo_admit_i,
+    output wire demo_ready_o,
 	
 	input		[7:0]	cmdByteIn_i,	// byte of command data from frs
 	input		[7:0]	rspByteIn_i,	// byte of response data from exec
@@ -86,15 +88,16 @@ module	fifo_buffer
 		RspIn_wait		= 10,	// transmission of response data from CRB
 		AddrRst			= 11,	// used to reset the internal address in the case FRB signals responseRetry
 		RspOut			= 12,	// transmission state for response data being read to the FRS
-		CommandReady_wait	= 13;	// after the response has been fully read, we wait for the FRS to return to its Idle state (signaled by commandReady)
+		CommandReady_wait	= 13,
+        DemoScrub = 14, DemoScrubLatch = 15;	// after the response has been fully read, we wait for the FRS to return to its Idle state (signaled by commandReady)
 	reg	[3:0]	state, next_state;
 	
 	always @(posedge clock_i, negedge reset_n_i)
 	begin
 		if (!reset_n_i)
-			state <= Idle;
-		else if (f_abort_i) // reset on receipt of f_abort_i
-			state <= Idle;
+			state <= ENABLE_DEMO_COMMANDS ? DemoScrub : Idle;
+		else if (f_abort_i) // demo abort scrubs all buffered data
+            state <= ENABLE_DEMO_COMMANDS ? DemoScrub : Idle;
 		else
 			state <= next_state;
 	end
@@ -106,7 +109,7 @@ module	fifo_buffer
 		
 		// go to GetCmdSize if fifoAccess is requested
 		Idle:
-			next_state = f_fifoAccess_i ? GetCmdSize : Idle;
+			next_state = f_fifoAccess_i && (!ENABLE_DEMO_COMMANDS || demo_admit_i) ? GetCmdSize : Idle;
 		// go to CmdIn after 6 bytes have been read
 		GetCmdSize:
 			next_state = bufAddr == 12'd6 ? CmdIn : GetCmdSize;
@@ -139,17 +142,26 @@ module	fifo_buffer
 			next_state = RspOut;
 		// go to Idle if r_commandReady_i is received from frs ; go to AddrRst if r_responseRetry_i is received from frs ; go to CommandReady_wait after response has been fully read out
 		RspOut:
-			next_state = r_commandReady_i ? Idle : r_responseRetry_i ? AddrRst : ~f_fifoAccess_i & (bufAddr == b_size[11:0] + 12'd1) ? CommandReady_wait : RspOut;
+			next_state = r_commandReady_i ? (ENABLE_DEMO_COMMANDS ? DemoScrub : Idle) : r_responseRetry_i ? AddrRst : ~f_fifoAccess_i & (bufAddr == b_size[11:0] + 12'd1) ? CommandReady_wait : RspOut;
 		// go to Idle if r_commandReady_i is received from frs ; go to AddrRst if r_responseRetry_i is received from frs 
 		CommandReady_wait:
-			next_state = r_commandReady_i ? Idle : r_responseRetry_i ? AddrRst : CommandReady_wait;
+			next_state = r_commandReady_i ? (ENABLE_DEMO_COMMANDS ? DemoScrub : Idle) : r_responseRetry_i ? AddrRst : CommandReady_wait;
 		
+        DemoScrub: next_state = demo_scrub_addr == 12'hfff ? DemoScrubLatch : DemoScrub;
+        DemoScrubLatch: next_state = Idle;
 		default:
-			next_state = 4'hx;
+			next_state = Idle;
 			
 		endcase
 	end
 	
+    reg [11:0] demo_scrub_addr;
+    always @(posedge clock_i or negedge reset_n_i)
+        if (!reset_n_i) demo_scrub_addr <= 0;
+        else if (state != DemoScrub) demo_scrub_addr <= 0;
+        else demo_scrub_addr <= demo_scrub_addr + 12'd1;
+    assign demo_ready_o = reset_n_i && state == Idle && (!ENABLE_DEMO_COMMANDS || demo_admit_i);
+
 	// these regs are used for edge detection of the named signals
 	reg	prev_updateAddr, prev_fifoWrite, prev_fifoRead;
 	always @(posedge clock_i)
@@ -283,11 +295,17 @@ module	fifo_buffer
 		end
 		
 		endcase
+        if (ENABLE_DEMO_COMMANDS && (state == DemoScrub || state == DemoScrubLatch)) begin
+            bufIn = 8'd0; bufWren_n = state != DemoScrub;
+            m_bufAddr = state == DemoScrub ? demo_scrub_addr : 12'd0;
+            rspByteOut_o = 8'd0;
+        end
+
 	end
 	
 	
 	// static assignments
-	assign	f_fifoComplete_o = state >= TpmGo_wait;
+	assign	f_fifoComplete_o = state >= TpmGo_wait && state <= CommandReady_wait;
 	assign	f_fifoEmpty_o = state == CommandReady_wait;
 	
 	assign	c_cmdSize_o = b_size;

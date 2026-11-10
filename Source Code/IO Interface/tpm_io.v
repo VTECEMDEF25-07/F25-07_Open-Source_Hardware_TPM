@@ -12,6 +12,7 @@
 	
 module	tpm_io #(parameter SCOPED_COMMANDS = 0,
     parameter ENABLE_ENCRYPTDECRYPT2 = 0,
+    parameter ENABLE_DEMO_COMMANDS = 0,
     parameter PRESERVE_LEGACY_COMMANDS = 0)
 (
     // Pass packet reads and response payload reads between the CRB and the top.
@@ -20,6 +21,9 @@ module	tpm_io #(parameter SCOPED_COMMANDS = 0,
     input wire [11:0] exec_rsp_length_i,
     output wire [11:0] exec_rsp_addr_o,
     input wire [7:0] exec_rsp_byte_i,
+    input wire demo_admit_i,
+    output wire exec_response_consumed_o,
+    output wire demo_transport_abort_o,
 	input		clock50_i,	// 50 MHz	(sysclock, arbitrary)
 	input		reset_n_i,
 	
@@ -98,9 +102,13 @@ module	tpm_io #(parameter SCOPED_COMMANDS = 0,
 	wire	[7:0]	c_cmdByte, c_rspByte;
 	wire		c_execDone, c_execAck;
 	
-	tpm_reg_space fifo_register_space
+	wire crb_scrub_done;
+    assign exec_response_consumed_o = c_rspDone;
+    tpm_reg_space #(.ENABLE_DEMO_COMMANDS(ENABLE_DEMO_COMMANDS)) fifo_register_space
 	(
 		.clock_i(clock50_i), .reset_n_i(reset_n_i),
+        .demo_admit_i(demo_admit_i && crb_scrub_done),
+        .demo_transport_abort_o(demo_transport_abort_o),
 		.t_req_i(t_req), .t_dir_i(t_wren_n),
 		.t_size_i(t_size), .updateAddr_i(t_updateAddr),
 		.t_address_i(t_addr), .t_baseAddr_i(t_baseAddr),
@@ -117,11 +125,12 @@ module	tpm_io #(parameter SCOPED_COMMANDS = 0,
 	
 	tpm_crb #(.SCOPED_COMMANDS(SCOPED_COMMANDS),
         .PRESERVE_LEGACY_COMMANDS(PRESERVE_LEGACY_COMMANDS),
-        .ENABLE_ENCRYPTDECRYPT2(ENABLE_ENCRYPTDECRYPT2)) command_response_buffer
+        .ENABLE_ENCRYPTDECRYPT2(ENABLE_ENCRYPTDECRYPT2),
+        .ENABLE_DEMO_COMMANDS(ENABLE_DEMO_COMMANDS)) command_response_buffer
 	(
         .exec_cmd_addr_i(exec_cmd_addr_i), .exec_cmd_byte_o(exec_cmd_byte_o),
         .exec_rsp_length_i(exec_rsp_length_i), .exec_rsp_addr_o(exec_rsp_addr_o),
-        .exec_rsp_byte_i(exec_rsp_byte_i),
+        .exec_rsp_byte_i(exec_rsp_byte_i), .scrub_done_o(crb_scrub_done),
 		.clock_i(clock50_i), .reset_n_i(reset_n_i),
 		.locality_i(locality_o), .cmdAbort_i(1'b0),
 		.cmdSize_i(commandSize_o), .rspSize_o(c_rspSize),

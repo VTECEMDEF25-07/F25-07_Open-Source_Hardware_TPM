@@ -20,10 +20,12 @@
 `define READ 1
 `define WRITE 0
 
-module	tpm_reg_space
+module	tpm_reg_space #(parameter ENABLE_DEMO_COMMANDS = 0)
 (
 	input			clock_i,
 	input			reset_n_i,
+    input wire demo_admit_i,
+    output wire demo_transport_abort_o,
 	
 	// connections to transaction handler
 	input			t_req_i,		// SPI transaction request
@@ -152,6 +154,7 @@ module	tpm_reg_space
 	wire		f_fifoRead;
 	wire		f_fifoComplete;
 	wire		f_fifoEmpty;
+    wire demo_fifo_ready;
 	wire	[7:0]	f_fifoOut;
 	
 	// fifo access is true during a transaction request to one of these addresses
@@ -432,7 +435,7 @@ module	tpm_reg_space
 			
 			Ready:
 			begin
-				r_commandReady_e <= 1'b1;
+				r_commandReady_e <= !ENABLE_DEMO_COMMANDS || demo_fifo_ready;
 				r_dataAvail <= 1'b0;
 				r_Expect <= 1'b0;
 			end
@@ -882,10 +885,16 @@ module	tpm_reg_space
 	
 	assign	c_execAck_o = sts_s == Completion;
 	
+    // commandReady during execution is an abort, not a successful completion.
+    assign demo_transport_abort_o = ENABLE_DEMO_COMMANDS && reset_n_i &&
+        ((r_commandReady_i && sts_s == Execution) || r_commandCancel ||
+         (l_trySeize && sts_s == Execution));
+
 	// instantiation of the fifo buffer
-	fifo_buffer io_fifo
+	fifo_buffer #(.ENABLE_DEMO_COMMANDS(ENABLE_DEMO_COMMANDS)) io_fifo
 	(
 		.clock_i(clock_i), .reset_n_i(reset_n_i),
+        .demo_admit_i(demo_admit_i), .demo_ready_o(demo_fifo_ready),
 		.cmdByteIn_i(t_writeByte_i), .cmdByteOut_o(c_cmdByteOut_o),
 		.rspByteIn_i(c_rspByteIn_i), .rspByteOut_o(f_fifoOut),
 		.f_fifoAccess_i(f_fifoAccess & l_allowAccess), .t_size_i(t_size_i),

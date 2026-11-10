@@ -20,6 +20,7 @@
 // can retain the original CRB behavior with the default parameter.
 module	tpm_crb #(parameter SCOPED_COMMANDS = 0,
     parameter ENABLE_ENCRYPTDECRYPT2 = 0,
+    parameter ENABLE_DEMO_COMMANDS = 0,
     parameter PRESERVE_LEGACY_COMMANDS = 0)
 (
     // The executor reads the saved command by packet address. The CRB reads
@@ -29,6 +30,7 @@ module	tpm_crb #(parameter SCOPED_COMMANDS = 0,
     input wire [11:0] exec_rsp_length_i,
     output wire [11:0] exec_rsp_addr_o,
     input wire [7:0] exec_rsp_byte_i,
+    output wire scrub_done_o,
 	input			clock_i,
 	input			reset_n_i,
 	
@@ -174,7 +176,8 @@ module	tpm_crb #(parameter SCOPED_COMMANDS = 0,
 		AssembleRsp		= 29,	// assemble response
 		RspOut_start		= 30,	// start_i sending response to fifo
 		RspOut_wait		= 31,	// send response to fifo
-		Complete		= 32;	// complete
+		Complete		= 32,
+        DemoScrub = 33, DemoScrubLatch = 34;	// complete
 	reg	[5:0]	state, next_state;
 	
 	reg	[2:0]	it; // iterator for loops
@@ -186,13 +189,16 @@ module	tpm_crb #(parameter SCOPED_COMMANDS = 0,
     // inherited commands. Standalone scoped callers retain their old mode.
     // Disabled AES still takes the scoped rejection path, never legacy stubs.
     wire scoped_command_en = SCOPED_COMMANDS && (!PRESERVE_LEGACY_COMMANDS ||
-        commandCode_o == `TPM_CC_Hash || commandCode_o == 32'h00000193);
+        commandCode_o == `TPM_CC_Hash || commandCode_o == 32'h00000193 ||
+        (ENABLE_DEMO_COMMANDS && commandCode_o == 32'h20000100));
     wire scoped_startup = commandCode_o == `TPM_CC_Startup &&
         cmd_st == `TPM_ST_NO_SESSIONS && cmdSize_i == 32'd12;
     wire read_scoped_params = scoped_startup ||
         (commandCode_o == `TPM_CC_Hash && cmdSize_i >= 32'd18 && cmdSize_i <= 32'd1042) ||
         (ENABLE_ENCRYPTDECRYPT2 && commandCode_o == 32'h00000193 &&
-         cmdSize_i >= 32'd50 && cmdSize_i <= 32'd1074);
+         cmdSize_i >= 32'd50 && cmdSize_i <= 32'd1074) ||
+        (ENABLE_DEMO_COMMANDS && commandCode_o == 32'h20000100 &&
+         cmdSize_i >= 32'd26 && cmdSize_i <= 32'd794);
     assign exec_cmd_byte_o = cmdOut;
     // Strip the 10-byte header offset when indexing the executor payload.
     assign exec_rsp_addr_o = ci_addr - 12'd10;
@@ -204,7 +210,7 @@ module	tpm_crb #(parameter SCOPED_COMMANDS = 0,
 	always @(posedge clock_i, negedge reset_n_i)
 	begin
 		if (!reset_n_i)
-			state <= Idle;
+			state <= ENABLE_DEMO_COMMANDS ? DemoScrub : Idle;
 		// "cheat" transfer to Exec_setup0 for malformed command data (more data than expected)
 		else if (!scoped_command_en && state > CmdDecode && state < FullRead && ci_addr > cmdSize_i[11:0] + 12'd1)
 			state <= Exec_setup0;
@@ -315,7 +321,9 @@ module	tpm_crb #(parameter SCOPED_COMMANDS = 0,
 			next_state = ci_done ? Complete : RspOut_wait;
 		// go to Idle
 		Complete:
-			next_state = Idle;
+            next_state = ENABLE_DEMO_COMMANDS ? DemoScrub : Idle;
+        DemoScrub: next_state = demo_scrub_addr == 12'hfff ? DemoScrubLatch : DemoScrub;
+        DemoScrubLatch: next_state = Idle;
 		
 		default:
 			next_state = 5'hxx;
@@ -323,6 +331,13 @@ module	tpm_crb #(parameter SCOPED_COMMANDS = 0,
 		endcase
 	end
 	
+    reg [11:0] demo_scrub_addr;
+    always @(posedge clock_i or negedge reset_n_i)
+        if (!reset_n_i) demo_scrub_addr <= 0;
+        else if (state != DemoScrub) demo_scrub_addr <= 0;
+        else demo_scrub_addr <= demo_scrub_addr + 12'd1;
+    assign scrub_done_o = reset_n_i && state != DemoScrub && state != DemoScrubLatch;
+
 	// these signals are the same as their similarly named output wires,
 	// but are internally handled by more convenient arrays
 	reg	[31:0]	handle [0:2];
@@ -743,6 +758,12 @@ module	tpm_crb #(parameter SCOPED_COMMANDS = 0,
 		end
 		
 		endcase
+        if (ENABLE_DEMO_COMMANDS && (state == DemoScrub || state == DemoScrubLatch)) begin
+            cmdAddr = state == DemoScrub ? demo_scrub_addr : 12'd0;
+            cmdWren_n = state != DemoScrub; cmdIn = 8'd0;
+            rspAddr = cmdAddr; rspWren_n = cmdWren_n; rspIn = 8'd0;
+        end
+
 	end
 	
 	// static assignments

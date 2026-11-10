@@ -12,7 +12,8 @@
 // 0 = Generic, 1 = Altera, 2 = Xilinx (not implemented).
 `define FPGA_IP_TYPE 1
 
-module de25_soc_top #(parameter IP_TYPE = `FPGA_IP_TYPE) (
+module de25_soc_top #(parameter IP_TYPE = `FPGA_IP_TYPE,
+    parameter ENABLE_DEMO_COMMANDS=0, DEMO_PROVIDER_MODE=1, DEMO_MODEXP_WIDTH=2048) (
     input clock_i,
     input board_reset_n_i,
     input spi_clock_i,
@@ -61,7 +62,9 @@ module de25_soc_top #(parameter IP_TYPE = `FPGA_IP_TYPE) (
     end
 
     // Select the FPGA resource backend at the TPM boundary.
-    TPM_TOP #(.IP_TYPE(IP_TYPE), .DEVICE_FAMILY("Agilex 5")) tpm (
+    TPM_TOP #(.IP_TYPE(IP_TYPE), .DEVICE_FAMILY("Agilex 5"),
+        .ENABLE_DEMO_COMMANDS(ENABLE_DEMO_COMMANDS),.DEMO_PROVIDER_MODE(DEMO_PROVIDER_MODE),
+        .DEMO_MODEXP_WIDTH(DEMO_MODEXP_WIDTH)) tpm (
         .CLOCK_50(clock_50),
         .RESET_n(tpm_release_reg[1]),
         .SPI_CLOCK(spi_clock_i),
