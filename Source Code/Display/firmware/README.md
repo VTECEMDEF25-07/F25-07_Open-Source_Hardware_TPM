@@ -84,3 +84,27 @@ parks; a stalled MMIO transaction itself cannot be bounded in software. Reporter
 assumes the current SP remains valid, as expected for the suspected odd data
 store; it is not a general recovery mechanism. No SCTLR/MMU/clock writes added.
 
+# Current hardware-validated payload
+
+Build the customer payload with `--strict-align` and a **new** `--output-dir`.
+The global target flag is required for MMU-off execution: actual hardware raised
+alignment fault ESR0x96000061 at an odd-address halfword stack store without it.
+No SCTLR/MMU/cache or clock workaround is used. Canonical ELF→binary→IHEX output
+also preserves every linked byte/address while starting download records on
+16-byte boundaries. Direct section-based HEX previously triggered the native
+programmer's HPS data-range alignment rejection at0x2e88.
+
+Runtime-validated canonical HEX SHA256:
+`ac99cb165cd4ffdce411d1e7e1ac761f107b29e6cf785354698821971f1b76b2`.
+Raw binary SHA256:
+`97372323a13d0c3923873cdac0a56c8fa139cd63681f8129894d3f1100e697c6`.
+Source is equivalent to owner commit1008ce165f6cc1d72112a69fe460a3194979e7fe;
+later integration documentation does not change target code. Debug ELF/map
+hashes may differ with build paths; use the matching local ELF for diagnostics.
+
+Actual same-image original PhaseI and fresh AES/RSA2048 customer run pass.
+246 actual FPGA status tuples matched246 raw UART FRAME_SENT acknowledgements;
+held DONE, two-second no-input redraw and resumed-input ACK were checked.
+**This proves software write-side behavior, not visible glass, orientation or
+contrast.** Detailed FPGA/payload/SOF identities: `Testing/Host/DE25_CUSTOMER_DEMO.md`.
+

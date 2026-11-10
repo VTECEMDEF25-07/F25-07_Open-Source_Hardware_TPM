@@ -2,6 +2,42 @@
 
 ## Hardware-validated configuration — 10 November 2026
 
+### Current combined HPS/crypto configuration
+
+The board project now includes the isolated HPS display island. Exact fitted FPGA
+source `c614053ea5b37b009bf94c1d576c1c4949bfbd19` uses34,983 ALMs (75%),
+27 RAM blocks and4 DSP blocks, with50MHz setup margin+1.324ns. Full all-corner
+timing/clock/CDC/structure, dedicated-pin, reset-release and placed-oscillator
+checks passed. Later integration preserves every fitted FPGA input byte.
+
+The validated firmware is source-equivalent to
+`1008ce165f6cc1d72112a69fe460a3194979e7fe`, built with `--strict-align`.
+Its canonical HEX SHA256 is
+`ac99cb165cd4ffdce411d1e7e1ac761f107b29e6cf785354698821971f1b76b2`.
+The actual tested packaged SOF SHA256 is
+`f90e10109f1c16bc9eb8309feb6ad843df92c50413413ea8581dcbd42b09cf9b`.
+FPGA and firmware identities are separate: the SOF includes this newer payload,
+not merely the firmware text originally present in the fitted FPGA source tree.
+
+This exact packaged image passed a new interactive launcher run: original
+PhaseI8/84/0, actual fresh AES256 export/laptop encryption/FPGA plaintext and
+actual fresh RSA2048 generation/public encryption/FPGA private plaintext.
+RSA generation took48.38s in this run; generation is stochastic.
+An independent log audit matched246 actual FPGA tuples to246 raw UART frame
+acknowledgements, including WAIT, AES DONE, RSA GEN, RSA PRIVATE and RSA DONE.
+Twelve AES DONE heartbeats remained stable over2.872s during the input pause.
+A separate actual-status test observed the no-input redraw after2.067s and
+acknowledged resumed real input after63ms. These are write-side runtime checks.
+**Visible LCD pixels, contrast and orientation remain unverified.** A FRAME_SENT
+acknowledgement must never be described as optical acceptance.
+
+Exact COM7/TRWZCK53B UART relay usage is documented under `LCD/README.md` and
+the firmware README. Use the programmed FPGA source and packaged SOF hashes
+above with the launcher, even when checkout HEAD advances for documentation.
+Do not use the crypto-only fallback SOF identity for this combined image.
+
+### Preserved crypto-only fallback and independent module matrix
+
 The customer configuration at source
 `cb97a8e2f2fe09f8b1894117716f9239a3cd39ab` passed a full DE25 fit,
 all-corner timing/clock/CDC/structure and placed-oscillator checks at50MHz.

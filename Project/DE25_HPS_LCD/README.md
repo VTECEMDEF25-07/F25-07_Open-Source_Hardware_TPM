@@ -1,6 +1,6 @@
 # DE25 RevD HPS-only LCD island
 
-Approved boundary: `AI/OVERNIGHT_LCD_ISLAND_AGREEMENT_2026-11-10.md` at the class root. This is a new isolated subtree. Do not add it to a shared board project without the lead's integration/build decision.
+Approved boundary: an HPS-only dedicated-pin island, without DDR, fabric buses or shared crypto clocks/resets. The DE25 board project now includes this subtree after lead-owned full fit/timing and physical runtime checks. Generated subsystem metadata by itself is not hardware acceptance.
 
 Actual generation: Quartus Pro26.1 build110, `intel_agilex_5_soc`14.0.0, target `A5ED013BB32AE4SCS`. Input clock/pin selections derive from the saved RevD vendor GHRD25.1.1; unrelated peripherals/DDR/bridges are disabled. No vendor precompiled board image or Premium PLL recipe is used.
 
@@ -20,4 +20,4 @@ Generated IP filename is `ip/hps_lcd_subsys/hps_lcd_subsys_agilex_hps.ip` (the t
 
 Actual clocks:25MHz EOSC; main PLL M128, C0=4/C1=4/C2=6/C3=8, giving3.2GHz VCO and400MHz NOC; peripheral M120, C0=5/C1=5/C2=125/C3=6, giving3GHz VCO. L4_SP/UART=100MHz. The exported FPGA reference-rate metadata125MHz is unused because all FPGA clock sources/user clocks/bridges are disabled. It is not a new fabric clock. Main NOCDIV is0x28260098, distinct from the library's fixed recipe. CPU boot core0 and all powered-core options come from the generated handoff.
 
-Firmware source/build/limits are documented under `Source Code/Display/firmware/README.md`. Lead still needs a combined fit/timing/configuration review, actual fitted SDM handoff and controlled volatile startup/UART/pin/glass tests. This generated subsystem alone proves none of those outcomes. Shared top/QSF/SDC, crypto clocks, RO/SPI logic and fan were not edited.
+Firmware source/build/limits are documented under `Source Code/Display/firmware/README.md`. Combined fit/timing/reset/pins/RO checks, actual extracted SDM handoff preflight, volatile startup/UART, same-image original PhaseI and AES/RSA2048 flow now pass; exact identities and bounded runtime results are in `Testing/Host/DE25_CUSTOMER_DEMO.md`. Physical LCD glass remains unverified. The HPS island has no fabric clock/reset bridge; the separate crypto reset-release pair is timed and the vendor fan path remains independent.
