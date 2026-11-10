@@ -55,7 +55,6 @@ def run_customer_flow(client,recorder,phase1,allow_export,auto=False,message=DEF
     display_phase1(phase1,recorder)
     recorder.emit('scope','DEMO ONLY — disposable AES key exported to laptop; RSA private key stays on FPGA.',
                   aes_export_authorized=True,rsa_private_export=False)
-    recorder.emit('scope','RSA uses a bounded educational raw encoding; not OAEP/PKCS encryption.')
     statuses=install_status_callback(client.transport,recorder,client.provider,status_relay)
     client.startup(); caps=client.capabilities()
     recorder.emit('capabilities','FPGA capabilities: AES256 / real RSA2048 private operation / actual hardware status.',
