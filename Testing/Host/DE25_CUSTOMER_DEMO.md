@@ -11,15 +11,34 @@ physical execution and the shared named D2XX hardware mutex.
 From a clean checkout with Python cryptography available:
 
 ```text
-python Testing/Host/de25_customer_demo.py --allow-demo-key-export --phase1-evidence PATH_TO_PHASE1_JSON --image-sha256 EXACT_CURRENT_SOF_SHA256
+python Testing/Host/de25_customer_demo_launcher.py --phase1-runner ABSOLUTE_VERIFIED_NATIVE_RUNNER --source-commit FROZEN_PROGRAMMED_IMAGE_COMMIT --image-sha256 EXACT_CURRENT_SOF_SHA256 --record-dir NEW_CAPTURE_DIRECTORY --allow-demo-key-export
 ```
 
-Default transport is the named native Windows D2XX adapter at100kHz. Hardware lead
-may set DE25_SPI_HZ=1000000 after acceptance. No driver install or FPGA program is
-performed. Existing transport factory resets the crypto subsystem at session start.
-Use `--record-dir AI/tmp/customer-rehearsal` to preserve actual public events and
-results; use `--auto --message "Hello Lenovo"` for a scripted genuine recording.
+The launcher actually executes all eight original hardware suites first, using
+the frozen native runner's argv-list ABI (`--label`, `--source`, `--sof-sha256`,
+`--hz`). The runner owns the hardware mutex and releases it before crypto starts.
+Fresh timestamps, all eight original raw-log completion rows, assertion totals,
+unchanged-body/source audit, executable hash, same source/image and successful
+exit are required. Failed or saved results cannot admit the customer transport.
+The native runner is project-local at `AI/tmp/overnight-phase1-20261110/run_phase1.py`.
+Its output label and the capture directory must be new; neither is reused.
+
+Both stages default to1MHz through the named native Windows D2XX adapter; use
+`--spi-hz 100000` only for an accepted slower profile. The launcher forwards the
+chosen rate to the crypto child's `DE25_SPI_HZ`. No driver install or FPGA program
+is performed. Supply the actual frozen programmed image commit/hash, even if a
+later host-only commit changes checkout HEAD. Existing transport factory resets
+the crypto subsystem at session start.
+Use an absolute new capture directory under the class `AI/tmp/` to preserve public
+events and results; use `--auto --message "Hello Lenovo"` for a scripted genuine recording.
 `--rsa-message` can select a separate RSA recording message.
+
+The recording contains `launcher.result.json`, `phase1-runner.stdout.txt`, and
+byte-preserved `phase1/result.json` plus the full original `phase1/hardware.log`
+before the ordinary customer `events.json`, `stdout.txt` and `summary.json`.
+`de25_customer_demo.py` remains the lower-level crypto component: it validates and
+displays saved evidence but does not execute Phase I itself. Use the launcher for
+the requested complete one-command customer rehearsal.
 
 The program displays actual8/8 PhaseI results first, explicitly acknowledges
 disposable AES256 DEMO key export, asks for an AES UTF8 message (up to1024 bytes),
