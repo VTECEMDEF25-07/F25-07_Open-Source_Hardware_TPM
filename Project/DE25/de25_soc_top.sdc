@@ -62,3 +62,15 @@ set_false_path -from [get_ports {fan_i2c_scl fan_i2c_sda}]
 set_false_path -to [get_ports {fan_i2c_scl fan_i2c_sda}]
 
 derive_clock_uncertainty
+
+# Experimental physical RNG: the four free-running RO outputs feed an XOR and
+# the first sampling D asynchronously. Except only this verified single D pin.
+# Stage0 Q -> stage1 D and both asynchronous-clear recovery/removal stay timed.
+# TEST excludes this hierarchy and has no RNG timing exception.
+set demo_rng_sampler [get_registers -nowarn {*g_fresh.u_entropy|sample_sync*}]
+if {[get_collection_size $demo_rng_sampler] > 0} {
+    if {[get_collection_size $demo_rng_sampler] != 2} {error "Expected exactly two fresh RNG sampling registers"}
+    set demo_rng_first_d [get_pins -compatibility_mode -nowarn {tpm|demo_enabled.subsystem|u_operation|u_source|g_fresh.u_entropy|sample_sync[0]|d}]
+    if {[get_collection_size $demo_rng_first_d] != 1} {error "Expected exactly one fresh RNG first-stage D pin"}
+    set_false_path -to $demo_rng_first_d
+}
