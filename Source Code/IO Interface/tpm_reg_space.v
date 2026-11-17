@@ -20,16 +20,10 @@
 `define READ 1
 `define WRITE 0
 
-module	tpm_reg_space #(parameter ENABLE_DEMO_COMMANDS = 0, parameter CUSTOMER_DEMO_ENABLE = 0)
+module	tpm_reg_space
 (
 	input			clock_i,
 	input			reset_n_i,
-    input wire [31:0] snapshot_status_word_i,
-    input wire [31:0] snapshot_operation_id_i,
-    input wire [31:0] snapshot_sequence_i,
-    input wire [511:0] metrics_snapshot_i,
-    input wire demo_admit_i,
-    output wire demo_transport_abort_o,
 	
 	// connections to transaction handler
 	input			t_req_i,		// SPI transaction request
@@ -158,7 +152,6 @@ module	tpm_reg_space #(parameter ENABLE_DEMO_COMMANDS = 0, parameter CUSTOMER_DE
 	wire		f_fifoRead;
 	wire		f_fifoComplete;
 	wire		f_fifoEmpty;
-    wire demo_fifo_ready;
 	wire	[7:0]	f_fifoOut;
 	
 	// fifo access is true during a transaction request to one of these addresses
@@ -439,7 +432,7 @@ module	tpm_reg_space #(parameter ENABLE_DEMO_COMMANDS = 0, parameter CUSTOMER_DE
 			
 			Ready:
 			begin
-				r_commandReady_e <= !ENABLE_DEMO_COMMANDS || demo_fifo_ready;
+				r_commandReady_e <= 1'b1;
 				r_dataAvail <= 1'b0;
 				r_Expect <= 1'b0;
 			end
@@ -527,19 +520,6 @@ module	tpm_reg_space #(parameter ENABLE_DEMO_COMMANDS = 0, parameter CUSTOMER_DE
 				r_requestUse[t_address_i[15:12]] <= t_writeByte_i[1] | t_writeByte_i[3];
 			end
 		end
-        // Independent read-only locality-zero telemetry, available during CRB busy.
-        else if (CUSTOMER_DEMO_ENABLE && t_req_i && !f_fifoAccess && l_allowAccess &&
-                 t_address_i[15:12]==0 && t_address_i[11:0]>=12'hF80 && t_address_i[11:0]<=12'hF8F) begin
-            if (t_dir_i) case (t_address_i[3:2])
-                0,3: t_readByte_o <= snapshot_sequence_i[8*t_address_i[1:0] +: 8];
-                1: t_readByte_o <= snapshot_status_word_i[8*t_address_i[1:0] +: 8];
-                2: t_readByte_o <= snapshot_operation_id_i[8*t_address_i[1:0] +: 8];
-            endcase
-        end
-        else if (CUSTOMER_DEMO_ENABLE && t_req_i && !f_fifoAccess && l_allowAccess &&
-                 t_address_i[15:12]==0 && t_address_i[11:0]>=12'hFA0 && t_address_i[11:0]<=12'hFDF) begin
-            if (t_dir_i) t_readByte_o <= metrics_snapshot_i[8*(t_address_i[11:0]-12'hFA0) +: 8];
-        end
 		// all other FIFO registers read and write behaviors
 		else if (t_req_i & ~f_fifoAccess & l_allowAccess) case (t_address_i[11:0])
 		12'h00B:
@@ -902,16 +882,10 @@ module	tpm_reg_space #(parameter ENABLE_DEMO_COMMANDS = 0, parameter CUSTOMER_DE
 	
 	assign	c_execAck_o = sts_s == Completion;
 	
-    // commandReady during execution is an abort, not a successful completion.
-    assign demo_transport_abort_o = ENABLE_DEMO_COMMANDS && reset_n_i &&
-        ((r_commandReady_i && sts_s == Execution) || r_commandCancel ||
-         (l_trySeize && sts_s == Execution));
-
 	// instantiation of the fifo buffer
-	fifo_buffer #(.ENABLE_DEMO_COMMANDS(ENABLE_DEMO_COMMANDS)) io_fifo
+	fifo_buffer io_fifo
 	(
 		.clock_i(clock_i), .reset_n_i(reset_n_i),
-        .demo_admit_i(demo_admit_i), .demo_ready_o(demo_fifo_ready),
 		.cmdByteIn_i(t_writeByte_i), .cmdByteOut_o(c_cmdByteOut_o),
 		.rspByteIn_i(c_rspByteIn_i), .rspByteOut_o(f_fifoOut),
 		.f_fifoAccess_i(f_fifoAccess & l_allowAccess), .t_size_i(t_size_i),

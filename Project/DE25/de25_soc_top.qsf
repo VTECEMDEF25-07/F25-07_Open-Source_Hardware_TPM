@@ -42,11 +42,6 @@ set_location_assignment PIN_BH118 -to fan_i2c_sda
 set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to fan_i2c_sda
 set_global_assignment -name SEARCH_PATH "../../Source Code/IO Interface"
 set_global_assignment -name VERILOG_FILE "de25_soc_top.v"
-set_global_assignment -name VERILOG_FILE "../../Source Code/Display/hps_lcd_island.v"
-# Fully generated source: include system wrapper AND its separately generated IP QIP.
-set_global_assignment -name QIP_FILE "../DE25_HPS_LCD/hps_lcd_subsys/hps_lcd_subsys.qip"
-set_global_assignment -name QIP_FILE "../DE25_HPS_LCD/ip/hps_lcd_subsys/hps_lcd_subsys_agilex_hps/hps_lcd_subsys_agilex_hps.qip"
-# Fixed HPS_LOCATION/1.8V bindings are carried by the generated IP QIP.
 set_global_assignment -name VERILOG_FILE "de25_clock.v"
 set_global_assignment -name VERILOG_FILE "../../Source Code/TPM_TOP.v"
 set_global_assignment -name VERILOG_FILE "../../Source Code/Management Module/management_module.v"
@@ -66,7 +61,6 @@ set_global_assignment -name VERILOG_FILE "Fan Controller/I2C_READ_DATA.v"
 set_global_assignment -name VERILOG_FILE "Fan Controller/I2C_WRITE_BYTE.v"
 set_global_assignment -name VERILOG_FILE "Fan Controller/I2C_WRITE_POINTER.v"
 set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to {tpm_release_reg[*]}
-set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to {crypto_release_reg[*]}
 set_instance_assignment -name SYNCHRONIZER_IDENTIFICATION "FORCED IF ASYNCHRONOUS" -to {board_release_reg[*]}
 set_global_assignment -name LAST_QUARTUS_VERSION "26.1.0 Pro Edition"
 set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS INPUT TRI-STATED"
@@ -114,42 +108,3 @@ set_instance_assignment -name FAST_OUTPUT_REGISTER OFF -to "spi_miso_o"
 
 # Use ordinary fabric registers so the pin-clocked front end can use local SCK routing.
 set_instance_assignment -name GLOBAL_SIGNAL OFF -to "spi_clock_i"
-
-# Frozen v0.1 explicit demo build; default RTL parameters remain disabled.
-set_parameter -name ENABLE_DEMO_COMMANDS 1
-set_parameter -name DEMO_PROVIDER_MODE 0
-set_parameter -name DEMO_MODEXP_WIDTH 2048
-set_parameter -name CUSTOMER_DEMO_ENABLE 1
-set_parameter -name DEMO_AES_EXPORT_ENABLE 1
-set_global_assignment -name VERILOG_FILE "../../Source Code/Execution Engine/customer_crypto_subsystem.v"
-set_global_assignment -name VERILOG_FILE "../../Source Code/Execution Engine/customer_demo_packet.v"
-set_global_assignment -name VERILOG_FILE "../../Source Code/Execution Engine/customer_aes_worker.v"
-set_global_assignment -name VERILOG_FILE "../../Source Code/Asymmetric Module/demo_rsa_private_worker.v"
-set_global_assignment -name VERILOG_FILE "../../Source Code/Display/demo_lcd_status.v"
-set_global_assignment -name VERILOG_FILE "../../Source Code/Demo Memory/demo_byte_ram.v"
-set_global_assignment -name VERILOG_FILE "../../Source Code/Demo Memory/demo_volatile_store.v"
-set_global_assignment -name VERILOG_FILE "../../Source Code/Symmetric Module/symmetric_top.v"
-set_global_assignment -name VERILOG_FILE "../../Source Code/Key Generation/integration/demo_generation_service.v"
-set_global_assignment -name VERILOG_FILE "../../Source Code/Key Generation/integration/demo_keygen_operation.v"
-set_global_assignment -name VERILOG_FILE "../../Source Code/Key Generation/integration/demo_test_source.v"
-set_global_assignment -name VERILOG_FILE "../../Source Code/Execution Engine/demo_crypto_subsystem.v"
-set_global_assignment -name VERILOG_FILE "../../Source Code/Execution Engine/demo_recovery_supervisor.v"
-set_global_assignment -name VERILOG_FILE "../../Source Code/Execution Engine/execution_engine_demo_packet.v"
-set_global_assignment -name VERILOG_FILE "../../Source Code/Execution Engine/demo_aes_coordinator.v"
-set_global_assignment -name VERILOG_FILE "../../Source Code/Asymmetric Module/demo_modexp_adapter.v"
-set_global_assignment -name VERILOG_FILE "../../Source Code/Asymmetric Module/rsa_modexp.v"
-set_global_assignment -name VERILOG_FILE "../../Source Code/Asymmetric Module/montgomery_mult.v"
-set_global_assignment -name VERILOG_FILE "../../Source Code/RNG Module/ring_osc.v"
-set_global_assignment -name VERILOG_FILE "../../Source Code/RNG Module/entropy_source.v"
-set_global_assignment -name VERILOG_FILE "../../Source Code/RNG Module/random_number_generation.v"
-set_global_assignment -name VERILOG_FILE "../../Source Code/Symmetric Module/AES/aes.v"
-set_global_assignment -name VERILOG_FILE "../../Source Code/Symmetric Module/AES/aes_core.v"
-set_global_assignment -name VERILOG_FILE "../../Source Code/Symmetric Module/AES/aes_decipher_block.v"
-set_global_assignment -name VERILOG_FILE "../../Source Code/Symmetric Module/AES/aes_encipher_block.v"
-set_global_assignment -name VERILOG_FILE "../../Source Code/Symmetric Module/AES/aes_inv_sbox.v"
-set_global_assignment -name VERILOG_FILE "../../Source Code/Symmetric Module/AES/aes_key_mem.v"
-set_global_assignment -name VERILOG_FILE "../../Source Code/Symmetric Module/AES/aes_sbox.v"
-set_global_assignment -name VERILOG_FILE "../../Source Code/Symmetric Module/Controllers/cfb_block.v"
-set_global_assignment -name VERILOG_FILE "../../Source Code/Symmetric Module/Controllers/kdfa_control.v"
-set_global_assignment -name VERILOG_FILE "../../Source Code/Symmetric Module/Controllers/primitive_controller.v"
-set_global_assignment -name VERILOG_FILE "../../Source Code/Symmetric Module/Controllers/session_parameter_controller.v"

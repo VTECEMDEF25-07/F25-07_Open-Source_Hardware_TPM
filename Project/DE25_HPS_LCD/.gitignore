@@ -1,7 +1,0 @@
-/dni/
-/qdb/
-/inspect_hps.*
-/hps_lcd_derived.txt
-**/*.qgsynthc
-**/*.html
-**/__pycache__/

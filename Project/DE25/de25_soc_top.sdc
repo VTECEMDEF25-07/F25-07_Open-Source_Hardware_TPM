@@ -35,17 +35,7 @@ foreach name {rx_bit_count_reg rx_shift_reg rx_mailbox_reg rx_toggle_reg tx_bit_
 }
 set spi_reset_clear [get_pins -compatibility_mode $spi_reset_patterns]
 if {[get_collection_size $spi_reset_clear] < 40} {error "Missing SCK-domain asynchronous reset pins"}
-set crypto_release_source [get_registers {crypto_release_reg[1]}]
-if {[get_collection_size $crypto_release_source]!=1} {error "Expected exactly one50MHz crypto reset release source"}
-set_false_path -from $crypto_release_source -to $spi_reset_clear
-
-# Demo recovery also resets the SCK domain while the host holds CS high/SCK low.
-# Except only these supervisor controls into SCK asynchronous clear pins. Core
-# reset recovery/removal and synchronizer interstage data remain fully timed.
-set demo_reset_sources [get_registers -nowarn {*supervisor*release_sync* *supervisor*reset_count*}]
-if {[get_collection_size $demo_reset_sources] > 0} {
-    set_false_path -from $demo_reset_sources -to $spi_reset_clear
-}
+set_false_path -from [get_registers {tpm_release_reg[1]}] -to $spi_reset_clear
 
 # SPI uses its own external clock and held-data CDC mailboxes.
 set spi_sck_port spi_clock_i
@@ -64,15 +54,3 @@ set_false_path -from [get_ports {fan_i2c_scl fan_i2c_sda}]
 set_false_path -to [get_ports {fan_i2c_scl fan_i2c_sda}]
 
 derive_clock_uncertainty
-
-# Experimental physical RNG: the four free-running RO outputs feed an XOR and
-# the first sampling D asynchronously. Except only this verified single D pin.
-# Stage0 Q -> stage1 D and both asynchronous-clear recovery/removal stay timed.
-# TEST excludes this hierarchy and has no RNG timing exception.
-set demo_rng_sampler [get_registers -nowarn {*g_fresh.u_entropy|sample_sync*}]
-if {[get_collection_size $demo_rng_sampler] > 0} {
-    if {[get_collection_size $demo_rng_sampler] != 2} {error "Expected exactly two fresh RNG sampling registers"}
-    set demo_rng_first_d [get_pins -compatibility_mode -nowarn {*u_operation|u_source|g_fresh.u_entropy|sample_sync[0]|d}]
-    if {[get_collection_size $demo_rng_first_d] != 1} {error "Expected exactly one fresh RNG first-stage D pin"}
-    set_false_path -to $demo_rng_first_d
-}
