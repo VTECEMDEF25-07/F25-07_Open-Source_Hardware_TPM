@@ -70,6 +70,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--message", help="Run once with this UTF-8 message")
     parser.add_argument("--transport", default="de25_d2xx_transport:factory")
+    parser.add_argument("--hash-panel", action="store_true", help="Show FPGA Hash demo with Nucleo buttons")
+    parser.add_argument("--port", help="Nucleo serial port for the Hash panel, such as COM5")
     args = parser.parse_args()
     print("DETERMINISTIC TEST KEY - public zero seed, AES-256 CFB128")
     print("The FPGA generates the key after reset; the laptop derives the same public test key.")
@@ -81,7 +83,7 @@ def main():
             raise ValueError("TPM Startup failed")
         if args.message is not None:
             run_message(transport, args.message)
-        else:
+        elif not args.hash_panel:
             while True:
                 try:
                     message = input("Message to encrypt on laptop and decrypt on FPGA (Ctrl+C to exit): ")
@@ -91,6 +93,9 @@ def main():
                     print("Use at most 1024 UTF-8 bytes.")
                     continue
                 run_message(transport, message)
+        if args.hash_panel:
+            from lenovo_hash_panel import run_panel
+            run_panel(transport, args.port)
     finally:
         transport.close()
 
