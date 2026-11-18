@@ -45,5 +45,5 @@ if {[examine -radix unsigned sim:/tb_test/errors] != 0 ||
     [examine -radix unsigned sim:/tb_test/genEntry] != 240} {
     error "Original SPI command regression failed or did not finish"
 }
-echo "TPM_LEGACY_SPI_PASS"
+echo "TPM_LEGACY_SPI_PASS entry=[examine -radix unsigned sim:/tb_test/genEntry] errors=[examine -radix unsigned sim:/tb_test/errors]"
 quit -force -code 0

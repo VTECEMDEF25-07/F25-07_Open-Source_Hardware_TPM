@@ -17,6 +17,22 @@ module tb_tpm2_hash_command;
     wire digest_valid, digest_ready;
     integer jobs=0, writes=0, i;
     reg passed=0;
+    wire [15:0] engine_length;
+    wire [3:0] engine_state;
+    integer accepted=0, completed=0, dispatched=0;
+    reg poison_header=0;
+    assign exec_rsp_length=engine_length[11:0];
+    always @(posedge clk) if (reset_n) begin
+        if (execute && engine_state == 0) accepted <= accepted+1;
+        if (engine_state == 10) dispatched <= dispatched+1;
+        if (hash_request && (engine_state != 11 || !engine.hash_active))
+            $fatal(1,"SHA request bypassed Phase One engine ownership");
+        if (ready) begin
+            if (engine_state != 9 || !engine.hash_active)
+                $fatal(1,"Reply bypassed engine post-processing");
+            completed <= completed+1;
+        end
+    end
 
     always @(posedge clk) begin
         command_byte <= command[cmd_addr];
@@ -39,11 +55,13 @@ module tb_tpm2_hash_command;
         .exec_rsp_length_i(exec_rsp_length), .exec_rsp_addr_o(exec_rsp_addr),
         .exec_rsp_byte_i(exec_rsp_byte)
     );
-    execution_engine_hash engine (
-        .clock_i(clk), .reset_n_i(reset_n), .start_i(execute), .operational_i(operational),
-        .command_tag_i(tag), .command_code_i(code), .command_size_i(command_size),
+    execution_engine #(.ENABLE_HASH_COMMAND(1)) engine (
+        .clock_i(clk), .reset_n_i(reset_n), .command_done_i(1'b1), .command_ready_i(execute), .op_state_i(operational ? 3'd3 : 3'd2),
+        .command_tag_i(poison_header ? 16'd0 : tag),
+        .command_code_i(poison_header ? 32'h193 : code),
+        .command_size_i(poison_header ? 32'd1 : command_size),
         .command_addr_o(exec_cmd_addr), .command_byte_i(exec_cmd_byte),
-        .response_valid_o(ready), .response_code_o(rc), .response_length_o(exec_rsp_length),
+        .response_valid_o(ready), .response_code_o(rc), .response_length_o(engine_length), .current_state_o(engine_state),
         .response_addr_i(exec_rsp_addr), .response_byte_o(exec_rsp_byte),
         .hash_request_o(hash_request), .hash_grant_i(hash_grant), .hash_data_o(hash_data),
         .hash_valid_o(hash_valid), .hash_end_o(hash_end), .hash_ready_i(hash_ready),
@@ -107,6 +125,10 @@ module tb_tpm2_hash_command;
         operational=1;
         make_hash(3); transact(0,256'hba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad);
         make_hash(0); transact(0,256'he3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855);
+        make_hash(55); transact(0,256'h64938487f49f7264a667a999c238a8bf78390f306bf1a4fc97c8110356fb593d);
+        make_hash(56); transact(0,256'h162fd87fdb5a2170cfd6c283b44c8c215beac66636d5d1a7b78e1fe546ba0bae);
+        make_hash(63); transact(0,256'h8e1ab863d52af324fa48648cce38a78a5c4ea5f1584878723660fbee48c7f8c0);
+        make_hash(65); transact(0,256'h022821d21f2bc4a3dee9814a89260110613182980de6aa5d3b5b2f58e6b53da0);
         make_hash(64); transact(0,256'hc071fb5b95d7560616f63c0a90d1d462b91f1c992a49cb60dcb85c7e07540e36);
         make_hash(1024); transact(0,256'h284e785ac7a21761525b2e63d06ca8719e40dd69864b176fa01dbe865b145313);
         make_hash(3); command[11]=4; transact(32'h1d5,0);
@@ -115,8 +137,40 @@ module tb_tpm2_hash_command;
         make_hash(3); command[1]=2; transact(32'h101,0);
         make_hash(3); command[0]=0; transact(32'h01e,0);
         make_hash(3); {command[8],command[9]}=16'h0193; transact(32'h143,0);
-        make_hash(3); {command[8],command[9]}=16'h0121; transact(32'h143,0);
         make_hash(3); transact(0,256'hba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad);
+        make_hash(1025); transact(32'h142,0);
+        make_hash(3); command_size=17; transact(32'h142,0);
+        make_hash(3); command_size=22; transact(32'h1d5,0);
+        // A second ready and changed header while busy cannot steal ownership.
+        make_hash(64);
+        fork
+            transact(0,256'hc071fb5b95d7560616f63c0a90d1d462b91f1c992a49cb60dcb85c7e07540e36);
+            begin
+                wait(engine_state==11); @(negedge clk);
+                poison_header=1;
+                force engine.command_ready_i=1;
+                repeat(8) @(negedge clk);
+                release engine.command_ready_i;
+                wait(done); @(negedge clk); poison_header=0;
+            end
+        join
+        if (accepted != dispatched || completed != accepted)
+            $fatal(1,"Engine acceptance/dispatch/completion mismatch %0d/%0d/%0d",
+                   accepted,dispatched,completed);
+        // Abort during streaming and while awaiting the real SHA digest.
+        for (int stage=5; stage<=6; stage++) begin
+            make_hash(1024); send=1; @(negedge clk); send=0;
+            wait(engine.hash_command.state==stage); @(negedge clk);
+            reset_n=0; repeat(3) @(negedge clk);
+            if (ready || hash_request || hash_valid || digest_ready || engine_state != 0)
+                $fatal(1,"In-flight reset did not clear engine/worker");
+            reset_n=1; repeat(4) @(negedge clk);
+            if (ready || done) $fatal(1,"Stale completion after reset");
+            make_hash(3); transact(0,256'hba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad);
+        end
+        if (accepted != dispatched || completed != accepted-2)
+            $fatal(1,"Reset-aborted jobs or engine completion count mismatch");
+        $display("TPM2_HASH_ENGINE_ROUTE_RESET_PASS accepts=%0d dispatches=%0d replies=%0d (two reset-aborted jobs)",accepted,dispatched,completed);
         passed=1;
         $display("TPM2_HASH_COMMAND_PASS");
         $finish;

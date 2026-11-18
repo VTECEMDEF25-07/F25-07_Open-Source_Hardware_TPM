@@ -27,6 +27,17 @@ TPM_TOP #(.ENABLE_ENCRYPTDECRYPT2(ENABLE_AES_TEST)) dut(.CLOCK_50(clk),.CLOCK_10
 .aes_resolved_key_i(KEY), .aes_key_reply_code_i(key_reply_code));
 reg [7:0] packet[0:89], response[0:89];
 reg passed=0;
+integer engine_hash_starts=0, engine_hash_replies=0;
+always @(posedge clk) if (rst) begin
+  if (dut.ee.current_state_o == 10 && dut.ee.active_code == 32'h17d)
+    engine_hash_starts <= engine_hash_starts+1;
+  if (dut.hash_request && (!dut.ee.hash_active || dut.ee.current_state_o != 11))
+    $fatal(1,"SPI Hash bypassed execution engine");
+  if (dut.ee.response_valid_o && dut.ee.hash_active && dut.ee.active_code == 32'h17d) begin
+    if (dut.ee.current_state_o != 9) $fatal(1,"Hash reply outside engine completion");
+    engine_hash_replies <= engine_hash_replies+1;
+  end
+end
 task automatic shift(input [7:0] val,output reg [7:0] got);
   for(integer i=7;i>=0;i=i-1) begin
     mosi=val[i]; #33; sck=1; got[i]=miso; #33; sck=0;
@@ -104,7 +115,7 @@ initial begin
  #3; rst=1; #7; rst=0; #200; rst=1; #1000;
  write_one(16'h0000,8'h02); transfer(1,16'h0000,1);
  if (response[0] !== 8'ha1) $fatal(1,"Locality 0 was not granted");
- repeat (2) begin
+ repeat (4) begin
  write_one(16'h0018,8'h40);
  write_one(16'h0018,8'h40);
  {packet[0],packet[1],packet[2],packet[3],packet[4],packet[5],packet[6],packet[7],packet[8],packet[9],packet[10],packet[11]}=96'h80010000000c000001440000;
@@ -121,6 +132,10 @@ initial begin
  for(integer n=0;n<32;n=n+1) if(response[12+n]!==ABC[255-n*8 -:8]) $fatal(1,"Wrong digest byte %d",n);
  if({response[44],response[45],response[46],response[47],response[48],response[49],response[50],response[51]}!==64'h8024400000070000) $fatal(1,"Bad ticket");
  end
+ $display("TPM2_HASH_SPI_ENGINE_ROUTE starts=%0d replies=%0d",engine_hash_starts,engine_hash_replies);
+ if (engine_hash_starts != 4 || engine_hash_replies != 4)
+   $fatal(1,"Expected four engine-owned SPI Hash commands, starts=%0d replies=%0d",
+          engine_hash_starts,engine_hash_replies);
  if (ENABLE_AES_TEST) begin
    aes_packet(0,32'h80000000,PLAINTEXT,0,0);
    aes_packet(1,32'h80000000,CIPHERTEXT,0,0);
