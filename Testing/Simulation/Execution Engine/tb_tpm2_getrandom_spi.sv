@@ -5,7 +5,7 @@ wire miso, irq;
 always #10 clk=~clk;
 always #5 clk100=~clk100;
 TPM_TOP #(.ENABLE_GETRANDOM(ENABLE_RANDOM_TEST), .ENABLE_PCR_EXTEND(ENABLE_EXTEND_TEST),
- .PCR_EXTEND_EMPTY_AUTH_MASK(24'h0000ff), .PCR_EXTEND_LOCALITY_MASK(5'b00001)) dut(.CLOCK_50(clk),.CLOCK_100(clk100),.RESET_n(rst),
+ .PCR_EXTEND_EMPTY_AUTH_MASK(24'h0000ff), .PCR_EXTEND_LOCALITY_MASK(5'b00001)) dut(.CLOCK_50(clk),.RESET_n(rst),
 .SPI_CLOCK(sck),.SPI_CS_n(cs),.SPI_RST_n(rst),.SPI_MOSI(mosi),.SPI_MISO(miso),.SPI_PIRQ_n(irq));
 reg [7:0] packet[0:511], response[0:511];
 reg passed=0;
