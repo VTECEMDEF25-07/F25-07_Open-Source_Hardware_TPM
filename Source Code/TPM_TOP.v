@@ -102,44 +102,14 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
     wire [255:0] hash_digest;
     wire hash_digest_valid, hash_digest_ready;
 
-    // The Phase One engine owns Hash acceptance, dispatch and completion.
-    // The optional AES packet path retains its existing enable policy.
-    wire select_aes = ENABLE_ENCRYPTDECRYPT2 && commandCode == 32'h00000193;
-    wire [11:0] engine_cmd_addr, aes_cmd_addr, aes_rsp_length;
-    wire [7:0] engine_rsp_byte, aes_rsp_byte;
-    wire [31:0] aes_rsp_code;
-    wire aes_rsp_valid;
+    wire [11:0] engine_cmd_addr;
+    wire [7:0] engine_rsp_byte;
     wire [15:0] engine_rsp_length;
-
-    assign exec_cmd_addr = select_aes ? aes_cmd_addr : engine_cmd_addr;
-    assign exec_rsp_length = select_aes ? aes_rsp_length : engine_rsp_length[11:0];
-    assign exec_rsp_byte = select_aes ? aes_rsp_byte : engine_rsp_byte;
-    assign exec_rsp_code = select_aes ? aes_rsp_code : ee_responseCode;
-    assign responseReady = select_aes ? aes_rsp_valid : engine_response_ready;
-
-    generate if (ENABLE_ENCRYPTDECRYPT2) begin : aes_command_enabled
-        execution_engine_aes_packet aes_command (
-            .clock_i(CLOCK_50), .reset_n_i(rst_n),
-            .start_i(execStart && select_aes), .operational_i(op_state == 3'b011),
-            .command_tag_i(commandTag), .command_size_i(commandSize),
-            .command_addr_o(aes_cmd_addr), .command_byte_i(exec_cmd_byte),
-            .response_valid_o(aes_rsp_valid), .response_code_o(aes_rsp_code),
-            .response_length_o(aes_rsp_length), .response_addr_i(exec_rsp_addr),
-            .response_byte_o(aes_rsp_byte), .key_request_o(aes_key_request_o),
-            .key_request_ready_i(aes_key_request_ready_i), .key_handle_o(aes_key_handle_o),
-            .key_reply_valid_i(aes_key_reply_valid_i), .key_reply_ready_o(aes_key_reply_ready_o),
-            .resolved_key_i(aes_resolved_key_i), .key_reply_code_i(aes_key_reply_code_i)
-        );
-    end else begin : aes_command_disabled
-        assign aes_cmd_addr = 0;
-        assign aes_rsp_length = 0;
-        assign aes_rsp_byte = 0;
-        assign aes_rsp_code = 0;
-        assign aes_rsp_valid = 0;
-        assign aes_key_request_o = 0;
-        assign aes_key_handle_o = 0;
-        assign aes_key_reply_ready_o = 0;
-    end endgenerate
+    assign exec_cmd_addr = engine_cmd_addr;
+    assign exec_rsp_length = engine_rsp_length[11:0];
+    assign exec_rsp_byte = engine_rsp_byte;
+    assign exec_rsp_code = ee_responseCode;
+    assign responseReady = engine_response_ready;
 
     // Only the raw SHA requester is connected in this host integration.
     // HMAC, PCR extend, and RNG keep their own interfaces for later wiring.
@@ -204,10 +174,10 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
     // Preserve inherited command behavior, including its authorization
     // placeholders. Hash/AES are isolated from these stubs; this routing
     // compatibility change does not implement real legacy authorization.
-	execution_engine #(.ENABLE_HASH_COMMAND(1)) ee
+	execution_engine #(.ENABLE_HASH_COMMAND(1), .ENABLE_AES_COMMAND(ENABLE_ENCRYPTDECRYPT2)) ee
 	(
 		.clock_i(CLOCK_50), .reset_n_i(rst_n), 
-		.command_ready_i(execStart && !select_aes), .command_tag_i(commandTag),
+		.command_ready_i(execStart), .command_tag_i(commandTag),
 		.command_size_i(commandSize), .command_code_i(commandCode), 
 		.command_length_i(commandSize[15:0]),
 		.handle_0_i(handle0), .handle_1_i(handle1), .handle_2_i(handle2), 
@@ -251,7 +221,11 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
         .hash_request_o(hash_request), .hash_grant_i(hash_grant), .hash_data_o(hash_data),
         .hash_valid_o(hash_valid), .hash_end_o(hash_end), .hash_ready_i(hash_ready),
         .hash_digest_i(hash_digest), .hash_digest_valid_i(hash_digest_valid),
-        .hash_digest_ready_o(hash_digest_ready)
+        .hash_digest_ready_o(hash_digest_ready),
+        .aes_key_request_o(aes_key_request_o), .aes_key_request_ready_i(aes_key_request_ready_i),
+        .aes_key_handle_o(aes_key_handle_o), .aes_key_reply_valid_i(aes_key_reply_valid_i),
+        .aes_key_reply_ready_o(aes_key_reply_ready_o), .aes_resolved_key_i(aes_resolved_key_i),
+        .aes_key_reply_code_i(aes_key_reply_code_i)
 	);
 	
 //TODO: Needed?

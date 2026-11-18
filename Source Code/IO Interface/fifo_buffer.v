@@ -18,6 +18,7 @@
 
 module	fifo_buffer
 (
+    output wire responseReady_o,
 	input			clock_i,
 	input			reset_n_i,
 	
@@ -289,6 +290,7 @@ module	fifo_buffer
 	// static assignments
 	assign	f_fifoComplete_o = state >= TpmGo_wait;
 	assign	f_fifoEmpty_o = state == CommandReady_wait;
+    assign responseReady_o = state == RspOut || state == CommandReady_wait;
 	
 	assign	c_cmdSize_o = b_size;
 	assign	c_cmdSend_o = state == CmdOut_start;

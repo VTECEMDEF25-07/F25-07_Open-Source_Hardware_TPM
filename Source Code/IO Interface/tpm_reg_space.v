@@ -152,6 +152,7 @@ module	tpm_reg_space
 	wire		f_fifoRead;
 	wire		f_fifoComplete;
 	wire		f_fifoEmpty;
+    wire fifo_response_ready;
 	wire	[7:0]	f_fifoOut;
 	
 	// fifo access is true during a transaction request to one of these addresses
@@ -449,7 +450,7 @@ module	tpm_reg_space
 			Completion:
 			begin
 				r_commandReady_e <= 1'b0;
-				r_dataAvail <= ~f_fifoEmpty;
+				r_dataAvail <= fifo_response_ready && ~f_fifoEmpty;
 				r_Expect <= 1'b0;
 			end
 			
@@ -885,6 +886,7 @@ module	tpm_reg_space
 	// instantiation of the fifo buffer
 	fifo_buffer io_fifo
 	(
+        .responseReady_o(fifo_response_ready),
 		.clock_i(clock_i), .reset_n_i(reset_n_i),
 		.cmdByteIn_i(t_writeByte_i), .cmdByteOut_o(c_cmdByteOut_o),
 		.rspByteIn_i(c_rspByteIn_i), .rspByteOut_o(f_fifoOut),

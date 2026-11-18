@@ -5,7 +5,7 @@
 // General Description: Connects the TPM to DE25 pins, related clocks, reset and independent cooling.
 
 // TPM board wrapper for the DE25 Standard RevD.
-// This top preserves TPM_TOP's command path; resource placeholders remain inactive.
+// Lenovo demo build with a public deterministic AES key service.
 
 // Select the implementation here for this board. This default propagates through
 // TPM_TOP to keygen and its RAM/multiplier wrappers.
@@ -60,8 +60,19 @@ module de25_soc_top #(parameter IP_TYPE = `FPGA_IP_TYPE) (
             tpm_release_reg <= {tpm_release_reg[0], 1'b1};
     end
 
-    // Select the FPGA resource backend at the TPM boundary.
-    TPM_TOP #(.IP_TYPE(IP_TYPE), .DEVICE_FAMILY("Agilex 5")) tpm (
+    wire key_request, key_request_ready, key_reply_valid, key_reply_ready;
+    wire [31:0] key_handle, key_reply_code;
+    wire [255:0] resolved_key;
+    lenovo_aes_key_service demo_key (
+        .clock_i(clock_50), .reset_n_i(tpm_release_reg[1]),
+        .key_request_i(key_request), .key_request_ready_o(key_request_ready),
+        .key_handle_i(key_handle), .key_reply_valid_o(key_reply_valid),
+        .key_reply_ready_i(key_reply_ready), .resolved_key_o(resolved_key),
+        .key_reply_code_o(key_reply_code), .key_ready_o()
+    );
+
+    // The Phase One engine owns AES command dispatch and completion.
+    TPM_TOP #(.IP_TYPE(IP_TYPE), .DEVICE_FAMILY("Agilex 5"), .ENABLE_ENCRYPTDECRYPT2(1)) tpm (
         .CLOCK_50(clock_50),
         .CLOCK_100(clock_100),
         .RESET_n(tpm_release_reg[1]),
@@ -70,7 +81,11 @@ module de25_soc_top #(parameter IP_TYPE = `FPGA_IP_TYPE) (
         .SPI_RST_n(tpm_release_reg[1]),
         .SPI_MOSI(spi_mosi_i),
         .SPI_MISO(spi_miso_o),
-        .SPI_PIRQ_n(interrupt_n_o)
+        .SPI_PIRQ_n(interrupt_n_o),
+        .aes_key_request_o(key_request), .aes_key_request_ready_i(key_request_ready),
+        .aes_key_handle_o(key_handle), .aes_key_reply_valid_i(key_reply_valid),
+        .aes_key_reply_ready_o(key_reply_ready), .aes_resolved_key_i(resolved_key),
+        .aes_key_reply_code_i(key_reply_code)
     );
 
     // Cooling remains autonomous during SPI reset.

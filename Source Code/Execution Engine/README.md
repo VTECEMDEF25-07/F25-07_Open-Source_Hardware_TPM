@@ -1,29 +1,29 @@
 # Execution engine integration
 
 This branch connects the SPI command/response path to the shared SHA-256
-engine and adds a simulation path from a TPM2_EncryptDecrypt2 packet to the
+engine and routes TPM2_EncryptDecrypt2 through the Phase One engine to the
 existing AES controller. The two commands share the same packet buffer and
 header parsing.
 
 ## Command flow
 
 ```text
-Host → SPI → tpm_io → tpm_crb → TPM_TOP
-                                  ├─ Legacy → management + Phase One engine
-                                  ├─ Hash → Phase One engine → Hash worker → shared SHA-256
-                                  └─ Optional EncryptDecrypt2 → key service → AES
+Host -> SPI -> tpm_io -> tpm_crb -> TPM_TOP -> Phase One engine
+                                               |-- Legacy management/engine stages
+                                               |-- Hash handler -> shared SHA-256
+                                               +-- AES packet handler -> key service -> AES
 
-Phase One engine (or optional AES handler) → tpm_crb → SPI → host
+Phase One engine -> tpm_crb -> SPI -> host
 ```
 
 | File or module | Role |
 | --- | --- |
 | [`tpm_io.v`](../IO%20Interface/tpm_io.v) | Connects the SPI transport to the command/response buffer and passes down the AES command enable flag. |
 | [`tpm_crb.v`](../IO%20Interface/tpm_crb.v) | Reads the common 10-byte header, buffers the remaining bytes for supported commands, and lets the selected handler read them by address. It writes the response header and streams the handler's reply bytes back into the SPI FIFO. |
-| [`TPM_TOP.v`](../TPM_TOP.v) | Preserves inherited management/engine routes, passes Hash to the Phase One execution engine, and selects the optional AES handler only when enabled. It connects the engine to the raw SHA requester and exposes the optional AES key-service handshake. |
-| [`execution_engine`](execution_engine.v) | Accepts Hash only while idle, captures its tag/code/size/operational state, dispatches the focused worker once, waits for actual completion, and publishes status/length through shared post-processing. Its command-buffer ports carry request addresses and reply bytes. `TPM_TOP` enables `ENABLE_HASH_COMMAND`; the default is zero for existing standalone engine users. |
+| [`TPM_TOP.v`](../TPM_TOP.v) | Preserves inherited management/engine routes, passes Hash and enabled AES commands to the Phase One execution engine. It connects the engine to the raw SHA requester and exposes the optional AES key-service handshake. |
+| [`execution_engine`](execution_engine.v) | Accepts Hash and enabled AES commands only while idle, captures its tag/code/size/operational state, dispatches the focused worker once, waits for actual completion, and publishes status/length through shared post-processing. Its command-buffer ports carry request addresses and reply bytes. `TPM_TOP` enables `ENABLE_HASH_COMMAND`; the default is zero for existing standalone engine users. |
 | [`execution_engine_hash`](execution_engine.v) | Runs as a child of the Phase One engine. Validates the Hash request, streams the message bytes to shared SHA-256, waits for the digest, and formats the digest and null validation ticket. |
-| [`execution_engine_aes_packet`](execution_engine.v) | Reads the key handle, password record, input length and data, direction, mode, and IV. It buffers the data, starts the decoded job, and formats the output data, updated IV, and password acknowledgment on success. |
+| [`execution_engine_aes_packet`](execution_engine.v) | Reads the key handle, password record, input length and data, direction, mode, and IV. It runs inside the Phase One engine, buffers the data, starts the decoded job, and formats the output data, updated IV, and password acknowledgment on success. |
 | [`execution_engine_encryptdecrypt2`](execution_engine.v) | Requests the key by handle and waits for the key service. A rejected request returns an error before AES starts. An approved request supplies the resolved key, IV, direction, and buffer descriptor to the symmetric worker. |
 | [`symm_top`](../Symmetric%20Module/symmetric_top.v) | Runs the decoded AES job through the existing primitive controller. The worker reads and writes bytes through its RAM interface. The packet handler supplies in-place scratch storage for the current command. |
 
@@ -50,18 +50,16 @@ those inherited commands.
   raw SHA lane.
 - **TPM2_EncryptDecrypt2** supports the tested AES-256 CFB path with a
   16-byte IV, a payload of up to 1024 bytes, and one `TPM_RS_PW` record
-  with an empty password. Its enable flag defaults to zero in the normal
-  FPGA build. The SPI simulation enables it and supplies a testbench key
-  service with a known handle and key.
-- **Key generation** is exercised in a separate simulation. That test passes
-  the generated key to the decoded AES job. The SPI round trip uses a known
-  key so its ciphertext and IV can be checked against fixed expected values.
+  with an empty password. The DE25 demo wrapper enables it and connects the
+  deterministic key service. Standalone TPM_TOP callers retain the disabled default.
+- **Key generation** runs after reset in the DE25 demo using the public zero
+  seed and the Phase Two AES key assembly core. The service publishes handle
+  0x80000000 after ownership transfer and successful terminal status.
 
-The scratch buffer holds message bytes for the current job. Key object lookup,
-authorization, TPM object and session storage, power detection, and
-nonvolatile storage are outside this integration. Enabling the AES host path
-for hardware requires a real key service that resolves the handle and
-authorizes its use. Session parameter protection is a separate symmetric path.
+The scratch buffer holds message bytes for the current job. The DE25 service
+resolves one public demo handle and permits its use with an empty password.
+Session parameter protection is a separate symmetric path. See
+[Lenovo AES demo](../../Testing/Host/LENOVO_AES_DEMO.md) for launch instructions.
 
 ## Run the simulations
 

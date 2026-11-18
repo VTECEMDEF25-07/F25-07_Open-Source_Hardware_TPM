@@ -17,11 +17,12 @@ file mkdir $build_dir
 cd $build_dir
 vlib work
 vlog -vlog01compat "+incdir+$io_dir" {*}$rtl
+vlog [file join $repo {Source Code} {Key Generation} integration demo_test_source.v] [file join $repo {Source Code} {Key Generation} integration lenovo_aes_key_service.v]
 set sym_dir [file join $repo {Source Code} {Symmetric Module}]
 set sym_bench [file join $repo Testing Simulation {Symmetric Module}]
 vlog -vlog01compat {*}[glob -directory [file join $sym_dir AES] *.v] {*}[glob -directory [file join $sym_dir Controllers] *.v] [file join $sym_dir symmetric_top.v]
-vlog -sv [file join $sym_bench symmetric_test_ram.sv] [file join $bench_dir tb_keygen_encryptdecrypt2.sv] [file join $bench_dir tb_tpm2_hash_command.sv] [file join $bench_dir tb_tpm2_hash_spi.sv]
-foreach top {tb_tpm2_hash_command tb_tpm2_hash_spi tb_keygen_encryptdecrypt2} {
+vlog -sv [file join $sym_bench symmetric_test_ram.sv] [file join $bench_dir tb_keygen_encryptdecrypt2.sv] [file join $bench_dir tb_tpm2_hash_command.sv] [file join $bench_dir tb_tpm2_hash_spi.sv] [file join $bench_dir tb_lenovo_aes_key_service.sv]
+foreach top {tb_lenovo_aes_key_service tb_tpm2_hash_command tb_tpm2_hash_spi tb_keygen_encryptdecrypt2} {
     vsim -voptargs=+acc -onfinish stop work.$top
     run -all
     if {[examine -radix unsigned sim:/$top/passed] != 1} {
@@ -33,6 +34,12 @@ vsim -voptargs=+acc -gENABLE_AES_TEST=1 -onfinish stop work.tb_tpm2_hash_spi
 run -all
 if {[examine -radix unsigned sim:/tb_tpm2_hash_spi/passed] != 1} {
     error "SPI EncryptDecrypt2 did not pass"
+}
+quit -sim
+vsim -voptargs=+acc -gENABLE_AES_TEST=1 -gDETERMINISTIC_KEY_TEST=1 -onfinish stop work.tb_tpm2_hash_spi
+run -all
+if {[examine -radix unsigned sim:/tb_tpm2_hash_spi/passed] != 1} {
+    error "Deterministic AES SPI demo did not pass"
 }
 # Preserve the original host-command behavior as well as the new paths.
 # The inherited bench uses $error/$stop, so check its counter and final
