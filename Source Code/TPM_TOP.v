@@ -90,10 +90,10 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
 	wire	[31:0]	ee_responseCode, authHierarchy;
 	wire		initialized;
 	
-    // Only Hash and EncryptDecrypt2 use the new packet handlers. Preserve
-    // the inherited parser/management/engine routes for every other command.
+    // Hash, PCR reads/capability, and optional AES use scoped packet handlers.
+    // Preserve inherited routing for the remaining commands.
     wire scoped_command_en = commandCode == 32'h0000017d ||
-        commandCode == 32'h00000193;
+        commandCode == 32'h00000193 || commandCode == 32'h17e || commandCode == 32'h17a;
     wire engine_response_ready;
     wire [11:0] exec_cmd_addr, exec_rsp_addr, exec_rsp_length;
     wire [7:0] exec_cmd_byte, exec_rsp_byte, hash_data;
@@ -102,7 +102,7 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
     wire [255:0] hash_digest;
     wire hash_digest_valid, hash_digest_ready;
 
-    // The Phase One engine owns Hash acceptance, dispatch and completion.
+    // Phase One owns Hash and PCR acceptance, dispatch and completion.
     // The optional AES packet path retains its existing enable policy.
     wire select_aes = ENABLE_ENCRYPTDECRYPT2 && commandCode == 32'h00000193;
     wire [11:0] engine_cmd_addr, aes_cmd_addr, aes_rsp_length;
@@ -141,8 +141,12 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
         assign aes_key_reply_ready_o = 0;
     end endgenerate
 
-    // Only the raw SHA requester is connected in this host integration.
-    // HMAC, PCR extend, and RNG keep their own interfaces for later wiring.
+    // Host Hash uses raw SHA; PCR_Read uses the same subsystem PCR bank.
+    // HMAC, host PCR extend, and RNG remain unconnected.
+    wire [4:0] pcr_read_index;
+    wire [255:0] pcr_read_data;
+    wire pcr_read_valid;
+    wire [31:0] pcr_update_counter;
     hash_subsystem shared_hash (
         .clk_i(CLOCK_50), .reset_n_i(rst_n),
         .raw_request_i(hash_request), .raw_grant_o(hash_grant),
@@ -154,7 +158,9 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
         .hmac_message_data_i(8'd0), .hmac_message_valid_i(1'b0),
         .hmac_message_end_i(1'b0), .hmac_digest_ready_i(1'b0),
         .pcr_extend_start_en_i(1'b0), .pcr_extend_index_i(5'd0),
-        .pcr_measurement_i(256'd0), .pcr_read_index_i(5'd0),
+        .pcr_measurement_i(256'd0), .pcr_read_index_i(pcr_read_index),
+        .pcr_read_data_o(pcr_read_data), .pcr_read_valid_o(pcr_read_valid),
+        .pcr_update_counter_o(pcr_update_counter),
         .rng_hash_msg_data_i(8'd0), .rng_hash_msg_valid_i(1'b0),
         .rng_hash_msg_last_i(1'b0)
     );
@@ -204,7 +210,7 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
     // Preserve inherited command behavior, including its authorization
     // placeholders. Hash/AES are isolated from these stubs; this routing
     // compatibility change does not implement real legacy authorization.
-	execution_engine #(.ENABLE_HASH_COMMAND(1)) ee
+	execution_engine #(.ENABLE_HASH_COMMAND(1), .ENABLE_PCR_COMMANDS(1)) ee
 	(
 		.clock_i(CLOCK_50), .reset_n_i(rst_n), 
 		.command_ready_i(execStart && !select_aes), .command_tag_i(commandTag),
@@ -251,7 +257,9 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
         .hash_request_o(hash_request), .hash_grant_i(hash_grant), .hash_data_o(hash_data),
         .hash_valid_o(hash_valid), .hash_end_o(hash_end), .hash_ready_i(hash_ready),
         .hash_digest_i(hash_digest), .hash_digest_valid_i(hash_digest_valid),
-        .hash_digest_ready_o(hash_digest_ready)
+        .hash_digest_ready_o(hash_digest_ready),
+        .pcr_read_index_o(pcr_read_index), .pcr_read_data_i(pcr_read_data),
+        .pcr_read_valid_i(pcr_read_valid), .pcr_update_counter_i(pcr_update_counter)
 	);
 	
 //TODO: Needed?

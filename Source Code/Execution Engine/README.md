@@ -99,3 +99,11 @@ handle/session/authorization placeholders. Phase Three authorization, other hash
 algorithms/hierarchies, Lenovo demo changes, and physical hardware verification
 are outside this change. Simulation does not establish board timing, synthesis
 results, or a hardware SPI round trip.
+
+
+## PCR reads and bank discovery
+
+Phase One now owns the no-session `TPM2_PCR_Read` and `TPM2_GetCapability`
+`TPM_CAP_PCRS` forms. They use the PCR bank inside `shared_hash`.
+See [PCR profile and wire tests](PCR_PROFILE.md) for selection limits,
+update-counter semantics, startup behavior, and validation limits.
