@@ -11,7 +11,7 @@ Open the `.qpf` file for your board in the matching Quartus edition:
 
 Use **File > Open Project**, select the QPF, and then **Processing > Start Compilation**. Make project assignments and edit source files in Quartus as usual. The QSF already lists the board-specific and shared source files.
 
-Each folder owns its board top, PLL, pins and timing constraints. Both projects reference `Source Code/TPM_TOP.v` and the shared module folders at the repository root. DE25 also includes the original Terasic fan-controller example. Keep the full checkout in place so the relative source paths remain valid.
+Each folder owns its board top, pins and timing constraints. DE1 uses direct 50 MHz without a PLL; DE25 owns its board PLL. Both projects reference `Source Code/TPM_TOP.v` and the shared module folders at the repository root. DE25 also includes the original Terasic fan-controller example. Keep the full checkout in place so the relative source paths remain valid.
 
 Quartus puts generated results under each board's ignored `output_files/`, `db/` and related directories. The Quartus editions are not interchangeable; open each project with its matching edition.
 
