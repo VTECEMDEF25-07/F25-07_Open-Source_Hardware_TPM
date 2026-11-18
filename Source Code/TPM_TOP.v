@@ -94,7 +94,7 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
     // the inherited parser/management/engine routes for every other command.
     wire scoped_command_en = commandCode == 32'h0000017d ||
         commandCode == 32'h00000193;
-    wire legacy_response_ready;
+    wire engine_response_ready;
     wire [11:0] exec_cmd_addr, exec_rsp_addr, exec_rsp_length;
     wire [7:0] exec_cmd_byte, exec_rsp_byte, hash_data;
     wire [31:0] exec_rsp_code;
@@ -102,20 +102,20 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
     wire [255:0] hash_digest;
     wire hash_digest_valid, hash_digest_ready;
 
-    // Command policy and packet fields are handled here. The SHA subsystem
-    // receives only the validated message stream and returns its digest.
+    // The Phase One engine owns Hash acceptance, dispatch and completion.
+    // The optional AES packet path retains its existing enable policy.
     wire select_aes = ENABLE_ENCRYPTDECRYPT2 && commandCode == 32'h00000193;
-    wire [11:0] hash_cmd_addr, hash_rsp_length, aes_cmd_addr, aes_rsp_length;
-    wire [7:0] hash_rsp_byte, aes_rsp_byte;
-    wire [31:0] hash_rsp_code, aes_rsp_code;
-    wire hash_rsp_valid, aes_rsp_valid;
+    wire [11:0] engine_cmd_addr, aes_cmd_addr, aes_rsp_length;
+    wire [7:0] engine_rsp_byte, aes_rsp_byte;
+    wire [31:0] aes_rsp_code;
+    wire aes_rsp_valid;
+    wire [15:0] engine_rsp_length;
 
-    assign exec_cmd_addr = select_aes ? aes_cmd_addr : hash_cmd_addr;
-    assign exec_rsp_length = select_aes ? aes_rsp_length : hash_rsp_length;
-    assign exec_rsp_byte = select_aes ? aes_rsp_byte : hash_rsp_byte;
-    assign exec_rsp_code = select_aes ? aes_rsp_code : hash_rsp_code;
-    assign responseReady = scoped_command_en ?
-        (select_aes ? aes_rsp_valid : hash_rsp_valid) : legacy_response_ready;
+    assign exec_cmd_addr = select_aes ? aes_cmd_addr : engine_cmd_addr;
+    assign exec_rsp_length = select_aes ? aes_rsp_length : engine_rsp_length[11:0];
+    assign exec_rsp_byte = select_aes ? aes_rsp_byte : engine_rsp_byte;
+    assign exec_rsp_code = select_aes ? aes_rsp_code : ee_responseCode;
+    assign responseReady = select_aes ? aes_rsp_valid : engine_response_ready;
 
     generate if (ENABLE_ENCRYPTDECRYPT2) begin : aes_command_enabled
         execution_engine_aes_packet aes_command (
@@ -140,19 +140,6 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
         assign aes_key_handle_o = 0;
         assign aes_key_reply_ready_o = 0;
     end endgenerate
-
-    execution_engine_hash hash_command (
-        .clock_i(CLOCK_50), .reset_n_i(rst_n),
-        .start_i(execStart && scoped_command_en && !select_aes), .operational_i(op_state == 3'b011),
-        .command_tag_i(commandTag), .command_code_i(commandCode), .command_size_i(commandSize),
-        .command_addr_o(hash_cmd_addr), .command_byte_i(exec_cmd_byte),
-        .response_valid_o(hash_rsp_valid), .response_code_o(hash_rsp_code),
-        .response_length_o(hash_rsp_length), .response_addr_i(exec_rsp_addr),
-        .response_byte_o(hash_rsp_byte), .hash_request_o(hash_request),
-        .hash_grant_i(hash_grant), .hash_data_o(hash_data), .hash_valid_o(hash_valid),
-        .hash_end_o(hash_end), .hash_ready_i(hash_ready), .hash_digest_i(hash_digest),
-        .hash_digest_valid_i(hash_digest_valid), .hash_digest_ready_o(hash_digest_ready)
-    );
 
     // Only the raw SHA requester is connected in this host integration.
     // HMAC, PCR extend, and RNG keep their own interfaces for later wiring.
@@ -217,10 +204,10 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
     // Preserve inherited command behavior, including its authorization
     // placeholders. Hash/AES are isolated from these stubs; this routing
     // compatibility change does not implement real legacy authorization.
-	execution_engine ee
+	execution_engine #(.ENABLE_HASH_COMMAND(1)) ee
 	(
 		.clock_i(CLOCK_50), .reset_n_i(rst_n), 
-		.command_ready_i(execStart && !scoped_command_en), .command_tag_i(commandTag),
+		.command_ready_i(execStart && !select_aes), .command_tag_i(commandTag),
 		.command_size_i(commandSize), .command_code_i(commandCode), 
 		.command_length_i(commandSize[15:0]),
 		.handle_0_i(handle0), .handle_1_i(handle1), .handle_2_i(handle2), 
@@ -257,7 +244,14 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
 		.orderlyInput_o(orderlyInput), .initialized_o(initialized), 
 		.testsRun_o(testsRun), .authHierarchy_o(authHierarchy), 
 		
-		.response_valid_o(legacy_response_ready), .response_code_o(ee_responseCode)
+		.response_valid_o(engine_response_ready), .response_code_o(ee_responseCode),
+        .response_length_o(engine_rsp_length),
+        .command_addr_o(engine_cmd_addr), .command_byte_i(exec_cmd_byte),
+        .response_addr_i(exec_rsp_addr), .response_byte_o(engine_rsp_byte),
+        .hash_request_o(hash_request), .hash_grant_i(hash_grant), .hash_data_o(hash_data),
+        .hash_valid_o(hash_valid), .hash_end_o(hash_end), .hash_ready_i(hash_ready),
+        .hash_digest_i(hash_digest), .hash_digest_valid_i(hash_digest_valid),
+        .hash_digest_ready_o(hash_digest_ready)
 	);
 	
 //TODO: Needed?

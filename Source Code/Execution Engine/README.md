@@ -8,20 +8,21 @@ header parsing.
 ## Command flow
 
 ```text
-Host → SPI → tpm_io → tpm_crb → TPM_TOP dispatch
-                                  ├─ Existing commands → inherited management/engine
-                                  ├─ Hash → shared SHA-256
-                                  └─ EncryptDecrypt2 → key service → AES
+Host → SPI → tpm_io → tpm_crb → TPM_TOP
+                                  ├─ Legacy → management + Phase One engine
+                                  ├─ Hash → Phase One engine → Hash worker → shared SHA-256
+                                  └─ Optional EncryptDecrypt2 → key service → AES
 
-Selected handler → tpm_crb → SPI → host
+Phase One engine (or optional AES handler) → tpm_crb → SPI → host
 ```
 
 | File or module | Role |
 | --- | --- |
 | [`tpm_io.v`](../IO%20Interface/tpm_io.v) | Connects the SPI transport to the command/response buffer and passes down the AES command enable flag. |
 | [`tpm_crb.v`](../IO%20Interface/tpm_crb.v) | Reads the common 10-byte header, buffers the remaining bytes for supported commands, and lets the selected handler read them by address. It writes the response header and streams the handler's reply bytes back into the SPI FIFO. |
-| [`TPM_TOP.v`](../TPM_TOP.v) | Preserves inherited management/engine routes for existing commands and selects the Hash or optional AES handler only for those command codes. It connects the Hash handler to the raw SHA requester and exposes the optional AES key-service handshake. |
-| [`execution_engine_hash`](execution_engine.v) | Validates the Hash request, streams the message bytes to shared SHA-256, waits for the digest, and formats the digest and null validation ticket. |
+| [`TPM_TOP.v`](../TPM_TOP.v) | Preserves inherited management/engine routes, passes Hash to the Phase One execution engine, and selects the optional AES handler only when enabled. It connects the engine to the raw SHA requester and exposes the optional AES key-service handshake. |
+| [`execution_engine`](execution_engine.v) | Accepts Hash only while idle, captures its tag/code/size/operational state, dispatches the focused worker once, waits for actual completion, and publishes status/length through shared post-processing. Its command-buffer ports carry request addresses and reply bytes. `TPM_TOP` enables `ENABLE_HASH_COMMAND`; the default is zero for existing standalone engine users. |
+| [`execution_engine_hash`](execution_engine.v) | Runs as a child of the Phase One engine. Validates the Hash request, streams the message bytes to shared SHA-256, waits for the digest, and formats the digest and null validation ticket. |
 | [`execution_engine_aes_packet`](execution_engine.v) | Reads the key handle, password record, input length and data, direction, mode, and IV. It buffers the data, starts the decoded job, and formats the output data, updated IV, and password acknowledgment on success. |
 | [`execution_engine_encryptdecrypt2`](execution_engine.v) | Requests the key by handle and waits for the key service. A rejected request returns an error before AES starts. An approved request supplies the resolved key, IV, direction, and buffer descriptor to the symmetric worker. |
 | [`symm_top`](../Symmetric%20Module/symmetric_top.v) | Runs the decoded AES job through the existing primitive controller. The worker reads and writes bytes through its RAM interface. The packet handler supplies in-place scratch storage for the current command. |
@@ -85,5 +86,16 @@ builds the RTL and runs these checks.
 
 | `TPM_LEGACY_SPI_PASS` | Unchanged original SPI bench: final entry 240 and zero assertion errors. |
 
-The SPI Hash bench repeats Startup → Hash twice without reset to check
-switching between the ten-byte legacy and longer scoped responses.
+The SPI Hash bench repeats Startup → Hash four times without reset and checks
+engine dispatch/ownership/completion directly in both AES configurations.
+The command-buffer bench also instantiates the real Phase One engine, checks
+empty, 3/55/56/63/64/65/1024-byte digests, rejects 1025-byte and malformed
+requests, and verifies busy commands cannot replace the captured header.
+It resets the CRB, engine and SHA during streaming and digest wait, checks
+for stale completion, and verifies a subsequent `abc` request succeeds.
+
+The Hash route uses its focused no-session validation rather than the legacy
+handle/session/authorization placeholders. Phase Three authorization, other hash
+algorithms/hierarchies, Lenovo demo changes, and physical hardware verification
+are outside this change. Simulation does not establish board timing, synthesis
+results, or a hardware SPI round trip.
