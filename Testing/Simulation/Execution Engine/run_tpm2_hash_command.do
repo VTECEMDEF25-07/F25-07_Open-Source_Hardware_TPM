@@ -46,6 +46,22 @@ if {[examine -radix unsigned sim:/tb_tpm2_pcr_extend_command/passed] != 1} { err
 # The inherited bench uses $error/$stop, so check its counter and final
 # entry explicitly instead of treating simulator exit zero as success.
 quit -sim
+# Preserve the newly merged GetRandom route and its shared-SHA ownership.
+vlog -sv [file join $bench_dir tb_getrandom_engine.sv] [file join $bench_dir tb_tpm2_getrandom_spi.sv]
+vsim -voptargs=+acc -onfinish stop work.tb_getrandom_engine
+run -all
+if {[examine -radix unsigned sim:/tb_getrandom_engine/passed] != 1} {error "GetRandom owner/timeout/reset failed"}
+quit -sim
+foreach enabled {1 0} {
+    vsim -voptargs=+acc -gENABLE_RANDOM_TEST=$enabled -onfinish stop work.tb_tpm2_getrandom_spi
+    run -all
+    if {[examine -radix unsigned sim:/tb_tpm2_getrandom_spi/passed] != 1} {error "GetRandom/PCR Read regression failed"}
+    quit -sim
+}
+vsim -voptargs=+acc -gENABLE_EXTEND_TEST=1 -onfinish stop work.tb_tpm2_getrandom_spi
+run -all
+if {[examine -radix unsigned sim:/tb_tpm2_getrandom_spi/passed] != 1} {error "Combined GetRandom/PCR Extend SPI failed"}
+quit -sim
 vlog -sv [file join $repo Testing Simulation {IO Interface} tb_test.v]
 vsim -L altera_mf_ver -L lpm_ver -voptargs=+acc -onfinish stop work.tb_test
 run 2 ms

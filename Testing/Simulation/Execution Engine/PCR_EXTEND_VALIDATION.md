@@ -51,10 +51,11 @@ simulator exit status alone is not treated as success.
 
 ## Scope and physical validation
 
-Only Extend additions are compared against the PCR Read branch. No GetRandom
-#53 code, new SHA/PCR implementation, reset/startup profile or NV/auth subsystem
-is included. GetRandom overlaps engine mux/dispatch, CRB route and TPM_TOP
-shared-SHA wiring; the combined GetRandom/Extend stack is not validated here.
+The diff against current develop contains Extend additions and combined
+regressions; GetRandom #53 is inherited from its merged base. No new SHA/PCR
+implementation, reset/startup profile or NV/auth subsystem is added. Engine
+ownership, CRB capture and shared-SHA wiring are reconciled and exercised by
+the combined regression described below.
 
 No physical FPGA/Lenovo boot, logic analyzer trace, FPGA fit/timing or resume/NV
 validation was performed. Extend stays off by default, with a zero eligible-PCR
@@ -64,3 +65,16 @@ empty-password path before PCR mutation, own external NV plus profile-defined
 Startup/Reset/Shutdown/save/restore, preserve bank/counter consistency and add
 end-to-end authorization/locality rejection and resume tests. PCR_Event and
 sequence commands remain a separate inventory.
+
+
+## GetRandom conflict resolution
+
+Current develop `92bdb058a8a324f144364dd8f59630d0c8f0cb5f` includes GetRandom53.
+The PCR Extend runner now preserves its enabled/disabled, owner/timeout/reset,
+RCT/APT propagation and healthy recovery checks. It also runs one SPI instance
+with both features enabled: four PCR0 Extends interleaved with GetRandom/Hash,
+full independent PCR digests and paged all24 readback, exact counter increments,
+then the existing fault/recovery sequence. Existing Extend authorization,
+locality, malformed, disabled/zero-mask, reset-abort and legacy checks remain.
+Production feature/authorization defaults remain gated. This branch revision
+does not inherit the separate acceptance image's physical/timing approval.

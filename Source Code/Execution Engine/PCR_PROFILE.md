@@ -212,14 +212,15 @@ validation has been performed. Before enabling on Lenovo hardware, the target
 platform must establish the correct eligible-PCR/authValue contract and
 locality policy and supply its lifecycle/NV behavior; the defaults stay gated.
 
-GetRandom #53 at `5ea744ad60a91622c29c854e69c420bda1511401` is separate.
-It adds engine dispatch states 12/13 and response/address selection, CRB
-routing/buffering and TPM_TOP RNG/shared-SHA wiring. These overlap the engine,
-CRB and top-level areas touched by the PCR Read stack and Extend. No GetRandom
-code is bundled here. Integration must preserve its random route alongside
-PCR states 10/11, merge the address/response muxes and packet capture, preserve
-all raw/PCR/RNG SHA requesters, and rerun the combined regressions. A merged
-GetRandom/Extend combination has not been simulated in this PR.
+GetRandom #53 is now merged in develop at
+`92bdb058a8a324f144364dd8f59630d0c8f0cb5f`. This update reconciles the
+shared command-address/response muxes, CRB packet capture and TPM_TOP SHA
+requesters with that exact base. GetRandom states12/13 remain alongside PCR
+states10/11. Static empty-password/locality gates and production defaults
+are unchanged. The combined runner preserves GetRandom owner/fault/reset
+regressions and adds one enabled instance interleaving four PCR0 Extends,
+GetRandom and Hash, with complete independent all24-PCR paged readback and
+exact update-counter checks. The separate main SPI restoration is not bundled.
 
 ### Phase Three handoff (required before production PCR mutation)
 

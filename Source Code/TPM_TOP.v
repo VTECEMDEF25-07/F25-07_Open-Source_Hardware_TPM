@@ -19,7 +19,7 @@
 // IP_TYPE is the sole implementation selector; DEVICE_FAMILY is fixed board metadata.
 // IP_TYPE: 0 = Generic, 1 = Altera, 2 = reserved Xilinx (unsupported).
 module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
-    parameter ENABLE_ENCRYPTDECRYPT2 = 0,
+    parameter ENABLE_ENCRYPTDECRYPT2 = 0, parameter ENABLE_GETRANDOM = 0,
     parameter ENABLE_PCR_EXTEND = 0,
     parameter [23:0] PCR_EXTEND_EMPTY_AUTH_MASK = 24'd0,
     parameter [4:0] PCR_EXTEND_LOCALITY_MASK = 5'b00001)
@@ -93,10 +93,10 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
 	wire	[31:0]	ee_responseCode, authHierarchy;
 	wire		initialized;
 	
-    // Hash, PCR reads/capability, and optional AES use scoped packet handlers.
+    // Hash, GetRandom, PCR reads/capability, and optional AES use scoped packet handlers.
     // Preserve inherited routing for the remaining commands.
     wire scoped_command_en = commandCode == 32'h0000017d ||
-        commandCode == 32'h00000193 || commandCode == 32'h17e || commandCode == 32'h17a || commandCode == 32'h182;
+        commandCode == 32'h00000193 || commandCode == 32'h17e || commandCode == 32'h17a || commandCode == 32'h182 || commandCode == 32'h17b;
     wire engine_response_ready;
     wire [11:0] exec_cmd_addr, exec_rsp_addr, exec_rsp_length;
     wire [7:0] exec_cmd_byte, exec_rsp_byte, hash_data;
@@ -105,7 +105,7 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
     wire [255:0] hash_digest;
     wire hash_digest_valid, hash_digest_ready;
 
-    // Phase One owns Hash and PCR acceptance, dispatch and completion.
+    // Phase One owns Hash, GetRandom and PCR acceptance, dispatch and completion.
     // The optional AES packet path retains its existing enable policy.
     wire select_aes = ENABLE_ENCRYPTDECRYPT2 && commandCode == 32'h00000193;
     wire [11:0] engine_cmd_addr, aes_cmd_addr, aes_rsp_length;
@@ -145,7 +145,7 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
     end endgenerate
 
     // Host Hash uses raw SHA; PCR_Read uses the same subsystem PCR bank.
-    // Host Extend uses the existing Phase Two controller; HMAC and RNG remain unconnected.
+    // Host Extend and RNG share SHA with raw Hash; HMAC remains inactive.
     wire pcr_extend_start, pcr_busy, pcr_done, pcr_error;
     wire [4:0] pcr_extend_index;
     wire [255:0] pcr_measurement;
@@ -154,6 +154,17 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
     wire [255:0] pcr_read_data;
     wire pcr_read_valid;
     wire [31:0] pcr_update_counter;
+    wire [7:0] rng_hash_data;
+    wire rng_hash_valid, rng_hash_last, rng_hash_ready, rng_digest_valid;
+    wire [255:0] rng_digest, random_data;
+    wire random_valid, random_request, rng_timeout, rng_fault;
+    phase_one_rng #(.ENABLE(ENABLE_GETRANDOM)) rng (
+        .clk(CLOCK_50), .rst_n(rst_n), .request_i(random_request),
+        .timeout_i(rng_timeout), .random_o(random_data), .valid_o(random_valid),
+        .fault_o(rng_fault), .hash_data_o(rng_hash_data),
+        .hash_valid_o(rng_hash_valid), .hash_last_o(rng_hash_last),
+        .hash_ready_i(rng_hash_ready), .digest_i(rng_digest), .digest_valid_i(rng_digest_valid));
+
     hash_subsystem shared_hash (
         .clk_i(CLOCK_50), .reset_n_i(rst_n),
         .raw_request_i(hash_request), .raw_grant_o(hash_grant),
@@ -169,8 +180,9 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
         .pcr_done_o(pcr_done), .pcr_error_o(pcr_error), .pcr_read_index_i(pcr_read_index),
         .pcr_read_data_o(pcr_read_data), .pcr_read_valid_o(pcr_read_valid),
         .pcr_update_counter_o(pcr_update_counter),
-        .rng_hash_msg_data_i(8'd0), .rng_hash_msg_valid_i(1'b0),
-        .rng_hash_msg_last_i(1'b0)
+        .rng_hash_msg_data_i(rng_hash_data), .rng_hash_msg_valid_i(rng_hash_valid),
+        .rng_hash_msg_last_i(rng_hash_last), .rng_hash_msg_ready_o(rng_hash_ready),
+        .rng_hash_digest_o(rng_digest), .rng_hash_digest_valid_o(rng_digest_valid)
     );
 
 	tpm_io #(.SCOPED_COMMANDS(1), .PRESERVE_LEGACY_COMMANDS(1),
@@ -217,9 +229,9 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
 	);
 	
     // Preserve inherited command behavior, including its authorization
-    // placeholders. Hash/AES are isolated from these stubs; this routing
+    // placeholders. Scoped commands are isolated from these stubs; this routing
     // compatibility change does not implement real legacy authorization.
-	execution_engine #(.ENABLE_HASH_COMMAND(1), .ENABLE_PCR_COMMANDS(1),
+	execution_engine #(.ENABLE_HASH_COMMAND(1), .ENABLE_PCR_COMMANDS(1), .ENABLE_GETRANDOM(ENABLE_GETRANDOM),
         .ENABLE_PCR_EXTEND(ENABLE_PCR_EXTEND),
         .PCR_EXTEND_EMPTY_AUTH_MASK(PCR_EXTEND_EMPTY_AUTH_MASK),
         .PCR_EXTEND_LOCALITY_MASK(PCR_EXTEND_LOCALITY_MASK)) ee
@@ -274,7 +286,9 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
         .pcr_read_valid_i(pcr_read_valid), .pcr_update_counter_i(pcr_update_counter),
         .locality_i(command_locality), .pcr_extend_start_o(pcr_extend_start),
         .pcr_extend_index_o(pcr_extend_index), .pcr_measurement_o(pcr_measurement),
-        .pcr_busy_i(pcr_busy), .pcr_done_i(pcr_done), .pcr_error_i(pcr_error)
+        .pcr_busy_i(pcr_busy), .pcr_done_i(pcr_done), .pcr_error_i(pcr_error),
+        .random_i(random_data), .random_valid_i(random_valid && !rng_fault),
+        .random_request_o(random_request), .rng_fault_i(rng_fault), .rng_timeout_o(rng_timeout)
 	);
 	
 //TODO: Needed?
