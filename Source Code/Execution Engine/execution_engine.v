@@ -1,4 +1,7 @@
-module execution_engine #(parameter ENABLE_HASH_COMMAND = 0, parameter ENABLE_PCR_COMMANDS = 0)(
+module execution_engine #(parameter ENABLE_HASH_COMMAND = 0, parameter ENABLE_PCR_COMMANDS = 0,
+    parameter ENABLE_PCR_EXTEND = 0,
+    parameter [23:0] PCR_EXTEND_EMPTY_AUTH_MASK = 24'd0,
+    parameter [4:0] PCR_EXTEND_LOCALITY_MASK = 5'b00001)(
 		clock_i,
 		reset_n_i,
 		command_ready_i,
@@ -87,9 +90,16 @@ module execution_engine #(parameter ENABLE_HASH_COMMAND = 0, parameter ENABLE_PC
         command_addr_o, command_byte_i, response_addr_i, response_byte_o,
         hash_request_o, hash_grant_i, hash_data_o, hash_valid_o, hash_end_o,
         hash_ready_i, hash_digest_i, hash_digest_valid_i, hash_digest_ready_o,
-        pcr_read_index_o, pcr_read_data_i, pcr_read_valid_i, pcr_update_counter_i
+        pcr_read_index_o, pcr_read_data_i, pcr_read_valid_i, pcr_update_counter_i,
+        locality_i, pcr_extend_start_o, pcr_extend_index_o, pcr_measurement_o,
+        pcr_busy_i, pcr_done_i, pcr_error_i
 	);
 
+    input wire [7:0] locality_i;
+    output wire pcr_extend_start_o;
+    output wire [4:0] pcr_extend_index_o;
+    output wire [255:0] pcr_measurement_o;
+    input wire pcr_busy_i, pcr_done_i, pcr_error_i;
     output wire [4:0] pcr_read_index_o;
     input wire [255:0] pcr_read_data_i;
     input wire pcr_read_valid_i;
@@ -571,8 +581,8 @@ module execution_engine #(parameter ENABLE_HASH_COMMAND = 0, parameter ENABLE_PC
                               session2_hmac_size_i;
 
     // Ownership is captured only in IDLE and retained through response reads.
-    // Hash and PCR reads have no handles/sessions in the supported form.
-    // Focused parsers validate them outside the legacy authorization stubs.
+    // Focused packet parsers validate their supported forms. PCR mutation has
+    // a separate opt-in static empty-password policy; legacy auth ports remain.
     // hash_active retains its compatibility name and now marks either parser.
     localparam STATE_HASH_DISPATCH = 4'd10, STATE_HASH_WAIT = 4'd11;
     reg hash_active, pcr_active;
@@ -581,7 +591,7 @@ module execution_engine #(parameter ENABLE_HASH_COMMAND = 0, parameter ENABLE_PC
     wire pcr_complete;
     wire [31:0] pcr_response_code;
     wire accept_pcr = ENABLE_PCR_COMMANDS &&
-        (command_code_i == 32'h17e || command_code_i == 32'h17a);
+        (command_code_i == 32'h17e || command_code_i == 32'h17a || command_code_i == 32'h182);
     wire hash_complete;
     wire [31:0] hash_response_code;
     wire [11:0] hash_response_length;
@@ -593,6 +603,7 @@ module execution_engine #(parameter ENABLE_HASH_COMMAND = 0, parameter ENABLE_PC
     reg [15:0] active_tag;
     reg [31:0] active_code, active_size;
     reg active_operational;
+    reg [7:0] active_locality;
     wire accept_hash = ENABLE_HASH_COMMAND &&
         (command_code_i == 32'h0000017d || command_code_i == 32'h00000193);
     // Disabled AES retains the existing command-code rejection in this parser.
@@ -604,10 +615,11 @@ module execution_engine #(parameter ENABLE_HASH_COMMAND = 0, parameter ENABLE_PC
             active_tag <= 0;
             active_code <= 0;
             active_size <= 0;
-            active_operational <= 0;
+            active_operational <= 0; active_locality <= 0;
         end else if (current_state_o == STATE_IDLE && command_ready_i) begin
             hash_active <= accept_hash || accept_pcr;
             pcr_active <= accept_pcr;
+            active_locality <= locality_i;
             active_tag <= command_tag_i;
             active_code <= command_code_i;
             active_size <= command_size_i;
@@ -630,7 +642,9 @@ module execution_engine #(parameter ENABLE_HASH_COMMAND = 0, parameter ENABLE_PC
         .hash_digest_valid_i(hash_digest_valid_i), .hash_digest_ready_o(hash_digest_ready_o)
     );
 
-    execution_engine_pcr pcr_command (
+    execution_engine_pcr #(.ENABLE_PCR_EXTEND(ENABLE_PCR_EXTEND),
+        .PCR_EXTEND_EMPTY_AUTH_MASK(PCR_EXTEND_EMPTY_AUTH_MASK),
+        .PCR_EXTEND_LOCALITY_MASK(PCR_EXTEND_LOCALITY_MASK)) pcr_command (
         .clock_i(clock_i), .reset_n_i(reset_n_i),
         .start_i(current_state_o == STATE_HASH_DISPATCH && pcr_active),
         .operational_i(active_operational), .command_tag_i(active_tag),
@@ -640,7 +654,10 @@ module execution_engine #(parameter ENABLE_HASH_COMMAND = 0, parameter ENABLE_PC
         .response_length_o(pcr_response_length), .response_addr_i(response_addr_i),
         .response_byte_o(pcr_rsp_byte), .pcr_read_index_o(pcr_read_index_o),
         .pcr_read_data_i(pcr_read_data_i), .pcr_read_valid_i(pcr_read_valid_i),
-        .pcr_update_counter_i(pcr_update_counter_i)
+        .pcr_update_counter_i(pcr_update_counter_i), .locality_i(active_locality),
+        .pcr_extend_start_o(pcr_extend_start_o), .pcr_extend_index_o(pcr_extend_index_o),
+        .pcr_measurement_o(pcr_measurement_o), .pcr_busy_i(pcr_busy_i),
+        .pcr_done_i(pcr_done_i), .pcr_error_i(pcr_error_i)
     );
 
     assign current_session_valid =

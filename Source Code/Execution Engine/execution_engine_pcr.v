@@ -1,7 +1,11 @@
 // SHA-256-only, 24-PCR profile. Phase One owns admission and completion.
-// PCR bytes come from the shared bank; this module only snapshots a reply.
+// Reads snapshot the shared bank; configured Extends launch its existing controller.
 `default_nettype none
-module execution_engine_pcr (
+module execution_engine_pcr #(
+    parameter ENABLE_PCR_EXTEND = 0,
+    parameter [23:0] PCR_EXTEND_EMPTY_AUTH_MASK = 24'd0,
+    parameter [4:0] PCR_EXTEND_LOCALITY_MASK = 5'b00001
+) (
     input wire clock_i, reset_n_i, start_i, operational_i,
     input wire [15:0] command_tag_i,
     input wire [31:0] command_code_i, command_size_i,
@@ -15,12 +19,37 @@ module execution_engine_pcr (
     output reg [4:0] pcr_read_index_o,
     input wire [255:0] pcr_read_data_i,
     input wire pcr_read_valid_i,
-    input wire [31:0] pcr_update_counter_i
+    input wire [31:0] pcr_update_counter_i,
+    input wire [7:0] locality_i,
+    output wire pcr_extend_start_o,
+    output wire [4:0] pcr_extend_index_o,
+    output wire [255:0] pcr_measurement_o,
+    input wire pcr_busy_i, pcr_done_i, pcr_error_i
 );
-    localparam IDLE=0, WAIT_BYTE=1, READ_BYTE=2, VALIDATE=3, SCAN=4, RESPOND=5;
+    localparam IDLE=0, WAIT_BYTE=1, READ_BYTE=2, VALIDATE=3, SCAN=4, RESPOND=5,
+        EXTEND_LAUNCH=6, EXTEND_WAIT=7;
     reg [2:0] state;
-    reg [7:0] payload [0:11];
-    reg [3:0] offset;
+    reg [7:0] payload [0:54];
+    reg [5:0] offset;
+    reg extending;
+    wire [31:0] pcr_handle = {payload[0],payload[1],payload[2],payload[3]};
+    wire [31:0] auth_size = {payload[4],payload[5],payload[6],payload[7]};
+    wire [71:0] password = {payload[8],payload[9],payload[10],payload[11],
+        payload[12],payload[13],payload[14],payload[15],payload[16]};
+    wire [31:0] extend_count = {payload[17],payload[18],payload[19],payload[20]};
+    // locality_i is the one-hot active-locality value from tpm_reg_space,
+    // NOT a numeric locality. Unknown, absent and multi-hot values fail closed.
+    wire locality_allowed = (locality_i == 8'h01 || locality_i == 8'h02 ||
+        locality_i == 8'h04 || locality_i == 8'h08 || locality_i == 8'h10) &&
+        ((locality_i & {3'd0,PCR_EXTEND_LOCALITY_MASK}) != 0);
+    wire empty_auth_eligible = pcr_handle == 32'h40000007 ||
+        (pcr_handle < 24 && PCR_EXTEND_EMPTY_AUTH_MASK[pcr_handle[4:0]]);
+    assign pcr_extend_start_o = reset_n_i && state == EXTEND_LAUNCH && !pcr_busy_i;
+    assign pcr_extend_index_o = pcr_handle[4:0];
+    genvar b;
+    generate for (b=0;b<32;b=b+1) begin : measurement_bytes
+        assign pcr_measurement_o[255-b*8 -:8] = payload[23+b];
+    end endgenerate
     reg capability, has_selection, cap_empty;
     reg [23:0] requested, returned;
     reg [3:0] digest_count;
@@ -37,7 +66,11 @@ module execution_engine_pcr (
         digest_number = 0;
         digest_byte = 0;
         if (response_code_o == 0) begin
-            if (capability) begin
+            if (extending) begin
+                // parameterSize=0; TPMS_AUTH_RESPONSE: empty nonce, continue=1,
+                // empty HMAC. Errors are ten-byte no-session responses.
+                if (response_addr_i == 6) response_byte_o = 1;
+            end else if (capability) begin
                 // moreData, capability=TPM_CAP_PCRS, TPML_PCR_SELECTION.
                 case (response_addr_i)
                     0: response_byte_o = cap_empty ? 1 : 0;
@@ -78,25 +111,33 @@ module execution_engine_pcr (
         if (!reset_n_i) begin
             state <= IDLE; command_addr_o <= 0; offset <= 0;
             response_valid_o <= 0; response_code_o <= 0; response_length_o <= 10;
-            capability <= 0; has_selection <= 0; cap_empty <= 0;
+            extending <= 0; capability <= 0; has_selection <= 0; cap_empty <= 0;
             requested <= 0; returned <= 0; digest_count <= 0; counter <= 0;
             pcr_read_index_o <= 0;
-            for (i=0;i<12;i=i+1) payload[i] <= 0;
+            for (i=0;i<55;i=i+1) payload[i] <= 0;
             for (i=0;i<8;i=i+1) digests[i] <= 0;
         end else begin
             response_valid_o <= 0;
             case (state)
                 IDLE: if (start_i) begin
                     response_code_o <= 0; response_length_o <= 10;
+                    extending <= command_code_i == 32'h182;
                     capability <= command_code_i == 32'h17a;
                     has_selection <= 0; cap_empty <= 0; requested <= 0;
                     returned <= 0; digest_count <= 0; counter <= 0;
-                    for (i=0;i<12;i=i+1) payload[i] <= 0;
+                    for (i=0;i<55;i=i+1) payload[i] <= 0;
                     for (i=0;i<8;i=i+1) digests[i] <= 0;
                     if (command_tag_i != 16'h8001 && command_tag_i != 16'h8002) begin
                         response_code_o <= 32'h1e; state <= RESPOND;
                     end else if (!operational_i) begin
                         response_code_o <= 32'h100; state <= RESPOND;
+                    end else if (command_code_i == 32'h182) begin
+                        state <= RESPOND;
+                        if (!ENABLE_PCR_EXTEND) response_code_o <= 32'h143;
+                        else if (command_tag_i != 16'h8002) response_code_o <= 32'h125;
+                        else if (command_size_i < 31 || command_size_i > 65)
+                            response_code_o <= 32'h142;
+                        else begin command_addr_o <= 10; offset <= 0; state <= WAIT_BYTE; end
                     end else if (command_tag_i != 16'h8001) begin
                         // These no-handle read commands accept no authorization sessions.
                         response_code_o <= 32'h145; state <= RESPOND;
@@ -119,7 +160,27 @@ module execution_engine_pcr (
                 end
                 VALIDATE: begin
                     state <= RESPOND;
-                    if (capability) begin
+                    if (extending) begin
+                        // Validate the complete authorization and digest list before
+                        // requesting any backend work. No Phase Three auth bypass:
+                        // this static empty-auth profile is explicitly configured.
+                        if (pcr_handle >= 24 && pcr_handle != 32'h40000007)
+                            response_code_o <= 32'h18b;
+                        else if (auth_size != 9) response_code_o <= 32'h144;
+                        else if ((password & 72'hfffffffffffffeffff) != 72'h400000090000000000)
+                            response_code_o <= 32'h98e;
+                        else if (empty_auth_eligible !== 1'b1) response_code_o <= 32'h98e;
+                        else if (locality_allowed !== 1'b1) response_code_o <= 32'h907;
+                        else if (extend_count > 1) response_code_o <= 32'h1d5;
+                        else if ((extend_count == 0 && command_size_i != 31) ||
+                                 (extend_count == 1 && command_size_i != 65))
+                            response_code_o <= 32'h142;
+                        else if (extend_count == 1 && {payload[21],payload[22]} != 16'h000b)
+                            response_code_o <= 32'h1c3;
+                        else if (extend_count == 0 || pcr_handle == 32'h40000007)
+                            response_length_o <= 19; // standard no-op forms
+                        else state <= EXTEND_LAUNCH;
+                    end else if (capability) begin
                         if (field0 != 5) response_code_o <= 32'h1c4;
                         else if (field1 != 0) response_code_o <= 32'h2c4;
                         else begin
@@ -160,6 +221,14 @@ module execution_engine_pcr (
                                 (digest_count + ((requested[23] && digest_count < 8) ? 1 : 0))*34;
                         end else pcr_read_index_o <= pcr_read_index_o+1'b1;
                     end
+                end
+                EXTEND_LAUNCH: if (!pcr_busy_i) state <= EXTEND_WAIT;
+                // Phase Two asserts done on the bank-write clock. Observe it on
+                // the following edge before publishing a successful session reply.
+                EXTEND_WAIT: if (pcr_done_i) begin
+                    if (pcr_error_i) response_code_o <= 32'h101;
+                    else response_length_o <= 19;
+                    state <= RESPOND;
                 end
                 RESPOND: begin response_valid_o <= 1; state <= IDLE; end
                 default: state <= IDLE;

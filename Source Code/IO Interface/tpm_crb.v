@@ -187,10 +187,12 @@ module	tpm_crb #(parameter SCOPED_COMMANDS = 0,
     // Disabled AES still takes the scoped rejection path, never legacy stubs.
     wire scoped_command_en = SCOPED_COMMANDS && (!PRESERVE_LEGACY_COMMANDS ||
         commandCode_o == `TPM_CC_Hash || commandCode_o == 32'h00000193 ||
-        commandCode_o == `TPM_CC_PCR_Read || commandCode_o == `TPM_CC_GetCapability);
+        commandCode_o == `TPM_CC_PCR_Read || commandCode_o == `TPM_CC_GetCapability ||
+        commandCode_o == `TPM_CC_PCR_Extend);
     wire scoped_startup = commandCode_o == `TPM_CC_Startup &&
         cmd_st == `TPM_ST_NO_SESSIONS && cmdSize_i == 32'd12;
     wire read_scoped_params = scoped_startup ||
+        (commandCode_o == `TPM_CC_PCR_Extend && cmdSize_i >= 31 && cmdSize_i <= 65) ||
         ((commandCode_o == `TPM_CC_PCR_Read || commandCode_o == `TPM_CC_GetCapability) &&
          cmdSize_i >= 14 && cmdSize_i <= 22) ||
         (commandCode_o == `TPM_CC_Hash && cmdSize_i >= 32'd18 && cmdSize_i <= 32'd1042) ||

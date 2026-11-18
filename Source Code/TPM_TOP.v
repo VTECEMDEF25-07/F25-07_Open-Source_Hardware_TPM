@@ -19,7 +19,10 @@
 // IP_TYPE is the sole implementation selector; DEVICE_FAMILY is fixed board metadata.
 // IP_TYPE: 0 = Generic, 1 = Altera, 2 = reserved Xilinx (unsupported).
 module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
-    parameter ENABLE_ENCRYPTDECRYPT2 = 0)
+    parameter ENABLE_ENCRYPTDECRYPT2 = 0,
+    parameter ENABLE_PCR_EXTEND = 0,
+    parameter [23:0] PCR_EXTEND_EMPTY_AUTH_MASK = 24'd0,
+    parameter [4:0] PCR_EXTEND_LOCALITY_MASK = 5'b00001)
 (
 	input		CLOCK_50,	// 50 MHz sysclock
 	input		CLOCK_100,	// 100 MHz clock (used for sampling SPI_CLOCK)
@@ -93,7 +96,7 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
     // Hash, PCR reads/capability, and optional AES use scoped packet handlers.
     // Preserve inherited routing for the remaining commands.
     wire scoped_command_en = commandCode == 32'h0000017d ||
-        commandCode == 32'h00000193 || commandCode == 32'h17e || commandCode == 32'h17a;
+        commandCode == 32'h00000193 || commandCode == 32'h17e || commandCode == 32'h17a || commandCode == 32'h182;
     wire engine_response_ready;
     wire [11:0] exec_cmd_addr, exec_rsp_addr, exec_rsp_length;
     wire [7:0] exec_cmd_byte, exec_rsp_byte, hash_data;
@@ -142,7 +145,11 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
     end endgenerate
 
     // Host Hash uses raw SHA; PCR_Read uses the same subsystem PCR bank.
-    // HMAC, host PCR extend, and RNG remain unconnected.
+    // Host Extend uses the existing Phase Two controller; HMAC and RNG remain unconnected.
+    wire pcr_extend_start, pcr_busy, pcr_done, pcr_error;
+    wire [4:0] pcr_extend_index;
+    wire [255:0] pcr_measurement;
+    wire [7:0] command_locality;
     wire [4:0] pcr_read_index;
     wire [255:0] pcr_read_data;
     wire pcr_read_valid;
@@ -157,8 +164,9 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
         .hmac_key_valid_i(1'b0), .hmac_key_end_i(1'b0),
         .hmac_message_data_i(8'd0), .hmac_message_valid_i(1'b0),
         .hmac_message_end_i(1'b0), .hmac_digest_ready_i(1'b0),
-        .pcr_extend_start_en_i(1'b0), .pcr_extend_index_i(5'd0),
-        .pcr_measurement_i(256'd0), .pcr_read_index_i(pcr_read_index),
+        .pcr_extend_start_en_i(pcr_extend_start), .pcr_extend_index_i(pcr_extend_index),
+        .pcr_measurement_i(pcr_measurement), .pcr_busy_o(pcr_busy),
+        .pcr_done_o(pcr_done), .pcr_error_o(pcr_error), .pcr_read_index_i(pcr_read_index),
         .pcr_read_data_o(pcr_read_data), .pcr_read_valid_o(pcr_read_valid),
         .pcr_update_counter_o(pcr_update_counter),
         .rng_hash_msg_data_i(8'd0), .rng_hash_msg_valid_i(1'b0),
@@ -168,7 +176,8 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
 	tpm_io #(.SCOPED_COMMANDS(1), .PRESERVE_LEGACY_COMMANDS(1),
         .ENABLE_ENCRYPTDECRYPT2(ENABLE_ENCRYPTDECRYPT2)) io
 	(
-		.clock50_i(CLOCK_50), .clock100_i(CLOCK_100),
+		.command_locality_o(command_locality),
+        .clock50_i(CLOCK_50), .clock100_i(CLOCK_100),
 		.reset_n_i(rst_n),
 		.SPI_clk_i(SPI_CLOCK), .SPI_cs_n_i(SPI_CS_n),
 		.SPI_mosi_i(SPI_MOSI), .SPI_miso_o(SPI_MISO),
@@ -210,7 +219,10 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
     // Preserve inherited command behavior, including its authorization
     // placeholders. Hash/AES are isolated from these stubs; this routing
     // compatibility change does not implement real legacy authorization.
-	execution_engine #(.ENABLE_HASH_COMMAND(1), .ENABLE_PCR_COMMANDS(1)) ee
+	execution_engine #(.ENABLE_HASH_COMMAND(1), .ENABLE_PCR_COMMANDS(1),
+        .ENABLE_PCR_EXTEND(ENABLE_PCR_EXTEND),
+        .PCR_EXTEND_EMPTY_AUTH_MASK(PCR_EXTEND_EMPTY_AUTH_MASK),
+        .PCR_EXTEND_LOCALITY_MASK(PCR_EXTEND_LOCALITY_MASK)) ee
 	(
 		.clock_i(CLOCK_50), .reset_n_i(rst_n), 
 		.command_ready_i(execStart && !select_aes), .command_tag_i(commandTag),
@@ -259,7 +271,10 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
         .hash_digest_i(hash_digest), .hash_digest_valid_i(hash_digest_valid),
         .hash_digest_ready_o(hash_digest_ready),
         .pcr_read_index_o(pcr_read_index), .pcr_read_data_i(pcr_read_data),
-        .pcr_read_valid_i(pcr_read_valid), .pcr_update_counter_i(pcr_update_counter)
+        .pcr_read_valid_i(pcr_read_valid), .pcr_update_counter_i(pcr_update_counter),
+        .locality_i(command_locality), .pcr_extend_start_o(pcr_extend_start),
+        .pcr_extend_index_o(pcr_extend_index), .pcr_measurement_o(pcr_measurement),
+        .pcr_busy_i(pcr_busy), .pcr_done_i(pcr_done), .pcr_error_i(pcr_error)
 	);
 	
 //TODO: Needed?
