@@ -4,7 +4,7 @@ Author: Aaron Grossman
 
 This project targets DE25 Standard RevD (A5ED013BB32AE4SCS) and integrates the existing main-branch TPM without changing its command path. Open de25_soc_top.qpf in Quartus Pro 26.1, or run `quartus_sh --flow compile de25_soc_top` here.
 
-The board wrapper's single `IP_TYPE` parameter defaults to Altera (1). It reaches both keygen resources and RNG through an inactive keygen placeholder: clock/reset are connected, request/source inputs are inactive and outputs unused. Fixed Agilex 5/M20K family metadata reaches keygen RAM. The QSF includes all required module sources. Unsupported resource backends fail in their implementation wrappers. Synthesis may remove the placeholder; this does not enable TPM crypto commands or establish active full-core fit/performance.
+The board wrapper's single `IP_TYPE` parameter defaults to Altera (1). It reaches keygen resources through an inactive placeholder: clock/reset are connected, request/source inputs are inactive and outputs unused. Fixed Agilex 5/M20K family metadata reaches keygen RAM. The QSF includes all required module sources. Unsupported resource backends fail in their implementation wrappers. Synthesis may remove the placeholder; this does not enable TPM crypto commands or establish active full-core fit/performance.
 
 - `de25_soc_top.v`: TPM wiring, reset separation and autonomous cooling.
 - `de25_clock.v`: related 50/100 MHz PLL outputs for the existing TPM.
@@ -13,7 +13,7 @@ The board wrapper's single `IP_TYPE` parameter defaults to Altera (1). It reache
 
 Fan control uses the raw 50 MHz board clock and remains active during SPI reset. The seven Terasic fan-example files are copied unchanged; see [Fan Controller/README.md](Fan%20Controller/README.md) for their exact origins and the required board-wrapper connections.
 
-Pin assignments come from the QSF and `de25_spi_pins.tcl`; electrical standards remain explicit in the QSF. The existing SPI serializer has inherited asynchronous crossings and a logic-generated transmit clock; full SPI timing/CDC signoff is not established. SDC documents these limitations. This change does not claim TPM certification or physical-board acceptance.
+Pin assignments come from the QSF and `de25_spi_pins.tcl`; electrical standards remain explicit in the QSF. The common SPI serializer shifts on external SCK and crosses held bytes into the 50 MHz TPM domain. See the [SPI contract](../../Source%20Code/IO%20Interface/SPI.md) for host timing/reset requirements and [validation](VALIDATION.md) for the measured build scope. Physical-board acceptance of this merged image remains pending.
 
 ## SPI wiring selection
 

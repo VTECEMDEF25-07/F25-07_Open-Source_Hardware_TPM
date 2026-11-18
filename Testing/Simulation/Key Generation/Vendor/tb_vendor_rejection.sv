@@ -9,7 +9,7 @@ module tb_vendor_rejection #(
     generate
         if (SCENARIO == 0) begin : tpm_case
             TPM_TOP #(.IP_TYPE(IP_TYPE)) dut (
-                .CLOCK_50(1'b0), .CLOCK_100(1'b0), .RESET_n(1'b0),
+                .CLOCK_50(1'b0), .RESET_n(1'b0),
                 .SPI_CLOCK(1'b0), .SPI_CS_n(1'b1), .SPI_RST_n(1'b0),
                 .SPI_MOSI(1'b0), .SPI_MISO(), .SPI_PIRQ_n()
             );

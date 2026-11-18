@@ -14,7 +14,7 @@ module tb_tpm_ip_type;
         localparam SELECTED_IP = backend == 0 ? 0 : 1;
         localparam SELECTED_FAMILY = backend == 2 ? "Cyclone V" : "Agilex 5";
         TPM_TOP #(.IP_TYPE(SELECTED_IP), .DEVICE_FAMILY(SELECTED_FAMILY)) dut (
-            .CLOCK_50(clock_50), .CLOCK_100(clock_100), .RESET_n(reset_n),
+            .CLOCK_50(clock_50), .RESET_n(reset_n),
             .SPI_CLOCK(1'b0), .SPI_CS_n(1'b1), .SPI_RST_n(reset_n),
             .SPI_MOSI(1'b0), .SPI_MISO(), .SPI_PIRQ_n()
         );

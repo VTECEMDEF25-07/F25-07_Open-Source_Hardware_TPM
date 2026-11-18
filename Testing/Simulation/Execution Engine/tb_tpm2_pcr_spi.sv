@@ -20,7 +20,7 @@ always @(posedge clk) begin
     key_reply_valid <= 0;
 end
 
-TPM_TOP #(.ENABLE_ENCRYPTDECRYPT2(0)) dut(.CLOCK_50(clk),.CLOCK_100(clk100),.RESET_n(rst),
+TPM_TOP #(.ENABLE_ENCRYPTDECRYPT2(0)) dut(.CLOCK_50(clk),.RESET_n(rst),
 .SPI_CLOCK(sck),.SPI_CS_n(cs),.SPI_RST_n(rst),.SPI_MOSI(mosi),.SPI_MISO(miso),.SPI_PIRQ_n(irq),
 .aes_key_request_o(key_request), .aes_key_request_ready_i(1'b1), .aes_key_handle_o(key_handle),
 .aes_key_reply_valid_i(key_reply_valid), .aes_key_reply_ready_o(key_reply_ready),

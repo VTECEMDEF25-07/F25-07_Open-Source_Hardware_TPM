@@ -3,16 +3,15 @@
 # Date: 2026-10-14
 # General Description: Defines board clocks and timing constraints, with remaining limitations documented.
 
-# TPM clock pair: direct board 50 MHz and PLL-generated 100 MHz.
+# TPM clock remains 50 MHz. SPI clock/pads/mailboxes are constrained separately.
 create_clock -name board_clock -period 20.000 [get_ports CLOCK_50]
-derive_pll_clocks
-derive_clock_uncertainty
-
-# Empirical SPI test envelope <=1 MHz. Preserve the original asynchronous paths;
-# no blanket clock groups/false paths claim these crossings are correct.
-create_clock -name spi_clock -period 1000.000 -waveform {0.000 500.000} [get_ports GPIO_1_2]
+set spi_sck_port GPIO_1_2
+set spi_mosi_port GPIO_1_3
+set spi_cs_port GPIO_1_5
+set spi_miso_port GPIO_1_4
+# Complete TPM host contract is >=100 ns CS setup/hold/high. Check this
+# GPIO board's asynchronous frame-reset route at a stricter 10 ns setup.
+set spi_cs_setup_ns 10.0
+set_max_delay 20.000 -to [get_ports {GPIO_1_7 LEDR[*]}]
+set_min_delay 0.000 -to [get_ports {GPIO_1_7 LEDR[*]}]
 set_false_path -from [get_ports {RESET_N GPIO_1_6}]
-
-# Legacy logic-generated det_clock/TX_temp, binary counter crossings and CS
-# fanout need separate timing/CDC review. External SPI input/output delay budgets
-# are not established. This file is a starting constraint set, not full signoff.

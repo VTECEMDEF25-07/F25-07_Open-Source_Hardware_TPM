@@ -1,39 +1,50 @@
-# DE1 validation (October 23, 2026)
+# DE1 SPI validation
 
-Author: Aaron Grossman
+Author: Aaron Grossman; Codex assisted with verification and documentation.
 
-The DE1 project uses unchanged shared TPM logic from main `4fd41b608554deaa0c3b520933bcabafc4755e92`.
+## Develop reconciliation, November 18, 2026
 
-- Existing TPM SPI vectors at 1 MHz pass with an ideal test PLL. This is functional simulation, not vendor-model or physical-board validation.
-- Quartus Prime Lite 24.1 full compilation/bitstream succeeds: 912 ALMs (3%), 4 RAM blocks, 0 DSPs, 1 hardware PLL.
-- Timing reports confirm the generated PLL output is 100 MHz. All 18 physical pin assignments match the QSF, including clock AF14 and reset AA14. The root build script checks the PLL and complete pin map after a successful compile.
-- The first full build exposed two issues in the old, uncompiled project: brace-wrapped pin targets were interpreted as invalid names, and PLL type `auto` generated no clock. Pin targets now use quotes; ALTERA_PLL uses its supported General mode to map onto the selected Cyclone V device. Family-specific low-level mode is not used because it requires generated analog parameters.
-- Reported constrained paths have positive slack (for example 100 MHz setup +1.229 ns at slow 85 C). Whole-board signoff is NOT established: existing SPI clock-domain crossings, logic-generated transmit clock and incomplete I/O constraints remain. No new physical-board testing was performed.
+This candidate ports restored SPI commit `8f44d986fcfbf5ab2a03383621b64f89ddbfc932`
+onto develop `e1f9f74d8c751e542153fadaa62bfb0207b7c161`. Every merged command
+worker, ownership rule, captured locality, PCR bank/counter, shared SHA requester
+and default feature gate is retained. GetRandom and PCR Extend remain disabled
+in the default board build; the combined command regression exercises enabled
+and disabled configurations. Replay source snapshots include the merged PCR
+worker and RNG dependencies. No demo implementation is imported.
 
-SOF SHA256: `747b69643ad80e1bac69eed2744bfda71288fed8ff06773ab20b82f3343d31c1`.
+The November 8 results below are historical evidence for their stated sources
+and images. The November 18 physical acceptance of candidate `d57da1a` also
+belongs to a different source tree and image. **Physical acceptance of this
+reconciled develop image is pending.** No hardware is accessed by this PR.
 
-Local evidence: `AI/tmp/dual-board-DE1-corrected-compile.log`, `dual-board-DE1-corrected-result.json`, `dual-board-de1-final-sim/`, and this checkout's ignored `Project/DE1/output_files/`. The earlier zero-PLL build is rejected evidence, not a valid hardware implementation.
+## Historical SPI validation
 
+Local integration check, November 8, 2026: main
+`81b6968645e70669cc157c7709d111206f1f56dc` plus SPI PR #37 head
+`dfcdaabd4a992e6f6972f6eb81a63bbdc904b8ee`, with current naming/layout and the reviewed SPI cleanup.
+The merged image has **not been physically tested**.
 
-## Main/RNG merge follow-up - November 4, 2026
+- Complete matching-edition Quartus build: PASS; 0 PLLs.
+- Original TPM assertion replays: PASS at 1, 24 and 30 MHz with ideal board
+  clock/reset models. The common serializer unit suite also passes.
+- All four operating-corner audits: PASS, including mailbox routing and all
+  five synchronizer chains. Setup and hold are fully constrained; the audit rejects empty checks and
+  nonzero unconstrained-path counts.
 
-Merged main `847341411dae1319951a0198ed7ce99630b6bf65`, preserving its `TPM_TOP` module name under `Source Code/` and updating the board instantiation to match. The unchanged standalone RNG sources, hardware capture assets and benches were moved into the agreed folders; they are not instantiated by this TPM project.
+| Worst slack (ns) | Result |
+|---|---:|
+| Setup | +1.426 |
+| Hold | +0.125 |
+| Recovery | +4.084 |
+| Removal | +6.227 |
+| Minimum pulse width | +8.434 |
 
-Fresh full compilation PASS; required PLL, physical pins and SOF verified with the local-only helper. Local build evidence: class-workspace `AI/tmp/pr36-rng-merge-de1-build.log`.
-SOF SHA256: `b42e389471b2796a385ebcea3333b9c7b83ab2b4f6bc232db2afc44527ba55bd`.
+Tested SOF SHA256: `4811a198d55e9bddb77af7282724afc303d426e40e12915a059fb5fe211568f1`.
 
-Both relocated RNG benches also print `ALL TESTS PASSED` in Questa using their new source paths. Evidence: `AI/tmp/pr36-rng-relocation-tests/`. They use behavioral entropy simulation and do not establish physical entropy quality or TPM integration.
+Current main's keygen resource selection is preserved, with the placeholder
+inactive. In that historical source, standalone RNG sources were outside the TPM command path; current develop has the default-off GetRandom route.
+Compiler/DRC warnings remain; passing these checks is not full TPM or entropy
+validation. Historical build/bitstream records remain in Git history.
 
-
-## Clock wrapper naming - November 5, 2026
-
-Renamed the board PLL wrapper file/module to `de1_clock.v` / `de1_clock` and updated project, top, legacy simulation model and generator references. PLL parameters and ports are unchanged. A fresh Quartus Lite 24.1 full compile passes; the local-only build check verifies the required PLL, physical pin assignments and SOF. Evidence: class-workspace `AI/tmp/pr36-de1-clock-rename-build.log`.
-SOF SHA256: `3d69e01ab017d1dfcf75be9cbe503907589ad58802e5af2a182b104a0f0829bf`.
-
-## Project-wide vendor follow-up - November 8, 2026
-
-The board IP_TYPE parameter now feeds the inactive keygen placeholder.
-Altera is the supported physical-board selection; other values are rejected.
-Current source elaboration/rejection evidence is recorded by
-`Testing/Simulation/Key Generation/Vendor/test_vendor_quartus.py`.
-Historical bitstream hashes above do not identify this updated source snapshot.
+Follow the [SPI timing/reset contract](../../Source%20Code/IO%20Interface/SPI.md)
+and [physical follow-ups](../../FUTURE_WORK.md) before claiming board acceptance.
