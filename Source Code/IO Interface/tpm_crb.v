@@ -187,10 +187,11 @@ module	tpm_crb #(parameter SCOPED_COMMANDS = 0,
     // Disabled AES still takes the scoped rejection path, never legacy stubs.
     wire scoped_command_en = SCOPED_COMMANDS && (!PRESERVE_LEGACY_COMMANDS ||
         commandCode_o == `TPM_CC_Hash || commandCode_o == 32'h00000193 ||
-        commandCode_o == `TPM_CC_PCR_Read || commandCode_o == `TPM_CC_GetCapability);
+        commandCode_o == `TPM_CC_PCR_Read || commandCode_o == `TPM_CC_GetCapability || commandCode_o == 32'h0000017b);
     wire scoped_startup = commandCode_o == `TPM_CC_Startup &&
         cmd_st == `TPM_ST_NO_SESSIONS && cmdSize_i == 32'd12;
     wire read_scoped_params = scoped_startup ||
+        (commandCode_o == 32'h0000017b && cmdSize_i >= 10 && cmdSize_i <= 13) ||
         ((commandCode_o == `TPM_CC_PCR_Read || commandCode_o == `TPM_CC_GetCapability) &&
          cmdSize_i >= 14 && cmdSize_i <= 22) ||
         (commandCode_o == `TPM_CC_Hash && cmdSize_i >= 32'd18 && cmdSize_i <= 32'd1042) ||
@@ -633,7 +634,9 @@ module	tpm_crb #(parameter SCOPED_COMMANDS = 0,
 			
 			// execution start_i
 			Exec_start:
-				setup_mm <= 1'b1;
+				// Scoped GetRandom does not pulse management initialization.
+                // Preserve its setup pulse for a subsequent legacy Startup.
+                if(!scoped_command_en || commandCode_o != 32'h0000017b) setup_mm <= 1'b1;
 			
 			// wait for execution response, hold response code once it is received
 			Exec_wait0:
