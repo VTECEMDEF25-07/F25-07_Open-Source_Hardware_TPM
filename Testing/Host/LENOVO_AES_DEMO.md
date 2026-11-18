@@ -37,52 +37,10 @@ SPI wiring and the named FT232H adapter `FTA6H280`.
 Install the host dependency using the Python interpreter used for the demo.
 
 ```powershell
-py -3 -m pip install cryptography pyserial
+py -3 -m pip install cryptography
 py -3 Testing/Host/lenovo_aes_demo.py
 py -3 Testing/Host/lenovo_aes_demo.py --message "Hello Lenovo"
 ```
-
-## Breadboard Hash panel
-
-```powershell
-py -3 Testing/Host/lenovo_aes_demo.py --hash-panel
-py -3 Testing/Host/lenovo_aes_demo.py --hash-panel --port COM5
-py -3 Testing/Host/lenovo_aes_demo.py --message "Hello Lenovo" --hash-panel --port COM5
-```
-
-The first two commands open the Hash panel. The third runs the AES message
-demonstration first, then opens the panel using the same SPI connection.
-The app sends Startup before either demonstration.
-
-The first breadboard button sends `NORMAL` over the Nucleo USB serial connection.
-The laptop sends `BOOT: START APP` to the FPGA with standard TPM2_Hash over the
-separate FT232H SPI connection. The window displays the returned SHA-256 digest
-beside the laptop's original reference digest and lights the green LED.
-The second button sends `MODIFIED` and measures `BOOT: START BPP`, changing one
-byte. The digest changes and the red LED lights. Each FPGA digest is also checked
-against the laptop's SHA-256 calculation for the selected sample. Failed replies
-show an error and leave both LEDs off. SPI transactions run on one worker thread
-so the window remains responsive. Additional presses during a measurement are
-ignored until it completes.
-
-The existing Nucleo sketch and wiring are supported. A copy is in
-`Testing/Host/expo_panel/expo_panel.ino`. Buttons use D2/D3 with INPUT_PULLUP
-and switch to ground. LEDs use D8 for green and D9 for red through the existing
-series resistors. Serial runs at 115200 baud. The app detects a single
-NUCLEO-L452RE-P ST-LINK serial port, or accepts an explicit `--port`.
-The on-screen Normal Boot and Change One Byte buttons trigger the same FPGA
-measurements when the panel is disconnected. Close Arduino Serial Monitor before
-opening the serial port.
-
-Run all Lenovo host checks with
-
-```powershell
-py -3 -B -m unittest discover -s Testing/Host -p "test_lenovo_*.py" -v
-```
-
-Host tests exercise fragmented button messages, actual TPM command encoding,
-digest validation, display updates and green/red serial replies using simulated
-peers. Physical button/LED and FPGA verification requires the connected boards.
 
 Opening the native transport resets the TPM. The client then sends Startup
 before accepting messages. The default SPI rate is 100 kHz. Set `DE25_SPI_HZ`
