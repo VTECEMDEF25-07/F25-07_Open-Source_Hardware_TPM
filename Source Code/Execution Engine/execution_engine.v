@@ -1,4 +1,4 @@
-module execution_engine(
+module execution_engine #(parameter ENABLE_HASH_COMMAND = 0)(
 		clock_i,
 		reset_n_i,
 		command_ready_i,
@@ -83,8 +83,22 @@ module execution_engine(
 		response_code_o,
 		response_length_o,
 		current_state_o,
-		command_start_o
+		command_start_o,
+        command_addr_o, command_byte_i, response_addr_i, response_byte_o,
+        hash_request_o, hash_grant_i, hash_data_o, hash_valid_o, hash_end_o,
+        hash_ready_i, hash_digest_i, hash_digest_valid_i, hash_digest_ready_o
 	);
+
+    // Phase One command-buffer and raw SHA interfaces. Legacy standalone
+    // consumers may leave these unused with ENABLE_HASH_COMMAND=0.
+    output wire [11:0] command_addr_o;
+    input wire [7:0] command_byte_i;
+    input wire [11:0] response_addr_i;
+    output wire [7:0] response_byte_o;
+    output wire hash_request_o, hash_valid_o, hash_end_o, hash_digest_ready_o;
+    output wire [7:0] hash_data_o;
+    input wire hash_grant_i, hash_ready_i, hash_digest_valid_i;
+    input wire [255:0] hash_digest_i;
 
 	// Inputs
 	input         clock_i;					// Input clock_i signal
@@ -551,7 +565,53 @@ module execution_engine(
     (session_index == 2'd1) ? session1_hmac_size_i :
                               session2_hmac_size_i;
 
-	assign current_session_valid =
+    // Ownership is captured only in IDLE and retained through response reads.
+    // Hash has no handles/sessions in the supported form; its focused parser
+    // supplies validation without entering the legacy authorization stubs.
+    localparam STATE_HASH_DISPATCH = 4'd10, STATE_HASH_WAIT = 4'd11;
+    reg hash_active;
+    reg [15:0] active_tag;
+    reg [31:0] active_code, active_size;
+    reg active_operational;
+    wire hash_complete;
+    wire [31:0] hash_response_code;
+    wire [11:0] hash_response_length;
+    wire accept_hash = ENABLE_HASH_COMMAND &&
+        (command_code_i == 32'h0000017d || command_code_i == 32'h00000193);
+    // Disabled AES retains the existing command-code rejection in this parser.
+    // Enabled AES is excluded by TPM_TOP and keeps its existing optional route.
+    always @(posedge clock_i or negedge reset_n_i) begin
+        if (!reset_n_i) begin
+            hash_active <= 0;
+            active_tag <= 0;
+            active_code <= 0;
+            active_size <= 0;
+            active_operational <= 0;
+        end else if (current_state_o == STATE_IDLE && command_ready_i) begin
+            hash_active <= accept_hash;
+            active_tag <= command_tag_i;
+            active_code <= command_code_i;
+            active_size <= command_size_i;
+            active_operational <= op_state_i == OPERATIONAL_STATE;
+        end
+    end
+
+    execution_engine_hash hash_command (
+        .clock_i(clock_i), .reset_n_i(reset_n_i),
+        .start_i(current_state_o == STATE_HASH_DISPATCH),
+        .operational_i(active_operational), .command_tag_i(active_tag),
+        .command_code_i(active_code), .command_size_i(active_size),
+        .command_addr_o(command_addr_o), .command_byte_i(command_byte_i),
+        .response_valid_o(hash_complete), .response_code_o(hash_response_code),
+        .response_length_o(hash_response_length), .response_addr_i(response_addr_i),
+        .response_byte_o(response_byte_o), .hash_request_o(hash_request_o),
+        .hash_grant_i(hash_grant_i), .hash_data_o(hash_data_o),
+        .hash_valid_o(hash_valid_o), .hash_end_o(hash_end_o),
+        .hash_ready_i(hash_ready_i), .hash_digest_i(hash_digest_i),
+        .hash_digest_valid_i(hash_digest_valid_i), .hash_digest_ready_o(hash_digest_ready_o)
+    );
+
+    assign current_session_valid =
 		(session_index == 2'd0) ? session0_valid_i :
 		(session_index == 2'd1) ? session1_valid_i :
 											session2_valid_i;
@@ -586,7 +646,8 @@ module execution_engine(
 				response_code_o <= 32'd0;
 			end
 			else begin
-				response_code_o <= {20'h0, s_response_code};
+				response_code_o <= hash_active && current_state_o == STATE_HASH_WAIT && hash_complete ?
+                    hash_response_code : {20'h0, s_response_code};
 				current_state_o <= state;
 				mode_check_error <= s_mode_check_error;
 				header_valid_error <= s_header_valid_error;
@@ -1047,7 +1108,7 @@ module execution_engine(
 					s_decrypt_count = 2'b0;
 					s_encrypt_count = 2'b0;
 					if(command_ready_i) begin
-						state = STATE_HEADER_VALID;
+						state = accept_hash ? STATE_HASH_DISPATCH : STATE_HEADER_VALID;
 					end
 				end
 
@@ -1261,6 +1322,10 @@ module execution_engine(
 				// ====================================================================
 				// STAGE 10: POST-PROCESSING - TPM 2.0 Part 3, Section 5.10
 				// ====================================================================
+                STATE_HASH_DISPATCH: state = STATE_HASH_WAIT;
+                STATE_HASH_WAIT: begin
+                    state = hash_complete ? STATE_POST_PROCESS : STATE_HASH_WAIT;
+                end
 				STATE_POST_PROCESS: begin
 					// TODO: IMPLEMENT POST-PROCESSING:
 					// 1. Build response buffer with response header and parameters
@@ -1294,7 +1359,7 @@ module execution_engine(
 		// Default output values
 		response_valid_o =   1'b0;
 		s_response_code = response_code_o[11:0];
-		response_length_o = 16'h0;
+		response_length_o = hash_active ? {4'd0, hash_response_length} : 16'h0;
 		command_start_o   = 1'b0;
 		session_present = 1'b0;
 		authHierarchy_o = 32'h00000000;
@@ -1389,7 +1454,7 @@ module execution_engine(
 			STATE_IDLE: begin
 					response_valid_o =   1'b0;
 					s_response_code =   12'b0;
-					response_length_o = 16'h0;
+					response_length_o = hash_active ? {4'd0, hash_response_length} : 16'h0;
 					s_handle_error = 1'b0;
 					s_handle_index = 3'b000;
 				if(command_ready_i) begin
@@ -1572,7 +1637,7 @@ module execution_engine(
 					s_initialized = 1'b1;
 				end
 				response_valid_o = 1'b1;
-				response_length_o = 16'h0A; // Minimum response size for success
+				response_length_o = hash_active ? {4'd0, hash_response_length} : 16'h0A;
 			end
 			default: begin
 			end
