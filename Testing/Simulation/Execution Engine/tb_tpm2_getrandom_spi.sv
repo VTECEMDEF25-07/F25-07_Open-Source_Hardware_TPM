@@ -6,7 +6,7 @@ always #10 clk=~clk;
 always #5 clk100=~clk100;
 TPM_TOP #(.ENABLE_GETRANDOM(ENABLE_RANDOM_TEST)) dut(.CLOCK_50(clk),.CLOCK_100(clk100),.RESET_n(rst),
 .SPI_CLOCK(sck),.SPI_CS_n(cs),.SPI_RST_n(rst),.SPI_MOSI(mosi),.SPI_MISO(miso),.SPI_PIRQ_n(irq));
-reg [7:0] packet[0:89], response[0:89];
+reg [7:0] packet[0:511], response[0:511];
 reg passed=0;
 integer engine_hash_starts=0, engine_hash_replies=0;
 always @(posedge clk) if (rst) begin
@@ -52,8 +52,8 @@ begin
  i=0;
  do begin transfer(1,16'h0018,1); i=i+1; end while((response[0]===8'hff || !response[0][4]) && i<100);
  if(response[0]===8'hff || !response[0][4]) $fatal(1,"No dataAvail sts=%h code=%h size=%h op=%h",response[0],dut.commandCode,dut.commandSize,dut.op_state);
- transfer(1,16'h0024,count > 64 ? 64 : count);
- if (count > 64) transfer(1,16'h0024,count-64,64);
+ for(integer base=0;base<count;base+=64)
+  transfer(1,16'h0024,(count-base)>64?64:count-base,base);
 end endtask
 localparam [255:0] ABC=256'hba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad;
 task automatic hash_abc;
@@ -127,6 +127,41 @@ task automatic getrandom(input integer requested,input integer size,input [15:0]
     $fatal(1,"Error published random payload");
  end
 endtask
+
+// Read/discovery packets must retain their own address/length/response owner
+// when interleaved with GetRandom and raw Hash on this same TPM_TOP instance.
+integer mixed_pcr_responses=0;
+task automatic pcr_discovery;
+reg [199:0] capability_expected;
+reg [7:0] expected[0:299];
+begin
+ write_one(16'h0018,8'h40);write_one(16'h0018,8'h40);
+ for(integer i=0;i<22;i++)packet[i]=0;
+ {packet[0],packet[1]}=16'h8001;packet[5]=22;packet[8]=1;packet[9]=8'h7a;
+ packet[13]=5;packet[21]=1;
+ transfer(0,16'h0024,22);finish_cmd(25);
+ capability_expected=200'h80010000001900000000000000000500000001000b03ffffff;
+ for(integer i=0;i<25;i++)if(response[i]!==capability_expected[199-i*8 -:8])
+  $fatal(1,"Mixed GetCapability byte %0d",i);
+ mixed_pcr_responses++;
+ for(integer page=0;page<3;page++)begin
+  write_one(16'h0018,8'h40);write_one(16'h0018,8'h40);
+  for(integer i=0;i<20;i++)packet[i]=0;
+  {packet[0],packet[1]}=16'h8001;packet[5]=20;packet[8]=1;packet[9]=8'h7e;
+  packet[13]=1;packet[15]=8'h0b;packet[16]=3;
+  for(integer i=page;i<3;i++)packet[17+i]=8'hff;
+  transfer(0,16'h0024,20);finish_cmd(300);
+  for(integer i=0;i<300;i++)expected[i]=0;
+  {expected[0],expected[1]}=16'h8001;expected[4]=1;expected[5]=8'h2c;
+  expected[17]=1;expected[19]=8'h0b;expected[20]=3;expected[21+page]=8'hff;
+  expected[27]=8;
+  for(integer i=0;i<8;i++)expected[29+i*34]=32;
+  for(integer i=0;i<300;i++)if(response[i]!==expected[i])
+   $fatal(1,"Mixed PCR_Read page %0d byte %0d expected %h got %h",page,i,expected[i],response[i]);
+  mixed_pcr_responses++;
+ end
+end endtask
+
 initial begin
  #3; rst=1; #7; rst=0; #200; rst=1; #1000;
  write_one(16'h0000,8'h02); transfer(1,16'h0000,1);
@@ -143,6 +178,7 @@ initial begin
  if(ENABLE_RANDOM_TEST) begin
   getrandom(32,12,16'h8001,0);
  end
+ pcr_discovery();
  end
  if(ENABLE_RANDOM_TEST) begin
   getrandom(0,12,16'h8001,0);
@@ -205,6 +241,8 @@ initial begin
   hash_abc();
   $display("GETRANDOM_RESET_HEALTHY_RECOVERY_PASS");
  end
+ if(mixed_pcr_responses!=16)$fatal(1,"Mixed PCR discovery did not finish");
+ $display("GETRANDOM_PCR_READ_MIXED_PASS replies=%0d",mixed_pcr_responses);
  passed=1;
  $display("TPM2_GETRANDOM_SPI_PASS"); $finish;
 end

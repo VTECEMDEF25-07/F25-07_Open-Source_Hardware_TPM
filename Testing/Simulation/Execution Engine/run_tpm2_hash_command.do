@@ -20,8 +20,8 @@ vlog -vlog01compat "+incdir+$io_dir" {*}$rtl
 set sym_dir [file join $repo {Source Code} {Symmetric Module}]
 set sym_bench [file join $repo Testing Simulation {Symmetric Module}]
 vlog -vlog01compat {*}[glob -directory [file join $sym_dir AES] *.v] {*}[glob -directory [file join $sym_dir Controllers] *.v] [file join $sym_dir symmetric_top.v]
-vlog -sv [file join $sym_bench symmetric_test_ram.sv] [file join $bench_dir tb_keygen_encryptdecrypt2.sv] [file join $bench_dir tb_tpm2_hash_command.sv] [file join $bench_dir tb_tpm2_hash_spi.sv]
-foreach top {tb_tpm2_hash_command tb_tpm2_hash_spi tb_keygen_encryptdecrypt2} {
+vlog -sv [file join $sym_bench symmetric_test_ram.sv] [file join $bench_dir tb_keygen_encryptdecrypt2.sv] [file join $bench_dir tb_tpm2_pcr_command.sv] [file join $bench_dir tb_tpm2_pcr_spi.sv] [file join $bench_dir tb_tpm2_hash_command.sv] [file join $bench_dir tb_tpm2_hash_spi.sv]
+foreach top {tb_tpm2_pcr_command tb_tpm2_pcr_spi tb_tpm2_hash_command tb_tpm2_hash_spi tb_keygen_encryptdecrypt2} {
     vsim -voptargs=+acc -onfinish stop work.$top
     run -all
     if {[examine -radix unsigned sim:/$top/passed] != 1} {

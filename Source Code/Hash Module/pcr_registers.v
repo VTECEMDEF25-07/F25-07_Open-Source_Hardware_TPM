@@ -16,7 +16,8 @@ module pcr_registers #(
     output wire read_valid,
     input wire write_enable,
     input wire [INDEX_WIDTH-1:0] write_index,
-    input wire [255:0] write_data
+    input wire [255:0] write_data,
+    output reg [31:0] update_counter
 );
     reg [255:0] bank [0:PCR_COUNT-1];
     integer i;
@@ -27,10 +28,13 @@ module pcr_registers #(
 
     always @(posedge clk or negedge reset_n) begin
         if (!reset_n) begin
+            update_counter <= 0;
             for (i = 0; i < PCR_COUNT; i = i + 1)
                 bank[i] <= RESET_VALUES[i*256 +: 256];
-        end else if (write_enable && write_index < PCR_COUNT)
+        end else if (write_enable && write_index < PCR_COUNT) begin
             bank[write_index] <= write_data;
+            update_counter <= update_counter + 1'b1;
+        end
     end
 endmodule
 `default_nettype wire

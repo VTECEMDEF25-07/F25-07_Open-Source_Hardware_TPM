@@ -46,6 +46,7 @@ module hash_subsystem #(
     input wire [PCR_INDEX_WIDTH-1:0] pcr_read_index_i,
     output wire [255:0] pcr_read_data_o,
     output wire pcr_read_valid_o,
+    output wire [31:0] pcr_update_counter_o,
     output wire busy_o,
     //RNG ports:
     input  wire [7:0]   rng_hash_msg_data_i,
@@ -134,6 +135,6 @@ module hash_subsystem #(
         .extend_index(pcr_extend_index_i), .read_data(pcr_read_data_o),
         .extend_data(old_pcr), .read_valid(pcr_read_valid_o),
         .write_enable(pcr_write_en), .write_index(pcr_write_index),
-        .write_data(pcr_write_data)
+        .write_data(pcr_write_data), .update_counter(pcr_update_counter_o)
     );
 endmodule

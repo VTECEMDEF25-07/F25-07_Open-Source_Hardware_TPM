@@ -1,6 +1,8 @@
 # Phase One TPM2_GetRandom
 
-Base: `develop` at `7736928a89892052a32b92b633fb0bb10cbcf9e7`.
+Original base: `7736928a89892052a32b92b633fb0bb10cbcf9e7`.
+Conflict-resolution merge base: current develop
+`12e127eb3ab9f300a88fbc315104692e31800085`.
 Windows validation: November 18, 2026, Questa Intel Starter FPGA Edition
 2024.3 win64. No Lenovo demo sources are changed. Production board defaults
 retain `ENABLE_GETRANDOM=0`; the enabled integration is exercised in simulation.
@@ -9,7 +11,7 @@ retain `ENABLE_GETRANDOM=0`; the enabled integration is exercised in simulation.
 
 - The Phase One engine captures ownership in IDLE, dispatches GetRandom in
   states 12/13, and publishes through its existing post-processing state 9.
-  Existing states 0–11 and Hash behavior are retained. Disabled GetRandom
+  Existing states 0â€“11 and Hash behavior are retained. Disabled GetRandom
   returns `TPM_RC_COMMAND_CODE` (`0x143`) without starting the RNG.
 - `execution_engine_getrandom` adapts synchronous CRB reads to the existing
   `tpm2_get_random` byte-stream handler, buffers its response, and supplies
@@ -24,7 +26,7 @@ retain `ENABLE_GETRANDOM=0`; the enabled integration is exercised in simulation.
   in the integrated SPI bench.
 - Source sanity tests observe valid, synchronized raw samples before
   conditioning: 32 identical consecutive samples fail the repetition test;
-  each non-overlapping 512-bit window must contain 128–384 ones inclusive.
+  each non-overlapping 512-bit window must contain 128â€“384 ones inclusive.
   The first complete passing window is required before seed blocks enter the
   DRBG. These are engineering thresholds, not measured SP800-90B thresholds.
 - A source fault suppresses RNG output immediately and remains latched until
@@ -98,3 +100,24 @@ An alternating predictable sequence intentionally passes these sanity tests.
 No FPGA image was built, fitted, programmed or physically measured for this
 change. Prior-image diagnostic captures do not establish entropy adequacy for
 this image. Review remains required; this PR must not be auto-merged.
+
+
+## PCR Read conflict reconciliation - November 18, 2026
+
+Merged current develop while preserving both engine owners and the union of
+CRB packet forms. GetRandom states12/13 retain their captured response/address
+selection; Hash/PCR states10/11 use the PCR-aware packet completion/code/length.
+Raw Hash, PCR readback and the RNG SHA requester all retain their real backend
+wiring. GetRandom remains gated off in production board defaults.
+
+The GetRandom runner now includes the PCR Read command and SPI regressions.
+Its real-SPI mixed bench also interleaves four rounds of Startup/Hash/GetRandom
+with GetCapability(PCRS) and all24 PCRs across three300-byte pages, checking all
+reply bytes and the unchanged counter on the same TPM_TOP instance. The same
+discovery checks run when GetRandom is disabled. Existing malformed-packet,
+owner/timeout/reset, source-health fault/recovery, AES and legacy checks remain.
+
+PCR Extend PR55 and the separate main SPI restoration are not bundled in this
+conflict-resolution update. Earlier combined-image hardware evidence belongs
+to its own exact candidate; this PR revision requires its own simulation result
+and does not inherit a physical-programming claim.
