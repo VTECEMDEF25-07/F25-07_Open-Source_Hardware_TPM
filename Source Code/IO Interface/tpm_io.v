@@ -99,6 +99,28 @@ module	tpm_io #(parameter SCOPED_COMMANDS = 0,
 	wire	[7:0]	c_cmdByte, c_rspByte;
 	wire		c_execDone, c_execAck;
 	
+    // PCR replies can reach 300 bytes. Advertise dataAvail only after the
+    // complete reply is in FIFO RAM, not at the earlier execution-done pulse.
+    // Acknowledge execution independently so waiting for FIFO completion cannot
+    // deadlock the CRB. Keep the legacy status/ack timing for other commands.
+    reg pcr_status_active, pcr_response_loaded;
+    always @(posedge clock50_i or negedge reset_n_i) begin
+        if (!reset_n_i) begin
+            pcr_status_active <= 0;
+            pcr_response_loaded <= 0;
+        end else if (c_cmdSend) begin
+            pcr_status_active <= 0;
+            pcr_response_loaded <= 0;
+        end else begin
+            if (execStart_o)
+                pcr_status_active <= SCOPED_COMMANDS &&
+                    (commandCode_o == 32'h17e || commandCode_o == 32'h17a);
+            // Status updates pause during register reads. Hold completion so
+            // polling cannot miss the one-cycle reply-transfer done pulse.
+            if (pcr_response_loaded && c_execAck) pcr_response_loaded <= 0;
+            if (pcr_status_active && c_rspDone) pcr_response_loaded <= 1;
+        end
+    end
 	tpm_reg_space fifo_register_space
 	(
 		.clock_i(clock50_i), .reset_n_i(reset_n_i),
@@ -112,7 +134,7 @@ module	tpm_io #(parameter SCOPED_COMMANDS = 0,
 		.c_cmdDone_i(c_cmdDone), .c_rspDone_i(c_rspDone),
 		.c_cmdInAddr_i(c_cmdAddr), .c_rspInAddr_i(c_rspAddr),
 		.c_cmdByteOut_o(c_cmdByte), .c_rspByteIn_i(c_rspByte),
-		.e_execDone_i(c_execDone),
+		.e_execDone_i(pcr_status_active ? pcr_response_loaded : c_execDone),
 		.c_execDone_i(c_execDone), .c_execAck_o(c_execAck)
 	);
 	
@@ -131,7 +153,7 @@ module	tpm_io #(parameter SCOPED_COMMANDS = 0,
 		.cmdByteIn_i(c_cmdByte), .rspByteOut_o(c_rspByte),
 		.execDone_o(c_execDone), .execStart_o(execStart_o),
 		.cmdOutAddr_o(c_cmdAddr), .rspOutAddr_o(c_rspAddr),
-		.execAck_i(c_execAck), .rspReady_i(responseReady_i),
+		.execAck_i(pcr_status_active ? c_execDone : c_execAck), .rspReady_i(responseReady_i),
 		.commandCode_o(commandCode_o), .responseCode_i(responseCode_i),
 		.commandParam_o(commandParam_o), .commandTag_o(commandTag_o),
 		.handle0_o(handle0_o), .handle1_o(handle1_o), .handle2_o(handle2_o),

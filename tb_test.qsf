@@ -81,6 +81,7 @@ set_global_assignment -name VERILOG_FILE TPM_TOP.v
 set_global_assignment -name VERILOG_FILE "Execution Engine/startup_procedures_check.v"
 set_global_assignment -name VERILOG_FILE "Execution Engine/input_output_signal_structure.v"
 set_global_assignment -name VERILOG_FILE "Execution Engine/execution_engine.v"
+set_global_assignment -name VERILOG_FILE "Execution Engine/execution_engine_pcr.v"
 set_global_assignment -name VERILOG_FILE "Management Module/sevensegdecoder_proc.v"
 set_global_assignment -name VERILOG_FILE "Management Module/management_module_top.v"
 set_global_assignment -name VERILOG_FILE "Management Module/management_module.v"
