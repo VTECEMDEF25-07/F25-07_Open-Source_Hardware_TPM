@@ -34,4 +34,16 @@ run -all
 if {[examine -radix unsigned sim:/tb_tpm2_hash_spi/passed] != 1} {
     error "SPI EncryptDecrypt2 did not pass"
 }
+# Preserve the original host-command behavior as well as the new paths.
+# The inherited bench uses $error/$stop, so check its counter and final
+# entry explicitly instead of treating simulator exit zero as success.
+quit -sim
+vlog -sv [file join $repo Testing Simulation {IO Interface} tb_test.v]
+vsim -L altera_mf_ver -L lpm_ver -voptargs=+acc -onfinish stop work.tb_test
+run 2 ms
+if {[examine -radix unsigned sim:/tb_test/errors] != 0 ||
+    [examine -radix unsigned sim:/tb_test/genEntry] != 240} {
+    error "Original SPI command regression failed or did not finish"
+}
+echo "TPM_LEGACY_SPI_PASS"
 quit -force -code 0

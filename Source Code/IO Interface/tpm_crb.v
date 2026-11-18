@@ -19,7 +19,8 @@
 // The board top enables scoped command routing. Existing standalone callers
 // can retain the original CRB behavior with the default parameter.
 module	tpm_crb #(parameter SCOPED_COMMANDS = 0,
-    parameter ENABLE_ENCRYPTDECRYPT2 = 0)
+    parameter ENABLE_ENCRYPTDECRYPT2 = 0,
+    parameter PRESERVE_LEGACY_COMMANDS = 0)
 (
     // The executor reads the saved command by packet address. The CRB reads
     // reply bytes by payload offset and adds the TPM response header itself.
@@ -181,8 +182,11 @@ module	tpm_crb #(parameter SCOPED_COMMANDS = 0,
 	reg	[2:0]	nSessions, nSessions_comb;	// number of sessions
 	reg		proc_ee, badRead, setup_mm;
     reg [11:0] response_length_hold;
-    // Well-formed Startup stays on the management path. Hash has no handles
-    // in this scope. Other requests go to the executor for an error reply.
+    // Mixed routing keeps handle/session parsing and ten-byte replies for
+    // inherited commands. Standalone scoped callers retain their old mode.
+    // Disabled AES still takes the scoped rejection path, never legacy stubs.
+    wire scoped_command_en = SCOPED_COMMANDS && (!PRESERVE_LEGACY_COMMANDS ||
+        commandCode_o == `TPM_CC_Hash || commandCode_o == 32'h00000193);
     wire scoped_startup = commandCode_o == `TPM_CC_Startup &&
         cmd_st == `TPM_ST_NO_SESSIONS && cmdSize_i == 32'd12;
     wire read_scoped_params = scoped_startup ||
@@ -202,7 +206,7 @@ module	tpm_crb #(parameter SCOPED_COMMANDS = 0,
 		if (!reset_n_i)
 			state <= Idle;
 		// "cheat" transfer to Exec_setup0 for malformed command data (more data than expected)
-		else if (!SCOPED_COMMANDS && state > CmdDecode && state < FullRead && ci_addr > cmdSize_i[11:0] + 12'd1)
+		else if (!scoped_command_en && state > CmdDecode && state < FullRead && ci_addr > cmdSize_i[11:0] + 12'd1)
 			state <= Exec_setup0;
 		else
 			state <= next_state;
@@ -224,7 +228,7 @@ module	tpm_crb #(parameter SCOPED_COMMANDS = 0,
 			next_state = ci_done ? CmdDecode : CmdHeader_wait;
 		// go to go to HandleCountCheck
 		CmdDecode:
-			next_state = SCOPED_COMMANDS ? (read_scoped_params ? CmdRead_start : FullRead) : HandleCountCheck;
+			next_state = scoped_command_en ? (read_scoped_params ? CmdRead_start : FullRead) : HandleCountCheck;
 		// go to ReadHandle_start while it < nHandles, otherwise transfer to CmdRead_start (if no sessions), or ReadAuthSize_start (if sessions)
 		HandleCountCheck:
 			next_state = it < nHandles ? ReadHandle_start : (nSessions == 3'd0 ? CmdRead_start : ReadAuthSize_start);
@@ -449,7 +453,7 @@ module	tpm_crb #(parameter SCOPED_COMMANDS = 0,
 				nHandles <= nHandles_comb;
 				nSessions <= nSessions_comb;
 				expectedTag_o <= nSessions_comb == 0 ? `TPM_ST_NO_SESSIONS : `TPM_ST_SESSIONS;
-				proc_ee <= SCOPED_COMMANDS ? !scoped_startup :
+				proc_ee <= scoped_command_en ? !scoped_startup :
                     ~(commandCode_o == `TPM_CC_HierarchyControl
 					|| commandCode_o == `TPM_CC_Startup);
 			end
@@ -636,7 +640,7 @@ module	tpm_crb #(parameter SCOPED_COMMANDS = 0,
 				responseCode_hold <= responseCode_i;
                 // Capture the size with the ready pulse. The FIFO uses this
                 // size both to transfer the reply and to end host reads.
-                if (SCOPED_COMMANDS && proc_ee && rspReady_i)
+                if (scoped_command_en && proc_ee && rspReady_i)
                     response_length_hold <= exec_rsp_length_i;
 			end
 			
@@ -648,7 +652,7 @@ module	tpm_crb #(parameter SCOPED_COMMANDS = 0,
 			// currently, all there is to assemble of the response is the tag
 			AssembleRsp:
 			begin
-				if (SCOPED_COMMANDS && responseCode_hold == `TPM_RC_BAD_TAG)
+				if (scoped_command_en && responseCode_hold == `TPM_RC_BAD_TAG)
                     cmd_st <= `TPM_ST_RSP_COMMAND;
                 else if (responseCode_hold != `TPM_RC_SUCCESS)
                     cmd_st <= `TPM_ST_NO_SESSIONS;
@@ -678,7 +682,7 @@ module	tpm_crb #(parameter SCOPED_COMMANDS = 0,
 				12'h008:	rspByteOut_o <= responseCode_hold[15:8];
 				12'h009:	rspByteOut_o <= responseCode_hold[7:0];
                 // After the header, take the selected byte from the executor.
-                default: rspByteOut_o <= SCOPED_COMMANDS ? exec_rsp_byte_i : 8'd0;
+                default: rspByteOut_o <= scoped_command_en ? exec_rsp_byte_i : 8'd0;
 				
 				endcase
 			end
@@ -732,7 +736,7 @@ module	tpm_crb #(parameter SCOPED_COMMANDS = 0,
 		AssembleRsp, RspOut_start, RspOut_wait:
 		begin
 			// Lend the command RAM address port to the executor while it runs.
-			if (SCOPED_COMMANDS && proc_ee && state == Exec_wait0)
+			if (scoped_command_en && proc_ee && state == Exec_wait0)
                 cmdAddr = exec_cmd_addr_i;
             rspAddr = ci_addr;
             rspWren_n = 1'b1;
@@ -746,7 +750,7 @@ module	tpm_crb #(parameter SCOPED_COMMANDS = 0,
 	assign	rspOutAddr_o = rspAddr;
 	// The legacy transfer FSM can visit the address just past the reply.
     // Suppress that extra write in the scoped path.
-    assign rspSend_o = SCOPED_COMMANDS ?
+    assign rspSend_o = scoped_command_en ?
         (ci_wren || state != RspOut_wait || ci_addr >= response_length_hold) : ci_wren;
 	
 	assign	cmdDone_o = state == Exec_start;
