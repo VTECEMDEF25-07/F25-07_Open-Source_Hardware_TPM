@@ -17,6 +17,7 @@ module	tpm_io #(parameter SCOPED_COMMANDS = 0,
     // Pass packet reads and response payload reads between the CRB and the top.
     input wire [11:0] exec_cmd_addr_i,
     output wire [7:0] exec_cmd_byte_o,
+    output reg [7:0] command_locality_o,
     input wire [11:0] exec_rsp_length_i,
     output wire [11:0] exec_rsp_addr_o,
     input wire [7:0] exec_rsp_byte_i,
@@ -99,6 +100,13 @@ module	tpm_io #(parameter SCOPED_COMMANDS = 0,
 	wire	[7:0]	c_cmdByte, c_rspByte;
 	wire		c_execDone, c_execAck;
 	
+    // Bind locality to the FIFO command submission, before copying/parsing it.
+    // A later locality change must not relabel an already submitted command.
+    always @(posedge clock50_i or negedge reset_n_i) begin
+        if (!reset_n_i) command_locality_o <= 0;
+        else if (c_cmdSend) command_locality_o <= locality_o;
+    end
+
     // PCR replies can reach 300 bytes. Advertise dataAvail only after the
     // complete reply is in FIFO RAM, not at the earlier execution-done pulse.
     // Acknowledge execution independently so waiting for FIFO completion cannot
@@ -114,7 +122,7 @@ module	tpm_io #(parameter SCOPED_COMMANDS = 0,
         end else begin
             if (execStart_o)
                 pcr_status_active <= SCOPED_COMMANDS &&
-                    (commandCode_o == 32'h17e || commandCode_o == 32'h17a);
+                    (commandCode_o == 32'h17e || commandCode_o == 32'h17a || commandCode_o == 32'h182);
             // Status updates pause during register reads. Hold completion so
             // polling cannot miss the one-cycle reply-transfer done pulse.
             if (pcr_response_loaded && c_execAck) pcr_response_loaded <= 0;

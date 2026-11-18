@@ -1,10 +1,11 @@
 `timescale 1ns/1ns
-module tb_tpm2_getrandom_spi #(parameter ENABLE_RANDOM_TEST = 1);
+module tb_tpm2_getrandom_spi #(parameter ENABLE_RANDOM_TEST = 1, parameter ENABLE_EXTEND_TEST = 0);
 reg clk=0, clk100=0, rst=0, sck=0, cs=1, mosi=0;
 wire miso, irq;
 always #10 clk=~clk;
 always #5 clk100=~clk100;
-TPM_TOP #(.ENABLE_GETRANDOM(ENABLE_RANDOM_TEST)) dut(.CLOCK_50(clk),.CLOCK_100(clk100),.RESET_n(rst),
+TPM_TOP #(.ENABLE_GETRANDOM(ENABLE_RANDOM_TEST), .ENABLE_PCR_EXTEND(ENABLE_EXTEND_TEST),
+ .PCR_EXTEND_EMPTY_AUTH_MASK(24'h0000ff), .PCR_EXTEND_LOCALITY_MASK(5'b00001)) dut(.CLOCK_50(clk),.CLOCK_100(clk100),.RESET_n(rst),
 .SPI_CLOCK(sck),.SPI_CS_n(cs),.SPI_RST_n(rst),.SPI_MOSI(mosi),.SPI_MISO(miso),.SPI_PIRQ_n(irq));
 reg [7:0] packet[0:511], response[0:511];
 reg passed=0;
@@ -130,7 +131,35 @@ endtask
 
 // Read/discovery packets must retain their own address/length/response owner
 // when interleaved with GetRandom and raw Hash on this same TPM_TOP instance.
-integer mixed_pcr_responses=0;
+integer mixed_pcr_responses=0, combined_pcr_generation=0;
+reg [255:0] expected_extended_pcr=0;
+
+// Static empty-password PCR0 mutation, followed by independent complete-bank
+// reads in pcr_discovery. This is simulation-only opt-in, not a board default.
+task automatic extend_pcr0;
+reg [7:0] expected[0:18];
+begin
+ write_one(16'h0018,8'h40);write_one(16'h0018,8'h40);
+ for(integer i=0;i<65;i++)packet[i]=0;
+ {packet[0],packet[1]}=16'h8002;packet[5]=65;packet[8]=1;packet[9]=8'h82;
+ packet[17]=9;{packet[18],packet[19],packet[20],packet[21]}=32'h40000009;
+ packet[30]=1;packet[32]=8'h0b;
+ for(integer i=33;i<65;i++)packet[i]=1;
+ transfer(0,16'h0024,64);packet[0]=1;transfer(0,16'h0024,1);finish_cmd(19);
+ for(integer i=0;i<19;i++)expected[i]=0;
+ expected[0]=8'h80;expected[1]=2;expected[5]=19;expected[16]=1;
+ for(integer i=0;i<19;i++)if(response[i]!==expected[i])$fatal(1,"Mixed Extend response byte %0d",i);
+ combined_pcr_generation++;
+ // Independently generated Python hashlib SHA256(oldPCR || 32 measurement1 bytes).
+ case(combined_pcr_generation)
+ 1:expected_extended_pcr=256'h5c85955f709283ecce2b74f1b1552918819f390911816e7bb466805a38ab87f3;
+ 2:expected_extended_pcr=256'hc6ceea5a68c978e77818ca675ea933918c44f07c1208a004062f13f3dd6cb66f;
+ 3:expected_extended_pcr=256'hf6554ddbbed49999df0e6561d6c87f69cf21c5ef939927db073b3b5341f25da1;
+ 4:expected_extended_pcr=256'hf51ef193e5ff5d9abf3d69df96c8dac5736baeddfbf1376214ab38f8e906fdc3;
+ default:$fatal(1,"Unexpected mixed Extend generation");
+ endcase
+end endtask
+
 task automatic pcr_discovery;
 reg [199:0] capability_expected;
 reg [7:0] expected[0:299];
@@ -153,9 +182,11 @@ begin
   transfer(0,16'h0024,20);finish_cmd(300);
   for(integer i=0;i<300;i++)expected[i]=0;
   {expected[0],expected[1]}=16'h8001;expected[4]=1;expected[5]=8'h2c;
+  {expected[10],expected[11],expected[12],expected[13]}=32'(combined_pcr_generation);
   expected[17]=1;expected[19]=8'h0b;expected[20]=3;expected[21+page]=8'hff;
   expected[27]=8;
   for(integer i=0;i<8;i++)expected[29+i*34]=32;
+  if(page==0)for(integer j=0;j<32;j++)expected[30+j]=expected_extended_pcr[255-j*8 -:8];
   for(integer i=0;i<300;i++)if(response[i]!==expected[i])
    $fatal(1,"Mixed PCR_Read page %0d byte %0d expected %h got %h",page,i,expected[i],response[i]);
   mixed_pcr_responses++;
@@ -178,6 +209,7 @@ initial begin
  if(ENABLE_RANDOM_TEST) begin
   getrandom(32,12,16'h8001,0);
  end
+ if(ENABLE_EXTEND_TEST)extend_pcr0();
  pcr_discovery();
  end
  if(ENABLE_RANDOM_TEST) begin
@@ -243,6 +275,10 @@ initial begin
  end
  if(mixed_pcr_responses!=16)$fatal(1,"Mixed PCR discovery did not finish");
  $display("GETRANDOM_PCR_READ_MIXED_PASS replies=%0d",mixed_pcr_responses);
+ if(ENABLE_EXTEND_TEST)begin
+  if(combined_pcr_generation!=4)$fatal(1,"Mixed Extend did not finish");
+  $display("GETRANDOM_PCR_EXTEND_MIXED_PASS generations=%0d",combined_pcr_generation);
+ end
  passed=1;
  $display("TPM2_GETRANDOM_SPI_PASS"); $finish;
 end
