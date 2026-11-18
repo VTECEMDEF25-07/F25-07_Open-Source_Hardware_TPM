@@ -61,6 +61,19 @@ resolves one public demo handle and permits its use with an empty password.
 Session parameter protection is a separate symmetric path. See
 [Lenovo AES demo](../../Testing/Host/LENOVO_AES_DEMO.md) for launch instructions.
 
+## GetRandom integration
+
+PR #53 adds the Phase One GetRandom packet handler, physical-source health
+monitor and SHA-based RNG service. The engine captures a GetRandom request
+alongside its existing Hash/AES ownership logic, dispatches in states 14/15,
+and returns a TPM2B payload of at most 32 bytes. RNG health or timeout failures
+produce an error response. Hash and RNG use the existing shared SHA arbiter.
+
+ENABLE_GETRANDOM defaults to zero at TPM_TOP. AES key generation uses the
+deterministic provider in lenovo_aes_key_service. Connecting the RNG to keygen
+requires an internal request owner and a buffered 256-to-32-bit generation
+stream. See the [GetRandom validation notes](../../Testing/Simulation/Execution%20Engine/GETRANDOM_VALIDATION.md).
+
 ## Run the simulations
 
 From the repository root, run this in a shell with Questa on your PATH.

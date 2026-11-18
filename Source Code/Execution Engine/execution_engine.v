@@ -1,4 +1,5 @@
-module execution_engine #(parameter ENABLE_HASH_COMMAND = 0, parameter ENABLE_AES_COMMAND = 0)(
+module execution_engine #(parameter ENABLE_HASH_COMMAND = 0, parameter ENABLE_AES_COMMAND = 0,
+    parameter ENABLE_GETRANDOM = 0, parameter integer GETRANDOM_WAIT_LIMIT = 1000000)(
 		clock_i,
 		reset_n_i,
 		command_ready_i,
@@ -88,9 +89,13 @@ module execution_engine #(parameter ENABLE_HASH_COMMAND = 0, parameter ENABLE_AE
         hash_request_o, hash_grant_i, hash_data_o, hash_valid_o, hash_end_o,
         hash_ready_i, hash_digest_i, hash_digest_valid_i, hash_digest_ready_o,
         aes_key_request_o, aes_key_request_ready_i, aes_key_handle_o,
-        aes_key_reply_valid_i, aes_key_reply_ready_o, aes_resolved_key_i, aes_key_reply_code_i
+        aes_key_reply_valid_i, aes_key_reply_ready_o, aes_resolved_key_i, aes_key_reply_code_i,
+        random_i, random_valid_i, random_request_o, rng_fault_i, rng_timeout_o
 	);
 
+    input wire [255:0] random_i;
+    input wire random_valid_i, rng_fault_i;
+    output wire random_request_o, rng_timeout_o;
     output wire aes_key_request_o, aes_key_reply_ready_o;
     output wire [31:0] aes_key_handle_o;
     input wire aes_key_request_ready_i, aes_key_reply_valid_i;
@@ -578,18 +583,36 @@ module execution_engine #(parameter ENABLE_HASH_COMMAND = 0, parameter ENABLE_AE
     // supplies validation without entering the legacy authorization stubs.
     localparam STATE_HASH_DISPATCH = 4'd10, STATE_HASH_WAIT = 4'd11;
     localparam STATE_AES_DISPATCH = 4'd12, STATE_AES_WAIT = 4'd13;
+    localparam STATE_RANDOM_DISPATCH = 4'd14, STATE_RANDOM_WAIT = 4'd15;
+    reg random_active;
+    wire accept_random = ENABLE_HASH_COMMAND && command_code_i == 32'h0000017b;
+    wire random_complete;
+    wire [31:0] random_response_code;
+    wire [11:0] random_response_length, random_cmd_addr;
+    wire [7:0] random_response_byte;
+    reg [15:0] active_tag;
+    reg [31:0] active_code, active_size;
+    reg active_operational;
+    execution_engine_getrandom #(.WAIT_LIMIT(GETRANDOM_WAIT_LIMIT)) random_command (
+        .clock_i(clock_i), .reset_n_i(reset_n_i),
+        .start_i(current_state_o == STATE_RANDOM_DISPATCH), .enabled_i(ENABLE_GETRANDOM != 0),
+        .operational_i(active_operational), .command_size_i(active_size),
+        .command_addr_o(random_cmd_addr), .command_byte_i(command_byte_i),
+        .response_valid_o(random_complete), .response_code_o(random_response_code),
+        .response_length_o(random_response_length), .response_addr_i(response_addr_i),
+        .response_byte_o(random_response_byte), .random_i(random_i),
+        .random_valid_i(random_valid_i), .random_request_o(random_request_o),
+        .fault_i(rng_fault_i), .timeout_o(rng_timeout_o)
+    );
     reg aes_active;
     wire aes_complete;
     wire [31:0] aes_response_code;
     wire [11:0] aes_response_length, aes_command_addr, hash_command_addr;
     wire [7:0] aes_response_byte, hash_response_byte;
-    assign command_addr_o = aes_active ? aes_command_addr : hash_command_addr;
-    assign response_byte_o = aes_active ? aes_response_byte : hash_response_byte;
+    assign command_addr_o = random_active ? random_cmd_addr : aes_active ? aes_command_addr : hash_command_addr;
+    assign response_byte_o = random_active ? random_response_byte : aes_active ? aes_response_byte : hash_response_byte;
     wire accept_aes = ENABLE_AES_COMMAND && command_code_i == 32'h00000193;
     reg hash_active;
-    reg [15:0] active_tag;
-    reg [31:0] active_code, active_size;
-    reg active_operational;
     wire hash_complete;
     wire [31:0] hash_response_code;
     wire [11:0] hash_response_length;
@@ -601,6 +624,7 @@ module execution_engine #(parameter ENABLE_HASH_COMMAND = 0, parameter ENABLE_AE
         if (!reset_n_i) begin
             hash_active <= 0;
             aes_active <= 0;
+            random_active <= 0;
             active_tag <= 0;
             active_code <= 0;
             active_size <= 0;
@@ -608,6 +632,7 @@ module execution_engine #(parameter ENABLE_HASH_COMMAND = 0, parameter ENABLE_AE
         end else if (current_state_o == STATE_IDLE && command_ready_i) begin
             hash_active <= accept_hash;
             aes_active <= accept_aes;
+            random_active <= accept_random;
             active_tag <= command_tag_i;
             active_code <= command_code_i;
             active_size <= command_size_i;
@@ -689,7 +714,8 @@ module execution_engine #(parameter ENABLE_HASH_COMMAND = 0, parameter ENABLE_AE
 				response_code_o <= 32'd0;
 			end
 			else begin
-				response_code_o <= hash_active && current_state_o == STATE_HASH_WAIT && hash_complete ?
+				response_code_o <= random_active && current_state_o == STATE_RANDOM_WAIT && random_complete ?
+                    random_response_code : hash_active && current_state_o == STATE_HASH_WAIT && hash_complete ?
                     hash_response_code :
                     aes_active && current_state_o == STATE_AES_WAIT && aes_complete ?
                     aes_response_code : {20'h0, s_response_code};
@@ -1153,7 +1179,7 @@ module execution_engine #(parameter ENABLE_HASH_COMMAND = 0, parameter ENABLE_AE
 					s_decrypt_count = 2'b0;
 					s_encrypt_count = 2'b0;
 					if(command_ready_i) begin
-						state = accept_aes ? STATE_AES_DISPATCH : accept_hash ? STATE_HASH_DISPATCH : STATE_HEADER_VALID;
+						state = accept_random ? STATE_RANDOM_DISPATCH : accept_aes ? STATE_AES_DISPATCH : accept_hash ? STATE_HASH_DISPATCH : STATE_HEADER_VALID;
 					end
 				end
 
@@ -1367,6 +1393,8 @@ module execution_engine #(parameter ENABLE_HASH_COMMAND = 0, parameter ENABLE_AE
 				// ====================================================================
 				// STAGE 10: POST-PROCESSING - TPM 2.0 Part 3, Section 5.10
 				// ====================================================================
+                STATE_RANDOM_DISPATCH: state = STATE_RANDOM_WAIT;
+                STATE_RANDOM_WAIT: state = random_complete ? STATE_POST_PROCESS : STATE_RANDOM_WAIT;
                 STATE_AES_DISPATCH: state = STATE_AES_WAIT;
                 STATE_AES_WAIT: state = aes_complete ? STATE_POST_PROCESS : STATE_AES_WAIT;
                 STATE_HASH_DISPATCH: state = STATE_HASH_WAIT;
@@ -1406,7 +1434,7 @@ module execution_engine #(parameter ENABLE_HASH_COMMAND = 0, parameter ENABLE_AE
 		// Default output values
 		response_valid_o =   1'b0;
 		s_response_code = response_code_o[11:0];
-		response_length_o = aes_active ? {4'd0, aes_response_length} : hash_active ? {4'd0, hash_response_length} : 16'h0;
+		response_length_o = random_active ? {4'd0, random_response_length} : aes_active ? {4'd0, aes_response_length} : hash_active ? {4'd0, hash_response_length} : 16'h0;
 		command_start_o   = 1'b0;
 		session_present = 1'b0;
 		authHierarchy_o = 32'h00000000;
@@ -1501,7 +1529,7 @@ module execution_engine #(parameter ENABLE_HASH_COMMAND = 0, parameter ENABLE_AE
 			STATE_IDLE: begin
 					response_valid_o =   1'b0;
 					s_response_code =   12'b0;
-					response_length_o = aes_active ? {4'd0, aes_response_length} : hash_active ? {4'd0, hash_response_length} : 16'h0;
+					response_length_o = random_active ? {4'd0, random_response_length} : aes_active ? {4'd0, aes_response_length} : hash_active ? {4'd0, hash_response_length} : 16'h0;
 					s_handle_error = 1'b0;
 					s_handle_index = 3'b000;
 				if(command_ready_i) begin
@@ -1679,12 +1707,12 @@ module execution_engine #(parameter ENABLE_HASH_COMMAND = 0, parameter ENABLE_AE
 				// 6. Format proper response structure
 				
 				//Check whether the initiliazed signal can be sent based on if previous errors were set
-				if(!hash_active && !aes_active && (commandIndex == TPM_CC_STARTUP || op_state_i != OPERATIONAL_STATE || !s_session_error || !s_handle_error || !s_header_valid_error ||
+				if(!random_active && !hash_active && !aes_active && (commandIndex == TPM_CC_STARTUP || op_state_i != OPERATIONAL_STATE || !s_session_error || !s_handle_error || !s_header_valid_error ||
 						   !s_mode_check_error ||!s_auth_check_error || !s_param_decrypt_error || !s_param_unmarshall_error || !s_execution_startup_done))begin
 					s_initialized = 1'b1;
 				end
 				response_valid_o = 1'b1;
-				response_length_o = aes_active ? {4'd0, aes_response_length} : hash_active ? {4'd0, hash_response_length} : 16'h0A;
+				response_length_o = random_active ? {4'd0, random_response_length} : aes_active ? {4'd0, aes_response_length} : hash_active ? {4'd0, hash_response_length} : 16'h0A;
 			end
 			default: begin
 			end

@@ -36,7 +36,7 @@ if {[examine -radix unsigned sim:/tb_tpm2_hash_spi/passed] != 1} {
     error "SPI EncryptDecrypt2 did not pass"
 }
 quit -sim
-vsim -voptargs=+acc -gENABLE_AES_TEST=1 -gDETERMINISTIC_KEY_TEST=1 -onfinish stop work.tb_tpm2_hash_spi
+vsim -voptargs=+acc -gENABLE_AES_TEST=1 -gDETERMINISTIC_KEY_TEST=1 -gENABLE_RANDOM_TEST=1 -onfinish stop work.tb_tpm2_hash_spi
 run -all
 if {[examine -radix unsigned sim:/tb_tpm2_hash_spi/passed] != 1} {
     error "Deterministic AES SPI demo did not pass"
@@ -45,6 +45,21 @@ if {[examine -radix unsigned sim:/tb_tpm2_hash_spi/passed] != 1} {
 # The inherited bench uses $error/$stop, so check its counter and final
 # entry explicitly instead of treating simulator exit zero as success.
 quit -sim
+vlog -sv [file join $bench_dir tb_getrandom_engine.sv] [file join $bench_dir tb_tpm2_getrandom_spi.sv]
+vsim -voptargs=+acc -onfinish stop work.tb_getrandom_engine
+run -all
+if {[examine -radix unsigned sim:/tb_getrandom_engine/passed] != 1} {
+    error "GetRandom engine tests failed"
+}
+quit -sim
+foreach enabled {1 0} {
+    vsim -voptargs=+acc -gENABLE_RANDOM_TEST=$enabled -onfinish stop work.tb_tpm2_getrandom_spi
+    run -all
+    if {[examine -radix unsigned sim:/tb_tpm2_getrandom_spi/passed] != 1} {
+        error "GetRandom SPI tests failed enabled=$enabled"
+    }
+    quit -sim
+}
 vlog -sv [file join $repo Testing Simulation {IO Interface} tb_test.v]
 vsim -L altera_mf_ver -L lpm_ver -voptargs=+acc -onfinish stop work.tb_test
 run 2 ms

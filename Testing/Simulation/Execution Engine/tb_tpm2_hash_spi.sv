@@ -1,5 +1,5 @@
 `timescale 1ns/1ns
-module tb_tpm2_hash_spi #(parameter ENABLE_AES_TEST = 0, parameter DETERMINISTIC_KEY_TEST = 0);
+module tb_tpm2_hash_spi #(parameter ENABLE_AES_TEST = 0, parameter DETERMINISTIC_KEY_TEST = 0, parameter ENABLE_RANDOM_TEST = 0);
 reg clk=0, clk100=0, rst=0, sck=0, cs=1, mosi=0;
 wire miso, irq;
 always #10 clk=~clk;
@@ -41,11 +41,16 @@ always @(posedge clk) begin
     key_reply_valid <= 0;
 end
 
-TPM_TOP #(.ENABLE_ENCRYPTDECRYPT2(ENABLE_AES_TEST)) dut(.CLOCK_50(clk),.CLOCK_100(clk100),.RESET_n(rst),
+TPM_TOP #(.ENABLE_ENCRYPTDECRYPT2(ENABLE_AES_TEST), .ENABLE_GETRANDOM(ENABLE_RANDOM_TEST)) dut(.CLOCK_50(clk),.CLOCK_100(clk100),.RESET_n(rst),
 .SPI_CLOCK(sck),.SPI_CS_n(cs),.SPI_RST_n(rst),.SPI_MOSI(mosi),.SPI_MISO(miso),.SPI_PIRQ_n(irq),
 .aes_key_request_o(key_request), .aes_key_request_ready_i(DETERMINISTIC_KEY_TEST ? generated_request_ready : 1'b1), .aes_key_handle_o(key_handle),
 .aes_key_reply_valid_i(DETERMINISTIC_KEY_TEST ? generated_reply_valid : key_reply_valid), .aes_key_reply_ready_o(key_reply_ready),
 .aes_resolved_key_i(DETERMINISTIC_KEY_TEST ? generated_key : KEY), .aes_key_reply_code_i(DETERMINISTIC_KEY_TEST ? generated_reply_code : key_reply_code));
+reg source_bit=0;
+generate if (ENABLE_RANDOM_TEST) begin : random_source_model
+  always @(negedge clk) source_bit=~source_bit;
+  initial force dut.rng.enabled.entropy.sampled_bit=source_bit;
+end endgenerate
 reg [7:0] packet[0:1073], response[0:1062];
 reg passed=0;
 integer engine_hash_starts=0, engine_hash_replies=0;
@@ -172,6 +177,28 @@ task automatic boundary_roundtrip(input integer length);
     $display("LENOVO_AES_BOUNDARY_PASS bytes=%0d",length);
   end
 endtask
+reg [255:0] previous_random=0;
+task automatic request_random;
+  reg [255:0] returned;
+  begin
+    write_one(16'h0018,8'h40);
+    write_one(16'h0018,8'h40);
+    for (integer i=0;i<12;i=i+1)
+      packet[i]=96'h80010000000c0000017b0020 >> ((11-i)*8);
+    transfer(0,16'h0024,12);
+    finish_cmd(44);
+    if ({response[0],response[1]} !== 16'h8001 ||
+        {response[2],response[3],response[4],response[5]} !== 32'd44 ||
+        {response[6],response[7],response[8],response[9]} !== 32'd0 ||
+        {response[10],response[11]} !== 16'd32)
+      $fatal(1,"Mixed AES/GetRandom response invalid");
+    for (integer i=0;i<32;i=i+1) returned[255-i*8 -:8]=response[12+i];
+    if (returned === 0 || returned === previous_random)
+      $fatal(1,"Mixed AES/GetRandom output missing or reused");
+    previous_random=returned;
+    $display("LENOVO_AES_GETRANDOM_MIXED_PASS");
+  end
+endtask
 initial begin
  #3; rst=1; #7; rst=0; #200; rst=1; #1000;
  write_one(16'h0000,8'h02); transfer(1,16'h0000,1);
@@ -197,6 +224,7 @@ initial begin
  if (engine_hash_starts != 4 || engine_hash_replies != 4)
    $fatal(1,"Expected four engine-owned SPI Hash commands, starts=%0d replies=%0d",
           engine_hash_starts,engine_hash_replies);
+ if (ENABLE_RANDOM_TEST) request_random();
  if (ENABLE_AES_TEST) begin
    aes_packet(0,32'h80000000,PLAINTEXT,0,0);
    aes_packet(1,32'h80000000,CIPHERTEXT,0,0);
@@ -221,6 +249,7 @@ initial begin
      boundary_roundtrip(1024);
      $display("LENOVO_DETERMINISTIC_AES_SPI_PASS");
    end
+   if (ENABLE_RANDOM_TEST) request_random();
    $display("TPM2_ENCRYPTDECRYPT2_SPI_PASS");
  end else begin
    aes_packet(0,32'h80000000,PLAINTEXT,0,32'h143);

@@ -108,3 +108,12 @@ set_global_assignment -name VERILOG_FILE "../../Source Code/Symmetric Module/Con
 set_global_assignment -name VERILOG_FILE "../../Source Code/Symmetric Module/Controllers/primitive_controller.v"
 set_global_assignment -name VERILOG_FILE "../../Source Code/Symmetric Module/Controllers/session_parameter_controller.v"
 set_global_assignment -name VERILOG_FILE "../../Source Code/Symmetric Module/symmetric_top.v"
+
+# Phase One GetRandom dependencies
+set_global_assignment -name VERILOG_FILE "../../Source Code/RNG Module/execution_engine_getrandom.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/RNG Module/tpm2_get_random.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/RNG Module/random_number_generation.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/RNG Module/entropy_source.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/RNG Module/ring_osc.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/RNG Module/entropy_health.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/RNG Module/phase_one_rng.v"

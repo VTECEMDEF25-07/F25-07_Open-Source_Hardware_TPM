@@ -69,3 +69,14 @@ the legacy entry-240 check, plus all five Python tests. Quartus Pro 26.1.1
 synthesis passed with zero errors and 16 warnings. Full fitting stopped at
 license error 119013 for A5ED013BB32AE4SCS, so routed timing and physical
 board operation remain pending.
+
+## PR #53 RNG integration
+
+Phase One GetRandom, raw-source health monitoring and the shared-SHA DRBG
+service are integrated. GetRandom uses engine states 14/15 alongside AES at
+12/13. ENABLE_GETRANDOM defaults to zero, matching the upstream board policy.
+The AES key remains derived from the public deterministic seed. Feeding fresh
+RNG output into AES requires an internal request arbiter and a held 256-bit
+block converted to eight generation words, with RNG faults propagated through
+generation_failed. The laptop encryption flow must then receive a disposable
+demo key or use FPGA encryption before requesting FPGA decryption.
