@@ -100,7 +100,7 @@ def run_panel(transport, port=None, client=None, event_log=None):
     selected_port = port or (candidates[0] if len(candidates) == 1 else None)
     root = tk.Tk()
     root.title("Lenovo TPM demo")
-    root.geometry("900x735" if client else "900x425")
+    root.geometry("1040x820" if client else "1040x620")
     background, surface, accent = "#101923", "#1b2b3a", "#8ddbc8"
     root.configure(bg=background)
     wrapping = []
@@ -121,14 +121,14 @@ def run_panel(transport, port=None, client=None, event_log=None):
     root.bind("<Configure>", wrap_labels)
     body = tk.Frame(root, bg=background)
     body.pack(fill="both", expand=True, padx=24, pady=12)
-    label(body, "Lenovo TPM demo", 22, bold=True)
-    status = label(body, "", 10, "#b9cbd9")
+    label(body, "Lenovo TPM demo", 28, bold=True)
+    status = label(body, "", 12, "#b9cbd9")
     result = tk.Frame(body, bg=surface, padx=15, pady=6)
     result.pack(fill="x", pady=(6, 5))
     label(result, "FPGA result", 10, accent, bold=True, bg=surface)
-    sample = label(result, "Press either breadboard button", 17, bold=True, bg=surface)
-    actual = label(result, "FPGA SHA-256  —", 10, "#d5e5ed", mono=True, bg=surface)
-    verdict = label(result, "", 13, bold=True, bg=surface)
+    sample = label(result, "Press either breadboard button", 22, bold=True, bg=surface)
+    actual = label(result, "FPGA SHA-256  —", 13, "#d5e5ed", mono=True, bg=surface)
+    verdict = label(result, "", 20, bold=True, bg=surface)
     panel = None
     pending = bytearray()
     executor = ThreadPoolExecutor(max_workers=1)
@@ -164,7 +164,9 @@ def run_panel(transport, port=None, client=None, event_log=None):
         from tkinter.scrolledtext import ScrolledText
         uart_window = tk.Toplevel(root)
         uart_window.title(f"Raw UART · {selected_port or 'No Nucleo port'} · 115200")
-        uart_text = ScrolledText(uart_window, width=85, height=18, font=("Consolas", 10))
+        uart_text = ScrolledText(uart_window, width=85, height=18, font=("Consolas", 12),
+                                 bg="#142030", fg="#edf3fa", insertbackground="white",
+                                 padx=12, pady=12)
         uart_text.pack(fill="both", expand=True)
         uart_text.insert("end", "".join(uart_history))
         uart_text.see("end")
@@ -289,12 +291,12 @@ def run_panel(transport, port=None, client=None, event_log=None):
 
     label(body, "Boot integrity", 15, bold=True)
     label(body, "Original SHA-256  " + hashlib.sha256(SAMPLES["NORMAL"]).hexdigest(),
-          10, "#b9cbd9", mono=True)
+          13, "#b9cbd9", mono=True)
     controls = tk.Frame(body, bg=background)
     controls.pack(fill="x", pady=(4, 9))
-    button_style = dict(font=("Segoe UI", 10, "bold"), bg="#30485b", fg="white",
+    button_style = dict(font=("Segoe UI", 13, "bold"), bg="#30485b", fg="white",
                         activebackground="#44677c", activeforeground="white",
-                        relief="flat", padx=12, pady=4, cursor="hand2")
+                        relief="flat", padx=16, pady=8, cursor="hand2")
     tk.Button(controls, text="Raw UART", command=open_uart,
               **button_style).pack(side=tk.RIGHT)
     buttons = []
@@ -306,11 +308,11 @@ def run_panel(transport, port=None, client=None, event_log=None):
     if client is not None:
         label(body, "Message decryption", 15, bold=True)
         label(body, "Enter a message to encrypt on the laptop and decrypt on the FPGA.", 10, "#b9cbd9")
-        entry = tk.Entry(body, font=("Segoe UI", 12), relief="flat", bg="#e8eff3",
+        entry = tk.Entry(body, font=("Segoe UI", 15), relief="flat", bg="#e8eff3",
                          fg="#101923", insertbackground="#101923", highlightthickness=1,
                          highlightbackground="#7f99a6", highlightcolor=accent)
         entry.insert(0, "Hello Lenovo")
-        entry.pack(fill="x", ipady=4, pady=4)
+        entry.pack(fill="x", ipady=8, pady=6)
         crypto_controls = tk.Frame(body, bg=background)
         crypto_controls.pack(fill="x", pady=(0, 6))
         for mode, title in (("AES", "AES-256 decrypt"), ("RSA", "RSA-2048 decrypt")):
