@@ -15,7 +15,7 @@ module tb_rsa_adapter #(parameter TEST_CASE=0, IP_TYPE=0);
     reg [31:0] fixture[0:128], slot[0:130];
     reg [2047:0] vectors[0:3];
     reg [2047:0] observed, expected_result, representative;
-    reg [31:0] tracked_ram[0:511];
+    reg [31:0] tracked_ram[0:511], tracked_result[0:63];
     reg [31:0] random_reg=32'h73a8d2e1;
     integer cycles=0, checks=0, launches=0, derivations=0;
     reg stall=1, inject_error=0;
@@ -56,6 +56,7 @@ module tb_rsa_adapter #(parameter TEST_CASE=0, IP_TYPE=0);
             if(rv && !reserved)$fatal(1,"result without lease");
             if(cv && code==0 && !reserved)$fatal(1,"success lost terminal ownership");
             if(slot[129]!==32'hcafef00d || slot[130]!==32'hace51234)$fatal(1,"slot guards changed");
+            if(dut.enabled.result_write) tracked_result[dut.enabled.index_reg[5:0]]=dut.enabled.result_word;
             if(dut.enabled.protected_derivation.ram_write_en)
                 tracked_ram[dut.enabled.protected_derivation.ram_write_address]=dut.enabled.protected_derivation.ram_write_data;
             if(cycles>0 && cycles%1000000==0)begin
@@ -113,7 +114,8 @@ module tb_rsa_adapter #(parameter TEST_CASE=0, IP_TYPE=0);
         check_clean();
         repeat(17)begin tick();if(!cv || code!==expected_code || cid!==expected_id)$fatal(1,"held terminal changed");end
         @(negedge clk);ca=1;tick();@(negedge clk);ca=0;wait(rq);#1;
-        if(reserved || cv || dut.enabled.result_reg!==0)$fatal(1,"terminal release/erasure");
+        for(integer j=0;j<64;j++)if(tracked_result[j]!==0)$fatal(1,"result RAM survived release %0d",j);
+        if(reserved || cv || dut.enabled.result_q!==0)$fatal(1,"terminal release/erasure");
         checks=checks+1;
     endtask
     task receive_result(input [2047:0] expected_value);

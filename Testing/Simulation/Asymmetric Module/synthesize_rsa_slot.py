@@ -19,12 +19,14 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--family',choices=['cyclone','agilex'],default='cyclone')
     parser.add_argument('--fit',action='store_true')
+    parser.add_argument('--output', type=Path, help='Dedicated build directory')
+    parser.add_argument('--deadline', type=int, help='Tool deadline in seconds')
     args=parser.parse_args()
     root=Path(__file__).resolve().parents[3]
     # Quartus Standard rejects generated database paths above MAX_PATH even
     # when source files open successfully. Keep all real outputs under the
     # class AI/tmp root, using short, dedicated build directories.
-    build=root.parent/('rsaa1' if args.family=='agilex' else 'rsac1')
+    build=(args.output or root.parent/('rsaa1' if args.family=='agilex' else 'rsac1')).resolve()
     build.mkdir(parents=True,exist_ok=True)
     board=root/'Project/DE1/de1_soc_top.qsf'
     sources=[(board.parent/p).resolve() for p in re.findall(r'-name VERILOG_FILE "([^"]+)"',board.read_text())]
@@ -48,14 +50,14 @@ def main():
     qsf.write_text('\n'.join(settings+['set_global_assignment -name VERILOG_FILE "'+p.as_posix()+'"' for p in sources])+'\n')
     (build/'consumer.qpf').write_text('PROJECT_REVISION = "consumer"\n')
     bindir=Path('C:/altera_pro/26.1/quartus/bin64' if agilex else 'C:/intelFPGA_lite/24.1std/quartus/bin64')
-    command=[str(bindir/('quartus_sh.exe' if args.fit else 'quartus_map.exe'))]
+    command=[str(bindir/('quartus_sh.exe' if args.fit else ('quartus_syn.exe' if agilex else 'quartus_map.exe')))]
     command+=['--flow','compile','consumer'] if args.fit else ['consumer']
     inputs=sources+list((root/'Source Code').rglob('*.vh'))+[Path(__file__)]
     record={'profile':'enabled real keygen + AES256 packet/controller + RSA2048 adapter/controller, Altera resources',
         'family':family,'device':device,'virtual_pin_harness':args.fit,'clock_period_ns':20 if args.fit else None,
         'head':subprocess.check_output(['git','rev-parse','HEAD'],cwd=root).decode().strip(),
         'inputs':{str(p.relative_to(root)):sha(p) for p in inputs},'qsf_sha256':sha(qsf),
-        'command':command,'deadline_seconds':1800 if args.fit else 900,'result':'FAIL','board_signoff':False}
+        'command':command,'deadline_seconds':args.deadline or (1800 if args.fit else 900),'result':'FAIL','board_signoff':False}
     start=time.monotonic();log=build/'compile.log'
     with log.open('wb') as output:
         process=subprocess.Popen(command,cwd=build,stdout=output,stderr=subprocess.STDOUT,
@@ -68,7 +70,7 @@ def main():
             record.update({'returncode':process.returncode,'elapsed_seconds':round(time.monotonic()-start,3),
                 'transcript_sha256':sha(log),'inputs_after':{str(p.relative_to(root)):sha(p) for p in inputs}})
             text=log.read_text(errors='replace')
-            if process.returncode==0 and ('Full Compilation was successful' in text if args.fit else 'Analysis & Synthesis was successful' in text) and record['inputs']==record['inputs_after']:
+            if process.returncode==0 and ('Full Compilation was successful' in text if args.fit else ('Analysis & Synthesis was successful' in text or 'Synthesis was successful' in text)) and record['inputs']==record['inputs_after']:
                 record['result']='PASS'
             (build/'evidence.json').write_text(json.dumps(record,indent=2)+'\n')
     print('RSA_ENABLED_'+('FIT_' if args.fit else 'SYNTHESIS_')+record['result'],flush=True)

@@ -30,7 +30,7 @@ module execution_engine_rsa #(
     localparam [4:0] IDLE=0, ACQUIRE=1, ACQUIRE_REPLY=2, LOAD_KEY=3,
         LOAD_OPERAND=4, CHECK=5, PAIR_START=6, PAIR_WAIT=7, CORE_START=8,
         CORE_WAIT=9, CLEAN=10, CLEAN_WAIT=11, OUTPUT=12, COMPLETE=13,
-        RELEASE=14;
+        RELEASE=14, SAVE_RESULT=15, WIPE_RESULT=16, REFRESH_RESULT=17;
     localparam [3:0] OK=0, BAD_SLOT=1, BAD_FORMAT=4, TIMEOUT=7, DENIED=9,
         BAD_OPERATION=10, ARITHMETIC=11, BAD_OPERAND=12;
     reg [4:0] state_reg;
@@ -39,7 +39,7 @@ module execution_engine_rsa #(
     reg private_reg, allow_reg, owned_reg, d_captured_reg, pending_reg;
     reg [7:0] index_reg;
     reg [63:0] elapsed_reg, terminal_elapsed_reg;
-    reg [2047:0] modulus_reg, representative_reg, exponent_reg, result_reg;
+    reg [2047:0] modulus_reg, representative_reg, exponent_reg;
     reg [1023:0] p_reg, q_reg;
     reg [31:0] public_exponent_reg;
     // Registered local resets clear retained child state and invalidate late
@@ -53,7 +53,7 @@ module execution_engine_rsa #(
     wire [2047:0] core_result;
     wire slot_consistent = reserved_i && slot_valid_i &&
         slot_type_i==2 && slot_words_i==129;
-    wire lease_phase = state_reg>=LOAD_KEY && state_reg<=COMPLETE;
+    wire lease_phase = (state_reg>=LOAD_KEY && state_reg<=COMPLETE) || state_reg==SAVE_RESULT;
     wire expired = elapsed_reg>=WAIT_LIMIT-1;
     assign request_ready_o=reset_n_i && ENABLE && state_reg==IDLE && pair_ready;
     assign acquire_valid_o=reset_n_i && state_reg==ACQUIRE;
@@ -65,7 +65,19 @@ module execution_engine_rsa #(
     assign private_address_o=reset_n_i && state_reg==LOAD_KEY && slot_consistent ? index_reg : 8'd0;
     assign operand_ready_o=reset_n_i && state_reg==LOAD_OPERAND && slot_consistent && !expired;
     assign result_valid_o=reset_n_i && state_reg==OUTPUT && slot_consistent && !expired;
-    assign result_data_o=result_valid_o?result_reg[2047:2016]:32'd0;
+    // Copy the held arithmetic result before clearing the child. Registered
+    // lookahead presents one word per clock and keeps it stable on stalls.
+    wire accept_result = result_valid_o && result_ready_i;
+    wire result_write = state_reg==SAVE_RESULT || state_reg==WIPE_RESULT || accept_result;
+    wire [31:0] result_word = state_reg==SAVE_RESULT ? core_result[2047-index_reg[5:0]*32 -:32] : 32'd0;
+    wire [5:0] result_read_address = state_reg==OUTPUT ?
+        index_reg[5:0] + {5'd0,accept_result} : 6'd0;
+    wire [31:0] result_q;
+    keygen_ram32 #(.ADDRESS_WIDTH(6),.IP_TYPE(IP_TYPE),.DEVICE_FAMILY(DEVICE_FAMILY)) result_store (
+        .clock_i(clock_i),.reset_n_i(reset_n_i),.clock_en_i(1'b1),
+        .write_en_i(result_write),.write_address_i(index_reg[5:0]),.write_data_i(result_word),
+        .read_en_i(1'b1),.read_address_i(result_read_address),.read_data_o(result_q),.read_valid_o());
+    assign result_data_o=result_valid_o ? result_q : 32'd0;
     assign result_last_o=result_valid_o && index_reg==63;
     assign completion_valid_o=reset_n_i && state_reg==COMPLETE &&
         (!owned_reg || status_reg!=OK || slot_consistent) && terminal_elapsed_reg<TERMINAL_LIMIT;
@@ -89,13 +101,13 @@ module execution_engine_rsa #(
 
     task fail;
         input [3:0] code;
-        begin status_reg<=code;result_reg<=0;state_reg<=CLEAN;end
+        begin status_reg<=code;index_reg<=0;child_clear_reg<=1;state_reg<=WIPE_RESULT;end
     endtask
     always @(posedge clock_i or negedge reset_n_i) begin
         if(!reset_n_i)begin
-            state_reg<=CLEAN;status_reg<=0;id_reg<=0;private_reg<=0;allow_reg<=0;
+            state_reg<=WIPE_RESULT;status_reg<=0;id_reg<=0;private_reg<=0;allow_reg<=0;
             owned_reg<=0;d_captured_reg<=0;pending_reg<=0;index_reg<=0;elapsed_reg<=0;terminal_elapsed_reg<=0;
-            modulus_reg<=0;representative_reg<=0;exponent_reg<=0;result_reg<=0;
+            modulus_reg<=0;representative_reg<=0;exponent_reg<=0;
             p_reg<=0;q_reg<=0;public_exponent_reg<=0;child_clear_reg<=1;
         end else begin
             if(state_reg!=IDLE && state_reg!=COMPLETE && state_reg!=RELEASE && !expired)
@@ -152,8 +164,17 @@ module execution_engine_rsa #(
                 CORE_START: state_reg<=CORE_WAIT;
                 CORE_WAIT: if(core_done)begin
                     if(core_error)fail(ARITHMETIC);
-                    else begin result_reg<=core_result;state_reg<=CLEAN;end
+                    else begin index_reg<=0;state_reg<=SAVE_RESULT;end
                 end
+                SAVE_RESULT: begin
+                    if(index_reg==63)begin index_reg<=0;state_reg<=CLEAN;end
+                    else index_reg<=index_reg+1'b1;
+                end
+                WIPE_RESULT: begin
+                    if(index_reg==63)begin index_reg<=0;state_reg<=REFRESH_RESULT;end
+                    else index_reg<=index_reg+1'b1;
+                end
+                REFRESH_RESULT: state_reg<=CLEAN;
                 CLEAN: begin
                     child_clear_reg<=1;modulus_reg<=0;representative_reg<=0;
                     exponent_reg<=0;p_reg<=0;q_reg<=0;public_exponent_reg<=0;
@@ -169,7 +190,6 @@ module execution_engine_rsa #(
                     end
                 end
                 OUTPUT: if(result_valid_o && result_ready_i)begin
-                    result_reg<={result_reg[2015:0],32'd0};
                     if(index_reg==63)begin index_reg<=0;state_reg<=COMPLETE;terminal_elapsed_reg<=0;end
                     else index_reg<=index_reg+1'b1;
                 end
@@ -179,7 +199,7 @@ module execution_engine_rsa #(
                         state_reg<=RELEASE;
                 end
                 RELEASE: begin
-                    owned_reg<=0;pending_reg<=0;result_reg<=0;id_reg<=0;private_reg<=0;allow_reg<=0;
+                    owned_reg<=0;pending_reg<=0;id_reg<=0;private_reg<=0;allow_reg<=0;
                     status_reg<=0;elapsed_reg<=0;terminal_elapsed_reg<=0;state_reg<=IDLE;
                 end
                 default: fail(ARITHMETIC);
