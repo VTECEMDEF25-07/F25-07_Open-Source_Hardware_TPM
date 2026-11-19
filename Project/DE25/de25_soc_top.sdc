@@ -76,3 +76,13 @@ if {[get_collection_size $demo_rng_sampler] > 0} {
     if {[get_collection_size $demo_rng_first_d] != 1} {error "Expected exactly one fresh RNG first-stage D pin"}
     set_false_path -to $demo_rng_first_d
 }
+
+# The independent HPS oscillator asserts this vendor bridge reset asynchronously.
+# Both stages have async clear; the 50 MHz clock shifts the release from Q0 to D1.
+# Only those asynchronous control pins cross the clock domains.
+set bridge_reset_source [get_registers {*sm_hps|sundancemesa_hps_inst~intosc_clk.reg}]
+set bridge_reset_clear [get_pins -compatibility_mode -nowarn {*lwhps2fpga_axi4_rl_adp_inst_reset_sync|sync_reg[0]|clrn *lwhps2fpga_axi4_rl_adp_inst_reset_sync|sync_reg[1]|clrn}]
+if {[get_collection_size $bridge_reset_source] != 1 || [get_collection_size $bridge_reset_clear] != 2} {
+    error "Missing HPS reset source or asynchronous synchronizer pins"
+}
+set_false_path -from $bridge_reset_source -to $bridge_reset_clear
