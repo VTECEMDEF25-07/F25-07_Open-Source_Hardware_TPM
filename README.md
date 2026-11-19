@@ -15,6 +15,19 @@ Power the DE25 from its board supply and load the combined FPGA image with its m
 
 On Windows, double-click **Start Lenovo Demo.cmd**. The window controls SHA-256, AES and RSA. The physical buttons select the original boot message or a one-byte change. AES and RSA send ciphertext over SPI for FPGA decryption. The HPS reads the result through the internal bridge and drives the blue LCD.
 
+### Nucleo panel connections
+
+Use the **NUCLEO-L452RE-P** board profile when building the panel sketch. Both the P and non-P models can appear as NODE_L452RE on Windows. Connect the Nucleo's ST-LINK USB port to the laptop. The serial link runs at 115200 baud, 8N1.
+
+| Part | Arduino header pin on the -P board | Connection |
+|---|---|---|
+| Normal Boot button | D2 (PA12) | Momentary switch to Nucleo GND |
+| Change One Byte button | D3 (PB3) | Momentary switch to Nucleo GND |
+| Green LED | D8 (PB6) | Series resistor and LED to Nucleo GND |
+| Red LED | D9 (PA8) | Series resistor and LED to Nucleo GND |
+
+The sketch enables internal pull-ups on D2 and D3. Pressing a switch grounds the corresponding input. The FT232H USB-to-SPI adapter connects the laptop to the DE25 separately.
+
 ## Layout
 
 - `Project/DE1/`: DE1-SoC Quartus project, board wrapper, pins and constraints (direct 50 MHz, no PLL).
