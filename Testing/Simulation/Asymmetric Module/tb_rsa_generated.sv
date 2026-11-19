@@ -1,5 +1,5 @@
 `timescale 1ns/1ps
-// Real full-width keygen -> engine slot -> checked derivation -> team RSA.
+// Real full-width keygen -> engine slot -> checked derivation -> RSA2048 word engine.
 // Reproducible public candidate/witness draws: directed correctness only.
 module tb_rsa_generated #(parameter IP_TYPE=0);
     reg clk=0;always #5 clk=~clk;

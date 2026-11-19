@@ -16,6 +16,15 @@ module tb_rsa_adapter #(parameter TEST_CASE=0, IP_TYPE=0);
     reg [2047:0] vectors[0:3];
     reg [2047:0] observed, expected_result, representative;
     reg [31:0] tracked_ram[0:511], tracked_result[0:63];
+    reg [31:0] tracked_n[0:63],tracked_base[0:63],tracked_exp[0:63],tracked_acc[0:63],tracked_temp[0:63];
+    // Observe actual wrapper writes on both backends, including reset sweeps.
+    always @(posedge clk) if(dut.enabled.child_reset_n)begin
+        if(dut.enabled.arithmetic.modulus.write_en_i) tracked_n[dut.enabled.arithmetic.modulus.write_address_i]=dut.enabled.arithmetic.modulus.write_data_i;
+        if(dut.enabled.arithmetic.representative.write_en_i) tracked_base[dut.enabled.arithmetic.representative.write_address_i]=dut.enabled.arithmetic.representative.write_data_i;
+        if(dut.enabled.arithmetic.exponent.write_en_i) tracked_exp[dut.enabled.arithmetic.exponent.write_address_i]=dut.enabled.arithmetic.exponent.write_data_i;
+        if(dut.enabled.arithmetic.accumulator.write_en_i) tracked_acc[dut.enabled.arithmetic.accumulator.write_address_i]=dut.enabled.arithmetic.accumulator.write_data_i;
+        if(dut.enabled.arithmetic.scratch.write_en_i) tracked_temp[dut.enabled.arithmetic.scratch.write_address_i]=dut.enabled.arithmetic.scratch.write_data_i;
+    end
     reg [31:0] random_reg=32'h73a8d2e1;
     integer cycles=0, checks=0, launches=0, derivations=0;
     reg stall=1, inject_error=0;
@@ -66,20 +75,17 @@ module tb_rsa_adapter #(parameter TEST_CASE=0, IP_TYPE=0);
     end
     task tick; @(posedge clk);#1; endtask
     task check_clean;
-        if((dut.enabled.modulus_reg|dut.enabled.representative_reg|dut.enabled.exponent_reg|
-            dut.enabled.p_reg|dut.enabled.q_reg|dut.enabled.public_exponent_reg)!==0)
-            $fatal(1,"adapter key/operand copy survived cleanup");
-        if(dut.enabled.arithmetic.result_o!==0 ||
-           dut.enabled.arithmetic.modexp_engine.exponent_reg!==0 ||
-           dut.enabled.arithmetic.modexp_engine.base_reg!==0 ||
-           dut.enabled.arithmetic.modexp_engine.n_reg!==0 ||
-           dut.enabled.arithmetic.modexp_engine.montgomery_core.a_reg!==0 ||
-           dut.enabled.arithmetic.modexp_engine.montgomery_core.b_reg!==0 ||
-           dut.enabled.arithmetic.modexp_engine.montgomery_core.n_reg!==0 ||
-           dut.enabled.arithmetic.modexp_engine.montgomery_core.t_reg!==0 ||
-           dut.enabled.arithmetic.modexp_engine.montgomery_core.intermediate_reg!==0 ||
-           dut.enabled.arithmetic.modexp_engine.montgomery_core.result_o!==0)
-            $fatal(1,"arithmetic key/operand/result survived cleanup");
+        if((dut.enabled.p_reg|dut.enabled.q_reg|dut.enabled.public_exponent_reg)!==0)
+            $fatal(1,"adapter key copy survived cleanup");
+        if((dut.enabled.arithmetic.n_q | dut.enabled.arithmetic.base_q | dut.enabled.arithmetic.acc_q |
+            dut.enabled.arithmetic.exp_q | dut.enabled.arithmetic.temp_q | dut.enabled.arithmetic.product |
+            dut.enabled.arithmetic.factor | dut.enabled.arithmetic.digit | dut.enabled.arithmetic.nprime |
+            dut.enabled.arithmetic.n0 | dut.enabled.arithmetic.pipe_temp1 | dut.enabled.arithmetic.pipe_temp2)!==0)
+            $fatal(1,"arithmetic private latch survived cleanup");
+        for(integer j=0;j<64;j++)begin
+            if((tracked_n[j]|tracked_base[j]|tracked_exp[j]|tracked_acc[j]|tracked_temp[j])!==0)
+                $fatal(1,"arithmetic operand RAM survived cleanup %0d",j);
+        end
         if(dut.enabled.protected_derivation.private_d_reg!==0 ||
            dut.enabled.protected_derivation.ram_read_data!==0 ||
            dut.enabled.protected_derivation.mult_product!==0)

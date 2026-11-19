@@ -122,6 +122,7 @@ set_global_assignment -name SEED 2
 set_global_assignment -name VERILOG_FILE "../../Source Code/Execution Engine/execution_engine_keygen.v"
 set_global_assignment -name VERILOG_FILE "../../Source Code/Execution Engine/execution_engine_rsa.v"
 set_global_assignment -name VERILOG_FILE "../../Source Code/Asymmetric Module/rsa_controller.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/Asymmetric Module/rsa_montgomery_words.v"
 set_global_assignment -name VERILOG_FILE "../../Source Code/Asymmetric Module/rsa_modexp.v"
 set_global_assignment -name VERILOG_FILE "../../Source Code/Asymmetric Module/montgomery_mult.v"
 set_global_assignment -name VERILOG_FILE "../../Source Code/RNG Module/rng_word_service.v"

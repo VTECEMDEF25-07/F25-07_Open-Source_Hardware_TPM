@@ -38,7 +38,7 @@ module tb_rsa_retry;
         end
     end
     task clean;
-        if((dut.enabled.modulus_reg|dut.enabled.p_reg|dut.enabled.q_reg|dut.enabled.exponent_reg|dut.enabled.representative_reg)!==0)
+        if((dut.enabled.p_reg|dut.enabled.q_reg|dut.enabled.arithmetic.n_q|dut.enabled.arithmetic.exp_q|dut.enabled.arithmetic.base_q)!==0)
             $fatal(1,"failed derivation left adapter secrets");
         for(integer j=0;j<512;j++)if(scratch[j]!==0)$fatal(1,"failed derivation scratch survived %0d",j);
         if(dut.enabled.protected_derivation.private_d_reg!==0 || dut.enabled.protected_derivation.ram_read_data!==0)
