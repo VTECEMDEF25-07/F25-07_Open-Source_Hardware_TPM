@@ -3,6 +3,12 @@
 
 Virginia Tech Lenovo-sponsored senior design project.
 
+## Run the combined DE25 demo
+
+Power the DE25 from its board supply and load the combined FPGA image with its matching HPS display firmware. Connect the FT232H USB-to-SPI adapter and the Nucleo panel to the laptop. After programming, disconnect the DE25 programming/serial USB cable for the display test.
+
+On Windows, double-click **Start Lenovo Demo.cmd**. The window controls SHA-256, AES and RSA. The physical buttons select the original boot message or a one-byte change. AES and RSA send ciphertext over SPI for FPGA decryption. The HPS reads the result through the internal bridge and drives the blue LCD.
+
 ## Layout
 
 - `Project/DE1/`: DE1-SoC Quartus project, board wrapper, pins and constraints (direct 50 MHz, no PLL).
