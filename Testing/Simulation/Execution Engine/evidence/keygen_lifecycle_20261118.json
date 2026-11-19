@@ -1,0 +1,868 @@
+{
+  "base_commit": "267a75cc2d3d1c2d11623a4e096f5145de46cd67",
+  "boards": {
+    "DE1": {
+      "deadline_seconds": 1800,
+      "elapsed_seconds": 508.11084519999713,
+      "fit_summary": "Fitter Status : Successful - Wed Nov 18 19:07:50 2026\nQuartus Prime Version : 24.1std.0 Build 1077 03/04/2025 SC Lite Edition\nRevision Name : de1_soc_top\nTop-level Entity Name : de1_soc_top\nFamily : Cyclone V\nDevice : 5CSEMA5F31C6\nTiming Models : Final\nLogic utilization (in ALMs) : 8,817 / 32,070 ( 27 % )\nTotal registers : 12875\nTotal pins : 18 / 457 ( 4 % )\nTotal virtual pins : 0\nTotal block memory bits : 65,536 / 4,065,280 ( 2 % )\nTotal RAM Blocks : 8 / 397 ( 2 % )\nTotal DSP Blocks : 0 / 87 ( 0 % )\nTotal HSSI RX PCSs : 0\nTotal HSSI PMA RX Deserializers : 0\nTotal HSSI TX PCSs : 0\nTotal HSSI PMA TX Serializers : 0\nTotal PLLs : 0 / 6 ( 0 % )\nTotal DLLs : 0 / 4 ( 0 % )\n",
+      "flow_result": "PASS",
+      "input_byte_deltas": [],
+      "inputs": {
+        "Project/DE1/Symmetric Demo/symmetric_demo_top.v": "94d7703f437e18a92aaed342f92f3293c5d2ef7a6f5dcbc81cdd6f153484f0f5",
+        "Project/DE1/db/mult_2ct.v": "51065a69da1828a75342549292fc325f7df64b63819bcb3bc06111439690f013",
+        "Project/DE1/de1_soc_top.qsf": "a5d5fa55efd3469697071e5eb060ff44ac09b5650758c5a63feba12a397a9be7",
+        "Project/DE1/de1_soc_top.sdc": "ba8b79ac170e6fe3b7615e58fad727670320dce052cb94bdc70123c3d400da3a",
+        "Project/DE1/de1_soc_top.v": "d72b90288ce4a683e5c63bf3c8707f9bc8f05fc2b250eb98838de4d9ac9144d3",
+        "Source Code/Execution Engine/execution_engine.v": "8504451b1482dc8ae2c2201210282b4350dc883ef384396f44fe46fc4bc942dd",
+        "Source Code/Execution Engine/execution_engine_keygen.v": "c3d849722031b2368ffb3c70ad764e4b8f9047f38a7215c58c66f2ac5ef4f129",
+        "Source Code/Execution Engine/execution_engine_pcr.v": "60d4883fa1ad7d7fd7482002b5f1033a46a0269ddc32d4b3f5931d035e90f7a8",
+        "Source Code/Execution Engine/input_output_signal_structure.v": "471efffc761e48a55dc752f9d63060d9a39462e7b2d47209d18077b96c9a84e6",
+        "Source Code/Execution Engine/startup_procedures_check.v": "cd5f8527ae8ca73c8474ee221ce4e6fbd5d0db4228c6b5b33b83917a5dc1bd84",
+        "Source Code/Hash Module/hash_arbiter.v": "80842ac2f12a323b70dda4ee8904bbeee228c446e40e0df93988206dc803671e",
+        "Source Code/Hash Module/hash_engine.v": "48153ae45f00bcc82495ccc44a3f41c21dc22f9fa42897ec5f5149bac993ac8c",
+        "Source Code/Hash Module/hash_subsystem.v": "f738d6b931366e439898ebbfe224d6aa58a475b1b0cb6ef72fd2ae822c489618",
+        "Source Code/Hash Module/hmac_sha256.v": "e9bca89459f2a3901ec0def54bdaa671c68fc6f95dd710e3644bacc9a2afb5b9",
+        "Source Code/Hash Module/input_buffer.v": "6c64947d0271d7ebad9f56b8225b80b7f78ecb03674f35bf5ba68fb1db9523a8",
+        "Source Code/Hash Module/message_schedule.v": "f2fba8598c299699a4479043b132f10d28dc04299130fa9a7f2d9a7217741f87",
+        "Source Code/Hash Module/padding.v": "2476d02517e03517eaec2ab8d84c461979833c8975b07b123423be497e04cdc6",
+        "Source Code/Hash Module/pcr_controller.v": "9365fe1e87d9763161ebfd222742be53cfbdac4f526a21212d8fe43a854ccf13",
+        "Source Code/Hash Module/pcr_registers.v": "2fab11850b8e667d5657657e9e94c7f0373f3c2b28944b657669bcfc78fcabe6",
+        "Source Code/Hash Module/round_operations.v": "7aeb188076be03e369636dd428d46d766e6d996eca6053664b509202c6139d03",
+        "Source Code/Hash Module/sha256_controller.v": "ab81767673f6391ac698de88af6a0d1aed55110824716002522f41b031390dbf",
+        "Source Code/Hash Module/sha_256.v": "81a5e33446e2bec917738e4ff602a7a97f86190bb358b838a66b47abe46e08bc",
+        "Source Code/IO Interface/fifo_buffer.v": "74c49aef799446b7edfa54df1cc15ca7a13afeeebcbe05a955ad854f1814cdc6",
+        "Source Code/IO Interface/spi_slave.v": "7f6c2da010a6cb018cf9446de50da681b4405bad5de499e038da34307a7f0d92",
+        "Source Code/IO Interface/tpm_crb.v": "799e1d250ffe9bc8bd538c3501fc2aaabf3229900ccaeb29b603740426ce838e",
+        "Source Code/IO Interface/tpm_io.v": "63abfc9e3811b01d7e5764b05d4e960c4267f4e15ea7ffed0a8d28834e675c1b",
+        "Source Code/IO Interface/tpm_reg_space.v": "8a4b0b4ad38d9d4971acd2f0c8bb789028f8dfdc6749e689c3230600af889452",
+        "Source Code/IO Interface/tpm_spi_ctrl.v": "83df5b2ad98e4990a0cb49a614a82d474f1ae4a5015ec7d654e165c3d5f08fee",
+        "Source Code/Key Generation/IP/keygen_mult32.v": "a0328bd767abb1f3627b353ae74e8bfe0a40f088298510177ef781650c2012be",
+        "Source Code/Key Generation/IP/keygen_mult32_altera.v": "982e7b8e7fa67fd4edc99c767d7d6940c6fa270edc16a8bc3bd885c3af429991",
+        "Source Code/Key Generation/IP/keygen_mult32_generic.v": "63d1fc381b65ca848f54ecd510f3cf8c69811fdf0d84eebcfca7ea46bfdbe458",
+        "Source Code/Key Generation/IP/keygen_ram32.v": "d467f454b2b4656f24175459cf296a706713ac5d3e6e128abbce763bb2872414",
+        "Source Code/Key Generation/IP/keygen_ram32_altera.v": "e13533d14e96b2af13d155811e88cb0d0788daa23043fc36da1d6dcb6174ebe0",
+        "Source Code/Key Generation/IP/keygen_ram32_generic.v": "5804e97c2c7cbb78f4c32ce496372827d69af092e94531a699c7c9d27397d6d1",
+        "Source Code/Key Generation/rtl/aes/keygen_aes_core.v": "a2551951b25518d5c53e99e25ee66026246f95bbd9e7be28ee790ea335beb852",
+        "Source Code/Key Generation/rtl/arithmetic/keygen_math.v": "69e6a4e6ce83e0db00f5990384a4abf4c4e111ba40bb485ae44a2e5e2b496a61",
+        "Source Code/Key Generation/rtl/arithmetic/keygen_pair_check.v": "b0e08ae22e9bb9f6cd8567c2759580f894e60f0d80000b9615df8f6c55259e3b",
+        "Source Code/Key Generation/rtl/common/keygen_core.v": "c096a52b6954ef990a8c9d5f35b42569c2be0022847a5d977b26b0680988e2e1",
+        "Source Code/Key Generation/rtl/rsa_rtl/keygen_rsa_controller.v": "a82d373bd7bc8a2d5095fc81c0849fa8a8a3c58c1a73910e898c7680a08ed50b",
+        "Source Code/Key Generation/rtl/rsa_rtl/keygen_rsa_engine.v": "5658c70f845eba2753b9ec86a3bd45bf5b25e294601bf314dd798686b5d70330",
+        "Source Code/Key Generation/rtl/rsa_rtl/keygen_rsa_services.v": "673f97fb48c057c67a4ea74930c37776b2240d1cc1b90f0904fc1a7f83553fa6",
+        "Source Code/Management Module/clk.v": "dad48621d09d61e2f446b0fb9551c853411f9ba30ef6b1a60868c84dcf4ee469",
+        "Source Code/Management Module/management_module.v": "b1d240b619b8808c4b5686a3016c19a99e899a92c3f1efce367471ee60a8b592",
+        "Source Code/Management Module/management_module_top.v": "5fbe3923b167f298ab049f18465dd18077109b9583f1c7e0d734e0f22d5f1fa8",
+        "Source Code/Management Module/sevensegdecoder_proc.v": "7e3ff1b8c3d308b48ceed2b65840fb3dcfe1b556ee88af04982d7e891605553f",
+        "Source Code/RNG Module/RNG.v": "ff411255695414b031d91a18c0d2d3130a4561940da79e8ee0668283a1753b26",
+        "Source Code/RNG Module/entropy_capture.v": "4ceda9eff7e5b102069e66441a096f91c8ebbbe3650790da04c50031db3839cb",
+        "Source Code/RNG Module/entropy_health.v": "2dcfc565413da1cd13bcc1eb94b88a29acecf820da860576746f887ecf1213a9",
+        "Source Code/RNG Module/entropy_source.v": "b5f693a74b81f63c98094603d1fdb96ab06098daebecc05d2ce0a36954601f3e",
+        "Source Code/RNG Module/execution_engine_getrandom.v": "112ad6f5879fa22860f2f9e7cb7979ad780c5d24371c909f1a9283ada3f22e72",
+        "Source Code/RNG Module/phase_one_rng.v": "4f8b57faa2b710fc06cff13276f0603c28e79368150e6c6e1dbb16df178f8e7d",
+        "Source Code/RNG Module/random_number_generation.v": "1267bab473837dbeeb73d3e162f61db12247c8435f062f4a8706a1e2ec682b43",
+        "Source Code/RNG Module/ring_osc.v": "7efec8bc7b3004244d133a1bd816b43ce3d3f001936ff1b112ee9473f461ef87",
+        "Source Code/RNG Module/rng_word_service.v": "018b27f8ffbd82bc2ed9dfea57ca6ea70f7e2bc5e8d4c1e70ece1f6d0e3fa5d7",
+        "Source Code/RNG Module/tpm2_get_random.v": "d254e7a94ebf3b2101fe1f80cb19cd56cc0c18a3ef015d353aa3160ca8f6e254",
+        "Source Code/RNG Module/uart.v": "50d1dd9f41ea1ff9d32a3624a411f5523ff432b7e440522dcf548a822155691b",
+        "Source Code/Symmetric Module/AES/aes.v": "ca8d2fff314fc036036776bb646687955558e79bd978b81bf55306a7b5ae1a9b",
+        "Source Code/Symmetric Module/AES/aes_core.v": "324dd3cd7b7f41dbc1ef22d492673cdab0e0ebe79cb78ece57467316a8538f67",
+        "Source Code/Symmetric Module/AES/aes_decipher_block.v": "b0711267b8452e5072ff332254459c014ab2e721dfa47ef03e25984e1fad106d",
+        "Source Code/Symmetric Module/AES/aes_encipher_block.v": "f9ddd806595e5b0394148248767f65f5fcb10bbed9958bc0f2a6b12809c007ed",
+        "Source Code/Symmetric Module/AES/aes_inv_sbox.v": "10585d10f4af11c225ac957bb76064a1ddcb89e1ba2354c389104b2674028f72",
+        "Source Code/Symmetric Module/AES/aes_key_mem.v": "48e48240f80f162c6d03c064c836a98173c5e7a53f9e267f58a016d53e6f2619",
+        "Source Code/Symmetric Module/AES/aes_sbox.v": "331ef0f9261ee24fbec85ccbf5ae91576b5a71643b25287242599719bf37fcd6",
+        "Source Code/Symmetric Module/Controllers/cfb_block.v": "c7beee0c830765e7dff0f080d0d3c091f0e96119428646ea61988a850eb75ac4",
+        "Source Code/Symmetric Module/Controllers/kdfa_control.v": "afcada8803e906b6fdb982aa2b6785849e06bc640a6ab98bfbf840ec77d9a3f6",
+        "Source Code/Symmetric Module/Controllers/primitive_controller.v": "ffdb5e45ee32bdc3cffe6ab1a48221cdafaccdfa63fa07c9d46e3bf524d317a6",
+        "Source Code/Symmetric Module/Controllers/session_parameter_controller.v": "92bb9e810bc85714b474e1fd2b73a05dce45eac93474e77aa022a8c8f423430f",
+        "Source Code/Symmetric Module/symmetric_top.v": "4666de0ece767a69aaeb6cbd8aa12367abeb568738bad2281fef7eb6594bab6e",
+        "Source Code/TPM_TOP.v": "1c8ffdf852fb7851fbc940e02a8d2638087436f01e257039c14fafe7113c89ad"
+      },
+      "profile": "Default feature gates: internal keygen/GetRandom/Extend/optional AES disabled",
+      "reports": {
+        "de1_soc_top.fit.summary": "4e1b26bfd5af5b70e7906122395b73f665379936bfceb3a6ad0704c9328a37b4",
+        "de1_soc_top.map.summary": "4eb0a525f9fc6d0f6d92b5227d687a5df738a96f7d7ff87857d6b26c0afbb22f",
+        "de1_soc_top.sta.rpt": "2006b5bd18386f1783a757b0c620ab81ebb04ad5f5702024226a3e05124dabd1",
+        "de1_soc_top.sta.summary": "c5de697cc8ca490d4b8961d8dff50c3db8907f9d22b93f63ff5fe9694c602c39"
+      },
+      "timestamp_out_of_date_warning_retained": false,
+      "timing_requirements_met": false,
+      "transcript_sha256": "b5bd3c393ac6b5e3db9d1a828b6f0c39d7f40432e8fb0cb654123f1ab281e988",
+      "worst_slack_ns": {
+        "Hold": 0.14,
+        "Minimum Pulse Width": 8.434,
+        "Recovery": 4.884,
+        "Removal": 0.81,
+        "Setup": -9.644
+      }
+    },
+    "DE25": {
+      "deadline_seconds": 1800,
+      "elapsed_seconds": 600.0220291000005,
+      "fit_summary": "Fitter Status : Successful - Wed Nov 18 19:09:56 2026\nQuartus Prime Version : 26.1.0 Build 110 03/26/2026 SC Pro Edition\nRevision Name : de25_soc_top\nTop-level Entity Name : de25_soc_top\nFamily : Agilex 5\nDevice : A5ED013BB32AE4SCS\nTiming Models : Final\nPower Models : Final\nDevice Status : Final\nLogic utilization (in ALMs) : 9,473 / 46,800 ( 20 % )\nTotal dedicated logic registers : 13442\nTotal pins : 10 / 414 ( 2 % )\nTotal block memory bits : 65,536 / 7,331,840 ( < 1 % )\nTotal RAM Blocks : 4 / 358 ( 1 % )\nTotal DSP Blocks : 0 / 376 ( 0 % )\nTotal GTS Transceiver Channels : 0 / 4 ( 0 % )\nTotal HSSI Ethernet Channels : 0 / 1 ( 0 % )\nTotal HSSI PCIEs : 0 / 1 ( 0 % )\nTotal HSSI HPS : 0 / 1 ( 0 % )\nTotal PLLs : 1 / 11 ( 9 % )\n",
+      "flow_result": "PASS",
+      "input_byte_deltas": [],
+      "inputs": {
+        "Project/DE25/Fan Controller/BOARD_MANAGEMENT.v": "58c837aebf66db002320faf88fe698c4d036ca133eae5424b6249c61867fd12f",
+        "Project/DE25/Fan Controller/CLOCKMEM.v": "d895e509055855732c076ed58b8b29a81c89d30fad2ddc2f6b19b27f5a663d49",
+        "Project/DE25/Fan Controller/I2C_READ_DATA.v": "656c17acdc90848bb3f35bcaa79b8859a6a8091a39db017b94285c6dc0f7f72f",
+        "Project/DE25/Fan Controller/I2C_WRITE_BYTE.v": "304dea53f7c9c3b80cd153532206ecb691700ce452304025962808e2f86ca3dd",
+        "Project/DE25/Fan Controller/I2C_WRITE_POINTER.v": "8642fae9be4d930b8b22cbdf4009e765a90895395a7bc77c1b5e3c1bacbe4d3d",
+        "Project/DE25/Fan Controller/altera_s10_user_rst_clkgate.v": "5056e57e846bb378d0ecdb71b2cb5b0704aecd682739f61aa23d5d65a1efac4d",
+        "Project/DE25/Fan Controller/auto_fan.v": "eca7ca7d6a2b2e320e7a7c7ecaa6ea0f0f8e5d38144951858356f432ce878c29",
+        "Project/DE25/Fan Controller/fan_timer.v": "f01a84764a7ff4a6bef0025df237c32799965f1328f8c664b93fda357196d4f3",
+        "Project/DE25/de25_clock.v": "f4babd369634a5ad071f85fdf2278f7fa738b274ef2c73cf82386d67a60cce85",
+        "Project/DE25/de25_soc_top.qsf": "bf69fcd141386bf0f18b4b3e5f45947f9b5f79d1ec1c22f84ed61d423cab0eaa",
+        "Project/DE25/de25_soc_top.sdc": "446934fbaf0ba960afbfdc00ea6288ccecdfb453e680505e43c078dd5fe21c21",
+        "Project/DE25/de25_soc_top.v": "dcb4168f9699a1ff8f360a45a246a0fc0b7f1ed780d654d38199a87a43d7a535",
+        "Project/DE25/de25_spi_pins.tcl": "8e344d81c14b64ce4e833e881e73781bb0a0ba23c5787f3807d0c3d890082161",
+        "Project/DE25/qdb/.t/6afe35fa66b2.tmp/.temp/cpt_proxy/alt_sld_fab_0_alt_sld_fab_0_10_fkimwiy.v": "0ee19f195080c69dc54b8b8fdb8646d6f688c016daef2686b0c2fe8d53fa46a2",
+        "Project/DE25/qdb/.t/6afe35fa66b2.tmp/.temp/cpt_proxy/alt_sld_fab_0_alt_sld_fab_1920_svdproy.v": "7b9ce4f1f08f2a4643752e2cc4caa656038c2db97da23636a3336da14b30160f",
+        "Source Code/Execution Engine/execution_engine.v": "8504451b1482dc8ae2c2201210282b4350dc883ef384396f44fe46fc4bc942dd",
+        "Source Code/Execution Engine/execution_engine_keygen.v": "c3d849722031b2368ffb3c70ad764e4b8f9047f38a7215c58c66f2ac5ef4f129",
+        "Source Code/Execution Engine/execution_engine_pcr.v": "60d4883fa1ad7d7fd7482002b5f1033a46a0269ddc32d4b3f5931d035e90f7a8",
+        "Source Code/Execution Engine/input_output_signal_structure.v": "471efffc761e48a55dc752f9d63060d9a39462e7b2d47209d18077b96c9a84e6",
+        "Source Code/Execution Engine/startup_procedures_check.v": "cd5f8527ae8ca73c8474ee221ce4e6fbd5d0db4228c6b5b33b83917a5dc1bd84",
+        "Source Code/Hash Module/hash_arbiter.v": "80842ac2f12a323b70dda4ee8904bbeee228c446e40e0df93988206dc803671e",
+        "Source Code/Hash Module/hash_engine.v": "48153ae45f00bcc82495ccc44a3f41c21dc22f9fa42897ec5f5149bac993ac8c",
+        "Source Code/Hash Module/hash_subsystem.v": "f738d6b931366e439898ebbfe224d6aa58a475b1b0cb6ef72fd2ae822c489618",
+        "Source Code/Hash Module/hmac_sha256.v": "e9bca89459f2a3901ec0def54bdaa671c68fc6f95dd710e3644bacc9a2afb5b9",
+        "Source Code/Hash Module/input_buffer.v": "6c64947d0271d7ebad9f56b8225b80b7f78ecb03674f35bf5ba68fb1db9523a8",
+        "Source Code/Hash Module/message_schedule.v": "f2fba8598c299699a4479043b132f10d28dc04299130fa9a7f2d9a7217741f87",
+        "Source Code/Hash Module/padding.v": "2476d02517e03517eaec2ab8d84c461979833c8975b07b123423be497e04cdc6",
+        "Source Code/Hash Module/pcr_controller.v": "9365fe1e87d9763161ebfd222742be53cfbdac4f526a21212d8fe43a854ccf13",
+        "Source Code/Hash Module/pcr_registers.v": "2fab11850b8e667d5657657e9e94c7f0373f3c2b28944b657669bcfc78fcabe6",
+        "Source Code/Hash Module/round_operations.v": "7aeb188076be03e369636dd428d46d766e6d996eca6053664b509202c6139d03",
+        "Source Code/Hash Module/sha256_controller.v": "ab81767673f6391ac698de88af6a0d1aed55110824716002522f41b031390dbf",
+        "Source Code/Hash Module/sha_256.v": "81a5e33446e2bec917738e4ff602a7a97f86190bb358b838a66b47abe46e08bc",
+        "Source Code/IO Interface/fifo_buffer.v": "74c49aef799446b7edfa54df1cc15ca7a13afeeebcbe05a955ad854f1814cdc6",
+        "Source Code/IO Interface/spi_slave.v": "7f6c2da010a6cb018cf9446de50da681b4405bad5de499e038da34307a7f0d92",
+        "Source Code/IO Interface/tpm_crb.v": "799e1d250ffe9bc8bd538c3501fc2aaabf3229900ccaeb29b603740426ce838e",
+        "Source Code/IO Interface/tpm_io.v": "63abfc9e3811b01d7e5764b05d4e960c4267f4e15ea7ffed0a8d28834e675c1b",
+        "Source Code/IO Interface/tpm_reg_space.v": "8a4b0b4ad38d9d4971acd2f0c8bb789028f8dfdc6749e689c3230600af889452",
+        "Source Code/IO Interface/tpm_spi_ctrl.v": "83df5b2ad98e4990a0cb49a614a82d474f1ae4a5015ec7d654e165c3d5f08fee",
+        "Source Code/Key Generation/IP/keygen_mult32.v": "a0328bd767abb1f3627b353ae74e8bfe0a40f088298510177ef781650c2012be",
+        "Source Code/Key Generation/IP/keygen_mult32_altera.v": "982e7b8e7fa67fd4edc99c767d7d6940c6fa270edc16a8bc3bd885c3af429991",
+        "Source Code/Key Generation/IP/keygen_mult32_generic.v": "63d1fc381b65ca848f54ecd510f3cf8c69811fdf0d84eebcfca7ea46bfdbe458",
+        "Source Code/Key Generation/IP/keygen_ram32.v": "d467f454b2b4656f24175459cf296a706713ac5d3e6e128abbce763bb2872414",
+        "Source Code/Key Generation/IP/keygen_ram32_altera.v": "e13533d14e96b2af13d155811e88cb0d0788daa23043fc36da1d6dcb6174ebe0",
+        "Source Code/Key Generation/IP/keygen_ram32_generic.v": "5804e97c2c7cbb78f4c32ce496372827d69af092e94531a699c7c9d27397d6d1",
+        "Source Code/Key Generation/rtl/aes/keygen_aes_core.v": "a2551951b25518d5c53e99e25ee66026246f95bbd9e7be28ee790ea335beb852",
+        "Source Code/Key Generation/rtl/arithmetic/keygen_math.v": "69e6a4e6ce83e0db00f5990384a4abf4c4e111ba40bb485ae44a2e5e2b496a61",
+        "Source Code/Key Generation/rtl/arithmetic/keygen_pair_check.v": "b0e08ae22e9bb9f6cd8567c2759580f894e60f0d80000b9615df8f6c55259e3b",
+        "Source Code/Key Generation/rtl/common/keygen_core.v": "c096a52b6954ef990a8c9d5f35b42569c2be0022847a5d977b26b0680988e2e1",
+        "Source Code/Key Generation/rtl/rsa_rtl/keygen_rsa_controller.v": "a82d373bd7bc8a2d5095fc81c0849fa8a8a3c58c1a73910e898c7680a08ed50b",
+        "Source Code/Key Generation/rtl/rsa_rtl/keygen_rsa_engine.v": "5658c70f845eba2753b9ec86a3bd45bf5b25e294601bf314dd798686b5d70330",
+        "Source Code/Key Generation/rtl/rsa_rtl/keygen_rsa_services.v": "673f97fb48c057c67a4ea74930c37776b2240d1cc1b90f0904fc1a7f83553fa6",
+        "Source Code/Management Module/clk.v": "dad48621d09d61e2f446b0fb9551c853411f9ba30ef6b1a60868c84dcf4ee469",
+        "Source Code/Management Module/management_module.v": "b1d240b619b8808c4b5686a3016c19a99e899a92c3f1efce367471ee60a8b592",
+        "Source Code/Management Module/management_module_top.v": "5fbe3923b167f298ab049f18465dd18077109b9583f1c7e0d734e0f22d5f1fa8",
+        "Source Code/Management Module/sevensegdecoder_proc.v": "7e3ff1b8c3d308b48ceed2b65840fb3dcfe1b556ee88af04982d7e891605553f",
+        "Source Code/RNG Module/RNG.v": "ff411255695414b031d91a18c0d2d3130a4561940da79e8ee0668283a1753b26",
+        "Source Code/RNG Module/entropy_capture.v": "4ceda9eff7e5b102069e66441a096f91c8ebbbe3650790da04c50031db3839cb",
+        "Source Code/RNG Module/entropy_health.v": "2dcfc565413da1cd13bcc1eb94b88a29acecf820da860576746f887ecf1213a9",
+        "Source Code/RNG Module/entropy_source.v": "b5f693a74b81f63c98094603d1fdb96ab06098daebecc05d2ce0a36954601f3e",
+        "Source Code/RNG Module/execution_engine_getrandom.v": "112ad6f5879fa22860f2f9e7cb7979ad780c5d24371c909f1a9283ada3f22e72",
+        "Source Code/RNG Module/phase_one_rng.v": "4f8b57faa2b710fc06cff13276f0603c28e79368150e6c6e1dbb16df178f8e7d",
+        "Source Code/RNG Module/random_number_generation.v": "1267bab473837dbeeb73d3e162f61db12247c8435f062f4a8706a1e2ec682b43",
+        "Source Code/RNG Module/ring_osc.v": "7efec8bc7b3004244d133a1bd816b43ce3d3f001936ff1b112ee9473f461ef87",
+        "Source Code/RNG Module/rng_word_service.v": "018b27f8ffbd82bc2ed9dfea57ca6ea70f7e2bc5e8d4c1e70ece1f6d0e3fa5d7",
+        "Source Code/RNG Module/tpm2_get_random.v": "d254e7a94ebf3b2101fe1f80cb19cd56cc0c18a3ef015d353aa3160ca8f6e254",
+        "Source Code/RNG Module/uart.v": "50d1dd9f41ea1ff9d32a3624a411f5523ff432b7e440522dcf548a822155691b",
+        "Source Code/Symmetric Module/AES/aes.v": "ca8d2fff314fc036036776bb646687955558e79bd978b81bf55306a7b5ae1a9b",
+        "Source Code/Symmetric Module/AES/aes_core.v": "324dd3cd7b7f41dbc1ef22d492673cdab0e0ebe79cb78ece57467316a8538f67",
+        "Source Code/Symmetric Module/AES/aes_decipher_block.v": "b0711267b8452e5072ff332254459c014ab2e721dfa47ef03e25984e1fad106d",
+        "Source Code/Symmetric Module/AES/aes_encipher_block.v": "f9ddd806595e5b0394148248767f65f5fcb10bbed9958bc0f2a6b12809c007ed",
+        "Source Code/Symmetric Module/AES/aes_inv_sbox.v": "10585d10f4af11c225ac957bb76064a1ddcb89e1ba2354c389104b2674028f72",
+        "Source Code/Symmetric Module/AES/aes_key_mem.v": "48e48240f80f162c6d03c064c836a98173c5e7a53f9e267f58a016d53e6f2619",
+        "Source Code/Symmetric Module/AES/aes_sbox.v": "331ef0f9261ee24fbec85ccbf5ae91576b5a71643b25287242599719bf37fcd6",
+        "Source Code/Symmetric Module/Controllers/cfb_block.v": "c7beee0c830765e7dff0f080d0d3c091f0e96119428646ea61988a850eb75ac4",
+        "Source Code/Symmetric Module/Controllers/kdfa_control.v": "afcada8803e906b6fdb982aa2b6785849e06bc640a6ab98bfbf840ec77d9a3f6",
+        "Source Code/Symmetric Module/Controllers/primitive_controller.v": "ffdb5e45ee32bdc3cffe6ab1a48221cdafaccdfa63fa07c9d46e3bf524d317a6",
+        "Source Code/Symmetric Module/Controllers/session_parameter_controller.v": "92bb9e810bc85714b474e1fd2b73a05dce45eac93474e77aa022a8c8f423430f",
+        "Source Code/Symmetric Module/symmetric_top.v": "4666de0ece767a69aaeb6cbd8aa12367abeb568738bad2281fef7eb6594bab6e",
+        "Source Code/TPM_TOP.v": "1c8ffdf852fb7851fbc940e02a8d2638087436f01e257039c14fafe7113c89ad"
+      },
+      "profile": "Default feature gates: internal keygen/GetRandom/Extend/optional AES disabled",
+      "reports": {
+        "de25_soc_top.fit.summary": "67339162787135f32b77d259aed3e7c8950b6c486e3a631b8aaf3da97d72c731",
+        "de25_soc_top.sta.rpt": "9eae5b126410722332c326cb48f76b4b5a3e02df541a595a6e35035ce5c885fc",
+        "de25_soc_top.sta.summary": "54abe4e02eeaa99e2804ae2aa44979452a860fc381a62beba249a8c1fcc1053b",
+        "de25_soc_top.syn.summary": "9185bc20799e0080bdf561c60af6b9604a21fed621b23a17d4854b5645039571"
+      },
+      "timestamp_out_of_date_warning_retained": true,
+      "timing_requirements_met": true,
+      "transcript_sha256": "e194deb832e5b230f18dd6242f124d3509bc1edcefd7b4385d5676583abc5e84",
+      "worst_slack_ns": {
+        "Hold": 0.025,
+        "Minimum Pulse Width": 4.53,
+        "Recovery": 1.979,
+        "Removal": 0.011,
+        "Setup": 0.379
+      }
+    }
+  },
+  "created_utc": "2026-11-19T00:48:38.742954+00:00",
+  "enabled_worker_synthesis": {
+    "deadline_seconds": 900,
+    "elapsed_seconds": 124.25027800000316,
+    "inputs": {
+      "Source Code/Execution Engine/execution_engine_keygen.v": "c3d849722031b2368ffb3c70ad764e4b8f9047f38a7215c58c66f2ac5ef4f129",
+      "Source Code/Key Generation/IP/keygen_mult32.v": "a0328bd767abb1f3627b353ae74e8bfe0a40f088298510177ef781650c2012be",
+      "Source Code/Key Generation/IP/keygen_mult32_altera.v": "982e7b8e7fa67fd4edc99c767d7d6940c6fa270edc16a8bc3bd885c3af429991",
+      "Source Code/Key Generation/IP/keygen_mult32_generic.v": "63d1fc381b65ca848f54ecd510f3cf8c69811fdf0d84eebcfca7ea46bfdbe458",
+      "Source Code/Key Generation/IP/keygen_ram32.v": "d467f454b2b4656f24175459cf296a706713ac5d3e6e128abbce763bb2872414",
+      "Source Code/Key Generation/IP/keygen_ram32_altera.v": "e13533d14e96b2af13d155811e88cb0d0788daa23043fc36da1d6dcb6174ebe0",
+      "Source Code/Key Generation/IP/keygen_ram32_generic.v": "5804e97c2c7cbb78f4c32ce496372827d69af092e94531a699c7c9d27397d6d1",
+      "Source Code/Key Generation/rtl/aes/keygen_aes_core.v": "a2551951b25518d5c53e99e25ee66026246f95bbd9e7be28ee790ea335beb852",
+      "Source Code/Key Generation/rtl/arithmetic/keygen_math.v": "69e6a4e6ce83e0db00f5990384a4abf4c4e111ba40bb485ae44a2e5e2b496a61",
+      "Source Code/Key Generation/rtl/arithmetic/keygen_pair_check.v": "b0e08ae22e9bb9f6cd8567c2759580f894e60f0d80000b9615df8f6c55259e3b",
+      "Source Code/Key Generation/rtl/common/keygen_core.v": "c096a52b6954ef990a8c9d5f35b42569c2be0022847a5d977b26b0680988e2e1",
+      "Source Code/Key Generation/rtl/rsa_rtl/keygen_rsa_controller.v": "a82d373bd7bc8a2d5095fc81c0849fa8a8a3c58c1a73910e898c7680a08ed50b",
+      "Source Code/Key Generation/rtl/rsa_rtl/keygen_rsa_engine.v": "5658c70f845eba2753b9ec86a3bd45bf5b25e294601bf314dd798686b5d70330",
+      "Source Code/Key Generation/rtl/rsa_rtl/keygen_rsa_services.v": "673f97fb48c057c67a4ea74930c37776b2240d1cc1b90f0904fc1a7f83553fa6",
+      "build/active-worker-synthesis/keygen.qpf": "9db2878060b96944bcb78d26e79bb142d3d9c8d0c5146629287cfc66bcd27c6a",
+      "build/active-worker-synthesis/keygen.qsf": "0ba54a50a3ec6546672d21c247ada899d879c4758cb9970ab52b547a4ea3667f"
+    },
+    "map_summary": "Analysis & Synthesis Status : Successful - Wed Nov 18 19:42:04 2026\nQuartus Prime Version : 24.1std.0 Build 1077 03/04/2025 SC Lite Edition\nRevision Name : keygen\nTop-level Entity Name : execution_engine_keygen\nFamily : Cyclone V\nLogic utilization (in ALMs) : N/A\nTotal registers : 20388\nTotal pins : 173\nTotal virtual pins : 0\nTotal block memory bits : 148,480\nTotal DSP Blocks : 6\nTotal HSSI RX PCSs : 0\nTotal HSSI PMA RX Deserializers : 0\nTotal HSSI TX PCSs : 0\nTotal HSSI PMA TX Serializers : 0\nTotal PLLs : 0\nTotal DLLs : 0\n",
+    "map_summary_sha256": "2650218a4faee4455d91bc80608c37072602f939f7f6e59747598cea1678df77",
+    "result": "PASS",
+    "scope": "execution_engine_keygen only; ENABLE=1 IP_TYPE=1 DEVICE_FAMILY=Cyclone V; no combined enabled-image fit",
+    "transcript_sha256": "2a1d99278acf64700a675eec6e22f1625b73e6f841c80f3f61afaa0756fb040f"
+  },
+  "excluded_attempts": [
+    {
+      "case": "initial native RSA",
+      "metadata_sha256": "6fa2501c83c0d078801fee9ff31077b578b788240915d5eb05b36bead1b02b5a",
+      "result": "TIMEOUT_NOT_COUNTED_AS_PASS",
+      "wall_deadline_seconds": 1800
+    }
+  ],
+  "hardware_used": false,
+  "invalid_configuration_rejections": [
+    {
+      "argv": [
+        "C:/intelFPGA_lite/24.1std/questa_fse/win64/vsim.exe",
+        "-c",
+        "-L",
+        "vendor",
+        "-gIP_TYPE=2",
+        "work.TPM_TOP",
+        "-do",
+        "quit -force -code 0"
+      ],
+      "case": "invalid-ip",
+      "deadline_seconds": 30,
+      "elapsed_seconds": 3.181381099999271,
+      "result": "EXPECTED_ELABORATION_REJECTION",
+      "returncode": 12,
+      "transcript_sha256": "9a9633885ec5abe1c810e3f702ee7a210c4a23f1ef76a4efd86fed27d20226cd"
+    },
+    {
+      "argv": [
+        "C:/intelFPGA_lite/24.1std/questa_fse/win64/vsim.exe",
+        "-c",
+        "-L",
+        "vendor",
+        "-gIP_TYPE=1",
+        "-gDEVICE_FAMILY=Unsupported",
+        "work.TPM_TOP",
+        "-do",
+        "quit -force -code 0"
+      ],
+      "case": "invalid-family",
+      "deadline_seconds": 30,
+      "elapsed_seconds": 3.1864432000002125,
+      "result": "EXPECTED_ELABORATION_REJECTION",
+      "returncode": 12,
+      "transcript_sha256": "7c15db63e57591bb87b4a3261470727616bc1dc9d7e63197200fb3dd72c7987a"
+    }
+  ],
+  "limitations": [
+    "Full numerical RSA integration with Altera models was not run; common lifecycle, actual RNG composition, both-family resource scoreboards and enabled Altera worker synthesis are covered.",
+    "Default DE1 setup timing remains negative.",
+    "Default board fits do not establish enabled-image timing or physical entropy qualification.",
+    "Authorization is a private allow/deny fixture; TPM objects, handles/Names, seeds, wrapping/loading, persistence and real authorization remain Phase Three.",
+    "Directed RSA fixture is numerical correctness, not random prime-search performance."
+  ],
+  "new_host_command_codes": 0,
+  "numeric_input_note": "The separate engine bench was extended after numerical compilation and is not elaborated by tb_keygen_slot. Production RTL and the numerical bench match recorded hashes.",
+  "schema_version": 1,
+  "source_inputs": {
+    "Project/DE1/de1_soc_top.qsf": "a5d5fa55efd3469697071e5eb060ff44ac09b5650758c5a63feba12a397a9be7",
+    "Project/DE1/de1_soc_top.v": "d72b90288ce4a683e5c63bf3c8707f9bc8f05fc2b250eb98838de4d9ac9144d3",
+    "Source Code/Execution Engine/execution_engine.v": "8504451b1482dc8ae2c2201210282b4350dc883ef384396f44fe46fc4bc942dd",
+    "Source Code/Execution Engine/execution_engine_keygen.v": "c3d849722031b2368ffb3c70ad764e4b8f9047f38a7215c58c66f2ac5ef4f129",
+    "Source Code/Execution Engine/execution_engine_pcr.v": "60d4883fa1ad7d7fd7482002b5f1033a46a0269ddc32d4b3f5931d035e90f7a8",
+    "Source Code/Hash Module/hash_arbiter.v": "80842ac2f12a323b70dda4ee8904bbeee228c446e40e0df93988206dc803671e",
+    "Source Code/Hash Module/hash_engine.v": "48153ae45f00bcc82495ccc44a3f41c21dc22f9fa42897ec5f5149bac993ac8c",
+    "Source Code/Hash Module/hash_subsystem.v": "f738d6b931366e439898ebbfe224d6aa58a475b1b0cb6ef72fd2ae822c489618",
+    "Source Code/Hash Module/hmac_sha256.v": "e9bca89459f2a3901ec0def54bdaa671c68fc6f95dd710e3644bacc9a2afb5b9",
+    "Source Code/Hash Module/input_buffer.v": "6c64947d0271d7ebad9f56b8225b80b7f78ecb03674f35bf5ba68fb1db9523a8",
+    "Source Code/Hash Module/message_schedule.v": "f2fba8598c299699a4479043b132f10d28dc04299130fa9a7f2d9a7217741f87",
+    "Source Code/Hash Module/padding.v": "2476d02517e03517eaec2ab8d84c461979833c8975b07b123423be497e04cdc6",
+    "Source Code/Hash Module/pcr_controller.v": "9365fe1e87d9763161ebfd222742be53cfbdac4f526a21212d8fe43a854ccf13",
+    "Source Code/Hash Module/pcr_registers.v": "2fab11850b8e667d5657657e9e94c7f0373f3c2b28944b657669bcfc78fcabe6",
+    "Source Code/Hash Module/round_operations.v": "7aeb188076be03e369636dd428d46d766e6d996eca6053664b509202c6139d03",
+    "Source Code/Hash Module/sha256_controller.v": "ab81767673f6391ac698de88af6a0d1aed55110824716002522f41b031390dbf",
+    "Source Code/Hash Module/sha_256.v": "81a5e33446e2bec917738e4ff602a7a97f86190bb358b838a66b47abe46e08bc",
+    "Source Code/IO Interface/fifo_buffer.v": "74c49aef799446b7edfa54df1cc15ca7a13afeeebcbe05a955ad854f1814cdc6",
+    "Source Code/IO Interface/spi_slave.v": "7f6c2da010a6cb018cf9446de50da681b4405bad5de499e038da34307a7f0d92",
+    "Source Code/IO Interface/tpm_crb.v": "799e1d250ffe9bc8bd538c3501fc2aaabf3229900ccaeb29b603740426ce838e",
+    "Source Code/IO Interface/tpm_io.v": "63abfc9e3811b01d7e5764b05d4e960c4267f4e15ea7ffed0a8d28834e675c1b",
+    "Source Code/IO Interface/tpm_reg_space.v": "8a4b0b4ad38d9d4971acd2f0c8bb789028f8dfdc6749e689c3230600af889452",
+    "Source Code/IO Interface/tpm_spi_ctrl.v": "83df5b2ad98e4990a0cb49a614a82d474f1ae4a5015ec7d654e165c3d5f08fee",
+    "Source Code/Key Generation/IP/keygen_mult32.v": "a0328bd767abb1f3627b353ae74e8bfe0a40f088298510177ef781650c2012be",
+    "Source Code/Key Generation/IP/keygen_mult32_altera.v": "982e7b8e7fa67fd4edc99c767d7d6940c6fa270edc16a8bc3bd885c3af429991",
+    "Source Code/Key Generation/IP/keygen_mult32_generic.v": "63d1fc381b65ca848f54ecd510f3cf8c69811fdf0d84eebcfca7ea46bfdbe458",
+    "Source Code/Key Generation/IP/keygen_ram32.v": "d467f454b2b4656f24175459cf296a706713ac5d3e6e128abbce763bb2872414",
+    "Source Code/Key Generation/IP/keygen_ram32_altera.v": "e13533d14e96b2af13d155811e88cb0d0788daa23043fc36da1d6dcb6174ebe0",
+    "Source Code/Key Generation/IP/keygen_ram32_generic.v": "5804e97c2c7cbb78f4c32ce496372827d69af092e94531a699c7c9d27397d6d1",
+    "Source Code/Key Generation/rtl/aes/keygen_aes_core.v": "a2551951b25518d5c53e99e25ee66026246f95bbd9e7be28ee790ea335beb852",
+    "Source Code/Key Generation/rtl/arithmetic/keygen_math.v": "69e6a4e6ce83e0db00f5990384a4abf4c4e111ba40bb485ae44a2e5e2b496a61",
+    "Source Code/Key Generation/rtl/arithmetic/keygen_pair_check.v": "b0e08ae22e9bb9f6cd8567c2759580f894e60f0d80000b9615df8f6c55259e3b",
+    "Source Code/Key Generation/rtl/common/keygen_core.v": "c096a52b6954ef990a8c9d5f35b42569c2be0022847a5d977b26b0680988e2e1",
+    "Source Code/Key Generation/rtl/rsa_rtl/keygen_rsa_controller.v": "a82d373bd7bc8a2d5095fc81c0849fa8a8a3c58c1a73910e898c7680a08ed50b",
+    "Source Code/Key Generation/rtl/rsa_rtl/keygen_rsa_engine.v": "5658c70f845eba2753b9ec86a3bd45bf5b25e294601bf314dd798686b5d70330",
+    "Source Code/Key Generation/rtl/rsa_rtl/keygen_rsa_services.v": "673f97fb48c057c67a4ea74930c37776b2240d1cc1b90f0904fc1a7f83553fa6",
+    "Source Code/Management Module/management_module.v": "b1d240b619b8808c4b5686a3016c19a99e899a92c3f1efce367471ee60a8b592",
+    "Source Code/RNG Module/entropy_health.v": "2dcfc565413da1cd13bcc1eb94b88a29acecf820da860576746f887ecf1213a9",
+    "Source Code/RNG Module/entropy_source.v": "b5f693a74b81f63c98094603d1fdb96ab06098daebecc05d2ce0a36954601f3e",
+    "Source Code/RNG Module/execution_engine_getrandom.v": "112ad6f5879fa22860f2f9e7cb7979ad780c5d24371c909f1a9283ada3f22e72",
+    "Source Code/RNG Module/phase_one_rng.v": "4f8b57faa2b710fc06cff13276f0603c28e79368150e6c6e1dbb16df178f8e7d",
+    "Source Code/RNG Module/random_number_generation.v": "1267bab473837dbeeb73d3e162f61db12247c8435f062f4a8706a1e2ec682b43",
+    "Source Code/RNG Module/ring_osc.v": "7efec8bc7b3004244d133a1bd816b43ce3d3f001936ff1b112ee9473f461ef87",
+    "Source Code/RNG Module/rng_word_service.v": "018b27f8ffbd82bc2ed9dfea57ca6ea70f7e2bc5e8d4c1e70ece1f6d0e3fa5d7",
+    "Source Code/RNG Module/tpm2_get_random.v": "d254e7a94ebf3b2101fe1f80cb19cd56cc0c18a3ef015d353aa3160ca8f6e254",
+    "Source Code/TPM_TOP.v": "1c8ffdf852fb7851fbc940e02a8d2638087436f01e257039c14fafe7113c89ad",
+    "Testing/Simulation/Execution Engine/tb_getrandom_engine.sv": "7f893b2ae4d8a95763e5069219e6f1ffd404275954e0a811e627a139970a819e",
+    "Testing/Simulation/Execution Engine/tb_keygen_engine.sv": "f9f234ae332a0f2146c82feb549ab081470e9a43e6dce61082eb9080c260824f",
+    "Testing/Simulation/Execution Engine/tb_keygen_slot.sv": "b6d54cfc47940dab9788b5d48fdfbae89e97dbca035338d792cf83e3b4b2006a"
+  },
+  "tests": {
+    "boundary-0": {
+      "commands": [
+        {
+          "argv": [
+            "C:\\intelFPGA_lite\\24.1std\\questa_fse\\win64\\vsim.exe",
+            "-c",
+            "-L",
+            "vendor",
+            "-onfinish",
+            "stop",
+            "-gTEST_CASE=0",
+            "-gIP_TYPE=0",
+            "work.tb_keygen_slot",
+            "-do",
+            "do boundary-0.do"
+          ],
+          "deadline_seconds": 180,
+          "elapsed_seconds": 5.172,
+          "returncode": 0,
+          "transcript": "boundary-0.log",
+          "transcript_sha256": "bf3989d645325eab533faa7011bfc0e40c03c35e7163404da076f55c26209c2d"
+        }
+      ],
+      "input_manifest_sha256": "b04facb878a6065a05b9bb6bac82b8f128b7c06d6d5883643e58beccc8e3f9c1",
+      "non_elaborated_test_unit_deltas": [],
+      "pass_markers": [
+        "KEYGEN_SLOT_PASS case=0 backend=0 checks=25 draws=4 cycles=498164"
+      ],
+      "result": "PASS",
+      "rtl_input_byte_deltas": [],
+      "runner_sha256": "a8cd15ebffe12621f97c991e5d73b5c98b2c95466f39e7b52b82795385b7a750"
+    },
+    "boundary-1": {
+      "commands": [
+        {
+          "argv": [
+            "C:\\intelFPGA_lite\\24.1std\\questa_fse\\win64\\vsim.exe",
+            "-c",
+            "-L",
+            "vendor",
+            "-onfinish",
+            "stop",
+            "-gTEST_CASE=0",
+            "-gIP_TYPE=1",
+            "work.tb_keygen_slot",
+            "-do",
+            "do boundary-1.do"
+          ],
+          "deadline_seconds": 180,
+          "elapsed_seconds": 8.543,
+          "returncode": 0,
+          "transcript": "boundary-1.log",
+          "transcript_sha256": "09498433090ae5f129726ce8e10b1e1dc00506e7e4c913d58190d13e11d65dc3"
+        }
+      ],
+      "input_manifest_sha256": "fed44e1ef06932b527bead2edef1444ce31c4c84d30f5217636904527349bbca",
+      "non_elaborated_test_unit_deltas": [],
+      "pass_markers": [
+        "KEYGEN_SLOT_PASS case=0 backend=1 checks=25 draws=4 cycles=498164"
+      ],
+      "result": "PASS",
+      "rtl_input_byte_deltas": [],
+      "runner_sha256": "a8cd15ebffe12621f97c991e5d73b5c98b2c95466f39e7b52b82795385b7a750"
+    },
+    "engine-0": {
+      "commands": [
+        {
+          "argv": [
+            "C:\\intelFPGA_lite\\24.1std\\questa_fse\\win64\\vsim.exe",
+            "-c",
+            "-L",
+            "vendor",
+            "-onfinish",
+            "stop",
+            "work.tb_keygen_engine",
+            "-do",
+            "do engine-0.do"
+          ],
+          "deadline_seconds": 180,
+          "elapsed_seconds": 4.428,
+          "returncode": 0,
+          "transcript": "engine-0.log",
+          "transcript_sha256": "179210d74fc52a0c4d486698767f932d49a84003d9557b5e2fb02f24a0a1c5fe"
+        }
+      ],
+      "input_manifest_sha256": "22085a3416d11f18536100341750d4ad92d8e7139928774799f710fe0fc13c82",
+      "non_elaborated_test_unit_deltas": [],
+      "pass_markers": [
+        "KEYGEN_ENGINE_RESERVATION_HOST_ELIGIBILITY_PASS blocks=3"
+      ],
+      "result": "PASS",
+      "rtl_input_byte_deltas": [],
+      "runner_sha256": "a8cd15ebffe12621f97c991e5d73b5c98b2c95466f39e7b52b82795385b7a750"
+    },
+    "health-0": {
+      "commands": [
+        {
+          "argv": [
+            "C:\\intelFPGA_lite\\24.1std\\questa_fse\\win64\\vsim.exe",
+            "-c",
+            "-L",
+            "vendor",
+            "-onfinish",
+            "stop",
+            "-gTEST_CASE=3",
+            "-gIP_TYPE=0",
+            "work.tb_keygen_slot",
+            "-do",
+            "do health-0.do"
+          ],
+          "deadline_seconds": 180,
+          "elapsed_seconds": 5.447,
+          "returncode": 0,
+          "transcript": "health-0.log",
+          "transcript_sha256": "389ef07eefd9c074d8b8473fd2fe02bf8606418107135817dcfb200c91ad4cbe"
+        }
+      ],
+      "independent_hash_drbg_slot": "PASS",
+      "input_manifest_sha256": "c60b00ba3c77c4d9652964bbd9e491c557f5175d3eae6bbad74ad32b1c662a52",
+      "non_elaborated_test_unit_deltas": [],
+      "pass_markers": [
+        "KEYGEN_SLOT_PASS case=3 backend=0 checks=5 draws=4 cycles=23970"
+      ],
+      "public_blocks_checked": 5,
+      "result": "PASS",
+      "rtl_input_byte_deltas": [],
+      "runner_sha256": "a8cd15ebffe12621f97c991e5d73b5c98b2c95466f39e7b52b82795385b7a750"
+    },
+    "health-1": {
+      "commands": [
+        {
+          "argv": [
+            "C:\\intelFPGA_lite\\24.1std\\questa_fse\\win64\\vsim.exe",
+            "-c",
+            "-L",
+            "vendor",
+            "-onfinish",
+            "stop",
+            "-gTEST_CASE=3",
+            "-gIP_TYPE=1",
+            "work.tb_keygen_slot",
+            "-do",
+            "do health-1.do"
+          ],
+          "deadline_seconds": 180,
+          "elapsed_seconds": 7.642,
+          "returncode": 0,
+          "transcript": "health-1.log",
+          "transcript_sha256": "f757cf4efcf3bc808d1024e43f017cdab1e20b5631b1386e28af7bf8e92cc7e8"
+        }
+      ],
+      "independent_hash_drbg_slot": "PASS",
+      "input_manifest_sha256": "a9163b522063ff93fb97a7948b537c83b994663faa3fd13007989bdb440f83ba",
+      "non_elaborated_test_unit_deltas": [],
+      "pass_markers": [
+        "KEYGEN_SLOT_PASS case=3 backend=1 checks=5 draws=4 cycles=23970"
+      ],
+      "public_blocks_checked": 5,
+      "result": "PASS",
+      "rtl_input_byte_deltas": [],
+      "runner_sha256": "a8cd15ebffe12621f97c991e5d73b5c98b2c95466f39e7b52b82795385b7a750"
+    },
+    "host-0": {
+      "commands": [
+        {
+          "argv": [
+            "C:\\intelFPGA_lite\\24.1std\\questa_fse\\win64\\vsim.exe",
+            "-c",
+            "-L",
+            "vendor",
+            "-onfinish",
+            "stop",
+            "work.tb_getrandom_engine",
+            "-do",
+            "do host-0.do"
+          ],
+          "deadline_seconds": 180,
+          "elapsed_seconds": 4.257,
+          "returncode": 0,
+          "transcript": "host-0.log",
+          "transcript_sha256": "24d3fee1a6955c93faf8597beceb761768a54ecc4cfac5a284a8b49d88dbe1c7"
+        }
+      ],
+      "input_manifest_sha256": "c9b6d08e3acb6f7fa23763268d8ef77c4ada4f7041d436093225193efa983909",
+      "non_elaborated_test_unit_deltas": [],
+      "pass_markers": [
+        "GETRANDOM_ENGINE_OWNER_TIMEOUT_RESET_PASS"
+      ],
+      "result": "PASS",
+      "rtl_input_byte_deltas": [],
+      "runner_sha256": "a8cd15ebffe12621f97c991e5d73b5c98b2c95466f39e7b52b82795385b7a750"
+    },
+    "real-0": {
+      "commands": [
+        {
+          "argv": [
+            "C:\\intelFPGA_lite\\24.1std\\questa_fse\\win64\\vsim.exe",
+            "-c",
+            "-L",
+            "vendor",
+            "-onfinish",
+            "stop",
+            "-gTEST_CASE=2",
+            "-gIP_TYPE=0",
+            "work.tb_keygen_slot",
+            "-do",
+            "do real-0.do"
+          ],
+          "deadline_seconds": 180,
+          "elapsed_seconds": 3.99,
+          "returncode": 0,
+          "transcript": "real-0.log",
+          "transcript_sha256": "4361588156541320f9ec21355af831fa281e1853bda17b6d6364e7f850b1a037"
+        }
+      ],
+      "independent_hash_drbg_slot": "PASS",
+      "input_manifest_sha256": "cef5c2cb943454c4587da51e32c9f2dcf4122149d0aba3df8cf39f6cd7bbdbb7",
+      "non_elaborated_test_unit_deltas": [],
+      "pass_markers": [
+        "KEYGEN_SLOT_PASS case=2 backend=0 checks=1 draws=8 cycles=4750"
+      ],
+      "public_blocks_checked": 1,
+      "result": "PASS",
+      "rtl_input_byte_deltas": [],
+      "runner_sha256": "a8cd15ebffe12621f97c991e5d73b5c98b2c95466f39e7b52b82795385b7a750"
+    },
+    "real-1": {
+      "commands": [
+        {
+          "argv": [
+            "C:\\intelFPGA_lite\\24.1std\\questa_fse\\win64\\vsim.exe",
+            "-c",
+            "-L",
+            "vendor",
+            "-onfinish",
+            "stop",
+            "-gTEST_CASE=2",
+            "-gIP_TYPE=1",
+            "work.tb_keygen_slot",
+            "-do",
+            "do real-1.do"
+          ],
+          "deadline_seconds": 180,
+          "elapsed_seconds": 6.36,
+          "returncode": 0,
+          "transcript": "real-1.log",
+          "transcript_sha256": "7d86cb8d8fb963cfec1ad51b0661dacaa355dd56cfb608f46ac3b00b6ca4b602"
+        }
+      ],
+      "independent_hash_drbg_slot": "PASS",
+      "input_manifest_sha256": "d92843ba2bc637d12f39ecee6f30d087bd181f63c963d886c3ace8415b137e04",
+      "non_elaborated_test_unit_deltas": [],
+      "pass_markers": [
+        "KEYGEN_SLOT_PASS case=2 backend=1 checks=1 draws=8 cycles=4750"
+      ],
+      "public_blocks_checked": 1,
+      "result": "PASS",
+      "rtl_input_byte_deltas": [],
+      "runner_sha256": "a8cd15ebffe12621f97c991e5d73b5c98b2c95466f39e7b52b82795385b7a750"
+    },
+    "regression-0": {
+      "commands": [
+        {
+          "argv": [
+            "C:\\intelFPGA_lite\\24.1std\\questa_fse\\win64\\vsim.exe",
+            "-c",
+            "-do",
+            "do {<repo>/Testing/Simulation/Execution Engine/run_keygen_host_regression.do}"
+          ],
+          "deadline_seconds": 600,
+          "elapsed_seconds": 211.314,
+          "returncode": 0,
+          "transcript": "regression-0.log",
+          "transcript_sha256": "06632c649a48a6b1766c59a5520c3a85784282392900d03a1ac9aa2496099f07"
+        }
+      ],
+      "input_manifest_sha256": "fe79e78af70140f2604f13fa7783f79adeab61b16bb57dd935f5d767ae3eca9b",
+      "non_elaborated_test_unit_deltas": [],
+      "pass_markers": [
+        "TPM2_PCR_EXTEND_COMMAND_PASS accepted=140 dispatched=140 completed=139",
+        "TPM2_PCR_EXTEND_SPI_PASS",
+        "TPM2_PCR_COMMAND_PASS accepted=28 dispatched=28 completed=28 counter=6",
+        "TPM2_PCR_SPI_PASS",
+        "TPM2_HASH_ENGINE_ROUTE_RESET_PASS accepts=24 dispatches=24 replies=22 (two reset-aborted jobs)",
+        "TPM2_HASH_COMMAND_PASS",
+        "TPM2_HASH_SPI_PASS",
+        "KEYGEN_ENCRYPTDECRYPT2_PASS",
+        "TPM2_ENCRYPTDECRYPT2_SPI_PASS",
+        "TPM2_HASH_SPI_PASS",
+        "TPM2_PCR_EXTEND_DISABLED_PASS",
+        "TPM2_PCR_EXTEND_EMPTY_MASK_PASS",
+        "GETRANDOM_ENGINE_OWNER_TIMEOUT_RESET_PASS",
+        "GETRANDOM_REAL_RCT_PROPAGATION_PASS",
+        "GETRANDOM_MIXED_ENGINE_SHA_PASS starts=18 replies=18 rng_hashes=24",
+        "GETRANDOM_REAL_APT_PROPAGATION_PASS",
+        "GETRANDOM_RESET_HEALTHY_RECOVERY_PASS",
+        "GETRANDOM_PCR_READ_MIXED_PASS replies=16",
+        "TPM2_GETRANDOM_SPI_PASS",
+        "GETRANDOM_PCR_READ_MIXED_PASS replies=16",
+        "TPM2_GETRANDOM_SPI_PASS",
+        "GETRANDOM_REAL_RCT_PROPAGATION_PASS",
+        "GETRANDOM_MIXED_ENGINE_SHA_PASS starts=18 replies=18 rng_hashes=24",
+        "GETRANDOM_REAL_APT_PROPAGATION_PASS",
+        "GETRANDOM_RESET_HEALTHY_RECOVERY_PASS",
+        "GETRANDOM_PCR_READ_MIXED_PASS replies=16",
+        "GETRANDOM_PCR_EXTEND_MIXED_PASS generations=4",
+        "TPM2_GETRANDOM_SPI_PASS",
+        "TPM_LEGACY_SPI_PASS entry=240 errors=0",
+        "KEYGEN_ENGINE_RESERVATION_HOST_ELIGIBILITY_PASS blocks=3",
+        "KEYGEN_HOST_REGRESSION_PASS"
+      ],
+      "result": "PASS",
+      "rtl_input_byte_deltas": [],
+      "runner_sha256": "a8cd15ebffe12621f97c991e5d73b5c98b2c95466f39e7b52b82795385b7a750"
+    },
+    "resources-Agilex5": {
+      "commands": [
+        {
+          "argv": [
+            "C:\\intelFPGA_lite\\24.1std\\questa_fse\\win64\\vlib.exe",
+            "resources"
+          ],
+          "deadline_seconds": 120,
+          "elapsed_seconds": 0.161,
+          "returncode": 0,
+          "transcript": "resources-Agilex5-library.log",
+          "transcript_sha256": "5968fcd18019f72c6f6576a6e06ae84432266f55752524f134d5c02fdccc584e"
+        },
+        {
+          "argv": [
+            "C:\\intelFPGA_lite\\24.1std\\questa_fse\\win64\\vlog.exe",
+            "-work",
+            "resources",
+            "-vlog01compat",
+            "<repo>\\Source Code\\Key Generation\\IP\\keygen_mult32.v",
+            "<repo>\\Source Code\\Key Generation\\IP\\keygen_mult32_generic.v",
+            "<repo>\\Source Code\\Key Generation\\IP\\keygen_mult32_altera.v",
+            "<repo>\\Source Code\\Key Generation\\IP\\keygen_ram32.v",
+            "<repo>\\Source Code\\Key Generation\\IP\\keygen_ram32_generic.v",
+            "<repo>\\Source Code\\Key Generation\\IP\\keygen_ram32_altera.v"
+          ],
+          "deadline_seconds": 120,
+          "elapsed_seconds": 0.309,
+          "returncode": 0,
+          "transcript": "resources-Agilex5-compile.log",
+          "transcript_sha256": "f6638131a187e65c4f2484ce1861cbb5adde664fa39e0f3f30c801eb836762f6"
+        },
+        {
+          "argv": [
+            "C:\\intelFPGA_lite\\24.1std\\questa_fse\\win64\\vlog.exe",
+            "-work",
+            "resources",
+            "-sv",
+            "<repo>\\Testing\\Simulation\\Key Generation\\IP\\tests\\tb_keygen_resources.sv"
+          ],
+          "deadline_seconds": 120,
+          "elapsed_seconds": 0.283,
+          "returncode": 0,
+          "transcript": "resources-Agilex5-bench-compile.log",
+          "transcript_sha256": "6031f2e8d4ba239f6db198c645f29dc424a4c7808739bf3eb7a6a6e941aa0dba"
+        },
+        {
+          "argv": [
+            "C:\\intelFPGA_lite\\24.1std\\questa_fse\\win64\\vsim.exe",
+            "-c",
+            "-L",
+            "vendor",
+            "-onfinish",
+            "stop",
+            "-gDEVICE_FAMILY=Agilex 5",
+            "resources.tb_keygen_resources",
+            "-do",
+            "do resources-Agilex5.do"
+          ],
+          "deadline_seconds": 180,
+          "elapsed_seconds": 2.769,
+          "returncode": 0,
+          "transcript": "resources-Agilex5.log",
+          "transcript_sha256": "504f8596516c5ef5be49b4577b495948a56d71d5e81245f964b1b03b1959b267"
+        }
+      ],
+      "compares_backends": [
+        0,
+        1
+      ],
+      "device_family": "Agilex 5",
+      "input_manifest_sha256": "00f1571e98e27db49fe03dd13ec072f3e714f6f8d019cf79b1176b2e65f8249e",
+      "non_elaborated_test_unit_deltas": [],
+      "pass_markers": [
+        "PASS resources: products=2637 reads=2750 collisions=596 stalls=1300"
+      ],
+      "result": "PASS",
+      "rtl_input_byte_deltas": [],
+      "runner_sha256": "0087fc05e963d650daf3deac623dfd613e675c493ef0a81e01d06c7e3dfffa8d"
+    },
+    "resources-CycloneV": {
+      "commands": [
+        {
+          "argv": [
+            "C:\\intelFPGA_lite\\24.1std\\questa_fse\\win64\\vlib.exe",
+            "resources"
+          ],
+          "deadline_seconds": 120,
+          "elapsed_seconds": 0.178,
+          "returncode": 0,
+          "transcript": "resources-CycloneV-library.log",
+          "transcript_sha256": "5968fcd18019f72c6f6576a6e06ae84432266f55752524f134d5c02fdccc584e"
+        },
+        {
+          "argv": [
+            "C:\\intelFPGA_lite\\24.1std\\questa_fse\\win64\\vlog.exe",
+            "-work",
+            "resources",
+            "-vlog01compat",
+            "<repo>\\Source Code\\Key Generation\\IP\\keygen_mult32.v",
+            "<repo>\\Source Code\\Key Generation\\IP\\keygen_mult32_generic.v",
+            "<repo>\\Source Code\\Key Generation\\IP\\keygen_mult32_altera.v",
+            "<repo>\\Source Code\\Key Generation\\IP\\keygen_ram32.v",
+            "<repo>\\Source Code\\Key Generation\\IP\\keygen_ram32_generic.v",
+            "<repo>\\Source Code\\Key Generation\\IP\\keygen_ram32_altera.v"
+          ],
+          "deadline_seconds": 120,
+          "elapsed_seconds": 0.323,
+          "returncode": 0,
+          "transcript": "resources-CycloneV-compile.log",
+          "transcript_sha256": "9721e5feae85e15162089e43029734c534fc11483f926a4ab8802086f7a54190"
+        },
+        {
+          "argv": [
+            "C:\\intelFPGA_lite\\24.1std\\questa_fse\\win64\\vlog.exe",
+            "-work",
+            "resources",
+            "-sv",
+            "<repo>\\Testing\\Simulation\\Key Generation\\IP\\tests\\tb_keygen_resources.sv"
+          ],
+          "deadline_seconds": 120,
+          "elapsed_seconds": 0.339,
+          "returncode": 0,
+          "transcript": "resources-CycloneV-bench-compile.log",
+          "transcript_sha256": "fd11dbb39e10411dd2eeced53da104107d29c40b8ecf651360184caeb391ad53"
+        },
+        {
+          "argv": [
+            "C:\\intelFPGA_lite\\24.1std\\questa_fse\\win64\\vsim.exe",
+            "-c",
+            "-L",
+            "vendor",
+            "-onfinish",
+            "stop",
+            "-gDEVICE_FAMILY=Cyclone V",
+            "resources.tb_keygen_resources",
+            "-do",
+            "do resources-CycloneV.do"
+          ],
+          "deadline_seconds": 180,
+          "elapsed_seconds": 3.556,
+          "returncode": 0,
+          "transcript": "resources-CycloneV.log",
+          "transcript_sha256": "aaf0021db5ab3460bc0f550bb0b506ee490089d219be08f2c26c528a0e04de4b"
+        }
+      ],
+      "compares_backends": [
+        0,
+        1
+      ],
+      "device_family": "Cyclone V",
+      "input_manifest_sha256": "1535b8abdbbd14d765e0663abd3f3db6d63872ab36b3e414869fbe0cbd959dab",
+      "non_elaborated_test_unit_deltas": [],
+      "pass_markers": [
+        "PASS resources: products=2637 reads=2750 collisions=596 stalls=1300"
+      ],
+      "result": "PASS",
+      "rtl_input_byte_deltas": [],
+      "runner_sha256": "0087fc05e963d650daf3deac623dfd613e675c493ef0a81e01d06c7e3dfffa8d"
+    },
+    "rsa-0": {
+      "commands": [
+        {
+          "argv": [
+            "C:\\intelFPGA_lite\\24.1std\\questa_fse\\win64\\vsim.exe",
+            "-c",
+            "-L",
+            "vendor",
+            "-onfinish",
+            "stop",
+            "-gTEST_CASE=1",
+            "-gIP_TYPE=0",
+            "work.tb_keygen_slot",
+            "+EXPECTED=expected.hex",
+            "+STIMULUS=stimulus.hex",
+            "-do",
+            "do rsa-0.do"
+          ],
+          "deadline_seconds": 7200,
+          "elapsed_seconds": 1570.002,
+          "returncode": 0,
+          "transcript": "rsa-0.log",
+          "transcript_sha256": "1fef598d997eb7d37770102f532f3fca3b041a70789f2a5e083f30e1059a742a"
+        }
+      ],
+      "directed_correctness_not_prime_search_performance": true,
+      "fixtures": {
+        "expected.hex": {
+          "sha256": "5c4ab2d536d3a364bf92781e02d9a8859e795c2094b2f4d40871ae046406f896",
+          "words": 129
+        },
+        "stimulus.hex": {
+          "sha256": "e686f613a974011a376396870feb56c4b22090f543059c0826da3f45fa22b811",
+          "words": 384
+        }
+      },
+      "independent_key_checker_sha256": "b304dd84c7a698d19976a5473986c6e0bfd021c359baa01194afa29aa301171b",
+      "input_manifest_sha256": "c7a073b208ca2779dd2e89e276771420a78835fbcfba7fe4a3c4f2e8db59a9c7",
+      "non_elaborated_test_unit_deltas": [
+        "Testing/Simulation/Execution Engine/tb_keygen_engine.sv"
+      ],
+      "pass_markers": [
+        "KEYGEN_SLOT_PASS case=1 backend=0 checks=1 draws=384 cycles=136236052"
+      ],
+      "public_corpus_sha256": "f0d71db64d5522ec472f0ad3eecd85de9a27b9d7b6de2532f62ee5b4a840202d",
+      "result": "PASS",
+      "rtl_input_byte_deltas": [],
+      "runner_sha256": "2fb1c896ed148682f088abf4e168ff8df07fb537d6ebf2ca26a1415692b7000c"
+    }
+  }
+}

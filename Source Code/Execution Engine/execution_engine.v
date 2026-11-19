@@ -1,5 +1,7 @@
 module execution_engine #(parameter ENABLE_HASH_COMMAND = 0, parameter ENABLE_PCR_COMMANDS = 0, parameter ENABLE_GETRANDOM = 0,
     parameter integer GETRANDOM_WAIT_LIMIT = 1000000,
+    parameter ENABLE_INTERNAL_KEYGEN=0, parameter IP_TYPE=0, parameter DEVICE_FAMILY="Agilex 5",
+    parameter [63:0] KEYGEN_WAIT_LIMIT=64'd9000000000,
     parameter ENABLE_PCR_EXTEND = 0,
     parameter [23:0] PCR_EXTEND_EMPTY_AUTH_MASK = 24'd0,
     parameter [4:0] PCR_EXTEND_LOCALITY_MASK = 5'b00001)(
@@ -94,9 +96,29 @@ module execution_engine #(parameter ENABLE_HASH_COMMAND = 0, parameter ENABLE_PC
         pcr_read_index_o, pcr_read_data_i, pcr_read_valid_i, pcr_update_counter_i,
         random_i, random_valid_i, random_request_o, rng_fault_i, rng_timeout_o,
         locality_i, pcr_extend_start_o, pcr_extend_index_o, pcr_measurement_o,
-        pcr_busy_i, pcr_done_i, pcr_error_i
+        pcr_busy_i, pcr_done_i, pcr_error_i,
+        keygen_request_i, keygen_ready_o, keygen_profile_i, keygen_id_i, keygen_allow_i,
+        keygen_busy_o, keygen_completion_o, keygen_completion_ready_i, keygen_code_o, keygen_completion_id_o,
+        keygen_release_i, keygen_slot_valid_o, keygen_slot_type_o, keygen_slot_words_o,
+        keygen_private_address_i, keygen_private_data_o,
+        keygen_result_enable_i, keygen_ownership_enable_i, keygen_terminal_enable_i
 	);
 
+    // Protected internal fixture/consumer boundary; never decoded from a host command.
+    input wire keygen_request_i, keygen_allow_i, keygen_completion_ready_i, keygen_release_i;
+    input wire [1:0] keygen_profile_i;
+    input wire [31:0] keygen_id_i;
+    input wire [7:0] keygen_private_address_i;
+    input wire keygen_result_enable_i, keygen_ownership_enable_i, keygen_terminal_enable_i;
+    output wire keygen_ready_o, keygen_busy_o, keygen_completion_o, keygen_slot_valid_o;
+    output wire [3:0] keygen_code_o;
+    output wire [31:0] keygen_completion_id_o, keygen_private_data_o;
+    output wire [1:0] keygen_slot_type_o;
+    output wire [7:0] keygen_slot_words_o;
+    wire kg_open, kg_grant, kg_close, kg_closed, kg_word_valid, kg_word_ready, kg_fault, kg_timeout;
+    wire [31:0] kg_word;
+    wire host_random_request, host_wait, host_commit, host_timeout, host_valid, host_fault;
+    wire [255:0] host_random;
     input wire [7:0] locality_i;
     output wire pcr_extend_start_o;
     output wire [4:0] pcr_extend_index_o;
@@ -484,7 +506,7 @@ module execution_engine #(parameter ENABLE_HASH_COMMAND = 0, parameter ENABLE_PC
 	reg [7:0]  s_handle_type;
 	reg [23:0] s_handle_index_bits;
 	reg 		  s_handle_error;
-	reg [1:0]  s_session_index;     // Index of the session currently being processed (0â€“2)
+	reg [1:0]  s_session_index;     // Index of the session currently being processed (0Ã¢â‚¬â€œ2)
 	reg        s_session_error;     // Flag to detect session validation failure
 	reg [7:0]  s_session_handle_type;
 	reg [31:0] s_current_session_handle;
@@ -591,6 +613,43 @@ module execution_engine #(parameter ENABLE_HASH_COMMAND = 0, parameter ENABLE_PC
     // hash_active retains its compatibility name and now marks either parser.
     localparam STATE_HASH_DISPATCH = 4'd10, STATE_HASH_WAIT = 4'd11;
     localparam STATE_RANDOM_DISPATCH = 4'd12, STATE_RANDOM_WAIT = 4'd13;
+    generate if(ENABLE_INTERNAL_KEYGEN) begin : keygen_enabled
+    execution_engine_keygen #(.ENABLE(ENABLE_INTERNAL_KEYGEN), .IP_TYPE(IP_TYPE),
+        .DEVICE_FAMILY(DEVICE_FAMILY), .WAIT_LIMIT(KEYGEN_WAIT_LIMIT)) protected_keygen (
+        .clock_i(clock_i), .reset_n_i(reset_n_i),
+        .request_valid_i(ENABLE_INTERNAL_KEYGEN && keygen_request_i), .request_ready_o(keygen_ready_o),
+        .profile_i(keygen_profile_i), .id_i(keygen_id_i), .allow_i(keygen_allow_i), .busy_o(keygen_busy_o),
+        .completion_valid_o(keygen_completion_o), .completion_ready_i(keygen_completion_ready_i),
+        .completion_code_o(keygen_code_o), .completion_id_o(keygen_completion_id_o),
+        .release_i(keygen_release_i), .slot_valid_o(keygen_slot_valid_o),
+        .slot_type_o(keygen_slot_type_o), .slot_words_o(keygen_slot_words_o),
+        .private_address_i(keygen_private_address_i), .private_data_o(keygen_private_data_o),
+        .result_enable_i(keygen_result_enable_i), .ownership_enable_i(keygen_ownership_enable_i),
+        .terminal_enable_i(keygen_terminal_enable_i), .source_open_o(kg_open), .source_grant_i(kg_grant),
+        .source_close_o(kg_close), .source_closed_i(kg_closed), .source_word_i(kg_word),
+        .source_valid_i(kg_word_valid), .source_ready_o(kg_word_ready), .source_fault_i(kg_fault), .timeout_o(kg_timeout));
+    end else begin : keygen_disabled
+        assign keygen_ready_o=0; assign keygen_busy_o=1;
+        assign keygen_completion_o=0; assign keygen_code_o=0; assign keygen_completion_id_o=0;
+        assign keygen_slot_valid_o=0; assign keygen_slot_type_o=0; assign keygen_slot_words_o=0;
+        assign keygen_private_data_o=0;
+        assign kg_open=0; assign kg_close=0; assign kg_word_ready=0; assign kg_timeout=0;
+    end endgenerate
+    generate if(ENABLE_GETRANDOM || ENABLE_INTERNAL_KEYGEN) begin : generation_enabled
+    rng_word_service #(.WAIT_LIMIT(GETRANDOM_WAIT_LIMIT)) generation_service (
+        .clock_i(clock_i), .reset_n_i(reset_n_i), .random_i(random_i), .random_valid_i(random_valid_i),
+        .fault_i(rng_fault_i), .random_request_o(random_request_o), .timeout_o(rng_timeout_o),
+        .key_open_i(kg_open), .key_grant_o(kg_grant), .key_close_i(kg_close), .key_closed_o(kg_closed),
+        .word_o(kg_word), .word_valid_o(kg_word_valid), .word_ready_i(kg_word_ready), .key_fault_o(kg_fault),
+        .host_request_i(host_random_request), .host_commit_i(host_commit),
+        .host_timeout_i(host_timeout || kg_timeout), .host_wait_o(host_wait),
+        .host_random_o(host_random), .host_valid_o(host_valid), .host_fault_o(host_fault));
+
+    end else begin : generation_disabled
+        assign random_request_o=0; assign rng_timeout_o=0;
+        assign kg_grant=0; assign kg_closed=1; assign kg_word=0; assign kg_word_valid=0; assign kg_fault=0;
+        assign host_wait=0; assign host_random=0; assign host_valid=0; assign host_fault=rng_fault_i;
+    end endgenerate
     reg random_active;
     wire accept_random = command_code_i == 32'h0000017b && ENABLE_HASH_COMMAND;
     wire random_complete;
@@ -600,16 +659,16 @@ module execution_engine #(parameter ENABLE_HASH_COMMAND = 0, parameter ENABLE_PC
     reg [15:0] active_tag;
     reg [31:0] active_code, active_size;
     reg active_operational;
-    execution_engine_getrandom #(.WAIT_LIMIT(GETRANDOM_WAIT_LIMIT)) random_command (
+    execution_engine_getrandom #(.WAIT_LIMIT(GETRANDOM_WAIT_LIMIT), .SHARED_SERVICE(1)) random_command (
         .clock_i(clock_i), .reset_n_i(reset_n_i),
         .start_i(current_state_o == STATE_RANDOM_DISPATCH), .enabled_i(ENABLE_GETRANDOM != 0),
         .operational_i(active_operational), .command_size_i(active_size),
         .command_addr_o(random_cmd_addr), .command_byte_i(command_byte_i),
         .response_valid_o(random_complete), .response_code_o(random_response_code),
         .response_length_o(random_response_length), .response_addr_i(response_addr_i),
-        .response_byte_o(random_response_byte), .random_i(random_i),
-        .random_valid_i(random_valid_i), .random_request_o(random_request_o),
-        .fault_i(rng_fault_i), .timeout_o(rng_timeout_o)
+        .response_byte_o(random_response_byte), .random_i(host_random),
+        .random_valid_i(host_valid), .random_request_o(host_random_request),
+        .fault_i(host_fault), .timeout_o(host_timeout), .source_wait_i(host_wait), .source_commit_o(host_commit)
     );
     reg hash_active, pcr_active;
     wire [11:0] hash_cmd_addr, pcr_cmd_addr, pcr_response_length;

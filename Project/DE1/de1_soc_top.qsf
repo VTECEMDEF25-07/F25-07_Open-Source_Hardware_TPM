@@ -65,7 +65,7 @@ set_global_assignment -name VERILOG_FILE "../../Source Code/IO Interface/tpm_spi
 set_global_assignment -name LAST_QUARTUS_VERSION "24.1std.0 Lite Edition"
 set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS INPUT TRI-STATED"
 
-# Keygen implementation choice and inactive placeholder dependencies.
+# Keygen implementation choice and gated internal worker dependencies.
 set_global_assignment -name VERILOG_FILE "../../Source Code/Key Generation/IP/keygen_mult32.v"
 set_global_assignment -name VERILOG_FILE "../../Source Code/Key Generation/IP/keygen_mult32_altera.v"
 set_global_assignment -name VERILOG_FILE "../../Source Code/Key Generation/IP/keygen_mult32_generic.v"
@@ -117,3 +117,7 @@ set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to "GPIO_1_4"
 # Keep the external SCK clock local to its small I/O front end to reduce insertion delay.
 set_instance_assignment -name GLOBAL_SIGNAL OFF -to "GPIO_1_2"
 set_global_assignment -name SEED 2
+
+# Phase Two protected internal keygen lifecycle and RNG reservation.
+set_global_assignment -name VERILOG_FILE "../../Source Code/Execution Engine/execution_engine_keygen.v"
+set_global_assignment -name VERILOG_FILE "../../Source Code/RNG Module/rng_word_service.v"

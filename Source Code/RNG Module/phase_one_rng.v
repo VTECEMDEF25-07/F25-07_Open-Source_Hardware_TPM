@@ -12,21 +12,24 @@ module phase_one_rng #(parameter ENABLE=0)(
     input wire [255:0] digest_i,
     input wire digest_valid_i
 );
-    wire health_fault, health_ready;
+    wire health_fault, health_ready, reject_sample;
     reg failed;
     always @(posedge clk or negedge rst_n)
         if(!rst_n) failed<=0;
         else if(health_fault || timeout_i) failed<=1;
-    assign fault_o = health_fault || failed || timeout_i;
+    assign fault_o = reject_sample || health_fault || failed || timeout_i;
     generate if(ENABLE) begin : enabled
         wire [255:0] entropy_data, drbg_data;
         wire entropy_valid, raw_sample, raw_sample_valid, drbg_valid;
-        entropy_source entropy (.clk(clk), .rst_n(rst_n), .enable(!fault_o),
+        // Let the failing sample reach the detector's sticky register. Feeding
+        // reject_sample back to enable would create a combinational loop and
+        // prevent the detector from recording the sample it just rejected.
+        entropy_source entropy (.clk(clk), .rst_n(rst_n), .enable(!(health_fault || failed || timeout_i)),
             .entropy_output(entropy_data), .entropy_valid(entropy_valid),
             .raw_sample(raw_sample), .raw_sample_valid(raw_sample_valid));
         entropy_health health (.clk(clk), .rst_n(rst_n),
             .sample_i(raw_sample), .sample_valid_i(raw_sample_valid),
-            .fault_o(health_fault), .ready_o(health_ready));
+            .fault_o(health_fault), .ready_o(health_ready), .reject_sample_o(reject_sample));
         // Keep outstanding SHA messages draining after a fault; resetting a
         // requester mid-message would strand shared SHA and break TPM2_Hash.
         random_number_generation drbg (.clk(clk), .rst_n(rst_n),
@@ -40,7 +43,7 @@ module phase_one_rng #(parameter ENABLE=0)(
         assign random_o = fault_o ? 256'd0 : drbg_data;
         assign valid_o = drbg_valid && !fault_o;
     end else begin : disabled
-        assign health_fault=0; assign health_ready=0;
+        assign health_fault=0; assign health_ready=0; assign reject_sample=0;
         assign random_o=0; assign valid_o=0;
         assign hash_data_o=0; assign hash_valid_o=0; assign hash_last_o=0;
     end endgenerate
