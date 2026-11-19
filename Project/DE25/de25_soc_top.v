@@ -81,11 +81,15 @@ module de25_soc_top #(parameter IP_TYPE = `FPGA_IP_TYPE,
             crypto_release_reg <= {crypto_release_reg[0], 1'b1};
     end
 
+    wire [5:0] display_word;
+    wire [31:0] display_data;
+
     // Select the FPGA resource backend at the TPM boundary.
     TPM_TOP #(.IP_TYPE(IP_TYPE), .DEVICE_FAMILY("Agilex 5"),
         .ENABLE_DEMO_COMMANDS(ENABLE_DEMO_COMMANDS),.DEMO_PROVIDER_MODE(DEMO_PROVIDER_MODE),
         .DEMO_MODEXP_WIDTH(DEMO_MODEXP_WIDTH),.CUSTOMER_DEMO_ENABLE(CUSTOMER_DEMO_ENABLE),
         .DEMO_AES_EXPORT_ENABLE(DEMO_AES_EXPORT_ENABLE)) tpm (
+        .display_word_i(display_word), .display_data_o(display_data),
         .CLOCK_50(clock_50),
         .RESET_n(crypto_release_reg[1]),
         .SPI_CLOCK(spi_clock_i),
@@ -96,8 +100,10 @@ module de25_soc_top #(parameter IP_TYPE = `FPGA_IP_TYPE,
         .SPI_PIRQ_n(interrupt_n_o)
     );
 
-    // Dedicated HPS-only LCD island: no fabric bridge, clock or TPM/fan reset coupling.
+    // The HPS reads the display snapshot in the crypto clock domain.
     hps_lcd_island lcd_hps (
+        .clock_i(clock_50), .reset_n_i(board_reset_n && clock_locked),
+        .display_word_o(display_word), .display_data_i(display_data),
         .hps_osc_clk25_i(hps_osc_clk25_i),.hps_uart1_rx_i(hps_uart1_rx_i),
         .hps_uart1_tx_o(hps_uart1_tx_o),.hps_spim0_clk_o(hps_spim0_clk_o),
         .hps_spim0_mosi_o(hps_spim0_mosi_o),.hps_spim0_ss0_n_o(hps_spim0_ss0_n_o),

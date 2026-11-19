@@ -6,6 +6,8 @@
 module customer_crypto_subsystem #(parameter WIDTH=2048, DEMO_PROVIDER_MODE=0, IP_TYPE=0,
  parameter DEMO_AES_EXPORT_ENABLE=0,
  parameter DEVICE_FAMILY="Agilex 5") (
+    input wire [5:0] display_word_i,
+    output wire [31:0] display_data_o,
     input wire  clock_i,
     input wire  reset_n_i,
     input wire  recovery_pending_i,
@@ -321,6 +323,8 @@ module customer_crypto_subsystem #(parameter WIDTH=2048, DEMO_PROVIDER_MODE=0, I
         metric_aes_cycles[63:32],metric_aes_cycles[31:0],metric_sequence};
 
     customer_demo_packet #(.DEMO_PROVIDER_MODE(DEMO_PROVIDER_MODE),.DEMO_AES_EXPORT_ENABLE(DEMO_AES_EXPORT_ENABLE)) u_packet (
+            .display_word_i(display_word_i), .display_data_o(display_data_o),
+
         .clock_i(clock_i),
         .reset_n_i(reset_n_i),
         .start_i(packet_start),

@@ -5,6 +5,8 @@ module customer_demo_packet #(
     parameter DEMO_PROVIDER_MODE=0, parameter DEMO_AES_EXPORT_ENABLE=0,
     parameter [63:0] DEADLINE_CYCLES=64'd9000000000
 )(
+    input wire [5:0] display_word_i,
+    output wire [31:0] display_data_o,
     input wire clock_i,reset_n_i,start_i,operational_i,
     input wire [15:0] command_tag_i,
     input wire [31:0] command_size_i,
@@ -159,6 +161,45 @@ module customer_demo_packet #(
     assign status_operation_id_o=request_id;
     assign job_accept_o=reset_n_i && state==DISPATCH && opcode!=0 && opcode!=5;
     assign job_id_o=request_id;
+    // The HPS sees only successful decrypt results. Worker bytes are hidden
+    // until frame validation and completion, including the RSA length checks.
+    reg [7:0] display_bytes [0:127];
+    reg [7:0] display_length;
+    reg [31:0] display_revision, display_id;
+    reg [2:0] display_algorithm;
+    wire [9:0] display_index = aes_output_fire ? output_count[9:0] : output_count[9:0] - 10'd7;
+    always @(posedge clock_i) begin
+        if ((aes_output_fire || (rsa_output_fire && output_count >= 7)) && display_index < 126)
+            display_bytes[display_index[6:0]] <= aes_output_fire ? aes_output_data_i : rsa_output_data_i;
+    end
+    always @(posedge clock_i or negedge reset_n_i) begin
+        if (!reset_n_i) begin
+            display_length <= 0; display_revision <= 0; display_id <= 0; display_algorithm <= 0;
+        end else if (job_accept_o || recovery_required_o) begin
+            display_length <= 0; display_algorithm <= 0;
+            if (display_algorithm != 0) display_revision <= display_revision + 1'b1;
+        end else if (state == SUCCEED && (opcode == 2 || opcode == 4)) begin
+            display_length <= result_length > 126 ? 8'd126 : result_length[7:0];
+            display_revision <= display_revision + 1'b1;
+            display_id <= request_id; display_algorithm <= opcode;
+        end
+    end
+    wire [6:0] display_offset = (display_word_i - 8) * 4;
+    wire [31:0] display_payload;
+    genvar lane;
+    generate for (lane=0; lane<4; lane=lane+1) begin : display_lane
+        assign display_payload[8*lane+:8] = display_offset+lane < display_length ?
+            display_bytes[display_offset+lane] : 8'b0;
+    end endgenerate
+    assign display_data_o = display_word_i == 0 ? 32'h444c4344 :
+                            display_word_i == 1 ? display_revision :
+                            display_word_i == 2 ? display_id :
+                            display_word_i == 3 ? {21'b0,display_algorithm,display_length} :
+                            display_word_i == 4 ? snapshot_status_word_i :
+                            display_word_i == 5 ? snapshot_operation_id_i :
+                            display_word_i == 6 ? snapshot_sequence_i :
+                            display_word_i >= 8 && display_word_i < 40 ? display_payload : 32'b0;
+
 
     always @* begin
         status_code_o=sticky_state; status_detail_o=sticky_detail;

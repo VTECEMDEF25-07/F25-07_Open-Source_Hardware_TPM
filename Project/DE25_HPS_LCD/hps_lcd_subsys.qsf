@@ -7,3 +7,6 @@ set_global_assignment -name PWRMGT_LINEAR_FORMAT_N "-12"
 set_global_assignment -name LAST_QUARTUS_VERSION "26.1.0 Pro Edition"
 set_global_assignment -name IP_FILE ip/hps_lcd_subsys/hps_lcd_subsys_agilex_hps.ip
 set_global_assignment -name QSYS_FILE hps_lcd_subsys.qsys
+set_global_assignment -name IP_FILE ip/hps_lcd_subsys/hps_lcd_subsys_agilex_hps_0.ip
+set_global_assignment -name IP_FILE ip/hps_lcd_subsys/hps_lcd_subsys_fabric_clock.ip
+set_global_assignment -name IP_FILE ip/hps_lcd_subsys/hps_lcd_subsys_display_regs.ip

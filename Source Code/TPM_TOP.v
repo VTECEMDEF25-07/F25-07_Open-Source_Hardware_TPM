@@ -34,6 +34,8 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
 	output		SPI_PIRQ_n,	// SPI interrupt request
 
     // Optional object service. Normal board builds leave this feature disabled.
+    input wire [5:0] display_word_i,
+    output wire [31:0] display_data_o,
     output wire aes_key_request_o,
     input wire aes_key_request_ready_i,
     output wire [31:0] aes_key_handle_o,
@@ -141,6 +143,7 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
     wire [31:0] hash_rsp_code, aes_rsp_code;
     wire hash_rsp_valid, aes_rsp_valid;
 
+    generate if (!ENABLE_DEMO_COMMANDS || !CUSTOMER_DEMO_ENABLE) assign display_data_o=0; endgenerate
     wire [31:0] snapshot_status_word,snapshot_operation_id,snapshot_sequence;
     wire [511:0] metrics_snapshot;
     wire [11:0] demo_cmd_addr, demo_rsp_length;
@@ -169,6 +172,7 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
             .supervisor_last_handle_i(supervisor_handle),.supervisor_last_committed_i(supervisor_committed),
             .supervisor_last_reason_i(supervisor_reason),.job_accept_o(supervisor_job_accept),
             .job_id_o(supervisor_job_id),.commit_o(supervisor_commit),.commit_handle_o(supervisor_commit_handle),
+            .display_word_i(display_word_i), .display_data_o(display_data_o),
             .snapshot_status_word_o(snapshot_status_word),.snapshot_operation_id_o(snapshot_operation_id),
             .snapshot_sequence_o(snapshot_sequence),.metrics_snapshot_o(metrics_snapshot)
         );

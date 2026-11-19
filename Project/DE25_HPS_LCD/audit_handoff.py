@@ -7,17 +7,18 @@ import hashlib,json,re,xml.etree.ElementTree as ET
 HERE=Path(__file__).resolve().parent
 SVD=Path('C:/altera_pro/26.1/riscfree/xsvd/agilex5_hps.svd')
 chip=ET.parse(SVD).getroot()
-ipdir=HERE/'ip/hps_lcd_subsys/hps_lcd_subsys_agilex_hps'
-xml=ipdir/'hps_lcd_subsys_agilex_hps.xml'
+ipdir=HERE/'ip/hps_lcd_subsys/hps_lcd_subsys_agilex_hps_0'
+xml=ipdir/'hps_lcd_subsys_agilex_hps_0.xml'
 params={x.get('name'):x.get('value') for x in ET.parse(xml).findall('.//parameter')}
-qip=(ipdir/'hps_lcd_subsys_agilex_hps.qip').read_text()
+qip=(ipdir/'hps_lcd_subsys_agilex_hps_0.qip').read_text()
 data=re.search(r'-name HPS_ISW_DATA "([^"]+)"',qip).group(1)
 regs={k:int(v) for k,v in re.findall(r'\bpll (\S+) (\d+)',data)}
 selects={int(k):int(v) for k,v in re.findall(r'\bsel (\d+) (\d+)',data)}
 assert len(selects)==48
 assert {k:v for k,v in selects.items() if v!=8}=={27:9,38:5,39:5,43:7,44:7,45:7}
 assert 'SDM DDR 0' in data and 'intfcsel f2soc 0 intfcsel f2sdram 0' in data
-for name in ['H2F_Width','LWH2F_Width','f2s_data_width','f2sdram_data_width']:
+assert int(params['LWH2F_Width']) == 32
+for name in ['H2F_Width','f2s_data_width','f2sdram_data_width']:
     assert int(params[name])==0,(name,params[name])
 assert params['EMIF_AXI_Enable'].lower() in ['false','0']
 assert params['MPFE_is_present'].lower() in ['false','0']
@@ -79,7 +80,7 @@ header+=['static const uint8_t expected_pinsel[48]={'+','.join(str(selects[i]) f
 fw=HERE.parents[1]/'Source Code/Display/firmware'
 fw.mkdir(parents=True,exist_ok=True)
 (fw/'de25_handoff_facts.h').write_text('\n'.join(header)+'\n',newline='\n')
-files=[HERE/'generate_hps_lcd.tcl',HERE/'audit_handoff.py',HERE/'hps_lcd_subsys.qsys',HERE/'ip/hps_lcd_subsys/hps_lcd_subsys_agilex_hps.ip',xml,ipdir/'hps_lcd_subsys_agilex_hps.qip',HERE/'hps_lcd_subsys/synth/hps_lcd_subsys.v',HERE.parents[1]/'Source Code/Display/hps_lcd_island.v',SVD]
+files=[HERE/'generate_hps_lcd.tcl',HERE/'audit_handoff.py',HERE/'hps_lcd_subsys.qsys',HERE/'ip/hps_lcd_subsys/hps_lcd_subsys_agilex_hps_0.ip',xml,ipdir/'hps_lcd_subsys_agilex_hps_0.qip',HERE/'hps_lcd_subsys/synth/hps_lcd_subsys.v',HERE.parents[1]/'Source Code/Display/hps_lcd_island.v',SVD]
 report=dict(tool='Quartus Pro26.1 build110 / intel_agilex_5_soc14.0.0',device='A5ED013BB32AE4SCS',pins=pins,clock_words=words,pin_offsets=offsets,options=params['HPS_HANDOFF_OPTION_STRING'],source_sha256={str(p):hashlib.sha256(p.read_bytes()).hexdigest() for p in files},
  scope='Generated IP handoff metadata verified offline; fitted SDM binary not yet available; no fit or target test')
 (HERE/'handoff_audit.json').write_text(json.dumps(report,indent=2))

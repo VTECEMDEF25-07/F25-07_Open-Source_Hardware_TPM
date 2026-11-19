@@ -24,7 +24,7 @@ foreach {index function} {
 set_instance_parameter_value agilex_hps HPS_IO_Enable $lcd_io
 foreach {name value} {
     H2F_Width 0
-    LWH2F_Width 0
+    LWH2F_Width 32
     f2s_data_width 0
     f2sdram_data_width 0
     EMIF_AXI_Enable false
@@ -32,7 +32,7 @@ foreach {name value} {
     MPU_Events_Enable false
     F2H_IRQ_Enable false
     Rst_hps_warm_en false
-    Rst_h2f_cold_en false
+    Rst_h2f_cold_en true
     Rst_watchdog_en false
     UART1_PinMuxing IO
     UART1_Mode No_flow_control
@@ -74,6 +74,24 @@ foreach {name value} {
     Pwr_cpu_app_select 0
 } { set_instance_parameter_value agilex_hps $name $value }
 
+add_instance fabric_clock clock_source
+set_instance_parameter_value fabric_clock clockFrequency 50000000
+add_interface fabric_clock clock sink
+set_interface_property fabric_clock EXPORT_OF fabric_clock.clk_in
+add_interface fabric_reset reset sink
+set_interface_property fabric_reset EXPORT_OF fabric_clock.clk_in_reset
+add_instance display_regs altera_avalon_mm_bridge
+set_instance_parameter_value display_regs DATA_WIDTH 32
+set_instance_parameter_value display_regs ADDRESS_WIDTH 8
+set_instance_parameter_value display_regs USE_AUTO_ADDRESS_WIDTH 0
+add_connection fabric_clock.clk agilex_hps.lwhps2fpga_axi_clock
+add_connection fabric_clock.clk display_regs.clk
+add_connection agilex_hps.h2f_reset agilex_hps.lwhps2fpga_axi_reset
+add_connection fabric_clock.clk_reset display_regs.reset
+add_connection agilex_hps.lwhps2fpga display_regs.s0
+set_connection_parameter_value agilex_hps.lwhps2fpga/display_regs.s0 baseAddress 0x0000
+add_interface display avalon master
+set_interface_property display EXPORT_OF display_regs.m0
 add_interface hps_io conduit end
 set_interface_property hps_io EXPORT_OF agilex_hps.hps_io
 # Capture actual derived values; do not assume the firmware library's recipe.

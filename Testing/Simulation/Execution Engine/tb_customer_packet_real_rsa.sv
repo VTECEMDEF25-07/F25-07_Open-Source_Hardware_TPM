@@ -248,7 +248,10 @@ wire [31:0] job_id_o;
 reg [7:0] packet[0:1099];
 integer cycles=0,checks=0,raw_outputs=0,fd=0,scan=0;
 reg passed=0;
+reg [5:0] display_word_i=0;
+wire [31:0] display_data_o;
 customer_demo_packet #(.DEMO_PROVIDER_MODE(1),.DEMO_AES_EXPORT_ENABLE(0)) packet_dut(
+ .display_word_i(display_word_i),.display_data_o(display_data_o),
  .clock_i(clock_i),
  .reset_n_i(reset_n_i),
  .start_i(start_i),
@@ -498,6 +501,12 @@ aes_recovery_required_i=0;
  equalbyte(28,expected_value[2007:2000]);equalbyte(29,expected_value[1999:1992]);
  for(integer k=0;k<expected_value[2007:1992];k=k+1)
   equalbyte(30+k,expected_value[1991-8*k -:8]);
+ display_word_i=3; #1;
+ if(display_data_o !== (1024 + expected_value[2007:1992])) $fatal(1,"RSA LCD metadata");
+ for(integer k=0;k<expected_value[2007:1992];k++) begin
+    display_word_i=8+k/4; #1;
+    if(display_data_o[(k%4)*8+:8] !== expected_value[1991-8*k-:8]) $fatal(1,"RSA LCD payload");
+ end
  if(raw_outputs!=256 || opens!=1 || closes!=1 || private_active_i || !job_ready_o)
   $fatal(1,"real private lifecycle mismatch");
  consume;passed=1;

@@ -121,6 +121,8 @@ integer checks=0,jobs=0,terminals=0,cycles=0,n=0,base=0;
 reg [7:0] got;
 reg passed=0;
 initial clock_i=0; always #10 clock_i=~clock_i;
+reg [5:0] display_word_i=0;
+wire [31:0] display_data_o;
 customer_demo_packet #(.DEMO_PROVIDER_MODE(1),.DEMO_AES_EXPORT_ENABLE(1)) dut(.*);
 customer_aes_worker aes_worker(
  .clock_i(clock_i),.reset_n_i(reset_n_i),
@@ -263,6 +265,12 @@ rsa_progress_i=0;
   equalbyte(28,n>>8);equalbyte(29,n);
   for(integer k=0;k<n;k=k+1)equalbyte(30+k,oracle[base+k]);
   for(integer k=0;k<16;k=k+1)equalbyte(30+n+k,oracle[base+2048+k]);
+  display_word_i=3; #1;
+  if(display_data_o !== (512 + (n > 126 ? 126 : n))) $fatal(1,"AES LCD metadata");
+  for(integer k=0;k<128;k++) begin
+   display_word_i=8+k/4; #1;
+   if(display_data_o[(k%4)*8+:8] !== (k<n && k<126 ? oracle[base+k] : 8'd0)) $fatal(1,"AES LCD payload");
+  end
   if(terminals!=v+1 || jobs!=v+1)$fatal(1,"real worker job/terminal mismatch");
   $display("REAL_AES_PACKET_CASE_PASS bytes=%0d",n);consume;
  end

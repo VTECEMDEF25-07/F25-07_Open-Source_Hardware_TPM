@@ -4,28 +4,403 @@
 
 `timescale 1 ps / 1 ps
 module hps_lcd_subsys (
-		input  wire  hps_io_hps_osc_clk, // hps_io.hps_osc_clk
-		output wire  hps_io_spim0_clk,   //       .spim0_clk
-		output wire  hps_io_spim0_mosi,  //       .spim0_mosi
-		output wire  hps_io_spim0_ss0_n, //       .spim0_ss0_n
-		output wire  hps_io_uart1_tx,    //       .uart1_tx
-		input  wire  hps_io_uart1_rx,    //       .uart1_rx
-		inout  wire  hps_io_gpio34,      //       .gpio34
-		inout  wire  hps_io_gpio35,      //       .gpio35
-		inout  wire  hps_io_gpio42       //       .gpio42
+		input  wire        hps_io_hps_osc_clk,    //       hps_io.hps_osc_clk
+		output wire        hps_io_spim0_clk,      //             .spim0_clk
+		output wire        hps_io_spim0_mosi,     //             .spim0_mosi
+		output wire        hps_io_spim0_ss0_n,    //             .spim0_ss0_n
+		output wire        hps_io_uart1_tx,       //             .uart1_tx
+		input  wire        hps_io_uart1_rx,       //             .uart1_rx
+		inout  wire        hps_io_gpio34,         //             .gpio34
+		inout  wire        hps_io_gpio35,         //             .gpio35
+		inout  wire        hps_io_gpio42,         //             .gpio42
+		input  wire        display_waitrequest,   //      display.waitrequest
+		input  wire [31:0] display_readdata,      //             .readdata
+		input  wire        display_readdatavalid, //             .readdatavalid
+		output wire [0:0]  display_burstcount,    //             .burstcount
+		output wire [31:0] display_writedata,     //             .writedata
+		output wire [7:0]  display_address,       //             .address
+		output wire        display_write,         //             .write
+		output wire        display_read,          //             .read
+		output wire [3:0]  display_byteenable,    //             .byteenable
+		output wire        display_debugaccess,   //             .debugaccess
+		input  wire        fabric_clock_clk,      // fabric_clock.clk
+		input  wire        fabric_reset_reset_n   // fabric_reset.reset_n
 	);
 
-	hps_lcd_subsys_agilex_hps agilex_hps (
-		.h2f_reset_reset    (),                   //  output,  width = 1, h2f_reset.reset
-		.hps_io_hps_osc_clk (hps_io_hps_osc_clk), //   input,  width = 1,    hps_io.hps_osc_clk
-		.hps_io_spim0_clk   (hps_io_spim0_clk),   //  output,  width = 1,          .spim0_clk
-		.hps_io_spim0_mosi  (hps_io_spim0_mosi),  //  output,  width = 1,          .spim0_mosi
-		.hps_io_spim0_ss0_n (hps_io_spim0_ss0_n), //  output,  width = 1,          .spim0_ss0_n
-		.hps_io_uart1_tx    (hps_io_uart1_tx),    //  output,  width = 1,          .uart1_tx
-		.hps_io_uart1_rx    (hps_io_uart1_rx),    //   input,  width = 1,          .uart1_rx
-		.hps_io_gpio34      (hps_io_gpio34),      //   inout,  width = 1,          .gpio34
-		.hps_io_gpio35      (hps_io_gpio35),      //   inout,  width = 1,          .gpio35
-		.hps_io_gpio42      (hps_io_gpio42)       //   inout,  width = 1,          .gpio42
+	wire         fabric_clock_clk_clk;                            // fabric_clock:clk_out -> [agilex_hps:lwhps2fpga_axi_clock_clk, display_regs:clk, mm_interconnect_0:fabric_clock_clk_clk, rst_controller:clk, rst_controller_001:clk, rst_controller_002:clk]
+	wire         agilex_hps_h2f_reset_reset;                      // agilex_hps:h2f_reset_reset -> [agilex_hps:lwhps2fpga_axi_reset_reset, rst_controller_002:reset_in0]
+	wire   [1:0] agilex_hps_lwhps2fpga_awburst;                   // agilex_hps:lwhps2fpga_awburst -> mm_interconnect_0:agilex_hps_lwhps2fpga_awburst
+	wire   [7:0] agilex_hps_lwhps2fpga_arlen;                     // agilex_hps:lwhps2fpga_arlen -> mm_interconnect_0:agilex_hps_lwhps2fpga_arlen
+	wire   [3:0] agilex_hps_lwhps2fpga_wstrb;                     // agilex_hps:lwhps2fpga_wstrb -> mm_interconnect_0:agilex_hps_lwhps2fpga_wstrb
+	wire         agilex_hps_lwhps2fpga_wready;                    // mm_interconnect_0:agilex_hps_lwhps2fpga_wready -> agilex_hps:lwhps2fpga_wready
+	wire   [3:0] agilex_hps_lwhps2fpga_rid;                       // mm_interconnect_0:agilex_hps_lwhps2fpga_rid -> agilex_hps:lwhps2fpga_rid
+	wire         agilex_hps_lwhps2fpga_rready;                    // agilex_hps:lwhps2fpga_rready -> mm_interconnect_0:agilex_hps_lwhps2fpga_rready
+	wire   [7:0] agilex_hps_lwhps2fpga_awlen;                     // agilex_hps:lwhps2fpga_awlen -> mm_interconnect_0:agilex_hps_lwhps2fpga_awlen
+	wire   [3:0] agilex_hps_lwhps2fpga_arcache;                   // agilex_hps:lwhps2fpga_arcache -> mm_interconnect_0:agilex_hps_lwhps2fpga_arcache
+	wire         agilex_hps_lwhps2fpga_wvalid;                    // agilex_hps:lwhps2fpga_wvalid -> mm_interconnect_0:agilex_hps_lwhps2fpga_wvalid
+	wire  [28:0] agilex_hps_lwhps2fpga_araddr;                    // agilex_hps:lwhps2fpga_araddr -> mm_interconnect_0:agilex_hps_lwhps2fpga_araddr
+	wire   [2:0] agilex_hps_lwhps2fpga_arprot;                    // agilex_hps:lwhps2fpga_arprot -> mm_interconnect_0:agilex_hps_lwhps2fpga_arprot
+	wire   [2:0] agilex_hps_lwhps2fpga_awprot;                    // agilex_hps:lwhps2fpga_awprot -> mm_interconnect_0:agilex_hps_lwhps2fpga_awprot
+	wire  [31:0] agilex_hps_lwhps2fpga_wdata;                     // agilex_hps:lwhps2fpga_wdata -> mm_interconnect_0:agilex_hps_lwhps2fpga_wdata
+	wire         agilex_hps_lwhps2fpga_arvalid;                   // agilex_hps:lwhps2fpga_arvalid -> mm_interconnect_0:agilex_hps_lwhps2fpga_arvalid
+	wire   [3:0] agilex_hps_lwhps2fpga_awcache;                   // agilex_hps:lwhps2fpga_awcache -> mm_interconnect_0:agilex_hps_lwhps2fpga_awcache
+	wire   [3:0] agilex_hps_lwhps2fpga_arid;                      // agilex_hps:lwhps2fpga_arid -> mm_interconnect_0:agilex_hps_lwhps2fpga_arid
+	wire         agilex_hps_lwhps2fpga_arlock;                    // agilex_hps:lwhps2fpga_arlock -> mm_interconnect_0:agilex_hps_lwhps2fpga_arlock
+	wire         agilex_hps_lwhps2fpga_awlock;                    // agilex_hps:lwhps2fpga_awlock -> mm_interconnect_0:agilex_hps_lwhps2fpga_awlock
+	wire  [28:0] agilex_hps_lwhps2fpga_awaddr;                    // agilex_hps:lwhps2fpga_awaddr -> mm_interconnect_0:agilex_hps_lwhps2fpga_awaddr
+	wire   [1:0] agilex_hps_lwhps2fpga_bresp;                     // mm_interconnect_0:agilex_hps_lwhps2fpga_bresp -> agilex_hps:lwhps2fpga_bresp
+	wire         agilex_hps_lwhps2fpga_arready;                   // mm_interconnect_0:agilex_hps_lwhps2fpga_arready -> agilex_hps:lwhps2fpga_arready
+	wire  [31:0] agilex_hps_lwhps2fpga_rdata;                     // mm_interconnect_0:agilex_hps_lwhps2fpga_rdata -> agilex_hps:lwhps2fpga_rdata
+	wire         agilex_hps_lwhps2fpga_awready;                   // mm_interconnect_0:agilex_hps_lwhps2fpga_awready -> agilex_hps:lwhps2fpga_awready
+	wire   [1:0] agilex_hps_lwhps2fpga_arburst;                   // agilex_hps:lwhps2fpga_arburst -> mm_interconnect_0:agilex_hps_lwhps2fpga_arburst
+	wire   [2:0] agilex_hps_lwhps2fpga_arsize;                    // agilex_hps:lwhps2fpga_arsize -> mm_interconnect_0:agilex_hps_lwhps2fpga_arsize
+	wire         agilex_hps_lwhps2fpga_bready;                    // agilex_hps:lwhps2fpga_bready -> mm_interconnect_0:agilex_hps_lwhps2fpga_bready
+	wire         agilex_hps_lwhps2fpga_rlast;                     // mm_interconnect_0:agilex_hps_lwhps2fpga_rlast -> agilex_hps:lwhps2fpga_rlast
+	wire         agilex_hps_lwhps2fpga_wlast;                     // agilex_hps:lwhps2fpga_wlast -> mm_interconnect_0:agilex_hps_lwhps2fpga_wlast
+	wire   [1:0] agilex_hps_lwhps2fpga_rresp;                     // mm_interconnect_0:agilex_hps_lwhps2fpga_rresp -> agilex_hps:lwhps2fpga_rresp
+	wire   [3:0] agilex_hps_lwhps2fpga_awid;                      // agilex_hps:lwhps2fpga_awid -> mm_interconnect_0:agilex_hps_lwhps2fpga_awid
+	wire   [3:0] agilex_hps_lwhps2fpga_bid;                       // mm_interconnect_0:agilex_hps_lwhps2fpga_bid -> agilex_hps:lwhps2fpga_bid
+	wire         agilex_hps_lwhps2fpga_bvalid;                    // mm_interconnect_0:agilex_hps_lwhps2fpga_bvalid -> agilex_hps:lwhps2fpga_bvalid
+	wire   [2:0] agilex_hps_lwhps2fpga_awsize;                    // agilex_hps:lwhps2fpga_awsize -> mm_interconnect_0:agilex_hps_lwhps2fpga_awsize
+	wire         agilex_hps_lwhps2fpga_awvalid;                   // agilex_hps:lwhps2fpga_awvalid -> mm_interconnect_0:agilex_hps_lwhps2fpga_awvalid
+	wire         agilex_hps_lwhps2fpga_rvalid;                    // mm_interconnect_0:agilex_hps_lwhps2fpga_rvalid -> agilex_hps:lwhps2fpga_rvalid
+	wire  [31:0] mm_interconnect_0_display_regs_s0_readdata;      // display_regs:s0_readdata -> mm_interconnect_0:display_regs_s0_readdata
+	wire         mm_interconnect_0_display_regs_s0_waitrequest;   // display_regs:s0_waitrequest -> mm_interconnect_0:display_regs_s0_waitrequest
+	wire         mm_interconnect_0_display_regs_s0_debugaccess;   // mm_interconnect_0:display_regs_s0_debugaccess -> display_regs:s0_debugaccess
+	wire   [7:0] mm_interconnect_0_display_regs_s0_address;       // mm_interconnect_0:display_regs_s0_address -> display_regs:s0_address
+	wire         mm_interconnect_0_display_regs_s0_read;          // mm_interconnect_0:display_regs_s0_read -> display_regs:s0_read
+	wire   [3:0] mm_interconnect_0_display_regs_s0_byteenable;    // mm_interconnect_0:display_regs_s0_byteenable -> display_regs:s0_byteenable
+	wire         mm_interconnect_0_display_regs_s0_readdatavalid; // display_regs:s0_readdatavalid -> mm_interconnect_0:display_regs_s0_readdatavalid
+	wire         mm_interconnect_0_display_regs_s0_write;         // mm_interconnect_0:display_regs_s0_write -> display_regs:s0_write
+	wire  [31:0] mm_interconnect_0_display_regs_s0_writedata;     // mm_interconnect_0:display_regs_s0_writedata -> display_regs:s0_writedata
+	wire   [0:0] mm_interconnect_0_display_regs_s0_burstcount;    // mm_interconnect_0:display_regs_s0_burstcount -> display_regs:s0_burstcount
+	wire         rst_controller_reset_out_reset;                  // rst_controller:reset_out -> display_regs:reset
+	wire         fabric_clock_clk_reset_reset;                    // fabric_clock:reset_n_out -> [rst_controller:reset_in0, rst_controller_001:reset_in0]
+	wire         rst_controller_001_reset_out_reset;              // rst_controller_001:reset_out -> [mm_interconnect_0:display_regs_reset_reset_bridge_in_reset_reset, mm_interconnect_0:display_regs_s0_translator_reset_reset_bridge_in_reset_reset]
+	wire         rst_controller_002_reset_out_reset;              // rst_controller_002:reset_out -> mm_interconnect_0:agilex_hps_lwhps2fpga_translator_clk_reset_reset_bridge_in_reset_reset
+
+	hps_lcd_subsys_agilex_hps_0 agilex_hps (
+		.h2f_reset_reset            (agilex_hps_h2f_reset_reset),    //  output,   width = 1,            h2f_reset.reset
+		.lwhps2fpga_axi_clock_clk   (fabric_clock_clk_clk),          //   input,   width = 1, lwhps2fpga_axi_clock.clk
+		.lwhps2fpga_axi_reset_reset (agilex_hps_h2f_reset_reset),    //   input,   width = 1, lwhps2fpga_axi_reset.reset
+		.lwhps2fpga_awid            (agilex_hps_lwhps2fpga_awid),    //  output,   width = 4,           lwhps2fpga.awid
+		.lwhps2fpga_awaddr          (agilex_hps_lwhps2fpga_awaddr),  //  output,  width = 29,                     .awaddr
+		.lwhps2fpga_awlen           (agilex_hps_lwhps2fpga_awlen),   //  output,   width = 8,                     .awlen
+		.lwhps2fpga_awsize          (agilex_hps_lwhps2fpga_awsize),  //  output,   width = 3,                     .awsize
+		.lwhps2fpga_awburst         (agilex_hps_lwhps2fpga_awburst), //  output,   width = 2,                     .awburst
+		.lwhps2fpga_awlock          (agilex_hps_lwhps2fpga_awlock),  //  output,   width = 1,                     .awlock
+		.lwhps2fpga_awcache         (agilex_hps_lwhps2fpga_awcache), //  output,   width = 4,                     .awcache
+		.lwhps2fpga_awprot          (agilex_hps_lwhps2fpga_awprot),  //  output,   width = 3,                     .awprot
+		.lwhps2fpga_awvalid         (agilex_hps_lwhps2fpga_awvalid), //  output,   width = 1,                     .awvalid
+		.lwhps2fpga_awready         (agilex_hps_lwhps2fpga_awready), //   input,   width = 1,                     .awready
+		.lwhps2fpga_wdata           (agilex_hps_lwhps2fpga_wdata),   //  output,  width = 32,                     .wdata
+		.lwhps2fpga_wstrb           (agilex_hps_lwhps2fpga_wstrb),   //  output,   width = 4,                     .wstrb
+		.lwhps2fpga_wlast           (agilex_hps_lwhps2fpga_wlast),   //  output,   width = 1,                     .wlast
+		.lwhps2fpga_wvalid          (agilex_hps_lwhps2fpga_wvalid),  //  output,   width = 1,                     .wvalid
+		.lwhps2fpga_wready          (agilex_hps_lwhps2fpga_wready),  //   input,   width = 1,                     .wready
+		.lwhps2fpga_bid             (agilex_hps_lwhps2fpga_bid),     //   input,   width = 4,                     .bid
+		.lwhps2fpga_bresp           (agilex_hps_lwhps2fpga_bresp),   //   input,   width = 2,                     .bresp
+		.lwhps2fpga_bvalid          (agilex_hps_lwhps2fpga_bvalid),  //   input,   width = 1,                     .bvalid
+		.lwhps2fpga_bready          (agilex_hps_lwhps2fpga_bready),  //  output,   width = 1,                     .bready
+		.lwhps2fpga_arid            (agilex_hps_lwhps2fpga_arid),    //  output,   width = 4,                     .arid
+		.lwhps2fpga_araddr          (agilex_hps_lwhps2fpga_araddr),  //  output,  width = 29,                     .araddr
+		.lwhps2fpga_arlen           (agilex_hps_lwhps2fpga_arlen),   //  output,   width = 8,                     .arlen
+		.lwhps2fpga_arsize          (agilex_hps_lwhps2fpga_arsize),  //  output,   width = 3,                     .arsize
+		.lwhps2fpga_arburst         (agilex_hps_lwhps2fpga_arburst), //  output,   width = 2,                     .arburst
+		.lwhps2fpga_arlock          (agilex_hps_lwhps2fpga_arlock),  //  output,   width = 1,                     .arlock
+		.lwhps2fpga_arcache         (agilex_hps_lwhps2fpga_arcache), //  output,   width = 4,                     .arcache
+		.lwhps2fpga_arprot          (agilex_hps_lwhps2fpga_arprot),  //  output,   width = 3,                     .arprot
+		.lwhps2fpga_arvalid         (agilex_hps_lwhps2fpga_arvalid), //  output,   width = 1,                     .arvalid
+		.lwhps2fpga_arready         (agilex_hps_lwhps2fpga_arready), //   input,   width = 1,                     .arready
+		.lwhps2fpga_rid             (agilex_hps_lwhps2fpga_rid),     //   input,   width = 4,                     .rid
+		.lwhps2fpga_rdata           (agilex_hps_lwhps2fpga_rdata),   //   input,  width = 32,                     .rdata
+		.lwhps2fpga_rresp           (agilex_hps_lwhps2fpga_rresp),   //   input,   width = 2,                     .rresp
+		.lwhps2fpga_rlast           (agilex_hps_lwhps2fpga_rlast),   //   input,   width = 1,                     .rlast
+		.lwhps2fpga_rvalid          (agilex_hps_lwhps2fpga_rvalid),  //   input,   width = 1,                     .rvalid
+		.lwhps2fpga_rready          (agilex_hps_lwhps2fpga_rready),  //  output,   width = 1,                     .rready
+		.h2f_cold_reset_reset_n     (),                              //  output,   width = 1,       h2f_cold_reset.reset_n
+		.hps_io_hps_osc_clk         (hps_io_hps_osc_clk),            //   input,   width = 1,               hps_io.hps_osc_clk
+		.hps_io_spim0_clk           (hps_io_spim0_clk),              //  output,   width = 1,                     .spim0_clk
+		.hps_io_spim0_mosi          (hps_io_spim0_mosi),             //  output,   width = 1,                     .spim0_mosi
+		.hps_io_spim0_ss0_n         (hps_io_spim0_ss0_n),            //  output,   width = 1,                     .spim0_ss0_n
+		.hps_io_uart1_tx            (hps_io_uart1_tx),               //  output,   width = 1,                     .uart1_tx
+		.hps_io_uart1_rx            (hps_io_uart1_rx),               //   input,   width = 1,                     .uart1_rx
+		.hps_io_gpio34              (hps_io_gpio34),                 //   inout,   width = 1,                     .gpio34
+		.hps_io_gpio35              (hps_io_gpio35),                 //   inout,   width = 1,                     .gpio35
+		.hps_io_gpio42              (hps_io_gpio42)                  //   inout,   width = 1,                     .gpio42
+	);
+
+	hps_lcd_subsys_display_regs display_regs (
+		.clk              (fabric_clock_clk_clk),                            //   input,   width = 1,   clk.clk
+		.reset            (rst_controller_reset_out_reset),                  //   input,   width = 1, reset.reset
+		.s0_waitrequest   (mm_interconnect_0_display_regs_s0_waitrequest),   //  output,   width = 1,    s0.waitrequest
+		.s0_readdata      (mm_interconnect_0_display_regs_s0_readdata),      //  output,  width = 32,      .readdata
+		.s0_readdatavalid (mm_interconnect_0_display_regs_s0_readdatavalid), //  output,   width = 1,      .readdatavalid
+		.s0_burstcount    (mm_interconnect_0_display_regs_s0_burstcount),    //   input,   width = 1,      .burstcount
+		.s0_writedata     (mm_interconnect_0_display_regs_s0_writedata),     //   input,  width = 32,      .writedata
+		.s0_address       (mm_interconnect_0_display_regs_s0_address),       //   input,   width = 8,      .address
+		.s0_write         (mm_interconnect_0_display_regs_s0_write),         //   input,   width = 1,      .write
+		.s0_read          (mm_interconnect_0_display_regs_s0_read),          //   input,   width = 1,      .read
+		.s0_byteenable    (mm_interconnect_0_display_regs_s0_byteenable),    //   input,   width = 4,      .byteenable
+		.s0_debugaccess   (mm_interconnect_0_display_regs_s0_debugaccess),   //   input,   width = 1,      .debugaccess
+		.m0_waitrequest   (display_waitrequest),                             //   input,   width = 1,    m0.waitrequest
+		.m0_readdata      (display_readdata),                                //   input,  width = 32,      .readdata
+		.m0_readdatavalid (display_readdatavalid),                           //   input,   width = 1,      .readdatavalid
+		.m0_burstcount    (display_burstcount),                              //  output,   width = 1,      .burstcount
+		.m0_writedata     (display_writedata),                               //  output,  width = 32,      .writedata
+		.m0_address       (display_address),                                 //  output,   width = 8,      .address
+		.m0_write         (display_write),                                   //  output,   width = 1,      .write
+		.m0_read          (display_read),                                    //  output,   width = 1,      .read
+		.m0_byteenable    (display_byteenable),                              //  output,   width = 4,      .byteenable
+		.m0_debugaccess   (display_debugaccess)                              //  output,   width = 1,      .debugaccess
+	);
+
+	hps_lcd_subsys_fabric_clock fabric_clock (
+		.in_clk      (fabric_clock_clk),             //   input,  width = 1,       clk_in.clk
+		.reset_n     (fabric_reset_reset_n),         //   input,  width = 1, clk_in_reset.reset_n
+		.clk_out     (fabric_clock_clk_clk),         //  output,  width = 1,          clk.clk
+		.reset_n_out (fabric_clock_clk_reset_reset)  //  output,  width = 1,    clk_reset.reset_n
+	);
+
+	hps_lcd_subsys_altera_mm_interconnect_1920_4xy636q mm_interconnect_0 (
+		.agilex_hps_lwhps2fpga_awid                                             (agilex_hps_lwhps2fpga_awid),                      //   input,   width = 4,                                            agilex_hps_lwhps2fpga.awid
+		.agilex_hps_lwhps2fpga_awaddr                                           (agilex_hps_lwhps2fpga_awaddr),                    //   input,  width = 29,                                                                 .awaddr
+		.agilex_hps_lwhps2fpga_awlen                                            (agilex_hps_lwhps2fpga_awlen),                     //   input,   width = 8,                                                                 .awlen
+		.agilex_hps_lwhps2fpga_awsize                                           (agilex_hps_lwhps2fpga_awsize),                    //   input,   width = 3,                                                                 .awsize
+		.agilex_hps_lwhps2fpga_awburst                                          (agilex_hps_lwhps2fpga_awburst),                   //   input,   width = 2,                                                                 .awburst
+		.agilex_hps_lwhps2fpga_awlock                                           (agilex_hps_lwhps2fpga_awlock),                    //   input,   width = 1,                                                                 .awlock
+		.agilex_hps_lwhps2fpga_awcache                                          (agilex_hps_lwhps2fpga_awcache),                   //   input,   width = 4,                                                                 .awcache
+		.agilex_hps_lwhps2fpga_awprot                                           (agilex_hps_lwhps2fpga_awprot),                    //   input,   width = 3,                                                                 .awprot
+		.agilex_hps_lwhps2fpga_awvalid                                          (agilex_hps_lwhps2fpga_awvalid),                   //   input,   width = 1,                                                                 .awvalid
+		.agilex_hps_lwhps2fpga_awready                                          (agilex_hps_lwhps2fpga_awready),                   //  output,   width = 1,                                                                 .awready
+		.agilex_hps_lwhps2fpga_wdata                                            (agilex_hps_lwhps2fpga_wdata),                     //   input,  width = 32,                                                                 .wdata
+		.agilex_hps_lwhps2fpga_wstrb                                            (agilex_hps_lwhps2fpga_wstrb),                     //   input,   width = 4,                                                                 .wstrb
+		.agilex_hps_lwhps2fpga_wlast                                            (agilex_hps_lwhps2fpga_wlast),                     //   input,   width = 1,                                                                 .wlast
+		.agilex_hps_lwhps2fpga_wvalid                                           (agilex_hps_lwhps2fpga_wvalid),                    //   input,   width = 1,                                                                 .wvalid
+		.agilex_hps_lwhps2fpga_wready                                           (agilex_hps_lwhps2fpga_wready),                    //  output,   width = 1,                                                                 .wready
+		.agilex_hps_lwhps2fpga_bid                                              (agilex_hps_lwhps2fpga_bid),                       //  output,   width = 4,                                                                 .bid
+		.agilex_hps_lwhps2fpga_bresp                                            (agilex_hps_lwhps2fpga_bresp),                     //  output,   width = 2,                                                                 .bresp
+		.agilex_hps_lwhps2fpga_bvalid                                           (agilex_hps_lwhps2fpga_bvalid),                    //  output,   width = 1,                                                                 .bvalid
+		.agilex_hps_lwhps2fpga_bready                                           (agilex_hps_lwhps2fpga_bready),                    //   input,   width = 1,                                                                 .bready
+		.agilex_hps_lwhps2fpga_arid                                             (agilex_hps_lwhps2fpga_arid),                      //   input,   width = 4,                                                                 .arid
+		.agilex_hps_lwhps2fpga_araddr                                           (agilex_hps_lwhps2fpga_araddr),                    //   input,  width = 29,                                                                 .araddr
+		.agilex_hps_lwhps2fpga_arlen                                            (agilex_hps_lwhps2fpga_arlen),                     //   input,   width = 8,                                                                 .arlen
+		.agilex_hps_lwhps2fpga_arsize                                           (agilex_hps_lwhps2fpga_arsize),                    //   input,   width = 3,                                                                 .arsize
+		.agilex_hps_lwhps2fpga_arburst                                          (agilex_hps_lwhps2fpga_arburst),                   //   input,   width = 2,                                                                 .arburst
+		.agilex_hps_lwhps2fpga_arlock                                           (agilex_hps_lwhps2fpga_arlock),                    //   input,   width = 1,                                                                 .arlock
+		.agilex_hps_lwhps2fpga_arcache                                          (agilex_hps_lwhps2fpga_arcache),                   //   input,   width = 4,                                                                 .arcache
+		.agilex_hps_lwhps2fpga_arprot                                           (agilex_hps_lwhps2fpga_arprot),                    //   input,   width = 3,                                                                 .arprot
+		.agilex_hps_lwhps2fpga_arvalid                                          (agilex_hps_lwhps2fpga_arvalid),                   //   input,   width = 1,                                                                 .arvalid
+		.agilex_hps_lwhps2fpga_arready                                          (agilex_hps_lwhps2fpga_arready),                   //  output,   width = 1,                                                                 .arready
+		.agilex_hps_lwhps2fpga_rid                                              (agilex_hps_lwhps2fpga_rid),                       //  output,   width = 4,                                                                 .rid
+		.agilex_hps_lwhps2fpga_rdata                                            (agilex_hps_lwhps2fpga_rdata),                     //  output,  width = 32,                                                                 .rdata
+		.agilex_hps_lwhps2fpga_rresp                                            (agilex_hps_lwhps2fpga_rresp),                     //  output,   width = 2,                                                                 .rresp
+		.agilex_hps_lwhps2fpga_rlast                                            (agilex_hps_lwhps2fpga_rlast),                     //  output,   width = 1,                                                                 .rlast
+		.agilex_hps_lwhps2fpga_rvalid                                           (agilex_hps_lwhps2fpga_rvalid),                    //  output,   width = 1,                                                                 .rvalid
+		.agilex_hps_lwhps2fpga_rready                                           (agilex_hps_lwhps2fpga_rready),                    //   input,   width = 1,                                                                 .rready
+		.display_regs_s0_address                                                (mm_interconnect_0_display_regs_s0_address),       //  output,   width = 8,                                                  display_regs_s0.address
+		.display_regs_s0_write                                                  (mm_interconnect_0_display_regs_s0_write),         //  output,   width = 1,                                                                 .write
+		.display_regs_s0_read                                                   (mm_interconnect_0_display_regs_s0_read),          //  output,   width = 1,                                                                 .read
+		.display_regs_s0_readdata                                               (mm_interconnect_0_display_regs_s0_readdata),      //   input,  width = 32,                                                                 .readdata
+		.display_regs_s0_writedata                                              (mm_interconnect_0_display_regs_s0_writedata),     //  output,  width = 32,                                                                 .writedata
+		.display_regs_s0_burstcount                                             (mm_interconnect_0_display_regs_s0_burstcount),    //  output,   width = 1,                                                                 .burstcount
+		.display_regs_s0_byteenable                                             (mm_interconnect_0_display_regs_s0_byteenable),    //  output,   width = 4,                                                                 .byteenable
+		.display_regs_s0_readdatavalid                                          (mm_interconnect_0_display_regs_s0_readdatavalid), //   input,   width = 1,                                                                 .readdatavalid
+		.display_regs_s0_waitrequest                                            (mm_interconnect_0_display_regs_s0_waitrequest),   //   input,   width = 1,                                                                 .waitrequest
+		.display_regs_s0_debugaccess                                            (mm_interconnect_0_display_regs_s0_debugaccess),   //  output,   width = 1,                                                                 .debugaccess
+		.display_regs_reset_reset_bridge_in_reset_reset                         (rst_controller_001_reset_out_reset),              //   input,   width = 1,                         display_regs_reset_reset_bridge_in_reset.reset
+		.agilex_hps_lwhps2fpga_translator_clk_reset_reset_bridge_in_reset_reset (rst_controller_002_reset_out_reset),              //   input,   width = 1, agilex_hps_lwhps2fpga_translator_clk_reset_reset_bridge_in_reset.reset
+		.display_regs_s0_translator_reset_reset_bridge_in_reset_reset           (rst_controller_001_reset_out_reset),              //   input,   width = 1,           display_regs_s0_translator_reset_reset_bridge_in_reset.reset
+		.fabric_clock_clk_clk                                                   (fabric_clock_clk_clk)                             //   input,   width = 1,                                                 fabric_clock_clk.clk
+	);
+
+	altera_reset_controller #(
+		.NUM_RESET_INPUTS          (1),
+		.OUTPUT_RESET_SYNC_EDGES   ("deassert"),
+		.SYNC_DEPTH                (2),
+		.RESET_REQUEST_PRESENT     (0),
+		.RESET_REQ_WAIT_TIME       (1),
+		.MIN_RST_ASSERTION_TIME    (3),
+		.RESET_REQ_EARLY_DSRT_TIME (1),
+		.USE_RESET_REQUEST_IN0     (0),
+		.USE_RESET_REQUEST_IN1     (0),
+		.USE_RESET_REQUEST_IN2     (0),
+		.USE_RESET_REQUEST_IN3     (0),
+		.USE_RESET_REQUEST_IN4     (0),
+		.USE_RESET_REQUEST_IN5     (0),
+		.USE_RESET_REQUEST_IN6     (0),
+		.USE_RESET_REQUEST_IN7     (0),
+		.USE_RESET_REQUEST_IN8     (0),
+		.USE_RESET_REQUEST_IN9     (0),
+		.USE_RESET_REQUEST_IN10    (0),
+		.USE_RESET_REQUEST_IN11    (0),
+		.USE_RESET_REQUEST_IN12    (0),
+		.USE_RESET_REQUEST_IN13    (0),
+		.USE_RESET_REQUEST_IN14    (0),
+		.USE_RESET_REQUEST_IN15    (0),
+		.ADAPT_RESET_REQUEST       (0)
+	) rst_controller (
+		.reset_in0      (~fabric_clock_clk_reset_reset),  //   input,  width = 1, reset_in0.reset
+		.clk            (fabric_clock_clk_clk),           //   input,  width = 1,       clk.clk
+		.reset_out      (rst_controller_reset_out_reset), //  output,  width = 1, reset_out.reset
+		.reset_req      (),                               // (terminated),                       
+		.reset_req_in0  (1'b0),                           // (terminated),                       
+		.reset_in1      (1'b0),                           // (terminated),                       
+		.reset_req_in1  (1'b0),                           // (terminated),                       
+		.reset_in2      (1'b0),                           // (terminated),                       
+		.reset_req_in2  (1'b0),                           // (terminated),                       
+		.reset_in3      (1'b0),                           // (terminated),                       
+		.reset_req_in3  (1'b0),                           // (terminated),                       
+		.reset_in4      (1'b0),                           // (terminated),                       
+		.reset_req_in4  (1'b0),                           // (terminated),                       
+		.reset_in5      (1'b0),                           // (terminated),                       
+		.reset_req_in5  (1'b0),                           // (terminated),                       
+		.reset_in6      (1'b0),                           // (terminated),                       
+		.reset_req_in6  (1'b0),                           // (terminated),                       
+		.reset_in7      (1'b0),                           // (terminated),                       
+		.reset_req_in7  (1'b0),                           // (terminated),                       
+		.reset_in8      (1'b0),                           // (terminated),                       
+		.reset_req_in8  (1'b0),                           // (terminated),                       
+		.reset_in9      (1'b0),                           // (terminated),                       
+		.reset_req_in9  (1'b0),                           // (terminated),                       
+		.reset_in10     (1'b0),                           // (terminated),                       
+		.reset_req_in10 (1'b0),                           // (terminated),                       
+		.reset_in11     (1'b0),                           // (terminated),                       
+		.reset_req_in11 (1'b0),                           // (terminated),                       
+		.reset_in12     (1'b0),                           // (terminated),                       
+		.reset_req_in12 (1'b0),                           // (terminated),                       
+		.reset_in13     (1'b0),                           // (terminated),                       
+		.reset_req_in13 (1'b0),                           // (terminated),                       
+		.reset_in14     (1'b0),                           // (terminated),                       
+		.reset_req_in14 (1'b0),                           // (terminated),                       
+		.reset_in15     (1'b0),                           // (terminated),                       
+		.reset_req_in15 (1'b0)                            // (terminated),                       
+	);
+
+	altera_reset_controller #(
+		.NUM_RESET_INPUTS          (1),
+		.OUTPUT_RESET_SYNC_EDGES   ("both"),
+		.SYNC_DEPTH                (2),
+		.RESET_REQUEST_PRESENT     (0),
+		.RESET_REQ_WAIT_TIME       (1),
+		.MIN_RST_ASSERTION_TIME    (3),
+		.RESET_REQ_EARLY_DSRT_TIME (1),
+		.USE_RESET_REQUEST_IN0     (0),
+		.USE_RESET_REQUEST_IN1     (0),
+		.USE_RESET_REQUEST_IN2     (0),
+		.USE_RESET_REQUEST_IN3     (0),
+		.USE_RESET_REQUEST_IN4     (0),
+		.USE_RESET_REQUEST_IN5     (0),
+		.USE_RESET_REQUEST_IN6     (0),
+		.USE_RESET_REQUEST_IN7     (0),
+		.USE_RESET_REQUEST_IN8     (0),
+		.USE_RESET_REQUEST_IN9     (0),
+		.USE_RESET_REQUEST_IN10    (0),
+		.USE_RESET_REQUEST_IN11    (0),
+		.USE_RESET_REQUEST_IN12    (0),
+		.USE_RESET_REQUEST_IN13    (0),
+		.USE_RESET_REQUEST_IN14    (0),
+		.USE_RESET_REQUEST_IN15    (0),
+		.ADAPT_RESET_REQUEST       (0)
+	) rst_controller_001 (
+		.reset_in0      (~fabric_clock_clk_reset_reset),      //   input,  width = 1, reset_in0.reset
+		.clk            (fabric_clock_clk_clk),               //   input,  width = 1,       clk.clk
+		.reset_out      (rst_controller_001_reset_out_reset), //  output,  width = 1, reset_out.reset
+		.reset_req      (),                                   // (terminated),                       
+		.reset_req_in0  (1'b0),                               // (terminated),                       
+		.reset_in1      (1'b0),                               // (terminated),                       
+		.reset_req_in1  (1'b0),                               // (terminated),                       
+		.reset_in2      (1'b0),                               // (terminated),                       
+		.reset_req_in2  (1'b0),                               // (terminated),                       
+		.reset_in3      (1'b0),                               // (terminated),                       
+		.reset_req_in3  (1'b0),                               // (terminated),                       
+		.reset_in4      (1'b0),                               // (terminated),                       
+		.reset_req_in4  (1'b0),                               // (terminated),                       
+		.reset_in5      (1'b0),                               // (terminated),                       
+		.reset_req_in5  (1'b0),                               // (terminated),                       
+		.reset_in6      (1'b0),                               // (terminated),                       
+		.reset_req_in6  (1'b0),                               // (terminated),                       
+		.reset_in7      (1'b0),                               // (terminated),                       
+		.reset_req_in7  (1'b0),                               // (terminated),                       
+		.reset_in8      (1'b0),                               // (terminated),                       
+		.reset_req_in8  (1'b0),                               // (terminated),                       
+		.reset_in9      (1'b0),                               // (terminated),                       
+		.reset_req_in9  (1'b0),                               // (terminated),                       
+		.reset_in10     (1'b0),                               // (terminated),                       
+		.reset_req_in10 (1'b0),                               // (terminated),                       
+		.reset_in11     (1'b0),                               // (terminated),                       
+		.reset_req_in11 (1'b0),                               // (terminated),                       
+		.reset_in12     (1'b0),                               // (terminated),                       
+		.reset_req_in12 (1'b0),                               // (terminated),                       
+		.reset_in13     (1'b0),                               // (terminated),                       
+		.reset_req_in13 (1'b0),                               // (terminated),                       
+		.reset_in14     (1'b0),                               // (terminated),                       
+		.reset_req_in14 (1'b0),                               // (terminated),                       
+		.reset_in15     (1'b0),                               // (terminated),                       
+		.reset_req_in15 (1'b0)                                // (terminated),                       
+	);
+
+	altera_reset_controller #(
+		.NUM_RESET_INPUTS          (1),
+		.OUTPUT_RESET_SYNC_EDGES   ("both"),
+		.SYNC_DEPTH                (2),
+		.RESET_REQUEST_PRESENT     (0),
+		.RESET_REQ_WAIT_TIME       (1),
+		.MIN_RST_ASSERTION_TIME    (3),
+		.RESET_REQ_EARLY_DSRT_TIME (1),
+		.USE_RESET_REQUEST_IN0     (0),
+		.USE_RESET_REQUEST_IN1     (0),
+		.USE_RESET_REQUEST_IN2     (0),
+		.USE_RESET_REQUEST_IN3     (0),
+		.USE_RESET_REQUEST_IN4     (0),
+		.USE_RESET_REQUEST_IN5     (0),
+		.USE_RESET_REQUEST_IN6     (0),
+		.USE_RESET_REQUEST_IN7     (0),
+		.USE_RESET_REQUEST_IN8     (0),
+		.USE_RESET_REQUEST_IN9     (0),
+		.USE_RESET_REQUEST_IN10    (0),
+		.USE_RESET_REQUEST_IN11    (0),
+		.USE_RESET_REQUEST_IN12    (0),
+		.USE_RESET_REQUEST_IN13    (0),
+		.USE_RESET_REQUEST_IN14    (0),
+		.USE_RESET_REQUEST_IN15    (0),
+		.ADAPT_RESET_REQUEST       (0)
+	) rst_controller_002 (
+		.reset_in0      (agilex_hps_h2f_reset_reset),         //   input,  width = 1, reset_in0.reset
+		.clk            (fabric_clock_clk_clk),               //   input,  width = 1,       clk.clk
+		.reset_out      (rst_controller_002_reset_out_reset), //  output,  width = 1, reset_out.reset
+		.reset_req      (),                                   // (terminated),                       
+		.reset_req_in0  (1'b0),                               // (terminated),                       
+		.reset_in1      (1'b0),                               // (terminated),                       
+		.reset_req_in1  (1'b0),                               // (terminated),                       
+		.reset_in2      (1'b0),                               // (terminated),                       
+		.reset_req_in2  (1'b0),                               // (terminated),                       
+		.reset_in3      (1'b0),                               // (terminated),                       
+		.reset_req_in3  (1'b0),                               // (terminated),                       
+		.reset_in4      (1'b0),                               // (terminated),                       
+		.reset_req_in4  (1'b0),                               // (terminated),                       
+		.reset_in5      (1'b0),                               // (terminated),                       
+		.reset_req_in5  (1'b0),                               // (terminated),                       
+		.reset_in6      (1'b0),                               // (terminated),                       
+		.reset_req_in6  (1'b0),                               // (terminated),                       
+		.reset_in7      (1'b0),                               // (terminated),                       
+		.reset_req_in7  (1'b0),                               // (terminated),                       
+		.reset_in8      (1'b0),                               // (terminated),                       
+		.reset_req_in8  (1'b0),                               // (terminated),                       
+		.reset_in9      (1'b0),                               // (terminated),                       
+		.reset_req_in9  (1'b0),                               // (terminated),                       
+		.reset_in10     (1'b0),                               // (terminated),                       
+		.reset_req_in10 (1'b0),                               // (terminated),                       
+		.reset_in11     (1'b0),                               // (terminated),                       
+		.reset_req_in11 (1'b0),                               // (terminated),                       
+		.reset_in12     (1'b0),                               // (terminated),                       
+		.reset_req_in12 (1'b0),                               // (terminated),                       
+		.reset_in13     (1'b0),                               // (terminated),                       
+		.reset_req_in13 (1'b0),                               // (terminated),                       
+		.reset_in14     (1'b0),                               // (terminated),                       
+		.reset_req_in14 (1'b0),                               // (terminated),                       
+		.reset_in15     (1'b0),                               // (terminated),                       
+		.reset_req_in15 (1'b0)                                // (terminated),                       
 	);
 
 endmodule

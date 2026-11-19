@@ -1,23 +1,26 @@
-# DE25 RevD HPS-only LCD island
+# DE25 RevD HPS LCD and FPGA display registers
 
-Approved boundary: an HPS-only dedicated-pin island, without DDR, fabric buses or shared crypto clocks/resets. The DE25 board project now includes this subtree after lead-owned full fit/timing and physical runtime checks. Generated subsystem metadata by itself is not hardware acceptance.
+The HPS drives the ST7567 using the dedicated LCD pins and reads crypto results through its 32-bit lightweight HPS-to-FPGA bridge. The FPGA side uses the same 50 MHz PLL clock as the crypto engines. Platform Designer connects the HPS reset output to the lightweight AXI reset input. Each Avalon read returns a registered response one clock after acceptance.
 
-Actual generation: Quartus Pro26.1 build110, `intel_agilex_5_soc`14.0.0, target `A5ED013BB32AE4SCS`. Input clock/pin selections derive from the saved RevD vendor GHRD25.1.1; unrelated peripherals/DDR/bridges are disabled. No vendor precompiled board image or Premium PLL recipe is used.
+The HPS window starts at physical address 0x20000000. All entries below are 32-bit little-endian words.
 
-From this directory, with installed Quartus tools on PATH (or their full paths):
+| Word | Contents |
+| --- | --- |
+| 0 | Signature 0x444C4344 |
+| 1 | Result revision |
+| 2 | Completed decryption operation ID |
+| 3 | Algorithm in bits 10 through 8 (2 for AES, 4 for RSA), displayed byte count in bits 7 through 0 |
+| 4–6 | Current status word, operation ID and status sequence |
+| 8–39 | Up to 126 recovered message bytes, packed low byte first |
 
-```powershell
+Read the revision and status sequence before and after the payload to detect an overlapping update. Successful AES and validated RSA decryption publish the displayed bytes. Out-of-range payload lanes read zero. Writes have no effect.
+
+The DE25 project's QSF includes both the system QIP and the generated HPS, clock and Avalon bridge QIPs. The generated XML, QIP and handoff document the fitted design inputs. Run the following commands from this directory to generate synthesis sources and check the handoff in Quartus Pro 26.1.
+
+~~~powershell
 qsys-script --quartus-project=hps_lcd_subsys.qpf --script=generate_hps_lcd.tcl --jvm-max-heap-size=512m
 qsys-generate hps_lcd_subsys.qsys --synthesis=VERILOG --parallel=off --quartus-project=hps_lcd_subsys.qpf --jvm-max-heap-size=512m
 python audit_handoff.py
-```
+~~~
 
-These commands generate IP HDL, not a device synthesis/fit or bitstream. No board access. Initial inspection exposed the tool's incorrect automatic target default and old Tcl lacking `lrepeat`; the final script uses an explicit local QPF/device and supported Tcl list operations. It saves the derived report before conversion to a generic component. Generated XML/QIP remain the authoritative fact source.
-
-Generated IP filename is `ip/hps_lcd_subsys/hps_lcd_subsys_agilex_hps.ip` (the tool prefixes the instance name). Generated source/QIP live alongside it. **Include both** `hps_lcd_subsys/hps_lcd_subsys.qip` (system wrapper) **and** `ip/hps_lcd_subsys/hps_lcd_subsys_agilex_hps/hps_lcd_subsys_agilex_hps.qip` (actual HPS HDL/dedicated pins/1.8V/SDC). The lead verified that the system QIP alone does not carry the subordinate QIP. The source wrapper is `Source Code/Display/hps_lcd_island.v` at repository root. It exposes exactly the accepted9 scalar ports, binding the actual generated `hps_io_gpio34/35/42` spellings. Generated `h2f_reset` is unconnected. No fabric bus/clock/reset port exists.
-
-`generate_hps_lcd.log` and `generate_hdl.log` preserve actual commands/results. `handoff_audit.json` records input/output hashes, pins, clock fields, sparse register offsets and remaining limits. `hps_handoff.txt` is actual generated metadata, **not** the fitted SDM binary handed to software. `derived_parameters.json` preserves all generated component parameters. Audit checks exact9 pins/voltages, DDRoff, bridgeoff, all22 USEFPGA routesoff and48 pin selections. It emits the firmware's `de25_handoff_facts.h` from this QIP and installed `agilex5_hps.svd`, including sparse IO-register offsets.
-
-Actual clocks:25MHz EOSC; main PLL M128, C0=4/C1=4/C2=6/C3=8, giving3.2GHz VCO and400MHz NOC; peripheral M120, C0=5/C1=5/C2=125/C3=6, giving3GHz VCO. L4_SP/UART=100MHz. The exported FPGA reference-rate metadata125MHz is unused because all FPGA clock sources/user clocks/bridges are disabled. It is not a new fabric clock. Main NOCDIV is0x28260098, distinct from the library's fixed recipe. CPU boot core0 and all powered-core options come from the generated handoff.
-
-Firmware source/build/limits are documented under `Source Code/Display/firmware/README.md`. Combined fit/timing/reset/pins/RO checks, actual extracted SDM handoff preflight, volatile startup/UART, same-image original PhaseI and AES/RSA2048 flow now pass; exact identities and bounded runtime results are in `Testing/Host/DE25_CUSTOMER_DEMO.md`. Physical LCD glass remains unverified. The HPS island has no fabric clock/reset bridge; the separate crypto reset-release pair is timed and the vendor fan path remains independent.
+The audit checks the nine dedicated pins, pinmux selections, 1.8 V settings, clock handoff, disabled DDR, and enabled 32-bit lightweight bridge. The bare-metal firmware consumes the derived handoff facts during initialization.

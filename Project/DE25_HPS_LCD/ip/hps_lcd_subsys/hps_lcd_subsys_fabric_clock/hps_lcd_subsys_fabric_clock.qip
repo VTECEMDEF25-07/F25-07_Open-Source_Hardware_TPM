@@ -1,0 +1,29 @@
+set_global_assignment -entity "hps_lcd_subsys_fabric_clock" -library "hps_lcd_subsys_fabric_clock" -name IP_TOOL_NAME "QsysPrimePro"
+set_global_assignment -entity "hps_lcd_subsys_fabric_clock" -library "hps_lcd_subsys_fabric_clock" -name IP_TOOL_VERSION "26.1"
+set_global_assignment -entity "hps_lcd_subsys_fabric_clock" -library "hps_lcd_subsys_fabric_clock" -name IP_TOOL_ENV "QsysPrimePro"
+set_global_assignment -entity "hps_lcd_subsys_fabric_clock" -library "hps_lcd_subsys_fabric_clock" -name IP_TOOL_VENDOR_NAME "Altera Corporation"
+set_global_assignment -entity "hps_lcd_subsys_fabric_clock" -library "hps_lcd_subsys_fabric_clock" -name IP_TOP_LEVEL_COMPONENT_NAME "clock_source"
+set_global_assignment -entity "hps_lcd_subsys_fabric_clock" -library "hps_lcd_subsys_fabric_clock" -name PRE_COMPILED_MODULE "ON"
+set_global_assignment -entity "hps_lcd_subsys_fabric_clock" -library "hps_lcd_subsys_fabric_clock" -name OCS_IP_FILE [file join $::quartus(qip_path) "../hps_lcd_subsys_fabric_clock.ip"]
+set_global_assignment -entity "hps_lcd_subsys_fabric_clock" -library "hps_lcd_subsys_fabric_clock" -name OCS_IP_TYPE "clock_source"
+set_global_assignment -entity "hps_lcd_subsys_fabric_clock" -library "hps_lcd_subsys_fabric_clock" -name OCS_IP_VERSION "26.1"
+set_global_assignment -entity "hps_lcd_subsys_fabric_clock" -library "hps_lcd_subsys_fabric_clock" -name OCS_IP_HASH "a62hbwi"
+set_global_assignment -library "hps_lcd_subsys_fabric_clock" -name SOPCINFO_FILE [file join $::quartus(qip_path) "hps_lcd_subsys_fabric_clock.sopcinfo"]
+set_global_assignment -entity "hps_lcd_subsys_fabric_clock" -library "hps_lcd_subsys_fabric_clock" -name SLD_INFO "QSYS_NAME hps_lcd_subsys_fabric_clock HAS_SOPCINFO 1 GENERATION_ID 0"
+set_global_assignment -library "hps_lcd_subsys_fabric_clock" -name MISC_FILE [file join $::quartus(qip_path) "hps_lcd_subsys_fabric_clock.cmp"]
+set_global_assignment -entity "hps_lcd_subsys_fabric_clock" -library "hps_lcd_subsys_fabric_clock" -name IP_TARGETED_DEVICE_FAMILY "Agilex 5"
+set_global_assignment -entity "hps_lcd_subsys_fabric_clock" -library "hps_lcd_subsys_fabric_clock" -name IP_GENERATED_DEVICE_FAMILY "{Agilex 5}"
+set_global_assignment -entity "hps_lcd_subsys_fabric_clock" -library "hps_lcd_subsys_fabric_clock" -name IP_QSYS_MODE "STANDALONE"
+set_global_assignment -name SYNTHESIS_ONLY_QIP ON
+set_global_assignment -library "hps_lcd_subsys_fabric_clock" -name MISC_FILE [file join $::quartus(qip_path) "../hps_lcd_subsys_fabric_clock.ip"]
+
+set_global_assignment -entity "hps_lcd_subsys_fabric_clock" -library "hps_lcd_subsys_fabric_clock" -name IP_COMPONENT_NAME "aHBzX2xjZF9zdWJzeXNfZmFicmljX2Nsb2Nr"
+set_global_assignment -entity "hps_lcd_subsys_fabric_clock" -library "hps_lcd_subsys_fabric_clock" -name IP_COMPONENT_DISPLAY_NAME "c3lzdGVt"
+set_global_assignment -entity "hps_lcd_subsys_fabric_clock" -library "hps_lcd_subsys_fabric_clock" -name IP_COMPONENT_REPORT_HIERARCHY "On"
+set_global_assignment -entity "hps_lcd_subsys_fabric_clock" -library "hps_lcd_subsys_fabric_clock" -name IP_COMPONENT_INTERNAL "Off"
+set_global_assignment -entity "hps_lcd_subsys_fabric_clock" -library "hps_lcd_subsys_fabric_clock" -name IP_COMPONENT_AUTHOR "QWx0ZXJhIENvcnBvcmF0aW9u"
+set_global_assignment -entity "hps_lcd_subsys_fabric_clock" -library "hps_lcd_subsys_fabric_clock" -name IP_COMPONENT_VERSION "MS4w"
+
+
+set_global_assignment -library "hps_lcd_subsys_fabric_clock" -name VERILOG_FILE [file join $::quartus(qip_path) "synth/hps_lcd_subsys_fabric_clock.v"]
+

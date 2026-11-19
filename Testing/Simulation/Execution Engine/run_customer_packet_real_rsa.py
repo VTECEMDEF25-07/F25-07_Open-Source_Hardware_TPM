@@ -9,6 +9,7 @@ def main():
     p.add_argument('--service-repo',type=Path,required=True,
                    help='Integrated checkout containing private worker, compact math and TEST corpus')
     p.add_argument('--build',type=Path)
+    p.add_argument('--simulation-timeout', type=int, default=120, help='Wall-clock allowance in seconds for full RSA-2048 simulation')
     args=p.parse_args()
     td=Path(__file__).resolve().parent;repo=td.parents[2]
     service=args.service_repo.resolve();source=service/'Source Code'
@@ -49,7 +50,7 @@ def main():
                        stdout=log,stderr=subprocess.STDOUT,check=True,timeout=180)
         print('C++ build PASS',flush=True)
     with (out/'simulation.log').open('w') as log:
-        subprocess.run([str(obj/'run')],cwd=out,stdout=log,stderr=subprocess.STDOUT,check=True,timeout=120)
+        subprocess.run([str(obj/'run')],cwd=out,stdout=log,stderr=subprocess.STDOUT,check=True,timeout=args.simulation_timeout)
     log=(out/'simulation.log').read_text()
     if 'CUSTOMER_PACKET_REAL_RSA_PASS' not in log:raise AssertionError('Missing packet RSA PASS marker')
     if before!={str(f):hashlib.sha256(f.read_bytes()).hexdigest() for f in inputs}:

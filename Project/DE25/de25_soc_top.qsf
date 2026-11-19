@@ -18,7 +18,7 @@ set_global_assignment -name BOARD default
 set_global_assignment -name POWER_APPLY_THERMAL_MARGIN ADDITIONAL
 set_global_assignment -name TOP_LEVEL_ENTITY de25_soc_top
 set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
-set_global_assignment -name NUM_PARALLEL_PROCESSORS 6
+set_global_assignment -name NUM_PARALLEL_PROCESSORS 16
 set_global_assignment -name RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"
 set_global_assignment -name SDC_FILE de25_soc_top.sdc
 set_global_assignment -name SDC_FILE "../spi_timing.sdc"
@@ -45,7 +45,9 @@ set_global_assignment -name VERILOG_FILE "de25_soc_top.v"
 set_global_assignment -name VERILOG_FILE "../../Source Code/Display/hps_lcd_island.v"
 # Fully generated source: include system wrapper AND its separately generated IP QIP.
 set_global_assignment -name QIP_FILE "../DE25_HPS_LCD/hps_lcd_subsys/hps_lcd_subsys.qip"
-set_global_assignment -name QIP_FILE "../DE25_HPS_LCD/ip/hps_lcd_subsys/hps_lcd_subsys_agilex_hps/hps_lcd_subsys_agilex_hps.qip"
+set_global_assignment -name QIP_FILE "../DE25_HPS_LCD/ip/hps_lcd_subsys/hps_lcd_subsys_agilex_hps_0/hps_lcd_subsys_agilex_hps_0.qip"
+set_global_assignment -name QIP_FILE "../DE25_HPS_LCD/ip/hps_lcd_subsys/hps_lcd_subsys_display_regs/hps_lcd_subsys_display_regs.qip"
+set_global_assignment -name QIP_FILE "../DE25_HPS_LCD/ip/hps_lcd_subsys/hps_lcd_subsys_fabric_clock/hps_lcd_subsys_fabric_clock.qip"
 # Fixed HPS_LOCATION/1.8V bindings are carried by the generated IP QIP.
 set_global_assignment -name VERILOG_FILE "de25_clock.v"
 set_global_assignment -name VERILOG_FILE "../../Source Code/TPM_TOP.v"
