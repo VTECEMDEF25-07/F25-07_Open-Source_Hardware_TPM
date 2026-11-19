@@ -47,6 +47,48 @@ static int enable_display_bridge(void) {
     return !(de25_rd(reset) & lw);
 }
 
+static void startup_frame(uint8_t frame[1024]) {
+    render_status(frame, NULL, 0);
+    /* Alternating blocks on the top and bottom edges also reveal contrast,
+     * orientation and clipping while the board waits for the fabric. */
+    for (unsigned col = 0; col < 128; col++) {
+        frame[col] = (col & 8) ? 0xff : 0;
+        frame[7*128 + col] = (col & 8) ? 0 : 0xff;
+    }
+}
+
+static void trace_value(const char *name, uint32_t value) {
+    char hex[] = "00000000\r\n";
+    for (unsigned i = 0; i < 8; ++i)
+        hex[i] = "0123456789abcdef"[(value >> (28 - 4*i)) & 15U];
+    uart_puts(name);
+    uart_puts(hex);
+}
+
+/* Agilex 5 TF-A ncore_ccu.c, ccu_caiu0[]: CPU -> DII0 lightweight
+ * address window. The bare-metal entry point replaces the vendor FSBL. */
+static int configure_display_route(void) {
+    static const struct { uintptr_t address; uint32_t value, mask; } route[] = {
+        {0x1c0003c0, 3, 0x1f},
+        {0x1c000444, 0x20000, 0xffffffff},
+        {0x1c000448, 0, 0xff},
+        {0x1c000440, 0xc1100006, 0xc1f03e1f}
+    };
+    for (unsigned i = 0; i < sizeof(route)/sizeof(route[0]); ++i) {
+        uint32_t before = de25_rd(route[i].address);
+        trace_value("CCU address ", (uint32_t)route[i].address);
+        trace_value("CCU before ", before);
+        de25_wr(route[i].address, (before & ~route[i].mask) | route[i].value);
+        uint32_t after = de25_rd(route[i].address);
+        trace_value("CCU after ", after);
+        if ((after & route[i].mask) != route[i].value) return 0;
+    }
+#ifndef DE25_HOST_TEST
+    __asm__ volatile("dsb sy; isb" ::: "memory");
+#endif
+    return 1;
+}
+
 int main(void) {
     static uint8_t frame[1024];
     uint32_t last_revision = 0, last_sequence = 0;
@@ -56,11 +98,32 @@ int main(void) {
     lcd_diag.error = board_init();
     if (lcd_diag.error) return 1;
     lcd_diag.stage = 2;
-    if (!lcd_init()) { lcd_diag.error = 20; return 1; }
-    if (!enable_display_bridge()) { lcd_diag.error = 23; return 1; }
+    uart_puts("EXPO LCD: HPS booted, starting panel initialization\r\n");
+    (void)lcd_diag_begin();
+    if (!lcd_init()) { lcd_diag.error = 20; uart_puts("EXPO LCD: panel init failed\r\n"); return 1; }
+    lcd_diag_quiet();
+    startup_frame(frame);
+    if (!lcd_frame(frame)) { lcd_diag.error = 21; uart_puts("EXPO LCD: test frame failed\r\n"); return 1; }
+    uart_puts("EXPO LCD: test frame sent before bridge\r\n");
+    uint64_t started = ticks();
+    while (ticks() - started < tick_hz()) {}
+    uart_puts("EXPO LCD: enabling lightweight bridge\r\n");
+    if (!configure_display_route()) { lcd_diag.error = 25; uart_puts("EXPO LCD: CCU route failed\r\n"); return 1; }
+    if (!enable_display_bridge()) { lcd_diag.error = 23; uart_puts("EXPO LCD: bridge reset release failed\r\n"); return 1; }
     lcd_diag.stage = 3;
-    if (display_word(SIGNATURE) != 0x444c4344) { lcd_diag.error = 24; return 1; }
+    uart_puts("EXPO LCD: reading FPGA signature\r\n");
+    uint32_t signature = display_word(SIGNATURE);
+    trace_value("EXPO LCD: FPGA signature ", signature);
+    if (signature != 0x444c4344) { lcd_diag.error = 24; return 1; }
+    uint64_t last_heartbeat = ticks(), last_poll = 0;
     for (;;) {
+        uint64_t now = ticks();
+        if (now - last_heartbeat >= (uint64_t)tick_hz()*5) {
+            trace_value("EXPO LCD: frames ", lcd_diag.frames);
+            last_heartbeat = now;
+        }
+        if (now - last_poll < tick_hz()/100) continue;
+        last_poll = now;
         uint32_t seq = display_word(STATUS_SEQ);
         uint32_t rev = display_word(REVISION);
         if (!first && seq == last_sequence && rev == last_revision) continue;
@@ -94,6 +157,10 @@ int main(void) {
         if (valid) render_plaintext(frame, &text);
         else render_status(frame, &status, 0);
         if (!lcd_frame(frame)) { lcd_diag.error = 21; return 1; }
+        if (first)
+            uart_puts("EXPO LCD: first live status frame sent\r\n");
+        if (valid)
+            trace_value("EXPO LCD: plaintext frame operation ", text.operation_id);
         lcd_diag.frames++;
         lcd_diag.sequence = seq;
         last_sequence = seq;

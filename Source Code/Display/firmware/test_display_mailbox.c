@@ -7,15 +7,21 @@
 int lcd_demo_main(void);
 static jmp_buf done;
 static uint32_t regs[40], reset = 2, control, request, revision_retries;
-static unsigned rendered, frames;
+static unsigned rendered, frames, pattern_sent;
 static const uintptr_t base = 0x20000000;
+static const uintptr_t ccu_address[] = {0x1c0003c0, 0x1c000444, 0x1c000448, 0x1c000440};
+static const uint32_t ccu_expected[] = {0xffffffe3, 0x20000, 0xffffff00, 0xff1fc1e6};
+static uint32_t ccu_words[] = {~0U, ~0U, ~0U, ~0U};
+static unsigned ccu_written;
 
 uint32_t de25_rd(uintptr_t address) {
+    for (unsigned i = 0; i < 4; ++i)
+        if (address == ccu_address[i]) return ccu_words[i];
     if (address == 0x10d1102c) return reset;
     if (address == 0x10d1205c) return control;
     if (address == 0x10d11014) return request;
     assert(address >= base && address < base + sizeof(regs) && !(address & 3));
-    assert(!(reset & 2) && (control & 2));
+    assert(pattern_sent && ccu_written == 4 && !(reset & 2) && (control & 2));
     unsigned index = (address-base)/4;
     if (index == 8 && !revision_retries) {
         /* Simulate an operation replacing the result during the read. */
@@ -27,6 +33,11 @@ uint32_t de25_rd(uintptr_t address) {
     return regs[index];
 }
 void de25_wr(uintptr_t address, uint32_t value) {
+    if (ccu_written < 4 && address == ccu_address[ccu_written]) {
+        assert(pattern_sent && value == ccu_expected[ccu_written]);
+        ccu_words[ccu_written++] = value;
+        return;
+    }
     if (address == 0x10d11014) request = value;
     else if (address == 0x10d11018) assert(value == 512);
     else if (address == 0x10d1102c) reset = value;
@@ -37,8 +48,12 @@ uint64_t ticks(void) { static uint64_t t; return ++t; }
 uint32_t tick_hz(void) { return 1000; }
 uint32_t board_init(void) { return 0; }
 int lcd_init(void) { return 1; }
+int lcd_diag_begin(void) { return 1; }
+void lcd_diag_quiet(void) {}
+void uart_puts(const char *s) { (void)s; }
 void render_status(uint8_t frame[1024], const struct snapshot *s, int stale) {
     (void)frame;
+    if (!s) { assert(!pattern_sent && !rendered); return; }
     assert(!stale);
     switch (frames) {
         case 3: assert((s->status_word & 15U) == 9); break;
@@ -61,6 +76,14 @@ void render_plaintext(uint8_t frame[1024], const struct plaintext_frame *t) {
 }
 int lcd_frame(const uint8_t *frame) {
     (void)frame;
+    if (!pattern_sent) {
+        for (unsigned i=0; i<128; i++) {
+            assert(frame[i] == ((i & 8) ? 255 : 0));
+            assert(frame[7*128+i] == ((i & 8) ? 0 : 255));
+        }
+        pattern_sent=1;
+        return 1;
+    }
     assert(rendered == frames+1);
     frames++;
     regs[6]++;
