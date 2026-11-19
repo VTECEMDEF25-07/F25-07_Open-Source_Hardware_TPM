@@ -6,6 +6,8 @@
 `default_nettype none
 module symm_top #(
     parameter MAX_SYM_DATA_BYTES = 1024,
+    parameter AES_KEY_BITS = 256,
+    parameter ENABLE_SESSION_PARAMETER = 1,
     parameter RAM_ADDR_WIDTH = 12,
     parameter MAX_SECRET_BYTES = 128,
     parameter MAX_NONCE_BYTES = 64
@@ -69,7 +71,7 @@ module symm_top #(
     reg [31:0] session_length_r;
     reg session_completed_r;
     wire accept_w = reset_n_i && state_r == IDLE && start_i;
-    wire invalid_session_w = data_length_i > MAX_SYM_DATA_BYTES ||
+    wire invalid_session_w = !ENABLE_SESSION_PARAMETER || AES_KEY_BITS != 256 || data_length_i > MAX_SYM_DATA_BYTES ||
         data_length_i > 32'd65535 || input_base_i != output_base_i;
     // s_* signals belong to session protection; p_* belong to EncryptDecrypt2.
     wire p_busy, p_done, p_error, s_busy, s_done, cfb_busy;
@@ -146,6 +148,9 @@ module symm_top #(
         .cfb_data_i(cfb_result_w), .cfb_iv_i(cfb_final_iv_w)
     );
     // Session path: derive CFB key/IV or XOR mask using KDFa and HMAC.
+    // Primitive-only packet builds omit the unrelated KDFa datapath at
+    // elaboration rather than relying on late constant-input optimization.
+    generate if(ENABLE_SESSION_PARAMETER) begin : session_enabled
     session_parameter_controller #(
         .MAX_DATA_BYTES(MAX_SYM_DATA_BYTES), .RAM_ADDR_WIDTH(RAM_ADDR_WIDTH),
         .MAX_SECRET_BYTES(MAX_SECRET_BYTES), .MAX_NONCE_BYTES(MAX_NONCE_BYTES)
@@ -178,8 +183,20 @@ module symm_top #(
         .hmac_digest_ready_o(hmac_digest_ready_o)
     );
 
+    end else begin : session_disabled
+        assign s_busy=0; assign s_done=0; assign s_rc=12'h095;
+        assign s_final_iv=0; assign s_cfb_start=0; assign s_key=0;
+        assign s_iv=0; assign s_data=0; assign s_bytes=0; assign s_decrypt=0;
+        assign s_req_valid=0; assign s_req_write=0; assign s_addr=0;
+        assign s_write=0; assign s_rsp_ready=0;
+        assign hmac_start_o=0; assign hmac_key_data_o=0; assign hmac_message_data_o=0;
+        assign hmac_key_valid_o=0; assign hmac_key_end_o=0;
+        assign hmac_message_valid_o=0; assign hmac_message_end_o=0;
+        assign hmac_digest_ready_o=0;
+    end endgenerate
+
     // Shared CFB worker: the remembered path selects its key, IV and data.
-    cfb_block WORKER (
+    cfb_block #(.KEY_BITS(AES_KEY_BITS)) WORKER (
         .clock_i(clock_i), .reset_n_i(reset_n_i), .start_i(cfb_start_w),
         .key_i(session_r ? s_key : p_key), .iv_i(session_r ? s_iv : p_iv),
         .data_in_i(session_r ? s_data : p_data),

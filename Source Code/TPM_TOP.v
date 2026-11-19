@@ -21,6 +21,7 @@
 module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
     parameter ENABLE_ENCRYPTDECRYPT2 = 0, parameter ENABLE_GETRANDOM = 0,
     parameter ENABLE_INTERNAL_KEYGEN = 0,
+    parameter ENABLE_AES_SLOT_CONSUMER = 0, ENABLE_AES_KEY_FIXTURE = 0,
     parameter ENABLE_PCR_EXTEND = 0,
     parameter [23:0] PCR_EXTEND_EMPTY_AUTH_MASK = 24'd0,
     parameter [4:0] PCR_EXTEND_LOCALITY_MASK = 5'b00001)
@@ -42,7 +43,9 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
     input wire aes_key_reply_valid_i,
     output wire aes_key_reply_ready_o,
     input wire [255:0] aes_resolved_key_i,
-    input wire [31:0] aes_key_reply_code_i
+    input wire [31:0] aes_key_reply_code_i,
+    // Trusted internal fixture only; no host authorization semantics.
+    input wire aes_slot_allow_i
 );
 
 	// this module is simply instantiations and their connections
@@ -112,6 +115,22 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
     wire [31:0] aes_rsp_code;
     wire aes_rsp_valid;
     wire [15:0] engine_rsp_length;
+    wire aes_lookup, aes_lookup_ready, aes_lookup_reply, aes_lookup_reply_ready;
+    wire aes_key_release, aes_response_consumed;
+    wire [31:0] aes_lookup_handle, aes_lookup_code;
+    wire [255:0] aes_lookup_key;
+    wire use_slot = ENABLE_INTERNAL_KEYGEN && ENABLE_AES_SLOT_CONSUMER;
+    wire slot_lookup_ready, slot_lookup_reply;
+    wire [31:0] slot_lookup_code;
+    wire [255:0] slot_lookup_key;
+    assign aes_lookup_ready = use_slot ? slot_lookup_ready :
+        ENABLE_AES_KEY_FIXTURE ? aes_key_request_ready_i : 1'b1;
+    assign aes_lookup_reply = use_slot ? slot_lookup_reply :
+        ENABLE_AES_KEY_FIXTURE ? aes_key_reply_valid_i : 1'b1;
+    assign aes_lookup_code = use_slot ? slot_lookup_code :
+        ENABLE_AES_KEY_FIXTURE ? aes_key_reply_code_i : 32'h18b;
+    assign aes_lookup_key = use_slot ? slot_lookup_key :
+        ENABLE_AES_KEY_FIXTURE ? aes_resolved_key_i : 256'd0;
 
     assign exec_cmd_addr = select_aes ? aes_cmd_addr : engine_cmd_addr;
     assign exec_rsp_length = select_aes ? aes_rsp_length : engine_rsp_length[11:0];
@@ -127,11 +146,15 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
             .command_addr_o(aes_cmd_addr), .command_byte_i(exec_cmd_byte),
             .response_valid_o(aes_rsp_valid), .response_code_o(aes_rsp_code),
             .response_length_o(aes_rsp_length), .response_addr_i(exec_rsp_addr),
-            .response_byte_o(aes_rsp_byte), .key_request_o(aes_key_request_o),
-            .key_request_ready_i(aes_key_request_ready_i), .key_handle_o(aes_key_handle_o),
-            .key_reply_valid_i(aes_key_reply_valid_i), .key_reply_ready_o(aes_key_reply_ready_o),
-            .resolved_key_i(aes_resolved_key_i), .key_reply_code_i(aes_key_reply_code_i)
+            .response_byte_o(aes_rsp_byte), .key_request_o(aes_lookup),
+            .key_request_ready_i(aes_lookup_ready), .key_handle_o(aes_lookup_handle),
+            .key_reply_valid_i(aes_lookup_reply), .key_reply_ready_o(aes_lookup_reply_ready),
+            .resolved_key_i(aes_lookup_key), .key_reply_code_i(aes_lookup_code),
+            .response_consumed_i(aes_response_consumed), .busy_o(), .key_release_o(aes_key_release)
         );
+        assign aes_key_request_o=ENABLE_AES_KEY_FIXTURE && !use_slot && aes_lookup;
+        assign aes_key_handle_o=ENABLE_AES_KEY_FIXTURE && !use_slot ? aes_lookup_handle : 32'd0;
+        assign aes_key_reply_ready_o=ENABLE_AES_KEY_FIXTURE && !use_slot && aes_lookup_reply_ready;
     end else begin : aes_command_disabled
         assign aes_cmd_addr = 0;
         assign aes_rsp_length = 0;
@@ -141,6 +164,8 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
         assign aes_key_request_o = 0;
         assign aes_key_handle_o = 0;
         assign aes_key_reply_ready_o = 0;
+        assign aes_lookup=0; assign aes_lookup_handle=0;
+        assign aes_lookup_reply_ready=0; assign aes_key_release=0;
     end endgenerate
 
     // Host Hash uses raw SHA; PCR_Read uses the same subsystem PCR bank.
@@ -198,7 +223,7 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
 		.commandCode_o(commandCode), .responseCode_i(scoped_command_en ? exec_rsp_code : responseCode),
         .exec_cmd_addr_i(exec_cmd_addr), .exec_cmd_byte_o(exec_cmd_byte),
         .exec_rsp_length_i(exec_rsp_length), .exec_rsp_addr_o(exec_rsp_addr),
-        .exec_rsp_byte_i(exec_rsp_byte),
+        .exec_rsp_byte_i(exec_rsp_byte), .exec_rsp_consumed_o(aes_response_consumed),
 		.commandParam_o(commandParam), .commandTag_o(commandTag),
 		.locality_o(locality), .commandSize_o(commandSize),
 		
@@ -230,7 +255,9 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
     // Preserve inherited command behavior, including its authorization
     // placeholders. Scoped commands are isolated from these stubs; this routing
     // compatibility change does not implement real legacy authorization.
-	execution_engine #(.ENABLE_INTERNAL_KEYGEN(ENABLE_INTERNAL_KEYGEN), .IP_TYPE(IP_TYPE), .DEVICE_FAMILY(DEVICE_FAMILY), .ENABLE_HASH_COMMAND(1), .ENABLE_PCR_COMMANDS(1), .ENABLE_GETRANDOM(ENABLE_GETRANDOM),
+	execution_engine #(.ENABLE_INTERNAL_KEYGEN(ENABLE_INTERNAL_KEYGEN),
+        .ENABLE_AES_SLOT_CONSUMER(ENABLE_AES_SLOT_CONSUMER && ENABLE_ENCRYPTDECRYPT2),
+        .IP_TYPE(IP_TYPE), .DEVICE_FAMILY(DEVICE_FAMILY), .ENABLE_HASH_COMMAND(1), .ENABLE_PCR_COMMANDS(1), .ENABLE_GETRANDOM(ENABLE_GETRANDOM),
         .ENABLE_PCR_EXTEND(ENABLE_PCR_EXTEND),
         .PCR_EXTEND_EMPTY_AUTH_MASK(PCR_EXTEND_EMPTY_AUTH_MASK),
         .PCR_EXTEND_LOCALITY_MASK(PCR_EXTEND_LOCALITY_MASK)) ee
@@ -239,6 +266,14 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
         .keygen_request_i(1'b0), .keygen_profile_i(2'd0), .keygen_id_i(32'd0), .keygen_allow_i(1'b0),
         .keygen_completion_ready_i(1'b1), .keygen_release_i(1'b0), .keygen_private_address_i(8'd0),
         .keygen_result_enable_i(1'b1), .keygen_ownership_enable_i(1'b1), .keygen_terminal_enable_i(1'b1),
+        .aes_slot_request_i(use_slot && aes_lookup), .aes_slot_handle_i(aes_lookup_handle),
+        .aes_slot_allow_i(aes_slot_allow_i), .aes_slot_request_ready_o(slot_lookup_ready),
+        .aes_slot_reply_o(slot_lookup_reply), .aes_slot_reply_ready_i(aes_lookup_reply_ready),
+        .aes_slot_key_o(slot_lookup_key), .aes_slot_code_o(slot_lookup_code),
+        .aes_slot_release_i(aes_key_release), .aes_slot_reserved_o(),
+        .rsa_request_valid_i(1'b0),.rsa_request_id_i(32'd0),.rsa_allow_i(1'b0),.rsa_operation_i(2'd0),
+        .rsa_operand_valid_i(1'b0),.rsa_operand_data_i(32'd0),.rsa_operand_last_i(1'b0),
+        .rsa_result_ready_i(1'b0),.rsa_completion_ready_i(1'b0),
         .clock_i(CLOCK_50), .reset_n_i(rst_n),
 		.command_ready_i(execStart && !select_aes), .command_tag_i(commandTag),
 		.command_size_i(commandSize), .command_code_i(commandCode), 

@@ -43,7 +43,7 @@ module keygen_rsa_engine #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agi
         else if(cmd_valid_i && cmd_ready_o) target_reg<=service_select ? 2:1;
         else if(rsp_valid_o && rsp_ready_i) target_reg<=0;
     end
-    keygen_math #(.MAX_LIMBS(32), .IP_TYPE(IP_TYPE), .DEVICE_FAMILY(DEVICE_FAMILY)) math (
+    keygen_math_compact #(.MAX_LIMBS(32), .IP_TYPE(IP_TYPE), .DEVICE_FAMILY(DEVICE_FAMILY)) math (
         .clock_i(clock_i),.reset_n_i(reset_n_i),
         .cmd_valid_i(cmd_valid_i && target_reg==0 && !service_select),.cmd_ready_o(math_cmd_ready),
         .cmd_op_i(cmd_op_i),.cmd_arg0_i(cmd_arg0_i),.cmd_arg1_i(cmd_arg1_i),.cmd_arg2_i(cmd_arg2_i),.cmd_arg3_i(cmd_arg3_i),

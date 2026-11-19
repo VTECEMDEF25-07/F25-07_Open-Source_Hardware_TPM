@@ -1,5 +1,5 @@
 `timescale 1ns/1ns
-module tb_tpm2_hash_spi #(parameter ENABLE_AES_TEST = 0);
+module tb_tpm2_hash_spi #(parameter ENABLE_AES_TEST = 0, ENABLE_GENERATED_AES_TEST=0);
 reg clk=0, clk100=0, rst=0, sck=0, cs=1, mosi=0;
 wire miso, irq;
 always #10 clk=~clk;
@@ -20,11 +20,36 @@ always @(posedge clk) begin
     key_reply_valid <= 0;
 end
 
-TPM_TOP #(.ENABLE_ENCRYPTDECRYPT2(ENABLE_AES_TEST)) dut(.CLOCK_50(clk),.RESET_n(rst),
+TPM_TOP #(.ENABLE_ENCRYPTDECRYPT2(ENABLE_AES_TEST),
+ .ENABLE_AES_KEY_FIXTURE(ENABLE_AES_TEST && !ENABLE_GENERATED_AES_TEST),
+ .ENABLE_INTERNAL_KEYGEN(ENABLE_GENERATED_AES_TEST), .ENABLE_AES_SLOT_CONSUMER(ENABLE_GENERATED_AES_TEST)) dut(.CLOCK_50(clk),.RESET_n(rst),
 .SPI_CLOCK(sck),.SPI_CS_n(cs),.SPI_RST_n(rst),.SPI_MOSI(mosi),.SPI_MISO(miso),.SPI_PIRQ_n(irq),
 .aes_key_request_o(key_request), .aes_key_request_ready_i(1'b1), .aes_key_handle_o(key_handle),
 .aes_key_reply_valid_i(key_reply_valid), .aes_key_reply_ready_o(key_reply_ready),
-.aes_resolved_key_i(KEY), .aes_key_reply_code_i(key_reply_code));
+.aes_resolved_key_i(KEY), .aes_key_reply_code_i(key_reply_code), .aes_slot_allow_i(allow_use));
+reg keygen_fixture_request=0, random_fixture_valid=0;
+generate if(ENABLE_GENERATED_AES_TEST) begin : generated_slot_fixture
+  // Public simulation fixture at the conditioned source boundary, never RTL
+  // fallback logic or a host command. Full keygen and protected slot are real.
+  initial begin
+    force dut.ee.keygen_request_i=keygen_fixture_request;
+    force dut.ee.keygen_profile_i=2'd1;
+    force dut.ee.keygen_allow_i=1'b1;
+    force dut.random_data=KEY;
+    force dut.random_valid=random_fixture_valid;
+    force dut.rng_fault=1'b0;
+  end
+  always @(posedge clk) random_fixture_valid<=rst && dut.random_request && !random_fixture_valid;
+  task automatic check_complete;
+    wait(!dut.aes_command_enabled.aes_command.busy_o && !dut.ee.aes_slot_reserved_o);
+    if(!dut.ee.keygen_slot_valid_o) $fatal(1,"SPI consumption destroyed generated key");
+    for(integer j=0;j<40;j++) if(dut.aes_command_enabled.aes_command.payload[j]!==0)
+      $fatal(1,"SPI response copy did not release/erase owned scratch");
+    $display("TPM2_GENERATED_AES_SPI_PASS commands=5 external_key_requests=0 scratch=40");
+  endtask
+end else begin : generated_slot_fixture
+  task automatic check_complete; begin end endtask
+end endgenerate
 reg [7:0] packet[0:89], response[0:89];
 reg passed=0;
 integer engine_hash_starts=0, engine_hash_replies=0;
@@ -137,13 +162,21 @@ initial begin
    $fatal(1,"Expected four engine-owned SPI Hash commands, starts=%0d replies=%0d",
           engine_hash_starts,engine_hash_replies);
  if (ENABLE_AES_TEST) begin
+   if(ENABLE_GENERATED_AES_TEST) begin
+     wait(dut.ee.keygen_ready_o); @(negedge clk); keygen_fixture_request=1;
+     @(negedge clk); keygen_fixture_request=0;
+     wait(dut.ee.keygen_slot_valid_o);
+   end
    aes_packet(0,32'h80000000,PLAINTEXT,0,0);
    aes_packet(1,32'h80000000,CIPHERTEXT,0,0);
    aes_packet(0,32'h80000001,PLAINTEXT,0,32'h18b);
    allow_use=0;
    aes_packet(0,32'h80000000,PLAINTEXT,0,32'h9a2);
    aes_packet(0,32'h80000000,PLAINTEXT,1,32'h144);
-   if (lookups != 4) $fatal(1,"Expected four key requests, got %0d",lookups);
+   if (lookups != (ENABLE_GENERATED_AES_TEST ? 0 : 4)) $fatal(1,"Wrong external fixture requests %0d",lookups);
+   if(ENABLE_GENERATED_AES_TEST) begin
+     generated_slot_fixture.check_complete();
+   end
    $display("TPM2_ENCRYPTDECRYPT2_SPI_PASS");
  end else begin
    aes_packet(0,32'h80000000,PLAINTEXT,0,32'h143);

@@ -32,7 +32,8 @@ module keygen_rsa_services (
     reg [6:0] index_reg;
     reg [11:0] read_base_reg;
     reg read_peer_reg;
-    reg [1023:0] value_reg, peer_reg, candidate_reg, minus_one_reg, odd_part_reg;
+    reg [1023:0] value_reg, peer_reg, minus_one_reg;
+    reg distance_borrow, distance_le_positive, distance_ge_negative, too_close;
     reg [10:0] twos_reg, square_remaining_reg;
     reg [9:0] bit_index_reg;
     reg [17:0] remainder_reg, divisor_reg;
@@ -41,7 +42,18 @@ module keygen_rsa_services (
     reg [1:0] write_component_reg;
     wire [17:0] shifted_remainder;
     wire [17:0] reduced_remainder;
-    wire [1023:0] difference;
+    // Compare |candidate-peer| to 2^924 while scratch returns the 32 peer
+    // words, least significant first. Borrow distinguishes a negative result.
+    // At each limb, a non-equal higher word supersedes the lower comparison.
+    wire [31:0] value_word = value_reg[index_reg[4:0]*32 +: 32];
+    wire [32:0] distance_word = {1'b0,value_word} - {1'b0,mem_read_data_i} - distance_borrow;
+    wire [31:0] positive_limit = index_reg==28 ? 32'h10000000 : 32'd0;
+    wire [31:0] negative_limit = index_reg>28 ? 32'hffffffff :
+                                 index_reg==28 ? 32'hf0000000 : 32'd0;
+    wire le_positive = distance_word[31:0] < positive_limit ||
+                      (distance_word[31:0] == positive_limit && distance_le_positive);
+    wire ge_negative = distance_word[31:0] > negative_limit ||
+                      (distance_word[31:0] == negative_limit && distance_ge_negative);
     reg [31:0] write_word;
     reg [11:0] write_address;
     function [17:0] trial_prime;
@@ -119,9 +131,8 @@ module keygen_rsa_services (
     assign pair_q_o = value_reg;
     assign pair_result_ready_o = reset_n_i && ((state_reg==PAIR_WAIT && pair_result_valid_i && pair_status_i!=0) ||
         (state_reg==PAIR_WRITE && mem_ready_i && index_reg==63));
-    assign difference = (value_reg>=peer_reg) ? value_reg-peer_reg : peer_reg-value_reg;
     assign shifted_remainder = {remainder_reg[16:0],
-        (exponent_filter_reg ? minus_one_reg[bit_index_reg] : candidate_reg[bit_index_reg])};
+        (value_reg[bit_index_reg] && !(exponent_filter_reg && bit_index_reg==0))};
     assign reduced_remainder = (shifted_remainder>=divisor_reg) ? shifted_remainder-divisor_reg : shifted_remainder;
 
     always @* begin
@@ -133,7 +144,7 @@ module keygen_rsa_services (
         end else if(state_reg==WRITE_PREP) begin
             case(write_component_reg)
                 0: begin write_address=arg1_reg[11:0]+{5'd0,index_reg}; write_word=minus_one_reg[index_reg*32 +: 32]; end
-                1: begin write_address=arg2_reg[11:0]+{5'd0,index_reg}; write_word=odd_part_reg[index_reg*32 +: 32]; end
+                1: begin write_address=arg2_reg[11:0]+{5'd0,index_reg}; write_word=value_word; end
                 2: begin write_address=12'd288+{5'd0,index_reg}; write_word=(index_reg==0) ? 32'd1 : 32'd0; end
                 3: begin write_address=12'd320+{5'd0,index_reg}; write_word=(index_reg==0) ? 32'd2 : 32'd0; end
             endcase
@@ -148,7 +159,8 @@ module keygen_rsa_services (
             state_reg<=IDLE;op_reg<=0;status_reg<=0;
             arg0_reg<=0;arg1_reg<=0;arg2_reg<=0;arg3_reg<=0;
             index_reg<=0;read_base_reg<=0;read_peer_reg<=0;
-            value_reg<=0;peer_reg<=0;candidate_reg<=0;minus_one_reg<=0;odd_part_reg<=0;
+            value_reg<=0;peer_reg<=0;minus_one_reg<=0;
+            distance_borrow<=0;distance_le_positive<=1;distance_ge_negative<=1;too_close<=0;
             twos_reg<=0;square_remaining_reg<=0;bit_index_reg<=0;
             remainder_reg<=0;divisor_reg<=0;exponent_filter_reg<=0;prime_index_reg<=0;write_component_reg<=0;
         end else begin
@@ -159,6 +171,7 @@ module keygen_rsa_services (
                     op_reg<=cmd_op_i;arg0_reg<=cmd_arg0_i;arg1_reg<=cmd_arg1_i;
                     arg2_reg<=cmd_arg2_i;arg3_reg<=cmd_arg3_i;
                     index_reg<=0;status_reg<=0;read_peer_reg<=0;
+                    distance_borrow<=0;distance_le_positive<=1;distance_ge_negative<=1;too_close<=0;
                     if(cmd_op_i==8'h30) begin
                         if(cmd_arg0_i>4064 || cmd_arg1_i!=32 || cmd_arg2_i>1 || cmd_arg3_i!=0) begin
                             status_reg<=1;state_reg<=RESPONSE;
@@ -188,7 +201,12 @@ module keygen_rsa_services (
                 end
                 READ_REQ: if(mem_ready_i) state_reg<=READ_WAIT;
                 READ_WAIT: if(mem_read_valid_i) begin
-                    if(read_peer_reg) peer_reg[index_reg*32 +: 32]<=mem_read_data_i;
+                    if(read_peer_reg && op_reg==8'h31) begin
+                        distance_borrow<=distance_word[32];
+                        distance_le_positive<=le_positive;
+                        distance_ge_negative<=ge_negative;
+                        if(index_reg==31) too_close<=distance_word[32] ? ge_negative : le_positive;
+                    end else if(read_peer_reg) peer_reg[index_reg*32 +: 32]<=mem_read_data_i;
                     else value_reg[index_reg*32 +: 32]<=mem_read_data_i;
                     if(index_reg==31) begin
                         index_reg<=0;
@@ -203,15 +221,16 @@ module keygen_rsa_services (
                     state_reg<=RESPONSE;
                     if(op_reg==8'h31) begin
                         if(value_reg<LOWER_BOUND || !value_reg[0]) status_reg<=8'h10;
-                        else if(arg3_reg[0] && difference <= (1024'd1<<924)) status_reg<=8'h11;
+                        else if(arg3_reg[0] && too_close) status_reg<=8'h11;
                         else begin
-                            candidate_reg<=value_reg;minus_one_reg<=value_reg-1'b1;
-                            odd_part_reg<=value_reg-1'b1;twos_reg<=0;square_remaining_reg<=0;
+                            // Accepted candidates are odd. Clearing bit zero gives n-1.
+                            minus_one_reg<={value_reg[1023:1],1'b0};
+                            twos_reg<=0;square_remaining_reg<=0;
                             divisor_reg<=18'd65537;remainder_reg<=0;bit_index_reg<=1023;
                             exponent_filter_reg<=1;prime_index_reg<=0;state_reg<=MOD_BITS;
                         end
                     end else if(op_reg==8'h32) begin
-                        if(value_reg<2 || value_reg>minus_one_reg-1'b1) status_reg<=8'h10;
+                        if(value_reg<2 || (minus_one_reg!=0 && value_reg>=minus_one_reg)) status_reg<=8'h10;
                     end else if(op_reg==8'h33) begin
                         if(value_reg==minus_one_reg || (arg0_reg[0] && value_reg==1)) status_reg<=0;
                         else if(!arg0_reg[0] && value_reg==1) status_reg<=8'h11;
@@ -226,7 +245,10 @@ module keygen_rsa_services (
                     remainder_reg<=reduced_remainder;
                     if(bit_index_reg==0) begin
                         if(reduced_remainder==0) begin status_reg<=8'h12;state_reg<=RESPONSE;end
-                        else if(!exponent_filter_reg && prime_index_reg==52) state_reg<=FACTOR;
+                        else if(!exponent_filter_reg && prime_index_reg==52) begin
+                            value_reg[0]<=0;
+                            state_reg<=FACTOR;
+                        end
                         else begin
                             remainder_reg<=0;bit_index_reg<=1023;exponent_filter_reg<=0;
                             if(exponent_filter_reg) begin divisor_reg<=trial_prime(0);prime_index_reg<=0;end
@@ -235,7 +257,7 @@ module keygen_rsa_services (
                     end else bit_index_reg<=bit_index_reg-1'b1;
                 end
                 FACTOR: begin
-                    if(!odd_part_reg[0]) begin odd_part_reg<=odd_part_reg>>1;twos_reg<=twos_reg+1'b1;end
+                    if(!value_reg[0]) begin value_reg<=value_reg>>1;twos_reg<=twos_reg+1'b1;end
                     else begin index_reg<=0;write_component_reg<=0;state_reg<=WRITE_PREP;end
                 end
                 WRITE_PREP: if(mem_ready_i) begin

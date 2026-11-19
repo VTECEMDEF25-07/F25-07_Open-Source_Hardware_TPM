@@ -18,7 +18,7 @@ module tb_keygen_math_small #(parameter IP_TYPE = 0);
     reg [11:0] address_reg=0; reg [31:0] data_reg=0;
     wire mem_ready,read_valid; wire [31:0] read_data;
 `ifdef KEYGEN_MATH_SMALL
-    keygen_math #(.MAX_LIMBS(32), .IP_TYPE(IP_TYPE)) dut(
+    keygen_math_compact #(.MAX_LIMBS(32), .IP_TYPE(IP_TYPE)) dut(
 `else
     keygen_math #(.IP_TYPE(IP_TYPE)) dut(
 `endif
@@ -66,6 +66,31 @@ module tb_keygen_math_small #(parameter IP_TYPE = 0);
 
         end
     endtask
+    // The production 32-limb profile may accept requests only after each
+    // accessible keygen operand address has received a zero write on reset.
+`ifdef KEYGEN_MATH_SMALL
+    check_keygen_bank_wipe #(32) wipe_a (
+        .clock(clock_reg), .reset_n(reset_n_reg), .ready(cmd_ready),
+        .write_en(dut.a_we), .address(dut.a_wa), .data(dut.a_wd));
+    check_keygen_bank_wipe #(32) wipe_b (
+        .clock(clock_reg), .reset_n(reset_n_reg), .ready(cmd_ready),
+        .write_en(dut.b_we), .address(dut.b_wa), .data(dut.b_wd));
+    check_keygen_bank_wipe #(32) wipe_n (
+        .clock(clock_reg), .reset_n(reset_n_reg), .ready(cmd_ready),
+        .write_en(dut.n_we), .address(dut.n_wa), .data(dut.n_wd));
+    check_keygen_bank_wipe #(32) wipe_r2 (
+        .clock(clock_reg), .reset_n(reset_n_reg), .ready(cmd_ready),
+        .write_en(dut.r2_we), .address(dut.r2_wa), .data(dut.r2_wd));
+    check_keygen_bank_wipe #(32) wipe_exp (
+        .clock(clock_reg), .reset_n(reset_n_reg), .ready(cmd_ready),
+        .write_en(dut.exp_we), .address(dut.exp_wa), .data(dut.exp_wd));
+    check_keygen_bank_wipe #(32) wipe_base (
+        .clock(clock_reg), .reset_n(reset_n_reg), .ready(cmd_ready),
+        .write_en(dut.base_we), .address(dut.base_wa), .data(dut.base_wd));
+    check_keygen_bank_wipe #(66) wipe_t (
+        .clock(clock_reg), .reset_n(reset_n_reg), .ready(cmd_ready),
+        .write_en(dut.t_we), .address(dut.t_wa), .data(dut.t_wd));
+`endif
     localparam CASES=10771;
     reg [175:0] vectors[0:CASES-1];
     integer cases,c,kind,i;
@@ -121,4 +146,23 @@ module tb_keygen_math_small #(parameter IP_TYPE = 0);
         $display("PASS SMALL_MATH cases=%0d carry_borrow_shift=3 full_scrub=4096",cases);$finish;
     end
     initial begin #2000000000;$fatal(1,"small math timeout");end
+endmodule
+
+module check_keygen_bank_wipe #(parameter DEPTH=32)(
+    input clock, reset_n, ready, write_en, input [7:0] address, input [31:0] data
+);
+    reg [DEPTH-1:0] cleared;
+    reg awaiting_wipe;
+    always @(posedge clock or negedge reset_n) begin
+        if (!reset_n) begin
+            cleared <= 0;
+            awaiting_wipe <= 1;
+        end else if (awaiting_wipe) begin
+            if (write_en && address < DEPTH) cleared[address] <= data === 0;
+            if (ready) begin
+                if (!(&cleared)) $fatal(1,"%m accepted command before full operand RAM sweep");
+                awaiting_wipe <= 0;
+            end
+        end
+    end
 endmodule
