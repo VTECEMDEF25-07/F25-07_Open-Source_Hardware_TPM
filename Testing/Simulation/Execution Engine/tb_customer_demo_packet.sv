@@ -130,6 +130,8 @@ reg aes_active=0,aes_outputting=0,rsa_active=0,rsa_outputting=0;
 reg [7:0] got;
 reg passed=0;
 initial clock_i=0; always #10 clock_i=~clock_i;
+reg [5:0] display_word_i=0;
+wire [31:0] display_data_o;
 customer_demo_packet #(.DEMO_PROVIDER_MODE(0),.DEMO_AES_EXPORT_ENABLE(EXPORT_ENABLED),
  .DEADLINE_CYCLES(WATCHDOG_TEST ? 64'd150 : 64'd9000000000)) dut(.*);
 always @(posedge clock_i) begin cycle<=cycle+1; command_byte_i<=packet[command_addr_o]; end
@@ -287,6 +289,37 @@ task consume;
   for(integer k=0;k<1024;k=k+1)if(dut.payload[k]!==0)$fatal(1,"payload scrub slot%0d",k);
  end
 endtask
+// Read every payload lane through the public HPS window. This also checks
+// clipping and zero-fill beyond the logical message, including a partial word.
+always @(negedge clock_i) begin
+ if(reset_n_i && (dut.aes_output_fire || dut.rsa_output_fire || dut.state==dut.VALIDATE_BYTE))
+  if(dut.display_length!==0 || dut.display_algorithm!==0)
+   $fatal(1,"LCD bytes visible before decrypt validation finished");
+end
+task check_display(input integer op, input integer ident, input integer n);
+ integer clipped;
+ reg [31:0] revision, expected;
+ begin
+  clipped = n > 126 ? 126 : n;
+  display_word_i=1; #1; revision=display_data_o;
+  display_word_i=3; #1;
+  if(display_data_o !== ((op << 8) | clipped))
+   $fatal(1,"display op/length %h expected op %0d len %0d",display_data_o,op,clipped);
+  if(op != 0) begin
+   display_word_i=2; #1;
+   if(display_data_o !== ident) $fatal(1,"display result identity");
+  end
+  for(integer w=0; w<32; w++) begin
+   expected=0;
+   for(integer b=0; b<4; b++)
+    if(4*w+b < clipped) expected[8*b+:8]=op==2 ? ((4*w+b) ^ 8'h5a) : 8'h41+(4*w+b)%26;
+   display_word_i=8+w; #1;
+   if(display_data_o !== expected) $fatal(1,"display payload op=%0d word=%0d got=%h expected=%h",op,w,display_data_o,expected);
+  end
+  display_word_i=1; #1;
+  if(display_data_o !== revision) $fatal(1,"display revision changed while idle");
+ end
+endtask
 task aes_command(input integer n,input integer ident,input integer code);
  begin
   prepare(2,ident,32'h80000001,0,44+n);
@@ -300,6 +333,7 @@ task aes_command(input integer n,input integer ident,input integer code);
    for(integer k=0;k<16;k=k+1)equalbyte(30+n+k,FINAL_IV[127-k*8 -:8]);
    if(aes_job_key_o!==0)$fatal(1,"AES key retained after worker capture");
   end
+  check_display(code==0 ? 2 : 0, ident, code==0 ? n : 0);
   consume;
  end
 endtask
@@ -322,6 +356,7 @@ task rsa_command(input integer n,input integer ident,input integer code);
    for(integer k=0;k<n;k=k+1)equalbyte(30+k,8'h41+k%26);
    if(status_code_o!=8 || status_detail_o!=4)$fatal(1,"sticky actual RSA DONE detail");
   end
+  check_display(code==0 ? 4 : 0, ident, code==0 ? n : 0);
   consume;
  end
 endtask
@@ -337,7 +372,6 @@ response_consumed_i=0;
 snapshot_status_word_i=0;
 snapshot_operation_id_i=0;
 snapshot_sequence_i=0;
-gen_job_ready_i=0;
 gen_done_valid_i=0;
 gen_done_id_i=0;
 gen_done_handle_i=0;
@@ -349,25 +383,16 @@ gen_done_teardown_error_i=0;
 gen_done_ownership_committed_i=0;
 gen_done_cycles_i=0;
 gen_phase_i=0;
-gen_available_i=0;
 gen_busy_i=0;
 gen_recovery_required_i=0;
 gen_scrub_done_i=0;
-release_ready_i=0;
 release_rsp_valid_i=0;
 release_rsp_code_i=0;
-key_request_ready_i=0;
 key_reply_valid_i=0;
-resolved_key_i=0;
 key_reply_code_i=0;
-public_request_ready_i=0;
 public_reply_valid_i=0;
 public_data_i=0;
 public_reply_code_i=0;
-aes_job_ready_i=0;
-aes_input_ready_i=0;
-aes_output_valid_i=0;
-aes_output_data_i=0;
 aes_status_valid_i=0;
 aes_status_code_i=0;
 aes_status_result_bytes_i=0;
@@ -376,10 +401,6 @@ aes_status_cycles_i=0;
 aes_busy_i=0;
 aes_scrub_done_i=0;
 aes_recovery_required_i=0;
-rsa_job_ready_i=0;
-rsa_input_ready_i=0;
-rsa_output_valid_i=0;
-rsa_output_data_i=0;
 rsa_status_valid_i=0;
 rsa_status_id_i=0;
 rsa_status_code_i=0;
@@ -387,8 +408,6 @@ rsa_status_result_bytes_i=0;
 rsa_status_cycles_i=0;
 rsa_busy_i=0;
 rsa_recovery_required_i=0;
-rsa_phase_i=0;
-rsa_progress_i=0;
  operational_i=1;snapshot_status_word_i=32'h01070088;snapshot_operation_id_i=123;snapshot_sequence_i=99;
  repeat(4)tick;@(negedge clock_i);reset_n_i=1;repeat(1030)tick;
  prepare(0,1,0,0,26);launch;response(0,52,0,1);
@@ -410,6 +429,12 @@ rsa_progress_i=0;
  word(8,32'h80000001);for(integer k=0;k<32;k=k+1)equalbyte(28+k,k);
  if(!aes_use_allowed_o || !aes_client_active_o)$fatal(1,"export permission/lease");consume;
  aes_command(0,10,0);aes_command(1,11,0);aes_command(17,12,0);aes_command(1024,13,0);
+ // A rejected packet can fail before DISPATCH, after a valid result was visible.
+ prepare(2,76,32'h80000001,0,20);launch;response('h095,0,2,76);
+ if(status_code_o!==9) $fatal(1,"malformed request lost ERROR status");
+ // The result bank still identifies the last successful op. An ERROR status
+ // overrides it in the LCD firmware. Its bytes and operation ID must not change.
+ check_display(2,13,1024);consume;
  inject_aes_error=1;aes_command(16,14,'h101);inject_aes_error=0;aes_command(2,15,0);
  // Worker terminal errors after cleanup may precede the first input-ready.
  inject_aes_early=1;aes_command(17,17,'h095);
