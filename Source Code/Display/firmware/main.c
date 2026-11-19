@@ -72,6 +72,17 @@ int main(void) {
         text.algorithm = (info >> 8) & 7;
         text.length = info & 255;
         int valid = (text.algorithm == 2 || text.algorithm == 4) && text.length <= sizeof(text.bytes);
+        /* A rejected command can retain the last successful result. During
+         * DONE, bind text to its actual result ID and algorithm. During idle,
+         * the committed result bank holds the last successful operation. */
+        uint32_t code = status.status_word & 15U;
+        int captured = (status.status_word & 128U) != 0;
+        int fault = (status.status_word & 64U) != 0 || code >= 9;
+        if (fault && code < 9)
+            status.status_word = (status.status_word & ~15U) | 9U;
+        valid = valid && captured && !fault &&
+                (code == 0 || (code == 8 && status.operation_id == text.operation_id &&
+                               ((status.status_word >> 16) & 255U) == text.algorithm));
         if (valid) {
             for (unsigned i = 0; i < text.length; i += 4) {
                 uint32_t word = display_word(TEXT_WORDS + i/4);

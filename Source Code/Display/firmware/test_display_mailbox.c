@@ -39,12 +39,22 @@ uint32_t board_init(void) { return 0; }
 int lcd_init(void) { return 1; }
 void render_status(uint8_t frame[1024], const struct snapshot *s, int stale) {
     (void)frame;
-    assert(!stale && s->operation_id == 9 && frames == 2);
+    assert(!stale);
+    switch (frames) {
+        case 3: assert((s->status_word & 15U) == 9); break;
+        case 4: assert((s->status_word & 15U) == 9); break;
+        case 5: assert(s->operation_id == 12); break;
+        case 6: assert(((s->status_word >> 16) & 255U) == 2); break;
+        case 7: assert((s->status_word & 15U) == 7); break;
+        case 8: assert(!regs[3]); break;
+        default: assert(0);
+    }
     rendered++;
 }
 void render_plaintext(uint8_t frame[1024], const struct plaintext_frame *t) {
     (void)frame;
-    assert(t->operation_id == 8+frames && t->algorithm == (frames ? 4U : 2U));
+    assert(frames <= 2);
+    assert(t->operation_id == (frames ? 9U : 8U) && t->algorithm == (frames ? 4U : 2U));
     assert(t->length == 5 && t->bytes[0] == 'a' && t->bytes[1] == 'b');
     assert(t->bytes[2] == 'c' && t->bytes[3] == 'd' && t->bytes[4] == 'e');
     rendered++;
@@ -53,10 +63,18 @@ int lcd_frame(const uint8_t *frame) {
     (void)frame;
     assert(rendered == frames+1);
     frames++;
-    if (frames == 3) longjmp(done, 1);
-    regs[1]++; regs[6]++;
-    regs[2] = regs[5] = 9;
-    regs[3] = frames == 1 ? 0x405 : 0;
+    regs[6]++;
+    switch (frames) {
+        case 1: regs[1]++; regs[2] = regs[5] = 9; regs[3] = 0x405; regs[4] = 0x01040088; break;
+        case 2: regs[5] = 11; regs[4] = 0x01000080; break; /* Unrelated idle */
+        case 3: regs[4] = 0x01ff00c9; break;                /* Recovery */
+        case 4: regs[4] = 0x010000c0; break;                /* Error bit */
+        case 5: regs[4] = 0x01040088; regs[5] = 12; break;  /* Different operation */
+        case 6: regs[4] = 0x01020088; regs[5] = 9; break;   /* Different algorithm */
+        case 7: regs[4] = 0x01000087; break;                /* In progress */
+        case 8: regs[3] = 0; regs[1]++; regs[4] = 0x01000080; break;
+        case 9: longjmp(done, 1);
+    }
     return 1;
 }
 
@@ -65,7 +83,7 @@ int main(void) {
     regs[1] = 1; regs[2] = regs[5] = 8; regs[3] = 0x205;
     regs[4] = 0x01020088; regs[6] = 3; regs[9] = 'e';
     if (!setjmp(done)) { lcd_demo_main(); assert(0); }
-    assert(frames == 3 && revision_retries == 1);
-    puts("PASS LCD mailbox: coherent AES/RSA plaintext, retry on replacement, clear on next operation");
+    assert(frames == 9 && revision_retries == 1);
+    puts("PASS LCD mailbox: coherent AES/RSA, stale-result/error priority, idle persistence, retry on replacement");
     return 0;
 }
