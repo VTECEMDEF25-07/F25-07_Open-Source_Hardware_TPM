@@ -12,6 +12,9 @@ from concurrent.futures import ThreadPoolExecutor
 
 SAMPLES = {"NORMAL": b"BOOT: START APP", "MODIFIED": b"BOOT: START BPP"}
 NULL_TICKET = bytes.fromhex("8024400000070000")
+RC_INITIALIZE = bytes.fromhex("80010000000a00000100")
+STARTUP_CLEAR = bytes.fromhex("80010000000c000001440000")
+STARTUP_SUCCESS = bytes.fromhex("80010000000a00000000")
 
 
 def hash_message(transport, message):
@@ -20,6 +23,15 @@ def hash_message(transport, message):
     body = struct.pack(">H", len(message)) + message + struct.pack(">HI", 0x000B, 0x40000007)
     packet = struct.pack(">HII", 0x8001, 10 + len(body), 0x17D) + body
     reply = bytes(transport.transact(packet, timeout_s=10))
+    # After an in-session reset, Hash can reach the command buffer before
+    # Startup. This FPGA can then require two Startup commands to finish setup.
+    for _ in range(2):
+        if reply != RC_INITIALIZE:
+            break
+        startup = bytes(transport.transact(STARTUP_CLEAR, timeout_s=10))
+        if startup not in (STARTUP_SUCCESS, RC_INITIALIZE):
+            raise ValueError(f"Unexpected FPGA Startup response: {startup.hex()}")
+        reply = bytes(transport.transact(packet, timeout_s=10))
     if len(reply) < 10:
         raise ValueError("Incomplete FPGA Hash response")
     tag, size, code = struct.unpack(">HII", reply[:10])

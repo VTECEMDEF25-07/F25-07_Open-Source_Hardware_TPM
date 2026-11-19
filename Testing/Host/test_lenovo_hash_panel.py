@@ -46,6 +46,34 @@ class HashPanelTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "plaintext differs"):
                 decrypt_message(client, mode, text, lambda msg: None)
 
+    def test_hash_recovers_when_the_first_startup_leaves_fpga_uninitialized(self):
+        message = b"BOOT: START APP"
+        commands = []
+        class ResetBoard(HashTransport):
+            def transact(self, packet, timeout_s):
+                commands.append(int.from_bytes(packet[6:10], "big"))
+                if len(commands) in (1, 3, 4):
+                    return bytes.fromhex("80010000000a00000100")
+                if commands[-1] == 0x144:
+                    return bytes.fromhex("80010000000a00000000")
+                return super().transact(packet, timeout_s)
+        self.assertEqual(hash_message(ResetBoard(), message), hashlib.sha256(message).digest())
+        self.assertEqual(commands, [0x17D, 0x144, 0x17D, 0x144, 0x17D])
+
+    def test_startup_recovery_is_bounded_and_rejects_malformed_replies(self):
+        from unittest.mock import Mock
+        initialize = bytes.fromhex("80010000000a00000100")
+        transport = Mock()
+        transport.transact.return_value = initialize
+        with self.assertRaisesRegex(ValueError, "Hash returned 0x00000100"):
+            hash_message(transport, b"abc")
+        self.assertEqual(transport.transact.call_count, 5)
+        transport.transact.reset_mock()
+        transport.transact.side_effect = [initialize, bytes(10)]
+        with self.assertRaisesRegex(ValueError, "Startup response"):
+            hash_message(transport, b"abc")
+        self.assertEqual(transport.transact.call_count, 2)
+
     def test_hash_packet_boundaries(self):
         transport = HashTransport()
         for message in (b"", b"abc", bytes(1024)):
@@ -65,7 +93,7 @@ class HashPanelTests(unittest.TestCase):
         correct = HashTransport().transact(bytes.fromhex("8001000000150000017d0003616263000b40000007"), 10)
         for bad in (b"", correct[:-1], b"\x80\x02" + correct[2:],
                     correct[:10] + b"\0\x1f" + correct[12:], correct[:-1] + b"\1",
-                    correct[:12] + bytes(32) + correct[44:], bytes.fromhex("80010000000a00000100")):
+                    correct[:12] + bytes(32) + correct[44:], bytes.fromhex("80010000000a00000101")):
             class BadTransport:
                 def transact(self, packet, timeout_s):
                     return bad
