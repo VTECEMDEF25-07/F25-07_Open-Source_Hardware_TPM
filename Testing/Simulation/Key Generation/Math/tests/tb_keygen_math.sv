@@ -18,7 +18,7 @@ module tb_keygen_math #(parameter IP_TYPE = 0);
     reg [11:0] address_reg=0; reg [31:0] data_reg=0;
     wire mem_ready,read_valid; wire [31:0] read_data;
 `ifdef KEYGEN_MATH_SMALL
-    keygen_math #(.MAX_LIMBS(32), .IP_TYPE(IP_TYPE)) dut(
+    keygen_math_compact #(.MAX_LIMBS(32), .IP_TYPE(IP_TYPE)) dut(
 `else
     keygen_math #(.IP_TYPE(IP_TYPE)) dut(
 `endif
@@ -122,8 +122,10 @@ module tb_keygen_math #(parameter IP_TYPE = 0);
         read_word(384,value);if(value!==32'hacced123)$fatal(1,"Rejected command wrote destination");
         command(8'h02,128,0,0,n,0);
         // Reset during a live operation must sweep old operands before ready.
+        while(!cmd_ready) @(negedge clock_reg);
         op_reg=8'h13;arg0_reg=384;arg1_reg=128;arg2_reg=256;arg3_reg=1;cmd_valid_reg=1;
         @(negedge clock_reg);cmd_valid_reg=0;repeat(20)@(negedge clock_reg);
+        if(cmd_ready || rsp_valid)$fatal(1,"Expected a live exponentiation before reset");
         reset_n_reg=0;@(negedge clock_reg);reset_n_reg=1;
         while(!cmd_ready)@(negedge clock_reg);
         if(read_data!==0)$fatal(1,"Reset left old RAM output latch value");
