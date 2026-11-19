@@ -21,11 +21,19 @@ module tb_keygen_slot #(parameter IP_TYPE=0, parameter TEST_CASE=0);
  string stimulus_path,expected_path;
  integer stimulus_fd,expected_fd;
  reg passed=0;reg stuck=0;
+ reg acquire=0,acquire_allow=1,acquire_ack=0,consumer_release=0;
+ reg [1:0] acquire_type=1; reg [7:0] acquire_words=8;
+ wire acquire_ready,acquire_reply,reserved;wire [3:0] acquire_code;
+ integer reservations=0;
  always @(negedge clk) if(TEST_CASE==1) results=(cycles%7<4);
- execution_engine_keygen #(.ENABLE(1),.IP_TYPE(IP_TYPE),.WAIT_LIMIT(TEST_CASE==1 ? 900000000 : 100000)) dut (
+ execution_engine_keygen #(.ENABLE(1),.ENABLE_CONSUMER(1),.IP_TYPE(IP_TYPE),.WAIT_LIMIT(TEST_CASE==1 ? 900000000 : 100000)) dut (
  .clock_i(clk),.reset_n_i(rst),.request_valid_i(req),.request_ready_o(ready),.profile_i(profile),.id_i(id),.allow_i(allow),.busy_o(busy),
  .completion_valid_o(done),.completion_ready_i(ack),.completion_code_o(code),.completion_id_o(done_id),
  .release_i(release_slot),.slot_valid_o(valid),.slot_type_o(kind),.slot_words_o(words),.private_address_i(address),.private_data_o(data),
+ .acquire_valid_i(acquire),.acquire_ready_o(acquire_ready),.acquire_allow_i(acquire_allow),
+ .acquire_type_i(acquire_type),.acquire_words_i(acquire_words),
+ .acquire_reply_valid_o(acquire_reply),.acquire_reply_ready_i(acquire_ack),.acquire_code_o(acquire_code),
+ .consumer_release_i(consumer_release),.reserved_o(reserved),
  .result_enable_i(results),.ownership_enable_i(ownership),.terminal_enable_i(terminal),
  .source_open_o(open_source),.source_grant_i(grant_source),.source_close_o(close_source),.source_closed_i(closed_source),
  .source_word_i(word_data),.source_valid_i(word_valid && word_enable),.source_ready_o(lifecycle_word_ready),.source_fault_i(source_fault),.timeout_o(kg_timeout));
@@ -85,6 +93,7 @@ module tb_keygen_slot #(parameter IP_TYPE=0, parameter TEST_CASE=0);
  task reset_all;
   @(negedge clk); rst=0; req=0;ack=0;release_slot=0;fault=0;silent=0;host_req=0;host_commit=0;
   results=1;ownership=1;terminal=1;allow=1;draws=0;stuck=0;word_enable=1;
+  acquire=0;acquire_ack=0;consumer_release=0;acquire_allow=1;
   repeat(3)tick(); @(negedge clk);rst=1; wait(ready); #1;
   for(integer j=0;j<129;j=j+1) if(dut.slot[j]!==0) $fatal(1,"reset failed full scrub");
  endtask
@@ -106,6 +115,31 @@ module tb_keygen_slot #(parameter IP_TYPE=0, parameter TEST_CASE=0);
    if(TEST_CASE<2 && data!==(TEST_CASE==1 ? expected[j] : 32'h10100000+j)) $fatal(1,"independent result mismatch at %0d",j);
    if(TEST_CASE>=2) $display("PUBLIC_SLOT %0d %h",j,data);
   end
+  // Denied/wrong-type/wrong-size acquisitions cannot reserve or mutate data.
+  for(integer reject=0;reject<3;reject++) begin
+   @(negedge clk);acquire=1;acquire_allow=reject!=0;
+   acquire_type=reject==1 ? (kind==2 ? 1 : 2) : kind;
+   acquire_words=reject==2 ? count-1 : count;
+   tick();@(negedge clk);acquire=0;
+   if(!acquire_reply || acquire_code!=(reject==0 ? 9 : 4) || reserved || !valid)
+    $fatal(1,"consumer type/size/allow rejection");
+   repeat(3)tick();if(!acquire_reply) $fatal(1,"denial reply not held");
+   @(negedge clk);acquire_ack=1;tick();@(negedge clk);acquire_ack=0;
+  end
+  @(negedge clk);acquire=1;acquire_allow=1;acquire_type=kind;acquire_words=count;
+  tick();@(negedge clk);acquire=0;consumer_release=1;release_slot=1;
+  repeat(7)tick();
+  if(!reserved || !valid || !acquire_reply || acquire_code!=0 || acquire_ready || ready)
+   $fatal(1,"held acquire lost exclusive reservation");
+  for(integer j=0;j<count;j++) begin address=j;#1;
+   if(TEST_CASE<2 && data!==(TEST_CASE==1 ? expected[j] : 32'h10100000+j))
+    $fatal(1,"busy destroy mutated reserved slot");end
+  @(negedge clk);consumer_release=0;release_slot=0;acquire_ack=1;
+  tick();@(negedge clk);acquire_ack=0;
+  repeat(3)tick();if(!reserved || acquire_reply) $fatal(1,"reply ack relinquished slot");
+  @(negedge clk);consumer_release=1;tick();@(negedge clk);consumer_release=0;
+  if(reserved || !valid || !acquire_ready) $fatal(1,"relinquish destroyed slot");
+  reservations=reservations+1;
   repeat(5)tick();if(!done || ready) $fatal(1,"held completion/busy");
   @(negedge clk);req=1;tick();if(ready || !valid) $fatal(1,"busy request accepted");@(negedge clk);req=0;ack=1;tick();@(negedge clk);ack=0;
   if(ready || !valid) $fatal(1,"slot lifetime ended with completion");
@@ -123,6 +157,16 @@ module tb_keygen_slot #(parameter IP_TYPE=0, parameter TEST_CASE=0);
    $readmemh(stimulus_path,stimulus);$readmemh(expected_path,expected);
   end
   reset_all();
+  if(TEST_CASE==0) begin
+   // Empty slot and same-edge destruction deny acquisition. Reset invalidates
+   // an unconsumed reply; no stale status can appear in the next epoch.
+   @(negedge clk);acquire=1;release_slot=1;acquire_type=1;acquire_words=8;
+   tick();@(negedge clk);acquire=0;release_slot=0;
+   repeat(5)tick();
+   if(!acquire_reply || acquire_code!=1 || reserved) $fatal(1,"empty/destroy acquire");
+   reset_all();
+   if(acquire_reply || reserved || !acquire_ready) $fatal(1,"stale acquisition after reset");
+  end
   if(TEST_CASE==1) begin ownership=0;terminal=0;launch(2);wait(dut.ownership_ready);repeat(37)tick();@(negedge clk);ownership=1;wait(dut.status_valid);repeat(13)tick();@(negedge clk);terminal=1;finish_success(129);if(draws!=384) $fatal(1,"RSA stream consumption");end
   else if(TEST_CASE==2) begin launch(1);finish_success(8);end
   else if(TEST_CASE==3) begin
@@ -195,7 +239,7 @@ module tb_keygen_slot #(parameter IP_TYPE=0, parameter TEST_CASE=0);
    end
    launch(0);finish_success(4);
   end
-  passed=1;$display("KEYGEN_SLOT_PASS case=%0d backend=%0d checks=%0d draws=%0d cycles=%0d",TEST_CASE,IP_TYPE,checks,draws,cycles);$finish;
+  passed=1;$display("KEYGEN_SLOT_PASS case=%0d backend=%0d checks=%0d draws=%0d cycles=%0d reservations=%0d",TEST_CASE,IP_TYPE,checks,draws,cycles,reservations);$finish;
  end
  initial begin #(64'd90000000000); $fatal(1,"bounded test deadline");end
 endmodule

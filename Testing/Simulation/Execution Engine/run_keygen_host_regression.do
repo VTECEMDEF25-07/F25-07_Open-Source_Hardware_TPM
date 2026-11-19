@@ -2,6 +2,7 @@
 # Run with Questa: do {<repo>/Testing/Simulation/Execution Engine/run_keygen_host_regression.do}
 onerror {quit -force -code 1}
 onbreak {resume}
+onerror {quit -force -code 1}
 set bench_dir [file dirname [file normalize [status file]]]
 set repo [file normalize [file join $bench_dir .. .. ..]]
 set io_dir [file join $repo {Source Code} {IO Interface}]
@@ -39,6 +40,10 @@ run -all
 if {[examine -radix unsigned sim:/tb_tpm2_hash_spi/passed] != 1} {
     error "SPI EncryptDecrypt2 did not pass"
 }
+quit -sim
+vsim -L vendor -voptargs=+acc -gENABLE_AES_TEST=1 -gENABLE_GENERATED_AES_TEST=1 -onfinish stop work.tb_tpm2_hash_spi
+run -all
+if {[examine -radix unsigned sim:/tb_tpm2_hash_spi/passed] != 1} {error "Generated-slot SPI AES failed"}
 quit -sim
 vsim -L vendor -voptargs=+acc -gENABLE_EXTEND=0 -onfinish stop work.tb_tpm2_pcr_extend_command
 run -all

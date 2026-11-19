@@ -65,6 +65,38 @@ authorizes its use. Session parameter protection is a separate symmetric path.
 
 ## Run the simulations
 
+### Protected generated-key AES consumption (Phase Two)
+
+The engine now has a default-off `ENABLE_AES_SLOT_CONSUMER` path. It acquires
+the committed keygen slot with exact type/word-count checks before assembling
+a private key. AES256 uses the existing optional EncryptDecrypt2 packet route;
+its host framing, AES256-CFB profile and password fixture are unchanged. No new
+command, object, real handle/Name, key export or authorization service is added.
+The known-handle/allow inputs remain explicitly internal fixtures. The earlier
+external known-key test service requires `TPM_TOP.ENABLE_AES_KEY_FIXTURE=1`;
+it is disabled by default and cannot override an enabled protected-slot path.
+
+Reservation lasts through response FIFO copying and scoped payload erasure.
+Key assembly and AES/controller copies clear before terminal publication;
+payload bytes clear only after the CRB finishes copying the response, preserving
+output under backpressure. Invalid/denied packets erase the span actually read.
+Runtime reset masks transfers, resets every key/controller, and restarts the
+owned-span sweep. Only the public scratch ownership count survives runtime
+reset until the sweep completes; FPGA configuration initializes it empty.
+Other scratch bytes are untouched. A single next CRB submission can wait during
+the sweep. Computation errors return error metadata and follow the same cleanup;
+the local synchronous scratch has no fallible external cleanup handshake.
+
+AES128 is available only as the static internal decoded-worker configuration
+`execution_engine.AES_SLOT_KEY_BITS=128` plus `symm_top.AES_KEY_BITS=128`.
+It uses four slot words at the most significant end of the 256-bit private key
+bus. The packet path remains AES256. Non256 session protection configurations
+reject; KDFa/session parameter derivation is separate and unchanged. A private
+decoded caller owns its buffer cleanup before relinquishing the reservation.
+
+See [reservation contract](AES_SLOT_CONTRACT.md) and
+[reproduction/limits](../../Testing/Simulation/Execution%20Engine/AES_SLOT_VALIDATION.md).
+
 From the repository root, run this in a shell with Questa on your PATH.
 
 ```powershell

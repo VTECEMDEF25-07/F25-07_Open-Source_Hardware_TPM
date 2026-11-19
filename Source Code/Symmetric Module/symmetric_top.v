@@ -6,6 +6,7 @@
 `default_nettype none
 module symm_top #(
     parameter MAX_SYM_DATA_BYTES = 1024,
+    parameter AES_KEY_BITS = 256,
     parameter RAM_ADDR_WIDTH = 12,
     parameter MAX_SECRET_BYTES = 128,
     parameter MAX_NONCE_BYTES = 64
@@ -69,7 +70,7 @@ module symm_top #(
     reg [31:0] session_length_r;
     reg session_completed_r;
     wire accept_w = reset_n_i && state_r == IDLE && start_i;
-    wire invalid_session_w = data_length_i > MAX_SYM_DATA_BYTES ||
+    wire invalid_session_w = AES_KEY_BITS != 256 || data_length_i > MAX_SYM_DATA_BYTES ||
         data_length_i > 32'd65535 || input_base_i != output_base_i;
     // s_* signals belong to session protection; p_* belong to EncryptDecrypt2.
     wire p_busy, p_done, p_error, s_busy, s_done, cfb_busy;
@@ -179,7 +180,7 @@ module symm_top #(
     );
 
     // Shared CFB worker: the remembered path selects its key, IV and data.
-    cfb_block WORKER (
+    cfb_block #(.KEY_BITS(AES_KEY_BITS)) WORKER (
         .clock_i(clock_i), .reset_n_i(reset_n_i), .start_i(cfb_start_w),
         .key_i(session_r ? s_key : p_key), .iv_i(session_r ? s_iv : p_iv),
         .data_in_i(session_r ? s_data : p_data),
