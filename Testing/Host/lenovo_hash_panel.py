@@ -134,6 +134,9 @@ def run_panel(transport, port=None, client=None, event_log=None):
     executor = ThreadPoolExecutor(max_workers=1)
     future = None
     operation = None
+    stage = ""
+    stage_started = 0.0
+    displayed_seconds = -1
     progress = queue.SimpleQueue()
     waiting = deque(maxlen=8)
     uart_history = deque(maxlen=500)
@@ -212,10 +215,12 @@ def run_panel(transport, port=None, client=None, event_log=None):
         future = executor.submit(measure, transport, selection)
 
     def start_crypto(mode):
-        nonlocal future, operation
+        nonlocal future, operation, stage, displayed_seconds
         if future is not None:
             return
         operation = mode
+        stage = ""
+        displayed_seconds = -1
         report("crypto_start", algorithm=mode)
         for button in buttons:
             button.config(state=tk.DISABLED)
@@ -233,7 +238,7 @@ def run_panel(transport, port=None, client=None, event_log=None):
         key_text.configure(state="disabled")
 
     def poll():
-        nonlocal future
+        nonlocal future, stage, stage_started, displayed_seconds
         if panel:
             try:
                 chunk = panel.read(256)
@@ -249,10 +254,14 @@ def run_panel(transport, port=None, client=None, event_log=None):
                     pending.clear()
             except (SerialException, OSError) as error:
                 disconnect(error)
+        completed = future is not None and future.done()
         while not progress.empty():
             update = progress.get_nowait()
             if isinstance(update, str):
-                verdict.config(text=update, fg="white")
+                stage = update
+                stage_started = time.monotonic()
+                displayed_seconds = -1
+                report("crypto_stage", algorithm=operation, stage=stage)
             else:
                 modulus = format(update.modulus, "0512x")
                 exponent = update.exponent
@@ -261,7 +270,12 @@ def run_panel(transport, port=None, client=None, event_log=None):
                 show_key(key)
                 print("FPGA RSA-2048 public key\n" + key, flush=True)
                 report("rsa_public_key", modulus_hex=modulus, public_exponent=exponent)
-        if future is not None and future.done():
+        if future is not None and operation in ("AES", "RSA") and stage:
+            seconds = int(time.monotonic() - stage_started)
+            if seconds != displayed_seconds:
+                verdict.config(text=f"{stage}  {seconds} s", fg="white")
+                displayed_seconds = seconds
+        if completed:
             try:
                 if operation in ("AES", "RSA"):
                     plaintext, encrypted, digest, elapsed = future.result()
@@ -369,7 +383,15 @@ def main():
         client.capabilities()
         run_panel(transport, args.port, client, log)
     except Exception as error:
-        messagebox.showerror("DE25 demo", str(error))
+        if transport is not None:
+            transport.close()
+            transport = None
+        detail = str(error)
+        if isinstance(error, TimeoutError) and detail == "TPM SPI ready timeout":
+            detail += ("\n\nThe laptop reached the SPI adapter, but the FPGA did not "
+                       "signal ready. Check DE25 power and SPI wiring. If the board "
+                       "lost power, reload the combined expo image and relaunch.")
+        messagebox.showerror("DE25 demo", detail)
         raise
     finally:
         if transport is not None:
