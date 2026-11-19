@@ -1,5 +1,14 @@
 # Protected RSA2048 validation
 
+## DE25 word engine
+
+See [the DE25 word-engine measurements and reproduction commands](RSA_DE25_WORDS.md)
+for the current protected path. The sections below preserve the PR59 baseline
+at `fb81dbce151be7fd0ae3116ff36fa3fea5d30197`. Its resource counts, source
+manifest and run times belong to that revision.
+
+## PR59 baseline
+
 Full-width functional validation passes. **Enabled hardware qualification is
 blocked:** the DE25-device harness synthesis estimates 59,220/46,800 ALMs (127%);
 fit did not finish within 1,800 seconds, so no fitted timing result is available.
@@ -89,7 +98,7 @@ The arithmetic core remains provisional and lacks a full side-channel defense.
 | Check | Backend | Explicit result |
 | --- | --- | --- |
 | Exact independent public/private RSA2048 adapter results; backpressure, held terminal, operand/key/core clearing | Generic and genuine Altera | 2 operations each; 36,300,508 cycles each |
-| Real generate → protected slot → public/private consume → slot preservation → release/full clear → reuse, including AES/RSA arbitration and reserved destroy/overwrite attempts | Generic | 129 exact key words; 384 public source words; 2 operations; 172,535,525 cycles |
+| Real generate â†’ protected slot â†’ public/private consume â†’ slot preservation â†’ release/full clear â†’ reuse, including AES/RSA arbitration and reserved destroy/overwrite attempts | Generic | 129 exact key words; 384 public source words; 2 operations; 172,535,525 cycles |
 | Invalid/empty/wrong-type/wrong-size slot, denial, invalid operation, malformed/too-large representative, invalid modulus/exponent, input/derivation/compute timeout | Generic and genuine Altera | 15 checks each; 78,185 cycles each |
 | Injected arithmetic error, mismatched n versus factors, invalid private factors, zero ID, terminal expiry and retry | Generic | 5 checks; 19,506,513 cycles |
 | Reset during key load, representative input, derivation, compute, output and held status; erasure and no stale completion | Generic | 6 phases; 38,995,656 cycles |
