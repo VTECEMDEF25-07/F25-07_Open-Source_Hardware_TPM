@@ -51,13 +51,15 @@ those inherited commands.
 - **TPM2_EncryptDecrypt2** supports the tested AES-256 CFB path with a
   16-byte IV, a payload of up to 1024 bytes, and one `TPM_RS_PW` record
   with an empty password. Its enable flag defaults to zero in the normal
-  FPGA build. The SPI simulation enables it and supplies a testbench key
-  service with a known handle and key.
-- **Key generation** is exercised in a separate simulation. That test passes
-  the generated key to the decoded AES job. The SPI round trip uses a known
-  key so its ciphertext and IV can be checked against fixed expected values.
+  FPGA build. The SPI simulations explicitly enable either the known-key
+  fixture or the protected generated-slot path described below.
+- **Key generation** publishes one protected volatile result. Generated AES256
+  keys now reach both the decoded AES job and the existing SPI packet path
+  through a checked reservation. Public source fixtures make ciphertext and
+  returned IV independently reproducible in simulation.
 
-The scratch buffer holds message bytes for the current job. Key object lookup,
+The scratch buffer holds message bytes for the current job and clears its owned
+span after response copying. Real key object lookup,
 authorization, TPM object and session storage, power detection, and
 nonvolatile storage are outside this integration. Enabling the AES host path
 for hardware requires a real key service that resolves the handle and
