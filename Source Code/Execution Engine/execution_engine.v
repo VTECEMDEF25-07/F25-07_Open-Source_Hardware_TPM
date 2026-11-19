@@ -2421,7 +2421,8 @@ module execution_engine_aes_packet (
         .response_length_o(job_length), .response_iv_o(job_iv)
     );
 
-    symm_top #(.RAM_ADDR_WIDTH(10), .MAX_SECRET_BYTES(32), .MAX_NONCE_BYTES(32)) aes (
+    symm_top #(.RAM_ADDR_WIDTH(10), .ENABLE_SESSION_PARAMETER(0),
+        .MAX_SECRET_BYTES(32), .MAX_NONCE_BYTES(32)) aes (
         .clock_i(clock_i), .reset_n_i(reset_n_i), .start_i(aes_start),
         .command_code_i(16'h0193), .key_valid_i(1'b1), .session_protect_i(1'b0),
         .session_valid_i(1'b0), .session_decrypt_i(1'b0), .session_encrypt_i(1'b0),
