@@ -2,7 +2,7 @@
 // One volatile private slot. Provisional ownership is not usable publication.
 // Codex assisted implementation; see KEYGEN_LIFECYCLE.md.
 module execution_engine_keygen #(
-    parameter ENABLE=0, IP_TYPE=0, parameter DEVICE_FAMILY="Agilex 5",
+    parameter ENABLE=0, ENABLE_CONSUMER=0, IP_TYPE=0, parameter DEVICE_FAMILY="Agilex 5",
     parameter [63:0] WAIT_LIMIT=64'd9000000000
 )(
     input wire clock_i, reset_n_i,
@@ -14,6 +14,12 @@ module execution_engine_keygen #(
     input wire release_i, output wire slot_valid_o,
     output wire [1:0] slot_type_o, output wire [7:0] slot_words_o,
     input wire [7:0] private_address_i, output wire [31:0] private_data_o,
+    input wire acquire_valid_i, output wire acquire_ready_o,
+    input wire acquire_allow_i, input wire [1:0] acquire_type_i,
+    input wire [7:0] acquire_words_i,
+    output wire acquire_reply_valid_o, input wire acquire_reply_ready_i,
+    output wire [3:0] acquire_code_o,
+    input wire consumer_release_i, output wire reserved_o,
     input wire result_enable_i, ownership_enable_i, terminal_enable_i,
     output wire source_open_o, input wire source_grant_i,
     output wire source_close_o, input wire source_closed_i,
@@ -29,6 +35,16 @@ module execution_engine_keygen #(
     reg [63:0] elapsed;
     reg [7:0] count, scrub_index;
     reg owned, published, failed, return_completion;
+    reg reserved_reg, acquire_reply_reg;
+    reg [3:0] acquire_code_reg;
+    // Destroy requests while reserved are rejected, never queued. Reset is
+    // the sole unconditional invalidation and is shared with every consumer.
+    wire destroy = release_i && !reserved_reg;
+    assign acquire_ready_o = reset_n_i && ENABLE && ENABLE_CONSUMER &&
+        !reserved_reg && !acquire_reply_reg;
+    assign acquire_reply_valid_o = reset_n_i && acquire_reply_reg;
+    assign acquire_code_o = acquire_reply_valid_o ? acquire_code_reg : 4'd0;
+    assign reserved_o = reset_n_i && reserved_reg;
     reg [31:0] slot [0:128];
     wire active = state==OPEN || state==START || state==RUN || state==CLOSE;
     wire expired = active && elapsed >= WAIT_LIMIT-1;
@@ -63,7 +79,7 @@ module execution_engine_keygen #(
     assign completion_valid_o = reset_n_i && state==COMPLETE;
     assign completion_code_o = completion_valid_o ? outcome : 4'd0;
     assign completion_id_o = completion_valid_o ? id : 32'd0;
-    assign slot_valid_o = reset_n_i && published && !release_i;
+    assign slot_valid_o = reset_n_i && published && !destroy;
     assign slot_type_o = slot_valid_o ? profile : 2'd0;
     assign slot_words_o = slot_valid_o ? expected_words : 8'd0;
     assign private_data_o = slot_valid_o && private_address_i<expected_words ? slot[private_address_i] : 32'd0;
@@ -86,7 +102,19 @@ module execution_engine_keygen #(
             state<=SCRUB; outcome<=0; profile<=0; id<=0; elapsed<=0;
             count<=0; scrub_index<=0; owned<=0; published<=0;
             failed<=0; return_completion<=0;
+            reserved_reg<=0; acquire_reply_reg<=0; acquire_code_reg<=0;
         end else begin
+            if(acquire_reply_reg && acquire_reply_ready_i) acquire_reply_reg<=0;
+            if(ENABLE_CONSUMER && consumer_release_i && reserved_reg && !acquire_reply_reg)
+                reserved_reg<=0;
+            if(acquire_valid_i && acquire_ready_o) begin
+                acquire_reply_reg<=1;
+                if(!acquire_allow_i) acquire_code_reg<=9;
+                else if(!slot_valid_o) acquire_code_reg<=1;
+                else if(profile!=acquire_type_i || expected_words!=acquire_words_i)
+                    acquire_code_reg<=4;
+                else begin acquire_code_reg<=0; reserved_reg<=1; end
+            end
             if(active && !expired) elapsed<=elapsed+1'b1;
             if(active && bad) begin failed<=1; published<=0; if(outcome==0) outcome<=2; end
             case(state)
@@ -132,14 +160,14 @@ module execution_engine_keygen #(
                 COMPLETE: begin
                     // Release also wins while completion is held. Failed/denied
                     // completion metadata stays held until explicitly accepted.
-                    if(release_i && published) begin
+                    if(destroy && published) begin
                         published<=0; state<=SCRUB; scrub_index<=0;
                         return_completion<=!completion_ready_i;
                     end else if(completion_ready_i) begin
                         return_completion<=0; state<=published ? LIVE : IDLE;
                     end
                 end
-                LIVE: if(release_i) begin
+                LIVE: if(destroy) begin
                     published<=0; state<=SCRUB; scrub_index<=0; return_completion<=0;
                 end
                 default: begin published<=0; state<=SCRUB; scrub_index<=0; return_completion<=0; end

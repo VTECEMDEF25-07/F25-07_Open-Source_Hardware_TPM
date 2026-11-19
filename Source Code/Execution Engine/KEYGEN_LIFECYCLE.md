@@ -30,14 +30,20 @@ fixture**, not production authorization. Only trusted internal logic may drive i
   Sizes are 4, 8, 129 words respectively. A completed slot survives completion
   acknowledgment, until explicit release or shared reset.
 * `keygen_private_address_i[7:0]` reads only a valid slot and in-range address;
-  all other reads return zero. AES is key words; RSA is n[0..63], e[64],
+  all other reads return zero. The containing engine hides this fixture read
+  port while AES owns the reservation and routes the one address port to AES.
+  AES is key words; RSA is n[0..63], e[64],
   p[65..96], q[97..128]. All words/bytes are MSB first. No partial result is
   visible. These are private consumer wires, not a transport API.
-* `keygen_release_i` immediately masks validity/data; 129 sequential writes
+* When unreserved, `keygen_release_i` immediately masks validity/data; 129 sequential writes
   clear every slot address before reuse. Failure and reset use the same full
   sweep. Reset suppresses transfers/metadata immediately; RAM clearing then
   completes synchronously. Reset emits no synthetic completion. No retained
   recovery record survives this volatile subsystem reset.
+  While reserved, destruction is rejected, never deferred. Relinquishing a
+  consumer reservation does not destroy the slot. See
+  [AES_SLOT_CONTRACT.md](AES_SLOT_CONTRACT.md) for the shared acquire/held-reply,
+  expected type/size, fixture denial, reset and RSA reuse contract.
 
 The current slot is register-backed in Quartus synthesis; no inferred block-RAM
 area or timing benefit is claimed. Release is a private consumer operation for

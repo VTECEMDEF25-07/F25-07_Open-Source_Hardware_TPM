@@ -3,7 +3,7 @@
 // Date: October 13, 2026
 // Description: One AES-256 CFB chunk (0–16 bytes). Key and IV already prepared; no command/session lookup. Partial final feedback is zero-filled; do not continue after a partial chunk.
 `default_nettype none
-module cfb_block (
+module cfb_block #(parameter KEY_BITS=256) (
     input wire clock_i, reset_n_i, start_i, decrypt_i,
     input wire [4:0] data_bytes_i,
     input wire [255:0] key_i,
@@ -12,6 +12,9 @@ module cfb_block (
     output reg [11:0] tpm_rc_o,
     output reg [127:0] data_out_o, iv_out_o
 );
+    generate if(KEY_BITS!=128 && KEY_BITS!=256) begin : invalid_key_bits
+        AES_CFB_REQUIRES_128_OR_256 invalid_configuration();
+    end endgenerate
     localparam ST_IDLE = 0, ST_EXECUTE = 1, ST_KEY_BUSY = 2, ST_KEY_READY = 3,
     ST_BLOCK_BUSY = 4, ST_BLOCK_DONE = 5, ST_DONE = 6, ST_RELEASE = 7;
     reg [3:0] state_r;
@@ -55,8 +58,8 @@ module cfb_block (
 
         .init_i (aes_init_r),
         .next_i (aes_next_r),
-        // Initial implementation: AES-256
-        .keylen_i (1'b1),
+        // Static decoded-worker configuration; host packet profile stays256.
+        .keylen_i (KEY_BITS==256),
         .key_i (aes_key_r),
         .block_i (aes_feedback_r),
         .ready_o (aes_ready_w),

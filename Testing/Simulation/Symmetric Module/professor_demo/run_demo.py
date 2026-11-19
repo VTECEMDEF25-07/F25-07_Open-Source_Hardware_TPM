@@ -98,9 +98,9 @@ if {{![batch_mode]}} {{
  add wave -group {{Clock}} sim:/tb_professor_demo/clock_i sim:/tb_professor_demo/reset_n_i
  add wave -group {{Job}} sim:/tb_professor_demo/start_i sim:/tb_professor_demo/wait_o sim:/tb_professor_demo/done_o sim:/tb_professor_demo/session_protect_i sim:/tb_professor_demo/session_use_xor_i
  add wave -group {{Input}} -radix hexadecimal sim:/tb_professor_demo/data_in_i sim:/tb_professor_demo/key_i sim:/tb_professor_demo/iv_i
- add wave -group {{KDFa message}} -radix hexadecimal sim:/tb_professor_demo/dut/SESSION_CONTROLLER/KDFA_CONTROLLER/hmac_key_r sim:/tb_professor_demo/dut/SESSION_CONTROLLER/KDFA_CONTROLLER/hmac_message_r
+ add wave -group {{KDFa message}} -radix hexadecimal sim:/tb_professor_demo/dut/session_enabled/SESSION_CONTROLLER/KDFA_CONTROLLER/hmac_key_r sim:/tb_professor_demo/dut/session_enabled/SESSION_CONTROLLER/KDFA_CONTROLLER/hmac_message_r
  add wave -group {{Python HMAC digest}} -radix hexadecimal sim:/tb_professor_demo/hmac_digest_i
- add wave -group {{Derived key and IV}} -radix hexadecimal sim:/tb_professor_demo/dut/SESSION_CONTROLLER/kdfa_key_w sim:/tb_professor_demo/dut/SESSION_CONTROLLER/kdfa_iv_w
+ add wave -group {{Derived key and IV}} -radix hexadecimal sim:/tb_professor_demo/dut/session_enabled/SESSION_CONTROLLER/kdfa_key_w sim:/tb_professor_demo/dut/session_enabled/SESSION_CONTROLLER/kdfa_iv_w
  add wave -group {{AES input}} -radix hexadecimal sim:/tb_professor_demo/dut/WORKER/aes_key_r sim:/tb_professor_demo/dut/WORKER/aes_feedback_r
  add wave -group {{Actual vs expected}} -radix hexadecimal sim:/tb_professor_demo/data_out_o sim:/tb_professor_demo/expected_data sim:/tb_professor_demo/iv_out_o sim:/tb_professor_demo/expected_feedback
  configure wave -namecolwidth 260 -valuecolwidth 260 -timelineunits ns
@@ -177,8 +177,8 @@ module tb_professor_demo;
   if(hmac_start_o) begin
    expected_message={32'd1+hmac_calls,(session_use_xor_i ? 32'h584f5200 : 32'h43464200),
      nonce_newer_i,nonce_older_i,(session_use_xor_i ? data_bytes_i*32'd8 : 32'd384)};
-   if(!session_protect_i || dut.SESSION_CONTROLLER.KDFA_CONTROLLER.hmac_key_r!==session_value_i ||
-      dut.SESSION_CONTROLLER.KDFA_CONTROLLER.hmac_message_r!==expected_message)
+   if(!session_protect_i || dut.session_enabled.SESSION_CONTROLLER.KDFA_CONTROLLER.hmac_key_r!==session_value_i ||
+      dut.session_enabled.SESSION_CONTROLLER.KDFA_CONTROLLER.hmac_message_r!==expected_message)
        $fatal(1,"Incorrect KDFa message or secret");
    hmac_calls<=hmac_calls+1;
   end

@@ -20,6 +20,7 @@ module	tpm_io #(parameter SCOPED_COMMANDS = 0,
     output reg [7:0] command_locality_o,
     input wire [11:0] exec_rsp_length_i,
     output wire [11:0] exec_rsp_addr_o,
+    output wire exec_rsp_consumed_o,
     input wire [7:0] exec_rsp_byte_i,
 	input		clock50_i,	// 50 MHz	(sysclock, arbitrary)
 	input		reset_n_i,
@@ -98,6 +99,8 @@ module	tpm_io #(parameter SCOPED_COMMANDS = 0,
 	wire	[11:0]	c_cmdAddr, c_rspAddr;
 	wire	[7:0]	c_cmdByte, c_rspByte;
 	wire		c_execDone, c_execAck;
+    // Complete copy into the response FIFO ends executor scratch ownership.
+    assign exec_rsp_consumed_o = c_rspDone;
 	
     // Bind locality to the FIFO command submission, before copying/parsing it.
     // A later locality change must not relabel an already submitted command.

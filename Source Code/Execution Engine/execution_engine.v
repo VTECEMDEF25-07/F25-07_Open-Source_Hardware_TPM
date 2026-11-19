@@ -1,6 +1,7 @@
 module execution_engine #(parameter ENABLE_HASH_COMMAND = 0, parameter ENABLE_PCR_COMMANDS = 0, parameter ENABLE_GETRANDOM = 0,
     parameter integer GETRANDOM_WAIT_LIMIT = 1000000,
-    parameter ENABLE_INTERNAL_KEYGEN=0, parameter IP_TYPE=0, parameter DEVICE_FAMILY="Agilex 5",
+    parameter ENABLE_INTERNAL_KEYGEN=0, ENABLE_AES_SLOT_CONSUMER=0, AES_SLOT_KEY_BITS=256,
+    parameter IP_TYPE=0, parameter DEVICE_FAMILY="Agilex 5",
     parameter [63:0] KEYGEN_WAIT_LIMIT=64'd9000000000,
     parameter ENABLE_PCR_EXTEND = 0,
     parameter [23:0] PCR_EXTEND_EMPTY_AUTH_MASK = 24'd0,
@@ -101,7 +102,10 @@ module execution_engine #(parameter ENABLE_HASH_COMMAND = 0, parameter ENABLE_PC
         keygen_busy_o, keygen_completion_o, keygen_completion_ready_i, keygen_code_o, keygen_completion_id_o,
         keygen_release_i, keygen_slot_valid_o, keygen_slot_type_o, keygen_slot_words_o,
         keygen_private_address_i, keygen_private_data_o,
-        keygen_result_enable_i, keygen_ownership_enable_i, keygen_terminal_enable_i
+        keygen_result_enable_i, keygen_ownership_enable_i, keygen_terminal_enable_i,
+        aes_slot_request_i, aes_slot_request_ready_o, aes_slot_handle_i, aes_slot_allow_i,
+        aes_slot_reply_o, aes_slot_reply_ready_i, aes_slot_key_o, aes_slot_code_o,
+        aes_slot_release_i, aes_slot_reserved_o
 	);
 
     // Protected internal fixture/consumer boundary; never decoded from a host command.
@@ -117,6 +121,16 @@ module execution_engine #(parameter ENABLE_HASH_COMMAND = 0, parameter ENABLE_PC
     output wire [7:0] keygen_slot_words_o;
     wire kg_open, kg_grant, kg_close, kg_closed, kg_word_valid, kg_word_ready, kg_fault, kg_timeout;
     wire [31:0] kg_word;
+    input wire aes_slot_request_i, aes_slot_allow_i, aes_slot_reply_ready_i, aes_slot_release_i;
+    input wire [31:0] aes_slot_handle_i;
+    output wire aes_slot_request_ready_o, aes_slot_reply_o, aes_slot_reserved_o;
+    output wire [255:0] aes_slot_key_o;
+    output wire [31:0] aes_slot_code_o;
+    wire slot_acquire, slot_acquire_ready, slot_acquire_reply, slot_acquire_reply_ready;
+    wire slot_acquire_allow, slot_consumer_release;
+    wire [3:0] slot_acquire_code;
+    wire [7:0] slot_aes_address;
+    wire [31:0] slot_private_data;
     wire host_random_request, host_wait, host_commit, host_timeout, host_valid, host_fault;
     wire [255:0] host_random;
     input wire [7:0] locality_i;
@@ -614,7 +628,8 @@ module execution_engine #(parameter ENABLE_HASH_COMMAND = 0, parameter ENABLE_PC
     localparam STATE_HASH_DISPATCH = 4'd10, STATE_HASH_WAIT = 4'd11;
     localparam STATE_RANDOM_DISPATCH = 4'd12, STATE_RANDOM_WAIT = 4'd13;
     generate if(ENABLE_INTERNAL_KEYGEN) begin : keygen_enabled
-    execution_engine_keygen #(.ENABLE(ENABLE_INTERNAL_KEYGEN), .IP_TYPE(IP_TYPE),
+    execution_engine_keygen #(.ENABLE(ENABLE_INTERNAL_KEYGEN),
+        .ENABLE_CONSUMER(ENABLE_AES_SLOT_CONSUMER), .IP_TYPE(IP_TYPE),
         .DEVICE_FAMILY(DEVICE_FAMILY), .WAIT_LIMIT(KEYGEN_WAIT_LIMIT)) protected_keygen (
         .clock_i(clock_i), .reset_n_i(reset_n_i),
         .request_valid_i(ENABLE_INTERNAL_KEYGEN && keygen_request_i), .request_ready_o(keygen_ready_o),
@@ -623,7 +638,14 @@ module execution_engine #(parameter ENABLE_HASH_COMMAND = 0, parameter ENABLE_PC
         .completion_code_o(keygen_code_o), .completion_id_o(keygen_completion_id_o),
         .release_i(keygen_release_i), .slot_valid_o(keygen_slot_valid_o),
         .slot_type_o(keygen_slot_type_o), .slot_words_o(keygen_slot_words_o),
-        .private_address_i(keygen_private_address_i), .private_data_o(keygen_private_data_o),
+        .private_address_i(aes_slot_reserved_o ? slot_aes_address : keygen_private_address_i),
+        .private_data_o(slot_private_data),
+        .acquire_valid_i(slot_acquire), .acquire_ready_o(slot_acquire_ready),
+        .acquire_allow_i(slot_acquire_allow), .acquire_type_i(AES_SLOT_KEY_BITS==128 ? 2'd0 : 2'd1),
+        .acquire_words_i(AES_SLOT_KEY_BITS==128 ? 8'd4 : 8'd8),
+        .acquire_reply_valid_o(slot_acquire_reply), .acquire_reply_ready_i(slot_acquire_reply_ready),
+        .acquire_code_o(slot_acquire_code), .consumer_release_i(slot_consumer_release),
+        .reserved_o(aes_slot_reserved_o),
         .result_enable_i(keygen_result_enable_i), .ownership_enable_i(keygen_ownership_enable_i),
         .terminal_enable_i(keygen_terminal_enable_i), .source_open_o(kg_open), .source_grant_i(kg_grant),
         .source_close_o(kg_close), .source_closed_i(kg_closed), .source_word_i(kg_word),
@@ -632,8 +654,30 @@ module execution_engine #(parameter ENABLE_HASH_COMMAND = 0, parameter ENABLE_PC
         assign keygen_ready_o=0; assign keygen_busy_o=1;
         assign keygen_completion_o=0; assign keygen_code_o=0; assign keygen_completion_id_o=0;
         assign keygen_slot_valid_o=0; assign keygen_slot_type_o=0; assign keygen_slot_words_o=0;
-        assign keygen_private_data_o=0;
+        assign slot_private_data=0;
+        assign slot_acquire_ready=0; assign slot_acquire_reply=0;
+        assign slot_acquire_code=0; assign aes_slot_reserved_o=0;
         assign kg_open=0; assign kg_close=0; assign kg_word_ready=0; assign kg_timeout=0;
+    end endgenerate
+    assign keygen_private_data_o = aes_slot_reserved_o ? 32'd0 : slot_private_data;
+    generate if(ENABLE_INTERNAL_KEYGEN && ENABLE_AES_SLOT_CONSUMER) begin : aes_slot_enabled
+        execution_engine_aes_slot #(.KEY_BITS(AES_SLOT_KEY_BITS)) consumer (
+            .clock_i(clock_i), .reset_n_i(reset_n_i),
+            .request_i(aes_slot_request_i), .request_ready_o(aes_slot_request_ready_o),
+            .handle_i(aes_slot_handle_i), .allow_i(aes_slot_allow_i),
+            .reply_valid_o(aes_slot_reply_o), .reply_ready_i(aes_slot_reply_ready_i),
+            .key_o(aes_slot_key_o), .code_o(aes_slot_code_o), .finish_i(aes_slot_release_i),
+            .acquire_o(slot_acquire), .acquire_ready_i(slot_acquire_ready),
+            .acquire_allow_o(slot_acquire_allow), .acquire_reply_i(slot_acquire_reply),
+            .acquire_reply_ready_o(slot_acquire_reply_ready), .acquire_code_i(slot_acquire_code),
+            .reserved_i(aes_slot_reserved_o), .release_o(slot_consumer_release),
+            .address_o(slot_aes_address), .data_i(slot_private_data));
+    end else begin : aes_slot_disabled
+        assign aes_slot_request_ready_o=0; assign aes_slot_reply_o=0;
+        assign aes_slot_key_o=0; assign aes_slot_code_o=0;
+        assign slot_acquire=0; assign slot_acquire_allow=0;
+        assign slot_acquire_reply_ready=0; assign slot_consumer_release=0;
+        assign slot_aes_address=0;
     end endgenerate
     generate if(ENABLE_GETRANDOM || ENABLE_INTERNAL_KEYGEN) begin : generation_enabled
     rng_word_service #(.WAIT_LIMIT(GETRANDOM_WAIT_LIMIT)) generation_service (
@@ -1959,6 +2003,74 @@ module execution_engine_hash (
     end
 endmodule
 
+// Private adapter for the engine's single protected volatile slot. The known
+// handle and allow bit are explicit test fixtures, not object authorization.
+module execution_engine_aes_slot #(parameter KEY_BITS=256,
+    parameter [31:0] FIXTURE_HANDLE=32'h80000000)(
+    input wire clock_i, reset_n_i, request_i,
+    output wire request_ready_o,
+    input wire [31:0] handle_i, input wire allow_i,
+    output wire reply_valid_o, input wire reply_ready_i,
+    output wire [255:0] key_o, output wire [31:0] code_o,
+    input wire finish_i,
+    output wire acquire_o, input wire acquire_ready_i,
+    output wire acquire_allow_o, input wire acquire_reply_i,
+    output wire acquire_reply_ready_o, input wire [3:0] acquire_code_i,
+    input wire reserved_i, output wire release_o,
+    output wire [7:0] address_o, input wire [31:0] data_i
+);
+    localparam IDLE=0, ACQUIRE=1, ACQUIRE_REPLY=2, LOAD=3, REPLY=4, OWNED=5, RELEASE=6;
+    reg [2:0] state_reg;
+    reg allow_reg, lease_reg;
+    reg [7:0] address_reg;
+    reg [255:0] key_reg;
+    reg [31:0] code_reg;
+    generate if(KEY_BITS!=128 && KEY_BITS!=256) begin : invalid_key_bits
+        AES_SLOT_REQUIRES_128_OR_256 invalid_configuration();
+    end endgenerate
+    assign request_ready_o=reset_n_i && state_reg==IDLE;
+    assign acquire_o=reset_n_i && state_reg==ACQUIRE;
+    assign acquire_allow_o=allow_reg;
+    assign acquire_reply_ready_o=reset_n_i && state_reg==ACQUIRE_REPLY;
+    assign reply_valid_o=reset_n_i && state_reg==REPLY;
+    assign key_o=reply_valid_o && code_reg==0 && reserved_i ? key_reg : 256'd0;
+    assign code_o=reply_valid_o ? code_reg : 32'd0;
+    assign address_o=state_reg==LOAD ? address_reg : 8'd0;
+    assign release_o=reset_n_i && state_reg==RELEASE && lease_reg;
+    always @(posedge clock_i or negedge reset_n_i) begin
+        if(!reset_n_i) begin
+            state_reg<=IDLE; allow_reg<=0; lease_reg<=0;
+            address_reg<=0; key_reg<=0; code_reg<=0;
+        end else case(state_reg)
+            IDLE: if(request_i) begin
+                key_reg<=0; address_reg<=0; lease_reg<=0;
+                allow_reg<=allow_i; code_reg<=0;
+                if(handle_i!=FIXTURE_HANDLE) begin code_reg<=32'h18b; state_reg<=REPLY; end
+                else state_reg<=ACQUIRE;
+            end
+            ACQUIRE: if(acquire_ready_i) state_reg<=ACQUIRE_REPLY;
+            ACQUIRE_REPLY: if(acquire_reply_i) begin
+                if(acquire_code_i!=0) begin
+                    code_reg<=acquire_code_i==9 ? 32'h9a2 : 32'h18b;
+                    state_reg<=REPLY;
+                end else if(!reserved_i) begin code_reg<=32'h101; state_reg<=REPLY; end
+                else begin lease_reg<=1; state_reg<=LOAD; end
+            end
+            LOAD: if(!reserved_i) begin
+                key_reg<=0; code_reg<=32'h101; state_reg<=REPLY;
+            end else begin
+                key_reg[255-address_reg*32 -: 32]<=data_i;
+                if(address_reg==KEY_BITS/32-1) begin address_reg<=0; state_reg<=REPLY; end
+                else address_reg<=address_reg+1'b1;
+            end
+            REPLY: if(reply_ready_i) begin key_reg<=0; allow_reg<=0; state_reg<=OWNED; end
+            OWNED: if(finish_i) state_reg<=RELEASE;
+            RELEASE: begin lease_reg<=0; key_reg<=0; code_reg<=0; state_reg<=IDLE; end
+            default: begin key_reg<=0; state_reg<=RELEASE; end
+        endcase
+    end
+endmodule
+
 // EncryptDecrypt2 execution after packet decoding. The object service returns
 // a resolved key only on success, or a TPM error for lookup/authorization.
 // The board host path does not instantiate this handler until that service exists.
@@ -2075,6 +2187,8 @@ endmodule
 // The packet scratch buffer is reused in place and contains no key objects.
 module execution_engine_aes_packet (
     input wire clock_i, reset_n_i, start_i, operational_i,
+    input wire response_consumed_i,
+    output wire busy_o, key_release_o,
     input wire [15:0] command_tag_i,
     input wire [31:0] command_size_i,
     output reg [11:0] command_addr_o,
@@ -2092,9 +2206,23 @@ module execution_engine_aes_packet (
     input wire [255:0] resolved_key_i,
     input wire [31:0] key_reply_code_i
 );
-    localparam [2:0] IDLE=0, READ_WAIT=1, READ_BYTE=2, LAUNCH=3,
-        WAIT_RESULT=4, REPLY=5;
-    reg [2:0] state;
+    localparam [3:0] IDLE=0, READ_WAIT=1, READ_BYTE=2, LAUNCH=3,
+        WAIT_RESULT=4, REPLY=5, HOLD=6, SCRUB=7, CLEAN=8;
+    reg [3:0] state;
+    // Retain ONLY the public ownership bound across runtime reset so a reset
+    // cannot lose the span to erase. FPGA configuration initializes it empty.
+    // Reset restarts the sweep at zero; payload bytes are never retained for reuse.
+    reg [10:0] owned_bytes_reg=0;
+    reg [10:0] scrub_index_reg;
+    reg pending_reg, pending_operational_reg;
+    reg [15:0] pending_tag_reg;
+    reg [31:0] pending_size_reg;
+    reg [31:0] command_size_reg;
+    wire [15:0] accepted_tag = pending_reg ? pending_tag_reg : command_tag_i;
+    wire [31:0] accepted_size = pending_reg ? pending_size_reg : command_size_i;
+    wire accepted_operational = pending_reg ? pending_operational_reg : operational_i;
+    assign busy_o=reset_n_i && state!=IDLE;
+    assign key_release_o=reset_n_i && state==CLEAN;
     reg [31:0] handle;
     reg [15:0] data_length;
     reg [127:0] iv;
@@ -2144,17 +2272,25 @@ module execution_engine_aes_packet (
     end
 
     always @(posedge clock_i) begin
-        if (state == READ_BYTE && command_addr_o >= 29 && command_addr_o < data_end)
+        if (reset_n_i && state==SCRUB && scrub_index_reg<owned_bytes_reg)
+            payload[scrub_index_reg] <= 0;
+        else if (reset_n_i && state == READ_BYTE && command_addr_o >= 29 && command_addr_o < data_end) begin
             payload[command_addr_o-29] <= command_byte_i;
-        else if (ram_req_valid && !ram_rsp_valid && ram_req_write)
+            owned_bytes_reg <= command_addr_o-12'd28;
+        end else if (reset_n_i && ram_req_valid && !ram_rsp_valid && ram_req_write)
             payload[ram_addr] <= ram_write_data;
-        if (ram_req_valid && !ram_rsp_valid && !ram_req_write)
+        if(reset_n_i && state==CLEAN) owned_bytes_reg<=0;
+        if (reset_n_i && ram_req_valid && !ram_rsp_valid && !ram_req_write)
             ram_read_data <= payload[ram_addr];
+        else if(!reset_n_i || state==SCRUB || state==CLEAN) ram_read_data<=0;
     end
 
     always @(posedge clock_i or negedge reset_n_i) begin
         if (!reset_n_i) begin
-            state <= IDLE;
+            state <= SCRUB;
+            scrub_index_reg <= 0;
+            pending_reg<=0; pending_tag_reg<=0; pending_size_reg<=0; pending_operational_reg<=0;
+            command_size_reg<=0;
             command_addr_o <= 0;
             response_valid_o <= 0;
             response_code_o <= 0;
@@ -2167,10 +2303,18 @@ module execution_engine_aes_packet (
             success <= 0;
         end else begin
             response_valid_o <= 0;
+            // CRB can submit its next command while the previous span clears.
+            // Keep one submission; CRB holds its command RAM until our reply.
+            if(start_i && (state==SCRUB || state==CLEAN) && !pending_reg) begin
+                pending_reg<=1; pending_tag_reg<=command_tag_i;
+                pending_size_reg<=command_size_i; pending_operational_reg<=operational_i;
+            end
             if (ram_rsp_ready) ram_rsp_valid <= 0;
             if (ram_req_valid && !ram_rsp_valid) ram_rsp_valid <= 1;
             case (state)
-                IDLE: if (start_i) begin
+                IDLE: if (start_i || pending_reg) begin
+                    pending_reg<=0;
+                    command_size_reg<=accepted_size;
                     success <= 0;
                     response_code_o <= 0;
                     command_addr_o <= 12'd10;
@@ -2178,13 +2322,13 @@ module execution_engine_aes_packet (
                     field <= 0;
                     iv <= 0;
                     state <= REPLY;
-                    if (command_tag_i != 16'h8001 && command_tag_i != 16'h8002)
+                    if (accepted_tag != 16'h8001 && accepted_tag != 16'h8002)
                         response_code_o <= 32'h01e;
-                    else if (!operational_i)
+                    else if (!accepted_operational)
                         response_code_o <= 32'h100;
-                    else if (command_tag_i != 16'h8002)
+                    else if (accepted_tag != 16'h8002)
                         response_code_o <= 32'h125;
-                    else if (command_size_i < 50 || command_size_i > 1074)
+                    else if (accepted_size < 50 || accepted_size > 1074)
                         response_code_o <= 32'h142;
                     else state <= READ_WAIT;
                 end
@@ -2208,7 +2352,7 @@ module execution_engine_aes_packet (
                         12'd28: begin
                             data_length <= next_field[15:0];
                             if (next_field[15:0] > 1024 ||
-                                {16'd0,next_field[15:0]} + 32'd50 != command_size_i) begin
+                                {16'd0,next_field[15:0]} + 32'd50 != command_size_reg) begin
                                 response_code_o <= 32'h1d5;
                                 state <= REPLY;
                             end
@@ -2246,7 +2390,14 @@ module execution_engine_aes_packet (
                 end
                 REPLY: begin
                     response_valid_o <= 1;
-                    state <= IDLE;
+                    state <= HOLD;
+                end
+                HOLD: if(response_consumed_i) begin scrub_index_reg<=0; state<=SCRUB; end
+                SCRUB: if(scrub_index_reg>=owned_bytes_reg) state<=CLEAN;
+                    else scrub_index_reg<=scrub_index_reg+1'b1;
+                CLEAN: begin
+                    field<=0; iv<=0; handle<=0; data_length<=0; decrypt<=0;
+                    state<=IDLE;
                 end
                 default: state <= IDLE;
             endcase
@@ -2270,7 +2421,8 @@ module execution_engine_aes_packet (
         .response_length_o(job_length), .response_iv_o(job_iv)
     );
 
-    symm_top #(.RAM_ADDR_WIDTH(10), .MAX_SECRET_BYTES(32), .MAX_NONCE_BYTES(32)) aes (
+    symm_top #(.RAM_ADDR_WIDTH(10), .ENABLE_SESSION_PARAMETER(0),
+        .MAX_SECRET_BYTES(32), .MAX_NONCE_BYTES(32)) aes (
         .clock_i(clock_i), .reset_n_i(reset_n_i), .start_i(aes_start),
         .command_code_i(16'h0193), .key_valid_i(1'b1), .session_protect_i(1'b0),
         .session_valid_i(1'b0), .session_decrypt_i(1'b0), .session_encrypt_i(1'b0),
