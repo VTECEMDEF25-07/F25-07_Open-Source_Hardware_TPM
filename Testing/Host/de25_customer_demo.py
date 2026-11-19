@@ -48,7 +48,7 @@ def install_status_callback(transport,recorder,provider,status_relay=None):
 
 
 def run_customer_flow(client,recorder,phase1,allow_export,auto=False,message=DEFAULT_MESSAGE,
-                      rsa_message=None,status_relay=None):
+                      rsa_message=None,status_relay=None,button_panel=None):
     if not allow_export:
         raise ValueError('This flow requires explicit --allow-demo-key-export acknowledgment')
     phase1=validate_phase1(phase1,phase1.get('sof_sha256',''))
@@ -56,7 +56,10 @@ def run_customer_flow(client,recorder,phase1,allow_export,auto=False,message=DEF
     recorder.emit('scope','DEMO ONLY — disposable AES key exported to laptop; RSA private key stays on FPGA.',
                   aes_export_authorized=True,rsa_private_export=False)
     statuses=install_status_callback(client.transport,recorder,client.provider,status_relay)
-    client.startup(); caps=client.capabilities()
+    client.startup()
+    if button_panel is not None:
+        button_panel.attach(client.transport)
+    caps=client.capabilities()
     recorder.emit('capabilities','FPGA capabilities: AES256 / real RSA2048 private operation / actual hardware status.',
                   provider='FRESH_UNQUALIFIED' if client.provider==0 else 'TEST_DETERMINISTIC',
                   aes_bits=caps.aes_bits,rsa_bits=caps.rsa_bits,core_hz=caps.core_hz,
@@ -156,6 +159,8 @@ def main():
     parser.add_argument('--message',default=DEFAULT_MESSAGE)
     parser.add_argument('--rsa-message')
     parser.add_argument('--record-dir',type=Path)
+    parser.add_argument('--buttons',action='store_true',help='Open the Nucleo FPGA Hash window alongside the terminal demo')
+    parser.add_argument('--button-port',help='Nucleo USB serial port, such as COM5')
     args=parser.parse_args()
     if not args.allow_demo_key_export: parser.error('--allow-demo-key-export is mandatory for this DEMO-ONLY flow')
     phase1=load_phase1(args.phase1_evidence,args.image_sha256)
@@ -164,19 +169,25 @@ def main():
         utf8_message(args.message,1024); utf8_message(args.rsa_message if args.rsa_message is not None else args.message,240)
     recorder=PublicRecorder(args.record_dir)
     module,factory=args.transport.rsplit(':',1)
-    relay=None; transport=None
+    relay=None; transport=None; button_panel=None
     try:
         if args.status_relay:
             rm,rf=args.status_relay.rsplit(':',1); relay=getattr(importlib.import_module(rm),rf)()
         transport=getattr(importlib.import_module(module),factory)()
         client=CustomerClient(transport,0 if args.expected_provider=='fresh-unqualified' else 1,recorder)
-        run_customer_flow(client,recorder,phase1,True,args.auto,args.message,args.rsa_message,relay)
+        if args.buttons:
+            from de25_button_panel import ButtonPanel
+            button_panel=ButtonPanel(args.button_port,recorder)
+        run_customer_flow(client,recorder,phase1,True,args.auto,args.message,args.rsa_message,relay,button_panel)
+        if button_panel is not None:
+            button_panel.run()
     except BaseException as exc:
         recorder.emit('customer-flow-error',f'CUSTOMER FLOW FAILED: {type(exc).__name__}: {exc}')
         if args.record_dir:
             (args.record_dir/'summary.json').write_text(json.dumps(dict(status='FAIL',error=str(exc)),indent=2),encoding='utf-8')
         raise
     finally:
+        if button_panel is not None: button_panel.close()
         if transport is not None: transport.close()
         if relay is not None and hasattr(relay,'close'): relay.close()
 

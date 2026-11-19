@@ -1,4 +1,5 @@
 """Public customer-demo events and exact-byte display; no synthetic FPGA progress."""
+from __future__ import annotations
 from datetime import datetime,timezone
 from pathlib import Path
 import json,time

@@ -118,6 +118,8 @@ def execute_session(args,phase1_process=run_phase1,customer_process=run_customer
                  '--allow-demo-key-export','--phase1-evidence',str(archive/'result.json'),
                  '--image-sha256',args.image_sha256,'--record-dir',str(root),'--transport',args.transport]
         if args.auto:command.append('--auto')
+        if getattr(args,'buttons',False):command.append('--buttons')
+        if getattr(args,'button_port',None):command.extend(['--button-port',args.button_port])
         for option,value in [('--message',args.message),('--rsa-message',args.rsa_message),('--status-relay',args.status_relay)]:
             if value is not None:command.extend([option,value])
         environment=utf8_environment();environment['DE25_SPI_HZ']=str(args.spi_hz)
@@ -146,6 +148,8 @@ def main():
     p.add_argument('--allow-demo-key-export',action='store_true')
     p.add_argument('--transport',default='de25_customer_transport:factory')
     p.add_argument('--status-relay')
+    p.add_argument('--buttons',action='store_true',help='Open the Nucleo Hash panel alongside the terminal demo')
+    p.add_argument('--button-port',help='Nucleo USB serial port, such as COM5')
     p.add_argument('--auto',action='store_true')
     p.add_argument('--quiet-phase1',action='store_true',help='Keep full native output in logs; display the eight results once in the customer flow')
     p.add_argument('--message');p.add_argument('--rsa-message')

@@ -1,4 +1,5 @@
 """Frozen 2026-11-10 vendor v2 customer protocol. No hardware access at import."""
+from __future__ import annotations
 from dataclasses import dataclass
 import struct
 from de25_customer_crypto import FpgaRsaPublicKey

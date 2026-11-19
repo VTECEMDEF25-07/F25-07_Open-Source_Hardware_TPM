@@ -160,3 +160,45 @@ existing TEST RSA fixture/public encryption, strict capabilities/mode/export/ID/
 length/error checks, actual snapshot coherence and wrong-plaintext rejection.
 The software board model never opens hardware and is not a board pass. Final
 hardware/source/image metrics and genuine backup video remain separate gates.
+
+## Expo buttons alongside typed messages
+
+Append `--buttons --button-port COM5` to the existing
+`de25_customer_demo_launcher.py` command, substituting the Nucleo's COM port.
+The launcher still runs the original Phase I suites before opening the customer
+flow. The lower-level `de25_customer_demo.py` accepts the same two options.
+Its existing evidence and image arguments remain required. Continue supplying
+the identity of the actual programmed FPGA image.
+
+The terminal runs the AES and RSA typed-message flow. A laptop window shows
+the reference boot-sample SHA-256 and the actual FPGA digest returned by standard
+TPM2_Hash. Button 1 measures `BOOT: START APP` and lights green when it matches
+the original reference. Button 2 measures `BOOT: START BPP` and lights red for
+the changed byte. Both returned digests are independently checked against
+Python SHA-256 for the selected sample. Invalid measurements leave both LEDs off.
+
+The panel supports the existing NUCLEO-L452RE-P firmware. Its source is copied
+to `Testing/Host/expo_panel/expo_panel.ino`. Buttons use D2 and D3 with
+INPUT_PULLUP and switches to ground. Green and red LEDs use D8 and D9 through
+their series resistors. The Nucleo sends NORMAL/MODIFIED lines at 115200 baud
+and receives G/R LED commands. Plug its ST-LINK USB data connection into the
+laptop. The DE25 remains connected through the separate FT232H SPI adapter.
+Close Arduino Serial Monitor before opening the Nucleo COM port.
+
+Use Python 3.9 or newer with Tkinter and install `cryptography` and `pyserial`
+in that same interpreter. If exactly one matching ST-LINK serial device is
+found, `--button-port` may be omitted. On-screen buttons also issue FPGA Hash
+requests when a Nucleo is unavailable.
+
+One main thread owns the existing SPI connection. Button presses during a
+complete AES/RSA TPM command queue until its response has been received.
+Keyboard waiting and FPGA status polling pump the window and serial input.
+The existing LCD relay continues receiving actual status and verified plaintext.
+The new boot-sample digest appears in the laptop window and public button-hash
+recording events. Closing the Hash window during the typed-message sequence
+dismisses the panel. After the sequence finishes, the buttons remain available
+until the window closes, then the launcher can finish its summary checks.
+
+The button work changes host software and reuses the programmed image's
+existing TPM2_Hash route. Tests use software peers and establish no physical
+button, LED, FPGA or LCD acceptance.

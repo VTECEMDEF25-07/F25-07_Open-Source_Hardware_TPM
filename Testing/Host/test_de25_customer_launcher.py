@@ -73,6 +73,14 @@ class LauncherTests(unittest.TestCase):
         self.assertFalse(self.calls)
         self.assertEqual(json.loads((self.args.record_dir/'launcher.result.json').read_text())['status'],'FAIL')
 
+    def test_button_options_reach_customer_process(self):
+        self.args.buttons=True
+        self.args.button_port='COM5'
+        self.execute()
+        command=self.calls[-1][1]
+        self.assertIn('--buttons',command)
+        self.assertEqual(command[command.index('--button-port')+1],'COM5')
+
     def test_stale_result_never_opens_crypto(self):
         self.mutate=lambda r:r.update(started_utc=(launcher.now()-timedelta(hours=1)).isoformat())
         with self.assertRaises(launcher.SessionError):self.execute()

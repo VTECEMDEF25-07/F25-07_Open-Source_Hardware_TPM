@@ -4,6 +4,7 @@ DE25_LCD_COMMAND_JSON is an explicit argv JSON list, normally the hardware lead'
 validated SSH command running the LCD service. No shell and no connection at
 import. This relays actual status only; pipe success is not physical glass proof.
 """
+from __future__ import annotations
 from pathlib import Path
 import base64,json,os,queue,subprocess,threading
 
