@@ -98,22 +98,27 @@ def run_panel(transport, port=None, client=None, event_log=None):
     selected_port = port or (candidates[0] if len(candidates) == 1 else None)
     root = tk.Tk()
     root.title("Lenovo TPM demo")
-    root.geometry("900x680" if client else "900x480")
+    root.geometry("1040x820" if client else "1040x620")
     root.configure(bg="#142030")
 
     def label(text, size):
         widget = tk.Label(root, text=text, font=("Segoe UI", size),
-                          bg="#142030", fg="white", wraplength=860)
-        widget.pack(pady=7)
+                          bg="#142030", fg="white", wraplength=920,
+                          padx=20, pady=4)
+        widget.pack(pady=6, padx=24, fill="x")
         return widget
 
-    label("Can you spot a changed bootloader?", 24)
-    label("SPI → Phase One execution engine → FPGA SHA-256", 13)
+    label("Can you spot a changed bootloader?", 28)
+    label("SPI → Phase One execution engine → FPGA SHA-256", 14).config(fg="#b9c9dc")
     sample = label("Press either breadboard button", 22)
-    label("Original SHA-256  " + hashlib.sha256(SAMPLES["NORMAL"]).hexdigest(), 11)
-    actual = label("FPGA SHA-256  —", 11)
+    sample.config(bg="#203249", pady=12)
+    reference = label("Original SHA-256  " + hashlib.sha256(SAMPLES["NORMAL"]).hexdigest(), 13)
+    reference.config(font=("Consolas", 13), anchor="w", justify="left", bg="#1b2a3d", pady=12)
+    actual = label("FPGA SHA-256  —", 13)
+    actual.config(font=("Consolas", 13), anchor="w", justify="left", bg="#1b2a3d", pady=12)
     verdict = label("", 20)
-    status = label("", 11)
+    status = label("", 12)
+    status.config(fg="#b9c9dc")
     panel = None
     pending = bytearray()
     executor = ThreadPoolExecutor(max_workers=1)
@@ -149,7 +154,9 @@ def run_panel(transport, port=None, client=None, event_log=None):
         from tkinter.scrolledtext import ScrolledText
         uart_window = tk.Toplevel(root)
         uart_window.title(f"Raw UART · {selected_port or 'No Nucleo port'} · 115200")
-        uart_text = ScrolledText(uart_window, width=85, height=18, font=("Consolas", 10))
+        uart_text = ScrolledText(uart_window, width=85, height=18, font=("Consolas", 12),
+                                 bg="#142030", fg="#edf3fa", insertbackground="white",
+                                 padx=12, pady=12)
         uart_text.pack(fill="both", expand=True)
         uart_text.insert("end", "".join(uart_history))
         uart_text.see("end")
@@ -255,26 +262,29 @@ def run_panel(transport, port=None, client=None, event_log=None):
         root.after(30, poll)
 
     controls = tk.Frame(root, bg="#142030")
-    controls.pack(pady=8)
+    controls.pack(pady=12)
     tk.Button(controls, text="Raw UART", command=open_uart,
-              font=("Segoe UI", 12)).pack(side=tk.RIGHT, padx=8)
+              font=("Segoe UI", 13), padx=16, pady=8).pack(side=tk.RIGHT, padx=8)
     buttons = []
     for title, selection in (("Normal Boot", "NORMAL"), ("Change One Byte", "MODIFIED")):
         button = tk.Button(controls, text=title, command=lambda key=selection: start(key),
-                           font=("Segoe UI", 12))
+                           font=("Segoe UI", 13), padx=16, pady=8)
         button.pack(side=tk.LEFT, padx=8)
         buttons.append(button)
     if client is not None:
-        label("Message to encrypt on the laptop and decrypt on the FPGA", 14)
-        entry = tk.Entry(root, width=60, font=("Segoe UI", 13))
+        label("Message to encrypt on the laptop and decrypt on the FPGA", 15)
+        entry = tk.Entry(root, width=60, font=("Segoe UI", 15),
+                         bg="#edf3fa", fg="#142030", insertbackground="#142030",
+                         relief="flat")
         entry.insert(0, "Hello Lenovo")
-        entry.pack(pady=5)
+        entry.pack(pady=8, ipady=8)
         crypto_controls = tk.Frame(root, bg="#142030")
         crypto_controls.pack(pady=6)
         for mode, title in (("AES", "AES-256 · export demo key and decrypt"),
                             ("RSA", "RSA-2048 · generate key and decrypt")):
             button = tk.Button(crypto_controls, text=title,
-                               command=lambda m=mode: start_crypto(m), font=("Segoe UI", 12))
+                               command=lambda m=mode: start_crypto(m), font=("Segoe UI", 13),
+                               padx=12, pady=8)
             button.pack(side=tk.LEFT, padx=6)
             buttons.append(button)
     try:
