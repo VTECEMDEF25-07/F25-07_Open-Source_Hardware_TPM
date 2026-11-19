@@ -74,8 +74,12 @@ class HashPanelTests(unittest.TestCase):
                     hash_message(BadTransport(), b"abc")
 
     def test_buttons_drive_spi_digest_display_and_leds(self):
+        # Load native crypto bindings before the temporary GUI module map.
+        from cryptography.hazmat.primitives import ciphers
+
         history, writes = [], []
         crypto_clicks = []
+        trace = []
 
         class Widget:
             def __init__(self, *args, **kwargs):
@@ -100,7 +104,9 @@ class HashPanelTests(unittest.TestCase):
             def after(self, delay, callback):
                 self.callbacks.append(callback)
             def mainloop(self):
-                for _ in range(3):
+                self.callbacks.pop(0)()
+                next(item["command"] for item in history if item.get("text") == "Raw UART")()
+                for _ in range(2):
                     self.callbacks.pop(0)()
                 for title in crypto_clicks:
                     next(item["command"] for item in history
@@ -131,8 +137,21 @@ class HashPanelTests(unittest.TestCase):
             def shutdown(self, **kwargs):
                 pass
 
+        class Monitor(Widget):
+            def title(self, value):
+                pass
+            def protocol(self, name, callback):
+                pass
+            def withdraw(self):
+                pass
+            def see(self, position):
+                pass
+            def insert(self, position, value):
+                trace.append(value)
+
         tk = types.SimpleNamespace(Tk=Root, Label=Widget, Frame=Widget, Button=Widget, Entry=Widget,
-                                   LEFT="left", NORMAL="normal", DISABLED="disabled")
+                                   Toplevel=Monitor, RIGHT="right", LEFT="left", NORMAL="normal", DISABLED="disabled")
+        self.enterContext(patch.dict("sys.modules", {"tkinter.scrolledtext": types.SimpleNamespace(ScrolledText=Monitor)}))
         ports = types.SimpleNamespace(comports=lambda: [])
         serial = types.SimpleNamespace(Serial=Panel, SerialException=OSError)
         transport = HashTransport()
@@ -143,6 +162,9 @@ class HashPanelTests(unittest.TestCase):
                 with contextlib.redirect_stdout(io.StringIO()):
                     run_panel(transport, "COM5")
         self.assertEqual(transport.messages, [SAMPLES["NORMAL"], SAMPLES["MODIFIED"]])
+        self.assertIn(r"RX  69 67 6e 6f 72 65 64 0a 4e 4f 52  |ignored\nNOR|", "".join(trace))
+        self.assertIn(r"RX  4d 41 4c 0d 0a  |MAL\r\n|", "".join(trace))
+        self.assertRegex("".join(trace), r"\d\d:\d\d:\d\d\.\d{3}  TX  47  \|G\|")
         self.assertEqual([value for value in writes if value in (b"G", b"R")], [b"G", b"R"])
         self.assertTrue(any(item.get("text") == "Matches original" for item in history))
         self.assertTrue(any(item.get("text") == "Measurement changed" for item in history))
@@ -170,8 +192,6 @@ class HashPanelTests(unittest.TestCase):
         client = CustomerClient(board)
         history.clear()
         writes.clear()
-        # Import the native crypto backend outside the temporary GUI module map.
-        from cryptography.hazmat.primitives import ciphers
         crypto_clicks.extend(("AES-256", "RSA-2048"))
         log = io.StringIO()
         with patch.dict("sys.modules", {"tkinter": tk, "serial": serial,

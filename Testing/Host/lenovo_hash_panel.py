@@ -109,6 +109,40 @@ def run_panel(transport, port=None, client=None, event_log=None):
     operation = None
     progress = queue.SimpleQueue()
     waiting = deque(maxlen=8)
+    uart_history = deque(maxlen=500)
+    uart_window = None
+    uart_text = None
+
+    def trace_uart(direction, data):
+        if not data:
+            return
+        timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+        ascii_text = ascii(bytes(data))[2:-1]
+        line = f"{timestamp}  {direction}  {data.hex(' ')}  |{ascii_text}|\n"
+        if uart_text is not None:
+            uart_text.configure(state="normal")
+            if len(uart_history) == uart_history.maxlen:
+                uart_text.delete("1.0", "2.0")
+            uart_text.insert("end", line)
+            uart_text.see("end")
+            uart_text.configure(state="disabled")
+        uart_history.append(line)
+
+    def open_uart():
+        nonlocal uart_window, uart_text
+        if uart_window is not None:
+            uart_window.deiconify()
+            uart_window.lift()
+            return
+        from tkinter.scrolledtext import ScrolledText
+        uart_window = tk.Toplevel(root)
+        uart_window.title(f"Raw UART · {selected_port or 'No Nucleo port'} · 115200")
+        uart_text = ScrolledText(uart_window, width=85, height=18, font=("Consolas", 10))
+        uart_text.pack(fill="both", expand=True)
+        uart_text.insert("end", "".join(uart_history))
+        uart_text.see("end")
+        uart_text.configure(state="disabled")
+        uart_window.protocol("WM_DELETE_WINDOW", uart_window.withdraw)
 
     def report(event, **fields):
         if event_log is not None:
@@ -125,7 +159,9 @@ def run_panel(transport, port=None, client=None, event_log=None):
     def send_led(value):
         if panel:
             try:
-                if panel.write(value) != len(value):
+                count = panel.write(value)
+                trace_uart("TX", value[:count])
+                if count != len(value):
                     raise SerialException("Incomplete LED command")
             except (SerialException, OSError) as error:
                 disconnect(error)
@@ -163,7 +199,9 @@ def run_panel(transport, port=None, client=None, event_log=None):
         nonlocal future
         if panel:
             try:
-                pending.extend(panel.read(256))
+                chunk = panel.read(256)
+                trace_uart("RX", chunk)
+                pending.extend(chunk)
                 while b"\n" in pending:
                     line, _, rest = pending.partition(b"\n")
                     pending[:] = rest
@@ -206,6 +244,8 @@ def run_panel(transport, port=None, client=None, event_log=None):
 
     controls = tk.Frame(root, bg="#142030")
     controls.pack(pady=8)
+    tk.Button(controls, text="Raw UART", command=open_uart,
+              font=("Segoe UI", 12)).pack(side=tk.RIGHT, padx=8)
     buttons = []
     for title, selection in (("Normal Boot", "NORMAL"), ("Change One Byte", "MODIFIED")):
         button = tk.Button(controls, text=title, command=lambda key=selection: start(key),
@@ -238,6 +278,7 @@ def run_panel(transport, port=None, client=None, event_log=None):
         root.after(30, poll)
         root.mainloop()
     finally:
+        uart_text = None
         executor.shutdown(wait=True)
         if panel:
             send_led(b"-")
