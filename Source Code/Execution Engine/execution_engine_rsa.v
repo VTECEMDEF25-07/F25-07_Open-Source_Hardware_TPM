@@ -53,6 +53,8 @@ module execution_engine_rsa #(
     wire core_ready;
     wire [31:0] core_word, modulus_word;
     wire operand_accept = operand_valid_i && operand_ready_o;
+    wire slot_consistent = reserved_i && slot_valid_i &&
+        slot_type_i==2 && slot_words_i==129;
     wire load_n = state_reg==LOAD_KEY && index_reg<64 && slot_consistent;
     wire load_d = state_reg==PAIR_WAIT && pair_d_valid && !d_captured_reg && slot_consistent;
     wire [5:0] input_limb = 6'd63 - index_reg[5:0];
@@ -60,8 +62,6 @@ module execution_engine_rsa #(
         input_limb - {5'd0,operand_accept && index_reg!=63} :
         state_reg==PAIR_WAIT ? (pair_valid ? index_reg[5:0]+1'b1 : 6'd0) :
         state_reg==SAVE_RESULT ? input_limb-1'b1 : 6'd63;
-    wire slot_consistent = reserved_i && slot_valid_i &&
-        slot_type_i==2 && slot_words_i==129;
     wire lease_phase = (state_reg>=LOAD_KEY && state_reg<=COMPLETE) || state_reg==SAVE_RESULT;
     wire expired = elapsed_reg>=WAIT_LIMIT-1;
     assign request_ready_o=reset_n_i && ENABLE && state_reg==IDLE && pair_ready && core_ready;
