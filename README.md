@@ -30,7 +30,7 @@ The sketch enables internal pull-ups on D2 and D3. Pressing a switch grounds the
 
 ### Bench verification on November 19, 2026
 
-On the same programmed DE25, with the programming/UART cable unplugged and the FT232H connected, both on-screen SHA buttons returned the expected FPGA digests. The laptop GUI verified the actual AES-256 and fresh RSA-2048 decryption responses. The operator read **Aspen 514** (AES) and **Willow 738** (RSA) on the blue LCD. The physical breadboard buttons and LEDs still require a repeat test after correcting the wiring.
+On the same programmed DE25, with the programming/UART cable unplugged and the FT232H connected, both on-screen SHA buttons returned the expected FPGA digests. The laptop GUI verified the actual AES-256 and fresh RSA-2048 decryption responses. The operator read **Aspen 514** (AES) and **Willow 738** (RSA) on the blue LCD. After the panel was reconnected, the GUI received both physical button events from the Nucleo and verified both FPGA digests. The normal message matched the reference and the one-byte change produced the expected different digest. LED colors still need visual confirmation.
 
 Tested combined SOF SHA-256: `559d0888be14fda2e4c1269fad4417f3226414b4de52477c4f4acecd09fc9aa4`.
 
