@@ -96,7 +96,10 @@ module tb_rsa_adapter #(parameter TEST_CASE=0, IP_TYPE=0);
         @(negedge clk);rst=0;req=0;iv=0;rr=0;ca=0;il=0;
         #1;if(rq || ir || rv || cv || av || cr || dout!==0)$fatal(1,"reset visibility");
         repeat(3)tick();@(negedge clk);rst=1;wait(rq);#1;
-        check_clean();if(reserved || cv || rv)$fatal(1,"reset stale lease/result");
+        check_clean();
+        for(integer j=0;j<64;j++)if(tracked_result[j]!==0)$fatal(1,"reset result RAM word %0d",j);
+        if(dut.enabled.result_q!==0)$fatal(1,"reset result latch");
+        if(reserved || cv || rv)$fatal(1,"reset stale lease/result");
         for(integer j=0;j<129;j++)slot[j]=fixture[j];
         live=1;kind=2;words=129;allow=1;op=0;id=32'h12345678;
     endtask
@@ -201,6 +204,28 @@ module tb_rsa_adapter #(parameter TEST_CASE=0, IP_TYPE=0);
             wait(rq);if(cv || reserved)$fatal(1,"terminal expiry did not abandon");
             id=32'h12345678;launch(1);accept_terminal(9);
             checks=checks+1;
+        end else if(TEST_CASE==4)begin
+            // Abort across conversion, both MAC passes, reduction, result copy
+            // and its erase pass. Each reset must sweep every bank before reuse.
+            for(integer phase=0;phase<9;phase++)begin
+                reset_all(); launch(0); send_operand(vectors[0]);
+                case(phase)
+                    0: wait(dut.enabled.arithmetic.state==3);
+                    1: wait(dut.enabled.arithmetic.state==7);
+                    2: wait(dut.enabled.arithmetic.state==13 && dut.enabled.arithmetic.issued==32);
+                    3: wait(dut.enabled.arithmetic.state==17);
+                    4: wait(dut.enabled.arithmetic.state==18 && dut.enabled.arithmetic.issued==32);
+                    5: wait(dut.enabled.arithmetic.state==21);
+                    6: wait(dut.enabled.arithmetic.state==9 && dut.enabled.arithmetic.operation==2);
+                    7: wait(dut.enabled.state_reg==15 && dut.enabled.index_reg==32);
+                    8: begin
+                        wait(rv); @(negedge clk); live=0; #1;
+                        if(rv || dout!==0)$fatal(1,"lost slot exposed result");
+                        wait(dut.enabled.state_reg==16 && dut.enabled.index_reg==32);
+                    end
+                endcase
+                reset_all();checks=checks+1;
+            end
         end
         $display("RSA_ADAPTER_PASS case=%0d backend=%0d checks=%0d cycles=%0d",TEST_CASE,IP_TYPE,checks,cycles);$finish;
     end

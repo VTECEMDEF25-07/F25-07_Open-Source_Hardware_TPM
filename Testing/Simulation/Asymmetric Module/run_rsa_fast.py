@@ -21,7 +21,7 @@ def sha(p):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=['generated', 'adapter', 'boundary', 'reset', 'errors'])
+    parser.add_argument('action', choices=['generated', 'adapter', 'boundary', 'reset', 'errors', 'word-resets'])
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[3]
     bench = Path(__file__).parent
@@ -33,7 +33,7 @@ def main():
         if sha(source) != expected:
             raise RuntimeError('Independent fixture changed: '+name)
         (build / name).write_bytes(source.read_bytes())
-    case = {'adapter': 0, 'boundary': 1, 'reset': 2, 'errors': 3}.get(args.action)
+    case = {'adapter': 0, 'boundary': 1, 'reset': 2, 'errors': 3, 'word-resets': 4}.get(args.action)
     if args.action == 'generated':
         top='tb_rsa_generated'
         qsf = root / 'Project/DE1/de1_soc_top.qsf'

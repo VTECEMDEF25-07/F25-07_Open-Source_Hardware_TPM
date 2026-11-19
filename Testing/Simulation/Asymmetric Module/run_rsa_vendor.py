@@ -12,7 +12,7 @@ def sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action',choices=['compile','boundary','protected-d','adapter'])
+    parser.add_argument('action',choices=['compile','boundary','protected-d','adapter','generated','resets','errors','word-resets'])
     args=parser.parse_args()
     root=Path(__file__).resolve().parents[3]
     bench=Path(__file__).parent
@@ -54,13 +54,30 @@ def main():
             if '"vsim.exe"' in tasks or '"vsimk.exe"' in tasks:raise RuntimeError('Native simulator busy; coordinate first')
             if json.loads((build/'compiled-inputs.json').read_text())!=inputs:raise RuntimeError('Compile manifest is stale')
             for name in ['slot.hex','rsa_vectors.hex']:(build/name).write_bytes((root/'build/rsa-adapter'/name).read_bytes())
-            (build/'protected_d.hex').write_bytes((root/'build/rsa-protected-d/protected_d.hex').read_bytes())
-            top='tb_protected_d' if args.action=='protected-d' else 'tb_rsa_adapter'
             parameters=['-c','-L','vendor','-gIP_TYPE=1']
-            if args.action!='protected-d':parameters+=['-gTEST_CASE='+('1' if args.action=='boundary' else '0')]
-            script=build/'run.do';script.write_text('onerror {quit -force -code 1}\nonbreak {quit -force -code 0}\nrun -all\nquit -force -code 1\n')
-            output=run('vsim',parameters+['work.'+top,'-do','do run.do'],args.action,3600)
-            marker='RSA_PROTECTED_D_PASS backend=1' if args.action=='protected-d' else 'RSA_ADAPTER_PASS case='+('1' if args.action=='boundary' else '0')+' backend=1'
+            if args.action=='generated':
+                # Same 384 candidate/witness words as the independent Generic run.
+                corpus=root/'Testing/Simulation/Key Generation/reference/expected_keys.json'
+                key=json.loads(corpus.read_text())['results'][0]['key']
+                words=[(value>>(32*i))&0xffffffff for component in ('p','q')
+                       for value in [int(key[component],16)]+[2]*5 for i in reversed(range(32))]
+                (build/'stimulus.hex').write_text(''.join(f'{word:08x}\n' for word in words))
+                record['corpus_sha256']=sha(corpus)
+                top='tb_rsa_generated'
+                marker='RSA_GENERATED_PASS backend=1'
+            elif args.action=='protected-d':
+                (build/'protected_d.hex').write_bytes((root/'build/rsa-protected-d/protected_d.hex').read_bytes())
+                top='tb_protected_d'
+                marker='RSA_PROTECTED_D_PASS backend=1'
+            else:
+                case={'adapter':0,'boundary':1,'resets':2,'errors':3,'word-resets':4}[args.action]
+                top='tb_rsa_adapter'
+                parameters.append(f'-gTEST_CASE={case}')
+                marker=f'RSA_ADAPTER_PASS case={case} backend=1'
+            script=build/'run.do'
+            script.write_text('onerror {quit -force -code 1}\nonbreak {quit -force -code 0}\nrun -all\nquit -force -code 1\n')
+            output=run('vsim',parameters+['work.'+top,'-do','do run.do'],args.action,
+                       28800 if args.action=='generated' else 10800)
             if marker not in output:raise RuntimeError('Missing explicit PASS marker')
             record['pass_markers']=[line.strip('# ') for line in output.splitlines() if marker in line]
             record['fixtures']={p.name:sha(p) for p in build.glob('*.hex')}
