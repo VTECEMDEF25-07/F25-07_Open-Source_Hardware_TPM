@@ -9,12 +9,17 @@
 // Primality is checked by the caller. RAM and multiplier scrub before handoff.
 
 // IP_TYPE: 0 = Generic, 1 = Altera, 2 = reserved Xilinx (unsupported).
-module keygen_pair_check #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5") (
+module keygen_pair_check #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
+    parameter PROTECTED_D_HANDOFF = 0) (
     input clock_i, input reset_n_i,
     input start_valid_i, output start_ready_o,
     input [1023:0] p_i, input [1023:0] q_i,
     output result_valid_o, input result_ready_i,
-    output [2047:0] n_o, output [3:0] status_o
+    output [2047:0] n_o, output [3:0] status_o,
+    // Internal consumer only. Disabled for normal key generation. The caller
+    // must own a protected operand lease; never route these ports to host RAM.
+    output private_d_valid_o, input private_d_ready_i,
+    output [2047:0] private_d_o
 );
     localparam [7:0] CLEAR=0,CLEAR_READ=1,CLEAR_WAIT=2,IDLE=3,LOAD_INPUT=4,
         BOUND_P=5,BOUND_Q=6,BOUND_ORDER=7,BOUND_DIFFERENCE=8,BOUND_DISTANCE=9,
@@ -29,7 +34,8 @@ module keygen_pair_check #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agi
         MUL_A_READ=45,MUL_A_WAIT=46,MUL_B_READ=47,MUL_B_WAIT=48,
         MUL_N_READ=49,MUL_N_WAIT=50,MUL_ISSUE=51,MUL_WAIT=52,
         MUL_WRITE=53,MUL_CARRY=54,U_A_READ=60,U_A_WAIT=61,
-        U_B_READ=62,U_B_WAIT=63,U_EXEC=64,U_STORE=65;
+        U_B_READ=62,U_B_WAIT=63,U_EXEC=64,U_STORE=65,
+        PRIVATE_D_READ=66,PRIVATE_D_WAIT=67,PRIVATE_D_HOLD=68;
     localparam [3:0] VALID=0,BAD_PAIR=1,LOW_D=2,ARITHMETIC=3;
     localparam [3:0] COPY=0,ZERO=1,ADD=2,SUB=3,COMPARE=4,SHIFT_LEFT=5,SHIFT_RIGHT=6,OR_WORD=7;
     localparam [2:0] MEMORY=0,CONST_ZERO=1,CONST_ONE=2,CONST_LOWER=3,CONST_SEPARATION=4,CONST_D_BOUND=5;
@@ -52,6 +58,7 @@ module keygen_pair_check #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agi
     reg [16:0] lambda_residue_reg,k_reg,k_residue_reg,d_remainder_reg;
     // Capture both inputs on the handshake, then reuse this register for public n.
     reg [2047:0] n_reg;
+    reg [2047:0] private_d_reg;
     reg ram_read_en,ram_write_en;
     reg [8:0] ram_read_address,ram_write_address;
     reg [31:0] ram_write_data;
@@ -130,6 +137,8 @@ module keygen_pair_check #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agi
     assign result_valid_o=reset_n_i && state_reg==RESULT;
     assign n_o=result_valid_o && status_reg==VALID?n_reg:2048'd0;
     assign status_o=result_valid_o?status_reg:4'd0;
+    assign private_d_valid_o=reset_n_i && PROTECTED_D_HANDOFF && state_reg==PRIVATE_D_HOLD;
+    assign private_d_o=private_d_valid_o?private_d_reg:2048'd0;
     keygen_ram32 #(.ADDRESS_WIDTH(9), .IP_TYPE(IP_TYPE), .DEVICE_FAMILY(DEVICE_FAMILY)) private_ram(
         .clock_i(clock_i),.reset_n_i(reset_n_i),.clock_en_i(1'b1),
         .write_en_i(ram_write_en),.write_address_i(ram_write_address),.write_data_i(ram_write_data),
@@ -160,13 +169,14 @@ module keygen_pair_check #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agi
             D_READ: begin ram_read_en=1;ram_read_address=D+{2'd0,index_reg};end
             D_WRITE: begin ram_write_en=1;ram_write_address=D+{2'd0,index_reg};ram_write_data=a_reg;end
             OUTPUT_READ: begin ram_read_en=1;ram_read_address=N+{2'd0,index_reg};end
+            PRIVATE_D_READ: begin ram_read_en=1;ram_read_address=D+{2'd0,index_reg};end
             default: begin end
         endcase
         if(!reset_n_i)begin ram_read_en=0;ram_write_en=0;end
     end
     always @(posedge clock_i or negedge reset_n_i) begin
         if(!reset_n_i)begin
-            state_reg<=CLEAR;clear_address_reg<=0;clear_result_reg<=0;n_reg<=0;status_reg<=0;multiplier_clear_reg<=1;
+            state_reg<=CLEAR;clear_address_reg<=0;clear_result_reg<=0;n_reg<=0;private_d_reg<=0;status_reg<=0;multiplier_clear_reg<=1;
             return_reg<=0;multiply_return_reg<=0;operation_reg<=0;constant_reg<=0;
             destination_reg<=0;source_a_reg<=0;source_b_reg<=0;multiply_a_reg<=0;multiply_b_reg<=0;multiply_n_reg<=0;
             index_reg<=0;length_reg<=0;b_length_reg<=0;row_reg<=0;column_reg<=0;word_bit_reg<=0;
@@ -176,6 +186,7 @@ module keygen_pair_check #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agi
             lambda_residue_reg<=0;k_reg<=0;k_residue_reg<=0;d_remainder_reg<=0;
         end else case(state_reg)
             CLEAR: begin
+                private_d_reg<=0;
                 // RAM contents are swept, never asynchronously reset. The macro
                 // output latch is refreshed after the final collision-free read.
                 a_reg<=0;b_reg<=0;result_reg<=0;carry_reg<=0;mult_left_reg<=0;mult_right_reg<=0;accumulator_reg<=0;
@@ -269,7 +280,16 @@ module keygen_pair_check #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agi
             D_COMPARE: if(comparison_reg!=LESS)finish(ARITHMETIC);
                 else operation(COMPARE,0,D,0,64,0,CONST_D_BOUND,0,D_BOUND);
             D_BOUND: if(comparison_reg!=GREATER)finish(LOW_D);
-                else begin index_reg<=0;state_reg<=OUTPUT_READ;end
+                else begin index_reg<=0;state_reg<=PROTECTED_D_HANDOFF?PRIVATE_D_READ:OUTPUT_READ;end
+            PRIVATE_D_READ: state_reg<=PRIVATE_D_WAIT;
+            PRIVATE_D_WAIT: begin
+                private_d_reg[index_reg*32 +:32]<=ram_read_data;
+                if(index_reg==63)state_reg<=PRIVATE_D_HOLD;
+                else begin index_reg<=index_reg+1'b1;state_reg<=PRIVATE_D_READ;end
+            end
+            PRIVATE_D_HOLD: if(private_d_ready_i)begin
+                private_d_reg<=0;index_reg<=0;state_reg<=OUTPUT_READ;
+            end
             OUTPUT_READ: state_reg<=OUTPUT_WAIT;
             OUTPUT_WAIT: begin
                 n_reg[index_reg*32 +:32]<=ram_read_data;
