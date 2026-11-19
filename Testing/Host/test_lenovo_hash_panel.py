@@ -117,6 +117,10 @@ class HashPanelTests(unittest.TestCase):
             configure = config
             def pack(self, **kwargs):
                 pass
+            def bind(self, *args):
+                pass
+            def delete(self, *args):
+                self.value = ""
             def insert(self, index, value):
                 self.value = value
             def get(self):
@@ -177,7 +181,7 @@ class HashPanelTests(unittest.TestCase):
             def insert(self, position, value):
                 trace.append(value)
 
-        tk = types.SimpleNamespace(Tk=Root, Label=Widget, Frame=Widget, Button=Widget, Entry=Widget,
+        tk = types.SimpleNamespace(Tk=Root, Label=Widget, Frame=Widget, Button=Widget, Entry=Widget, Text=Widget,
                                    Toplevel=Monitor, RIGHT="right", LEFT="left", NORMAL="normal", DISABLED="disabled")
         self.enterContext(patch.dict("sys.modules", {"tkinter.scrolledtext": types.SimpleNamespace(ScrolledText=Monitor)}))
         ports = types.SimpleNamespace(comports=lambda: [])
@@ -229,6 +233,10 @@ class HashPanelTests(unittest.TestCase):
                 with contextlib.redirect_stdout(io.StringIO()):
                     run_panel(board, "COM9", client, log)
         events = [json.loads(line) for line in log.getvalue().splitlines()]
+        keys = [event for event in events if event["event"] == "rsa_public_key"]
+        self.assertEqual(len(keys), 1)
+        self.assertEqual(keys[0]["public_exponent"], board.fixture["e"])
+        self.assertEqual(keys[0]["modulus_hex"], format(board.fixture["n"], "0512x"))
         self.assertEqual([e["selection"] for e in events if e.get("source") == "nucleo"],
                          ["NORMAL", "MODIFIED"])
         self.assertEqual([(e["algorithm"], e["plaintext"]) for e in events

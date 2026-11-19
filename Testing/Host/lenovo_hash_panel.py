@@ -54,7 +54,7 @@ def measure(transport, selection):
     return message, digest, matches
 
 
-def decrypt_message(client, mode, text, progress):
+def decrypt_message(client, mode, text, progress, on_public_key=None):
     from de25_customer_crypto import aes_encrypt_on_laptop, expected_cfb_final_iv, utf8_message
 
     plaintext = utf8_message(text, 1024 if mode == "AES" else 240)
@@ -74,6 +74,8 @@ def decrypt_message(client, mode, text, progress):
     elif mode == "RSA":
         progress("Generating a fresh RSA-2048 key pair on the FPGA…")
         handle, public = client.generate_rsa_public()
+        if on_public_key is not None:
+            on_public_key(public)
         ciphertext = public.encrypt_on_laptop(plaintext)
         progress("Laptop encrypted with the public key. FPGA is decrypting…")
         result = client.decrypt_rsa(handle, ciphertext)
@@ -98,22 +100,35 @@ def run_panel(transport, port=None, client=None, event_log=None):
     selected_port = port or (candidates[0] if len(candidates) == 1 else None)
     root = tk.Tk()
     root.title("Lenovo TPM demo")
-    root.geometry("900x680" if client else "900x480")
-    root.configure(bg="#142030")
+    root.geometry("900x735" if client else "900x425")
+    background, surface, accent = "#101923", "#1b2b3a", "#8ddbc8"
+    root.configure(bg=background)
+    wrapping = []
 
-    def label(text, size):
-        widget = tk.Label(root, text=text, font=("Segoe UI", size),
-                          bg="#142030", fg="white", wraplength=860)
-        widget.pack(pady=7)
+    def label(parent, text, size, color="white", bold=False, mono=False, bg=background):
+        font = ("Consolas" if mono else "Segoe UI", size, "bold" if bold else "normal")
+        widget = tk.Label(parent, text=text, font=font, bg=bg, fg=color,
+                          justify="left", anchor="w", wraplength=800)
+        widget.pack(fill="x", pady=1)
+        wrapping.append(widget)
         return widget
 
-    label("Can you spot a changed bootloader?", 24)
-    label("SPI → Phase One execution engine → FPGA SHA-256", 13)
-    sample = label("Press either breadboard button", 22)
-    label("Original SHA-256  " + hashlib.sha256(SAMPLES["NORMAL"]).hexdigest(), 11)
-    actual = label("FPGA SHA-256  —", 11)
-    verdict = label("", 20)
-    status = label("", 11)
+    def wrap_labels(event):
+        if event.widget is root:
+            for widget in wrapping:
+                widget.configure(wraplength=max(120, event.width - 90))
+
+    root.bind("<Configure>", wrap_labels)
+    body = tk.Frame(root, bg=background)
+    body.pack(fill="both", expand=True, padx=24, pady=12)
+    label(body, "Lenovo TPM demo", 22, bold=True)
+    status = label(body, "", 10, "#b9cbd9")
+    result = tk.Frame(body, bg=surface, padx=15, pady=6)
+    result.pack(fill="x", pady=(6, 5))
+    label(result, "FPGA result", 10, accent, bold=True, bg=surface)
+    sample = label(result, "Press either breadboard button", 17, bold=True, bg=surface)
+    actual = label(result, "FPGA SHA-256  —", 10, "#d5e5ed", mono=True, bg=surface)
+    verdict = label(result, "", 13, bold=True, bg=surface)
     panel = None
     pending = bytearray()
     executor = ThreadPoolExecutor(max_workers=1)
@@ -205,7 +220,15 @@ def run_panel(transport, port=None, client=None, event_log=None):
         actual.config(text="")
         sample.config(text=mode + " decryption")
         verdict.config(text="Starting…", fg="white")
-        future = executor.submit(decrypt_message, client, mode, entry.get(), progress.put)
+        if mode == "RSA":
+            show_key("Waiting for the FPGA to generate a key…")
+        future = executor.submit(decrypt_message, client, mode, entry.get(), progress.put, progress.put)
+
+    def show_key(text):
+        key_text.configure(state="normal")
+        key_text.delete("1.0", "end")
+        key_text.insert("1.0", text)
+        key_text.configure(state="disabled")
 
     def poll():
         nonlocal future
@@ -225,7 +248,17 @@ def run_panel(transport, port=None, client=None, event_log=None):
             except (SerialException, OSError) as error:
                 disconnect(error)
         while not progress.empty():
-            verdict.config(text=progress.get_nowait(), fg="white")
+            update = progress.get_nowait()
+            if isinstance(update, str):
+                verdict.config(text=update, fg="white")
+            else:
+                modulus = format(update.modulus, "0512x")
+                exponent = update.exponent
+                key = f"e = {exponent}\nn (hex) =\n" + "\n".join(
+                    modulus[i:i + 64] for i in range(0, len(modulus), 64))
+                show_key(key)
+                print("FPGA RSA-2048 public key\n" + key, flush=True)
+                report("rsa_public_key", modulus_hex=modulus, public_exponent=exponent)
         if future is not None and future.done():
             try:
                 if operation in ("AES", "RSA"):
@@ -254,29 +287,45 @@ def run_panel(transport, port=None, client=None, event_log=None):
                 start(*waiting.popleft())
         root.after(30, poll)
 
-    controls = tk.Frame(root, bg="#142030")
-    controls.pack(pady=8)
+    label(body, "Boot integrity", 15, bold=True)
+    label(body, "Original SHA-256  " + hashlib.sha256(SAMPLES["NORMAL"]).hexdigest(),
+          10, "#b9cbd9", mono=True)
+    controls = tk.Frame(body, bg=background)
+    controls.pack(fill="x", pady=(4, 9))
+    button_style = dict(font=("Segoe UI", 10, "bold"), bg="#30485b", fg="white",
+                        activebackground="#44677c", activeforeground="white",
+                        relief="flat", padx=12, pady=4, cursor="hand2")
     tk.Button(controls, text="Raw UART", command=open_uart,
-              font=("Segoe UI", 12)).pack(side=tk.RIGHT, padx=8)
+              **button_style).pack(side=tk.RIGHT)
     buttons = []
     for title, selection in (("Normal Boot", "NORMAL"), ("Change One Byte", "MODIFIED")):
         button = tk.Button(controls, text=title, command=lambda key=selection: start(key),
-                           font=("Segoe UI", 12))
-        button.pack(side=tk.LEFT, padx=8)
+                           **button_style)
+        button.pack(side=tk.LEFT, padx=(0, 7))
         buttons.append(button)
     if client is not None:
-        label("Message to encrypt on the laptop and decrypt on the FPGA", 14)
-        entry = tk.Entry(root, width=60, font=("Segoe UI", 13))
+        label(body, "Message decryption", 15, bold=True)
+        label(body, "Enter a message to encrypt on the laptop and decrypt on the FPGA.", 10, "#b9cbd9")
+        entry = tk.Entry(body, font=("Segoe UI", 12), relief="flat", bg="#e8eff3",
+                         fg="#101923", insertbackground="#101923", highlightthickness=1,
+                         highlightbackground="#7f99a6", highlightcolor=accent)
         entry.insert(0, "Hello Lenovo")
-        entry.pack(pady=5)
-        crypto_controls = tk.Frame(root, bg="#142030")
-        crypto_controls.pack(pady=6)
-        for mode, title in (("AES", "AES-256 · export demo key and decrypt"),
-                            ("RSA", "RSA-2048 · generate key and decrypt")):
+        entry.pack(fill="x", ipady=4, pady=4)
+        crypto_controls = tk.Frame(body, bg=background)
+        crypto_controls.pack(fill="x", pady=(0, 6))
+        for mode, title in (("AES", "AES-256 decrypt"), ("RSA", "RSA-2048 decrypt")):
             button = tk.Button(crypto_controls, text=title,
-                               command=lambda m=mode: start_crypto(m), font=("Segoe UI", 12))
-            button.pack(side=tk.LEFT, padx=6)
+                               command=lambda m=mode: start_crypto(m), **button_style)
+            button.pack(side=tk.LEFT, padx=(0, 7))
             buttons.append(button)
+        label(body, "RSA public key", 13, accent, bold=True)
+        key_text = tk.Text(body, name="key_text", width=64, height=8, wrap="char",
+                           font=("Consolas", 10), bg=surface, fg="#d5e5ed",
+                           selectbackground="#365f75", selectforeground="white",
+                           relief="flat", padx=10, pady=5, cursor="xterm")
+        key_text.insert("1.0", "Run RSA-2048 to generate a public key.")
+        key_text.configure(state="disabled")
+        key_text.pack(fill="both", expand=True, pady=(3, 0))
     try:
         if selected_port:
             panel = Serial(selected_port, 115200, timeout=0, write_timeout=0.2)
