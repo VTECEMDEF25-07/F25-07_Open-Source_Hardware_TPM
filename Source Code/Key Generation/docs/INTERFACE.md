@@ -80,7 +80,7 @@ acknowledgment. Source gaps and result stalls cannot change this result.
 
 ## Resource and build contracts
 
-`IP_TYPE` is the project-wide elaboration-time implementation parameter: Generic (0, default) or Altera (1), using the documented values directly. Reserved Xilinx (2) is rejected. The board top passes one choice through `TPM_TOP` to keygen. Keygen propagates it through the core, RSA engine, math/pair checker and resource wrappers. Fixed `DEVICE_FAMILY` board metadata reaches private Altera RAMs (Cyclone V/M10K or Agilex 5/M20K); other families fail. The inactive placeholder does not enable TPM key-generation commands. Unsigned 32x32 multiplication has two enabled-cycle pipeline latency;
+`IP_TYPE` is the project-wide elaboration-time implementation parameter: Generic (0, default) or Altera (1), using the documented values directly. Reserved Xilinx (2) is rejected. The board top passes one choice through `TPM_TOP` to keygen. Keygen propagates it through the core, RSA engine, math/pair checker and resource wrappers. Fixed `DEVICE_FAMILY` board metadata reaches private Altera RAMs (Cyclone V/M10K or Agilex 5/M20K); other families fail. The default-gated internal engine lifecycle does not enable TPM key-generation commands. Unsigned 32x32 multiplication has two enabled-cycle pipeline latency;
 enable freezes data and valid together. Scratch RAM has one-cycle synchronous
 read and explicit forwarding for new-data same-address write/read. Reset does
 not clear RAM contents: its owner sweeps all slots before reuse.
@@ -99,3 +99,11 @@ Reset invalidates transfers immediately; release is synchronized in the core clo
 The math allocation is 4,096 words (16 KiB), plus the pair checker's 512 words (2 KiB). Math reset scrub/read-latch cleanup takes 4,098 rising edges; pair cleanup takes 514. Do not expose either private memory port through external transport. See the [RSA implementation](RSA_ALGORITHM.md#implementation-reference) for layouts, pair status and cleanup sequencing.
 
 No demo reset, fan control or board timing/CDC signoff is implied by these portable-core contracts. Tests and their scope are listed in the [simulation README](../../../Testing/Simulation/Key%20Generation/README.md).
+
+## Internal engine integration
+
+The Phase Two [engine lifecycle](../../Execution%20Engine/KEYGEN_LIFECYCLE.md)
+uses this core contract unchanged: private provisional receiver ownership lets
+core cleanup reach terminal status; usable volatile-slot publication waits for
+matching successful terminal status and source close. No host object command or
+RSA consumer-format change is introduced.

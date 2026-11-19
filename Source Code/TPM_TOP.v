@@ -4,8 +4,8 @@
 //
 // Authors:
 //	Ian Sizemore (idsizemore@vt.edu)
-//	Aaron Grossman (IP_TYPE parameter and inactive keygen placeholder)
-// AI Disclosure: Codex assisted with the IP_TYPE/placeholder changes.
+//	Aaron Grossman (IP_TYPE parameter and gated internal keygen lifecycle)
+// AI Disclosure: Codex assisted with the IP_TYPE and internal lifecycle changes.
 //
 // Date: 11/6/25
 //
@@ -20,6 +20,7 @@
 // IP_TYPE: 0 = Generic, 1 = Altera, 2 = reserved Xilinx (unsupported).
 module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
     parameter ENABLE_ENCRYPTDECRYPT2 = 0, parameter ENABLE_GETRANDOM = 0,
+    parameter ENABLE_INTERNAL_KEYGEN = 0,
     parameter ENABLE_PCR_EXTEND = 0,
     parameter [23:0] PCR_EXTEND_EMPTY_AUTH_MASK = 24'd0,
     parameter [4:0] PCR_EXTEND_LOCALITY_MASK = 5'b00001)
@@ -49,23 +50,22 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
 	wire		rst_n;
 	assign	rst_n = SPI_RST_n & RESET_n;
 
-	// Temporary hierarchy only: keygen is not connected to TPM commands, entropy,
-	// protected storage or response handling. Keep admission/data inputs inactive;
-	// outputs are deliberately unused. Synthesis may remove this entire instance.
-	keygen_core #(.IP_TYPE(IP_TYPE), .DEVICE_FAMILY(DEVICE_FAMILY)) keygen_placeholder (
-		.clock_i(CLOCK_50), .reset_n_i(rst_n), .peers_ready_i(1'b0),
-		.request_valid_i(1'b0), .request_ready_o(),
-		.request_profile_i(2'd0), .request_id_i(32'd0),
-		.generation_valid_i(1'b0), .generation_ready_o(),
-		.generation_data_i(32'd0), .generation_failed_i(1'b0),
-		.result_valid_o(), .result_ready_i(1'b0), .result_data_o(),
-		.result_component_o(), .result_index_o(),
-		.result_component_last_o(), .result_last_o(), .result_id_o(),
-		.ownership_valid_i(1'b0), .ownership_ready_o(), .ownership_accept_i(1'b0),
-		.result_discard_o(), .status_valid_o(), .status_ready_i(1'b0),
-		.status_code_o(), .status_id_o()
-	);
-	
+    // Keep implementation validation independent of disabled worker pruning.
+    generate if(IP_TYPE != 0 && IP_TYPE != 1) begin : invalid_ip_type
+`ifdef VERILATOR
+        initial begin $display("TPM_INVALID_IP_TYPE: use Generic=0 or Altera=1"); $stop; end
+`else
+        TPM_INVALID_IP_TYPE__USE_GENERIC_OR_ALTERA invalid_selection ();
+`endif
+    end else if(IP_TYPE == 1 && DEVICE_FAMILY != "Cyclone V" && DEVICE_FAMILY != "Agilex 5") begin : invalid_family
+`ifdef VERILATOR
+        initial begin $display("TPM_INVALID_DEVICE_FAMILY"); $stop; end
+`else
+        TPM_INVALID_DEVICE_FAMILY__USE_CYCLONE_V_OR_AGILEX_5 invalid_selection ();
+`endif
+    end endgenerate
+
+
 	wire	[31:0]	commandCode;
 	wire	[31:0]	responseCode;
 	wire	[31:0]	commandSize;
@@ -157,7 +157,7 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
     wire rng_hash_valid, rng_hash_last, rng_hash_ready, rng_digest_valid;
     wire [255:0] rng_digest, random_data;
     wire random_valid, random_request, rng_timeout, rng_fault;
-    phase_one_rng #(.ENABLE(ENABLE_GETRANDOM)) rng (
+    phase_one_rng #(.ENABLE(ENABLE_GETRANDOM || ENABLE_INTERNAL_KEYGEN)) rng (
         .clk(CLOCK_50), .rst_n(rst_n), .request_i(random_request),
         .timeout_i(rng_timeout), .random_o(random_data), .valid_o(random_valid),
         .fault_o(rng_fault), .hash_data_o(rng_hash_data),
@@ -230,12 +230,16 @@ module	TPM_TOP #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
     // Preserve inherited command behavior, including its authorization
     // placeholders. Scoped commands are isolated from these stubs; this routing
     // compatibility change does not implement real legacy authorization.
-	execution_engine #(.ENABLE_HASH_COMMAND(1), .ENABLE_PCR_COMMANDS(1), .ENABLE_GETRANDOM(ENABLE_GETRANDOM),
+	execution_engine #(.ENABLE_INTERNAL_KEYGEN(ENABLE_INTERNAL_KEYGEN), .IP_TYPE(IP_TYPE), .DEVICE_FAMILY(DEVICE_FAMILY), .ENABLE_HASH_COMMAND(1), .ENABLE_PCR_COMMANDS(1), .ENABLE_GETRANDOM(ENABLE_GETRANDOM),
         .ENABLE_PCR_EXTEND(ENABLE_PCR_EXTEND),
         .PCR_EXTEND_EMPTY_AUTH_MASK(PCR_EXTEND_EMPTY_AUTH_MASK),
         .PCR_EXTEND_LOCALITY_MASK(PCR_EXTEND_LOCALITY_MASK)) ee
 	(
-		.clock_i(CLOCK_50), .reset_n_i(rst_n), 
+		// No host access to the fixture or private consumer.
+        .keygen_request_i(1'b0), .keygen_profile_i(2'd0), .keygen_id_i(32'd0), .keygen_allow_i(1'b0),
+        .keygen_completion_ready_i(1'b1), .keygen_release_i(1'b0), .keygen_private_address_i(8'd0),
+        .keygen_result_enable_i(1'b1), .keygen_ownership_enable_i(1'b1), .keygen_terminal_enable_i(1'b1),
+        .clock_i(CLOCK_50), .reset_n_i(rst_n),
 		.command_ready_i(execStart && !select_aes), .command_tag_i(commandTag),
 		.command_size_i(commandSize), .command_code_i(commandCode), 
 		.command_length_i(commandSize[15:0]),

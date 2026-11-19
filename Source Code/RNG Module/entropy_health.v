@@ -9,11 +9,17 @@ module entropy_health #(
     parameter integer MAX_ONES = 384
 )(
     input wire clk, rst_n, sample_i, sample_valid_i,
-    output reg fault_o, ready_o
+    output reg fault_o, ready_o,
+    output wire reject_sample_o
 );
     reg previous, have_sample;
     reg [31:0] repetition, samples, ones;
     wire [31:0] next_ones = ones + (sample_i ? 32'd1 : 32'd0);
+    // Qualify consumers at the edge that accepts a failing raw sample, rather
+    // than one clock after fault_o is registered. Thresholds are unchanged.
+    assign reject_sample_o = rst_n && sample_valid_i && !fault_o &&
+        ((have_sample && sample_i == previous && repetition >= REPETITION_LIMIT-1) ||
+         (samples == WINDOW_BITS-1 && (next_ones < MIN_ONES || next_ones > MAX_ONES)));
     always @(posedge clk or negedge rst_n) begin
         if(!rst_n) begin
             previous<=0; have_sample<=0; repetition<=0;

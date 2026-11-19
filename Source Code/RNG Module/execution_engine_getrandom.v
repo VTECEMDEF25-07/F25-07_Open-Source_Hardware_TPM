@@ -2,7 +2,7 @@
 // Sticky health status comes from the real source monitor in the containing
 // image; deterministic tests do not establish physical entropy adequacy.
 module execution_engine_getrandom #(
-    parameter integer WAIT_LIMIT = 1000000
+    parameter integer WAIT_LIMIT = 1000000, parameter SHARED_SERVICE=0
 )(
     input wire clock_i, reset_n_i, start_i, enabled_i, operational_i,
     input wire [31:0] command_size_i,
@@ -16,6 +16,7 @@ module execution_engine_getrandom #(
     input wire [255:0] random_i,
     input wire random_valid_i, fault_i,
     output wire random_request_o,
+    input wire source_wait_i, output wire source_commit_o,
     output reg timeout_o
 );
     localparam IDLE=0, READ_WAIT=1, FEED=2, COLLECT=3, REPLY=4;
@@ -36,6 +37,7 @@ module execution_engine_getrandom #(
         .rng_req(random_request_o), .tpm_initialized(operational_i),
         .rng_fault(fault_i || timeout_o)
     );
+    assign source_commit_o = reset_n_i && state==REPLY;
     integer i;
     always @(posedge clock_i or negedge reset_n_i) begin
         if (!reset_n_i) begin
@@ -63,7 +65,7 @@ module execution_engine_getrandom #(
                 end
                 COLLECT: begin
                     // Bound missing seed/digest waits and latch until global reset.
-                    if(!rsp_valid && !timeout_o) begin
+                    if(!rsp_valid && !timeout_o && !(SHARED_SERVICE && source_wait_i)) begin
                         if(wait_count == WAIT_LIMIT-1) timeout_o <= 1;
                         else wait_count <= wait_count+1'b1;
                     end
