@@ -10,7 +10,7 @@
 
 // IP_TYPE: 0 = Generic, 1 = Altera, 2 = reserved Xilinx (unsupported).
 module keygen_pair_check #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agilex 5",
-    parameter PROTECTED_D_HANDOFF = 0) (
+    parameter PROTECTED_D_HANDOFF = 0, parameter PROTECTED_WORD_HANDOFF = 0) (
     input clock_i, input reset_n_i,
     input start_valid_i, output start_ready_o,
     input [1023:0] p_i, input [1023:0] q_i,
@@ -19,7 +19,12 @@ module keygen_pair_check #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agi
     // Internal consumer only. Disabled for normal key generation. The caller
     // must own a protected operand lease; never route these ports to host RAM.
     output private_d_valid_o, input private_d_ready_i,
-    output [2047:0] private_d_o
+    output [2047:0] private_d_o,
+    // Alternative protected consumer port. Inputs come from the committed,
+    // leased slot. Checked outputs return directly from the existing RAM.
+    input [31:0] factor_word_i, input word_ready_i,
+    output factor_request_o, output d_word_valid_o, output n_word_valid_o,
+    output [5:0] word_index_o, output [31:0] checked_word_o
 );
     localparam [7:0] CLEAR=0,CLEAR_READ=1,CLEAR_WAIT=2,IDLE=3,LOAD_INPUT=4,
         BOUND_P=5,BOUND_Q=6,BOUND_ORDER=7,BOUND_DIFFERENCE=8,BOUND_DISTANCE=9,
@@ -137,7 +142,17 @@ module keygen_pair_check #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agi
     assign result_valid_o=reset_n_i && state_reg==RESULT;
     assign n_o=result_valid_o && status_reg==VALID?n_reg:2048'd0;
     assign status_o=result_valid_o?status_reg:4'd0;
-    assign private_d_valid_o=reset_n_i && PROTECTED_D_HANDOFF && state_reg==PRIVATE_D_HOLD;
+    localparam WORD_MODE = PROTECTED_D_HANDOFF && PROTECTED_WORD_HANDOFF;
+    assign factor_request_o = reset_n_i && WORD_MODE && state_reg==LOAD_INPUT;
+    assign d_word_valid_o = reset_n_i && WORD_MODE && state_reg==PRIVATE_D_WAIT;
+    assign n_word_valid_o = reset_n_i && WORD_MODE && state_reg==OUTPUT_WAIT;
+    assign checked_word_o = (d_word_valid_o || n_word_valid_o) ? ram_read_data : 32'd0;
+    // Also present the address throughout the RAM request cycle for a
+    // registered external modulus read followed by a same-index comparison.
+    assign word_index_o = reset_n_i && WORD_MODE && (state_reg==LOAD_INPUT ||
+        state_reg==PRIVATE_D_READ || state_reg==PRIVATE_D_WAIT ||
+        state_reg==OUTPUT_READ || state_reg==OUTPUT_WAIT) ? index_reg[5:0] : 6'd0;
+    assign private_d_valid_o=reset_n_i && PROTECTED_D_HANDOFF && !WORD_MODE && state_reg==PRIVATE_D_HOLD;
     assign private_d_o=private_d_valid_o?private_d_reg:2048'd0;
     keygen_ram32 #(.ADDRESS_WIDTH(9), .IP_TYPE(IP_TYPE), .DEVICE_FAMILY(DEVICE_FAMILY)) private_ram(
         .clock_i(clock_i),.reset_n_i(reset_n_i),.clock_en_i(1'b1),
@@ -154,7 +169,10 @@ module keygen_pair_check #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agi
         case(state_reg)
             CLEAR: begin ram_write_en=1;ram_write_address=clear_address_reg;end
             CLEAR_READ: begin ram_read_en=1;ram_read_address=511;end
-            LOAD_INPUT: begin ram_write_en=1;ram_write_address={2'd0,index_reg};ram_write_data=n_reg[index_reg*32 +:32];end
+            LOAD_INPUT: begin ram_write_address={2'd0,index_reg};
+                ram_write_en=!WORD_MODE || word_ready_i;
+                ram_write_data=WORD_MODE ? factor_word_i : n_reg[index_reg*32 +:32];
+            end
             U_A_READ: begin ram_read_en=1;ram_read_address=source_a_reg+{2'd0,index_reg};end
             U_B_READ: begin ram_read_en=1;ram_read_address=source_b_reg+{2'd0,index_reg};end
             U_STORE: if(operation_reg!=COMPARE)begin ram_write_en=1;ram_write_address=destination_reg+{2'd0,index_reg};ram_write_data=result_reg;end
@@ -202,14 +220,19 @@ module keygen_pair_check #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agi
             CLEAR_READ: state_reg<=CLEAR_WAIT;
             CLEAR_WAIT: begin clear_address_reg<=0;multiplier_clear_reg<=0;state_reg<=clear_result_reg?RESULT:IDLE;end
             IDLE: if(start_valid_i)begin
-                n_reg<={q_i,p_i};parity_bad_reg<=!p_i[0]||!q_i[0];status_reg<=VALID;
+                if(!WORD_MODE) n_reg<={q_i,p_i};
+                parity_bad_reg<=WORD_MODE ? 1'b0 : (!p_i[0] || !q_i[0]);
+                status_reg<=VALID;
                 index_reg<=0;state_reg<=LOAD_INPUT;
             end
-            LOAD_INPUT: if(index_reg==63)begin
-                n_reg<=0;
-                if(parity_bad_reg)finish(BAD_PAIR);
-                else operation(COMPARE,0,P,0,32,0,CONST_LOWER,0,BOUND_P);
-            end else index_reg<=index_reg+1'b1;
+            LOAD_INPUT: if(!WORD_MODE || word_ready_i) begin
+                if(WORD_MODE && (index_reg==0 || index_reg==32) && !factor_word_i[0]) parity_bad_reg<=1;
+                if(index_reg==63) begin
+                    n_reg<=0;
+                    if(parity_bad_reg)finish(BAD_PAIR);
+                    else operation(COMPARE,0,P,0,32,0,CONST_LOWER,0,BOUND_P);
+                end else index_reg<=index_reg+1'b1;
+            end
             BOUND_P: if(comparison_reg==LESS)finish(BAD_PAIR);
                 else operation(COMPARE,0,Q,0,32,0,CONST_LOWER,0,BOUND_Q);
             BOUND_Q: if(comparison_reg==LESS)finish(BAD_PAIR);
@@ -282,17 +305,20 @@ module keygen_pair_check #(parameter IP_TYPE = 0, parameter DEVICE_FAMILY = "Agi
             D_BOUND: if(comparison_reg!=GREATER)finish(LOW_D);
                 else begin index_reg<=0;state_reg<=PROTECTED_D_HANDOFF?PRIVATE_D_READ:OUTPUT_READ;end
             PRIVATE_D_READ: state_reg<=PRIVATE_D_WAIT;
-            PRIVATE_D_WAIT: begin
-                private_d_reg[index_reg*32 +:32]<=ram_read_data;
-                if(index_reg==63)state_reg<=PRIVATE_D_HOLD;
+            PRIVATE_D_WAIT: if(!WORD_MODE || word_ready_i) begin
+                if(!WORD_MODE) private_d_reg[index_reg*32 +:32]<=ram_read_data;
+                if(index_reg==63) begin
+                    if(WORD_MODE) index_reg<=0;
+                    state_reg<=WORD_MODE ? OUTPUT_READ : PRIVATE_D_HOLD;
+                end
                 else begin index_reg<=index_reg+1'b1;state_reg<=PRIVATE_D_READ;end
             end
             PRIVATE_D_HOLD: if(private_d_ready_i)begin
                 private_d_reg<=0;index_reg<=0;state_reg<=OUTPUT_READ;
             end
             OUTPUT_READ: state_reg<=OUTPUT_WAIT;
-            OUTPUT_WAIT: begin
-                n_reg[index_reg*32 +:32]<=ram_read_data;
+            OUTPUT_WAIT: if(!WORD_MODE || word_ready_i) begin
+                if(!WORD_MODE) n_reg[index_reg*32 +:32]<=ram_read_data;
                 if(index_reg==63)finish(VALID);
                 else begin index_reg<=index_reg+1'b1;state_reg<=OUTPUT_READ;end
             end

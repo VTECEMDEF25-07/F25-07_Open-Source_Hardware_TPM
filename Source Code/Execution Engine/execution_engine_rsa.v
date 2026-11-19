@@ -40,14 +40,15 @@ module execution_engine_rsa #(
     reg [7:0] index_reg;
     reg [63:0] elapsed_reg, terminal_elapsed_reg;
     reg modulus_high, modulus_odd, operand_less, operand_greater, pair_mismatch;
-    reg [1023:0] p_reg, q_reg;
+    reg n_checked_reg;
     reg [31:0] public_exponent_reg;
     // Registered local resets clear retained child state and invalidate late
     // done pulses. Pair RAM performs its normal full sweep after reset removal.
     reg child_clear_reg;
     wire child_reset_n = reset_n_i && !child_clear_reg;
-    wire pair_ready, pair_valid, pair_d_valid;
-    wire [2047:0] pair_n, pair_d;
+    wire pair_ready, pair_valid, factor_request, pair_d_valid, pair_n_valid;
+    wire [5:0] pair_index;
+    wire [31:0] pair_word;
     wire [3:0] pair_status;
     wire core_done, core_error;
     wire core_ready;
@@ -56,14 +57,15 @@ module execution_engine_rsa #(
     wire slot_consistent = reserved_i && slot_valid_i &&
         slot_type_i==2 && slot_words_i==129;
     wire load_n = state_reg==LOAD_KEY && index_reg<64 && slot_consistent;
-    wire load_d = state_reg==PAIR_WAIT && pair_d_valid && !d_captured_reg && slot_consistent;
+    wire expired = elapsed_reg>=WAIT_LIMIT-1;
+    wire transfer_pair_word = state_reg==PAIR_WAIT && slot_consistent && !expired;
+    wire load_d = transfer_pair_word && pair_d_valid;
     wire [5:0] input_limb = 6'd63 - index_reg[5:0];
     wire [5:0] inspect_limb = state_reg==LOAD_OPERAND ?
         input_limb - {5'd0,operand_accept && index_reg!=63} :
-        state_reg==PAIR_WAIT ? (pair_valid ? index_reg[5:0]+1'b1 : 6'd0) :
+        state_reg==PAIR_WAIT ? pair_index :
         state_reg==SAVE_RESULT ? input_limb-1'b1 : 6'd63;
     wire lease_phase = (state_reg>=LOAD_KEY && state_reg<=COMPLETE) || state_reg==SAVE_RESULT;
-    wire expired = elapsed_reg>=WAIT_LIMIT-1;
     assign request_ready_o=reset_n_i && ENABLE && state_reg==IDLE && pair_ready && core_ready;
     assign acquire_valid_o=reset_n_i && state_reg==ACQUIRE;
     assign acquire_allow_o=allow_reg;
@@ -71,7 +73,11 @@ module execution_engine_rsa #(
     assign acquire_words_o=129;
     assign acquire_reply_ready_o=reset_n_i && state_reg==ACQUIRE_REPLY;
     assign consumer_release_o=reset_n_i && state_reg==RELEASE && owned_reg;
-    assign private_address_o=reset_n_i && state_reg==LOAD_KEY && slot_consistent ? index_reg : 8'd0;
+    // Slot factors are stored most-significant word first. The pair RAM
+    // consumes P and then Q least-significant word first.
+    wire [7:0] factor_address = (pair_index[5] ? 8'd128 : 8'd96) - {3'd0,pair_index[4:0]};
+    assign private_address_o = reset_n_i && slot_consistent ?
+        (state_reg==LOAD_KEY ? index_reg : transfer_pair_word && factor_request ? factor_address : 8'd0) : 8'd0;
     assign operand_ready_o=reset_n_i && state_reg==LOAD_OPERAND && slot_consistent && !expired;
     assign result_valid_o=reset_n_i && state_reg==OUTPUT && slot_consistent && !expired;
     // Copy the held arithmetic result before clearing the child. Registered
@@ -94,19 +100,21 @@ module execution_engine_rsa #(
     assign completion_id_o=completion_valid_o?id_reg:32'd0;
 
     keygen_pair_check #(.IP_TYPE(IP_TYPE),.DEVICE_FAMILY(DEVICE_FAMILY),
-        .PROTECTED_D_HANDOFF(1)) protected_derivation (
+        .PROTECTED_D_HANDOFF(1),.PROTECTED_WORD_HANDOFF(1)) protected_derivation (
         .clock_i(clock_i),.reset_n_i(child_reset_n),
         .start_valid_i(state_reg==PAIR_START),.start_ready_o(pair_ready),
-        .p_i(p_reg),.q_i(q_reg),.result_valid_o(pair_valid),
-        .result_ready_i(state_reg==PAIR_WAIT && ((index_reg==63 && d_captured_reg) || pair_status!=0)),.n_o(pair_n),.status_o(pair_status),
-        .private_d_valid_o(pair_d_valid),.private_d_ready_i(load_d && index_reg==63),
-        .private_d_o(pair_d));
+        .p_i(1024'd0),.q_i(1024'd0),.result_valid_o(pair_valid),
+        .result_ready_i(transfer_pair_word),.n_o(),.status_o(pair_status),
+        .private_d_valid_o(),.private_d_ready_i(1'b0),.private_d_o(),
+        .factor_word_i(private_data_i),.word_ready_i(transfer_pair_word),
+        .factor_request_o(factor_request),.d_word_valid_o(pair_d_valid),
+        .n_word_valid_o(pair_n_valid),.word_index_o(pair_index),.checked_word_o(pair_word));
     rsa_montgomery_words #(.IP_TYPE(IP_TYPE),.DEVICE_FAMILY(DEVICE_FAMILY)) arithmetic (
         .clock_i(clock_i),.reset_n_i(child_reset_n),.start_i(state_reg==CORE_START),
         .load_n_i(load_n),.load_base_i(operand_accept),.load_exp_i(load_d || (load_n && !private_reg)),
-        .load_address_i(load_d ? index_reg[5:0] : input_limb),.inspect_address_i(inspect_limb),
+        .load_address_i(load_d ? pair_index : input_limb),.inspect_address_i(inspect_limb),
         .n_word_i(private_data_i),.base_word_i(operand_data_i),
-        .exp_word_i(load_d ? pair_d[index_reg[5:0]*32 +:32] : input_limb==0 ? 32'd65537 : 32'd0),
+        .exp_word_i(load_d ? pair_word : input_limb==0 ? 32'd65537 : 32'd0),
         .n_word_o(modulus_word),.result_word_o(core_word),.ready_o(core_ready),
         .done_o(core_done),.error_o(core_error));
 
@@ -119,7 +127,7 @@ module execution_engine_rsa #(
             state_reg<=WIPE_RESULT;status_reg<=0;id_reg<=0;private_reg<=0;allow_reg<=0;
             owned_reg<=0;d_captured_reg<=0;pending_reg<=0;index_reg<=0;elapsed_reg<=0;terminal_elapsed_reg<=0;
             modulus_high<=0;modulus_odd<=0;operand_less<=0;operand_greater<=0;pair_mismatch<=0;
-            p_reg<=0;q_reg<=0;public_exponent_reg<=0;child_clear_reg<=1;
+            n_checked_reg<=0;public_exponent_reg<=0;child_clear_reg<=1;
         end else begin
             if(state_reg!=IDLE && state_reg!=COMPLETE && state_reg!=RELEASE && !expired)
                 elapsed_reg<=elapsed_reg+1'b1;
@@ -147,9 +155,7 @@ module execution_engine_rsa #(
                         if(index_reg==63)modulus_odd<=private_data_i[0];
                     end
                     else if(index_reg==64)public_exponent_reg<=private_data_i;
-                    else if(index_reg<97)p_reg<={p_reg[991:0],private_data_i};
-                    else q_reg<={q_reg[991:0],private_data_i};
-                    if(index_reg==128 || (index_reg==64 && !private_reg))begin index_reg<=0;state_reg<=LOAD_OPERAND;end
+                    if(index_reg==64)begin index_reg<=0;state_reg<=LOAD_OPERAND;end
                     else index_reg<=index_reg+1'b1;
                 end
                 LOAD_OPERAND: if(operand_valid_i && operand_ready_o)begin
@@ -167,23 +173,19 @@ module execution_engine_rsa #(
                     fail(BAD_FORMAT);
                     else if(!operand_less)fail(BAD_OPERAND);
                     else if(private_reg)state_reg<=PAIR_START;
-                    else begin p_reg<=0;q_reg<=0;state_reg<=CORE_START;end
+                    else state_reg<=CORE_START;
                 PAIR_START: if(pair_ready)state_reg<=PAIR_WAIT;
                 PAIR_WAIT: begin
-                    if(pair_d_valid && !d_captured_reg)begin
-                        index_reg<={2'd0,index_reg[5:0]+6'd1};
-                        if(index_reg==63)begin d_captured_reg<=1;p_reg<=0;q_reg<=0;end
+                    if(load_d && pair_index==63) d_captured_reg<=1;
+                    if(transfer_pair_word && pair_n_valid) begin
+                        pair_mismatch<=pair_mismatch || pair_word!=modulus_word;
+                        if(pair_index==63) n_checked_reg<=1;
                     end
-                    if(pair_valid)begin
-                        if(pair_status!=0 || !d_captured_reg)fail(ARITHMETIC);
-                        else begin
-                            pair_mismatch<=pair_mismatch || pair_n[index_reg[5:0]*32 +:32]!=modulus_word;
-                            index_reg<={2'd0,index_reg[5:0]+6'd1};
-                            if(index_reg==63)begin
-                                if(pair_mismatch || pair_n[2047:2016]!=modulus_word)fail(ARITHMETIC);
-                                else state_reg<=CORE_START;
-                            end
-                        end
+                    // Pair reports completion only after scrubbing its RAM.
+                    if(pair_valid && transfer_pair_word) begin
+                        if(pair_status!=0 || !d_captured_reg || !n_checked_reg || pair_mismatch)
+                            fail(ARITHMETIC);
+                        else state_reg<=CORE_START;
                     end
                 end
                 CORE_START: state_reg<=CORE_WAIT;
@@ -202,7 +204,7 @@ module execution_engine_rsa #(
                 REFRESH_RESULT: state_reg<=CLEAN;
                 CLEAN: begin
                     child_clear_reg<=1;modulus_high<=0;modulus_odd<=0;operand_less<=0;operand_greater<=0;pair_mismatch<=0;
-                    p_reg<=0;q_reg<=0;public_exponent_reg<=0;
+                    n_checked_reg<=0;public_exponent_reg<=0;
                     d_captured_reg<=0;index_reg<=0;state_reg<=CLEAN_WAIT;
                 end
                 CLEAN_WAIT: begin

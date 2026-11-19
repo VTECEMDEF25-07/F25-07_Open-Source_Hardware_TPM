@@ -82,9 +82,10 @@ def main():
             private_rep = n-2
             vectors = [public_rep, pow(public_rep, e, n), private_rep, pow(private_rep, d, n)]
             (build / 'rsa_vectors.hex').write_text(''.join(f'{v:0512x}\n' for v in vectors))
+            (build / 'canonical_d.hex').write_text(f'{d:0512x}\n')
             record['corpus_sha256'] = sha(corpus)
             record['checker_sha256'] = sha(reference / 'key_checker.py')
-            record['fixtures'] = {name: sha(build / name) for name in ['slot.hex', 'rsa_vectors.hex']}
+            record['fixtures'] = {name: sha(build / name) for name in ['slot.hex', 'rsa_vectors.hex', 'canonical_d.hex']}
             record['expected_results'] = {'public': f'{vectors[1]:0512x}', 'private': f'{vectors[3]:0512x}'}
             print('RSA_ADAPTER_FIXTURES_PREPARED full_width=2048 slot_words=129 independent_python_pow=2')
         elif args.action == 'compile':

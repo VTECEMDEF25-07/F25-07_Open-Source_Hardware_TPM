@@ -53,7 +53,7 @@ def main():
             tasks=subprocess.check_output(['tasklist.exe','/FO','CSV','/NH']).decode(errors='replace').lower()
             if '"vsim.exe"' in tasks or '"vsimk.exe"' in tasks:raise RuntimeError('Native simulator busy; coordinate first')
             if json.loads((build/'compiled-inputs.json').read_text())!=inputs:raise RuntimeError('Compile manifest is stale')
-            for name in ['slot.hex','rsa_vectors.hex']:(build/name).write_bytes((root/'build/rsa-adapter'/name).read_bytes())
+            for name in ['slot.hex','rsa_vectors.hex','canonical_d.hex']:(build/name).write_bytes((root/'build/rsa-adapter'/name).read_bytes())
             parameters=['-c','-L','vendor','-gIP_TYPE=1']
             if args.action=='generated':
                 # Same 384 candidate/witness words as the independent Generic run.

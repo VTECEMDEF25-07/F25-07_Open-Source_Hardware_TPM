@@ -13,7 +13,8 @@ module tb_rsa_adapter #(parameter TEST_CASE=0, IP_TYPE=0);
     wire [3:0] code; wire [31:0] dout,cid;
     wire [1:0] at; wire [7:0] aw, address;
     reg [31:0] fixture[0:128], slot[0:130];
-    reg [2047:0] vectors[0:3];
+    reg [2047:0] vectors[0:3], expected_d[0:0];
+    integer checked_d=0, checked_n=0;
     reg [2047:0] observed, expected_result, representative;
     reg [31:0] tracked_ram[0:511], tracked_result[0:63];
     reg [31:0] tracked_n[0:63],tracked_base[0:63],tracked_exp[0:63],tracked_acc[0:63],tracked_temp[0:63];
@@ -60,6 +61,20 @@ module tb_rsa_adapter #(parameter TEST_CASE=0, IP_TYPE=0);
             random_reg<={random_reg[30:0],random_reg[31]^random_reg[21]^random_reg[1]^random_reg[0]};
             if(dut.enabled.state_reg==8)launches<=launches+1;
             if(dut.enabled.state_reg==6 && dut.enabled.pair_ready)derivations<=derivations+1;
+            if(TEST_CASE==0 && dut.enabled.load_d) begin
+                if(dut.enabled.pair_index!==checked_d[5:0] ||
+                   dut.enabled.pair_word!==expected_d[0][checked_d*32 +: 32])
+                    $fatal(1,"canonical private exponent word %0d",checked_d);
+                checked_d<=checked_d+1;
+            end
+            if(TEST_CASE==0 && dut.enabled.pair_n_valid && dut.enabled.transfer_pair_word) begin
+                if(dut.enabled.pair_index!==checked_n[5:0] ||
+                   dut.enabled.pair_word!==fixture[63-checked_n])
+                    $fatal(1,"derived modulus word %0d",checked_n);
+                checked_n<=checked_n+1;
+            end
+            if(dut.enabled.factor_request && dut.enabled.transfer_pair_word && (!reserved || address<65 || address>128))
+                $fatal(1,"factor read escaped its lease or component");
             if(address>128)$fatal(1,"private address escaped slot bounds");
             if(!rv && dout!==0)$fatal(1,"result visible outside publication");
             if(rv && !reserved)$fatal(1,"result without lease");
@@ -75,7 +90,7 @@ module tb_rsa_adapter #(parameter TEST_CASE=0, IP_TYPE=0);
     end
     task tick; @(posedge clk);#1; endtask
     task check_clean;
-        if((dut.enabled.p_reg|dut.enabled.q_reg|dut.enabled.public_exponent_reg)!==0)
+        if((dut.enabled.pair_word|dut.enabled.public_exponent_reg)!==0)
             $fatal(1,"adapter key copy survived cleanup");
         if((dut.enabled.arithmetic.n_q | dut.enabled.arithmetic.base_q | dut.enabled.arithmetic.acc_q |
             dut.enabled.arithmetic.exp_q | dut.enabled.arithmetic.temp_q | dut.enabled.arithmetic.product |
@@ -143,6 +158,7 @@ module tb_rsa_adapter #(parameter TEST_CASE=0, IP_TYPE=0);
     endtask
     initial begin
         $readmemh("slot.hex",fixture);$readmemh("rsa_vectors.hex",vectors);
+        if(TEST_CASE==0) $readmemh("canonical_d.hex",expected_d);
         slot[129]=32'hcafef00d;slot[130]=32'hace51234;
         reset_all();
         if(TEST_CASE==0)begin
@@ -207,8 +223,8 @@ module tb_rsa_adapter #(parameter TEST_CASE=0, IP_TYPE=0);
         end else if(TEST_CASE==4)begin
             // Abort across conversion, both MAC passes, reduction, result copy
             // and its erase pass. Each reset must sweep every bank before reuse.
-            for(integer phase=0;phase<9;phase++)begin
-                reset_all(); launch(0); send_operand(vectors[0]);
+            for(integer phase=0;phase<13;phase++)begin
+                reset_all(); launch(phase>=9); send_operand(vectors[0]);
                 case(phase)
                     0: wait(dut.enabled.arithmetic.state==3);
                     1: wait(dut.enabled.arithmetic.state==7);
@@ -223,10 +239,32 @@ module tb_rsa_adapter #(parameter TEST_CASE=0, IP_TYPE=0);
                         if(rv || dout!==0)$fatal(1,"lost slot exposed result");
                         wait(dut.enabled.state_reg==16 && dut.enabled.index_reg==32);
                     end
+                    9: wait(dut.enabled.factor_request && dut.enabled.pair_index==33);
+                    10,11: begin
+                        reg [31:0] held;
+                        if(phase==10) wait(dut.enabled.pair_d_valid && dut.enabled.pair_index==31);
+                        else wait(dut.enabled.pair_n_valid && dut.enabled.pair_index==31);
+                        @(negedge clk); held=dut.enabled.pair_word;
+                        force dut.enabled.transfer_pair_word=1'b0;
+                        repeat(7) begin
+                            tick();
+                            if(dut.enabled.pair_word!==held || dut.enabled.pair_index!=31)
+                                $fatal(1,"stalled protected word changed");
+                        end
+                        release dut.enabled.transfer_pair_word;
+                    end
+                    12: begin
+                        wait(dut.enabled.load_d && dut.enabled.pair_index==31);
+                        @(negedge clk);live=0;#1;
+                        if(dut.enabled.load_d || address!=0 || rv || dout!==0)
+                            $fatal(1,"lost lease allowed protected handoff");
+                        wait(dut.enabled.state_reg==16);
+                    end
                 endcase
                 reset_all();checks=checks+1;
             end
         end
+        if(TEST_CASE==0 && (checked_d!=64 || checked_n!=64)) $fatal(1,"missing protected output words");
         $display("RSA_ADAPTER_PASS case=%0d backend=%0d checks=%0d cycles=%0d",TEST_CASE,IP_TYPE,checks,cycles);$finish;
     end
     initial begin #(64'd3000000000);$fatal(1,"adapter test deadline");end

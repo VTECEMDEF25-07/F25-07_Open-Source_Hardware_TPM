@@ -13,6 +13,14 @@ module tb_rsa_generated #(parameter IP_TYPE=0);
     reg [31:0] stimulus[0:383],expected[0:128];
     reg [2047:0] vectors[0:3],observed;
     integer cursor=0,delay_count=0,cycles=0,checks=0;
+    reg [2047:0] expected_d[0:0];
+    integer checked_d=0;
+    always @(posedge clk) if(rst && dut.protected_rsa.enabled.load_d) begin
+        if(!dut.rsa_reserved || dut.protected_rsa.enabled.pair_index!==checked_d[5:0] ||
+           dut.protected_rsa.enabled.pair_word!==expected_d[0][checked_d*32 +: 32])
+            $fatal(1,"generated slot private exponent handoff word %0d",checked_d);
+        checked_d<=checked_d+1;
+    end
     reg [31:0] prng=32'h741cbea9;
     reg aes_req=0,aes_ack=0,aes_finish=0;
     wire aes_ready,aes_reply,aes_reserved;wire [31:0] aes_code;wire [255:0] aes_key;
@@ -98,7 +106,7 @@ module tb_rsa_generated #(parameter IP_TYPE=0);
         verify_slot();
     endtask
     initial begin
-        $readmemh("stimulus.hex",stimulus);$readmemh("slot.hex",expected);$readmemh("rsa_vectors.hex",vectors);
+        $readmemh("stimulus.hex",stimulus);$readmemh("slot.hex",expected);$readmemh("rsa_vectors.hex",vectors);$readmemh("canonical_d.hex",expected_d);
         repeat(3)@(negedge clk);rst=1;wait(kg_ready);
         @(negedge clk);kg_req=1;@(negedge clk);kg_req=0;
         wait(kg_done);#1;if(kg_code!==0 || cursor!=384)$fatal(1,"full RSA generation failed");
@@ -129,6 +137,7 @@ module tb_rsa_generated #(parameter IP_TYPE=0);
         @(negedge clk);req=1;operation=1;tick();@(negedge clk);req=0;
         wait(cv);#1;if(code!==4 || ir || rv)$fatal(1,"RSA dispatched AES key");
         @(negedge clk);ca=1;tick();@(negedge clk);ca=0;wait(rq);
+        if(checked_d!=64)$fatal(1,"incomplete generated-slot exponent handoff");
         $display("RSA_GENERATED_PASS backend=%0d exact_slot_words=129 source_words=384 operations=2 checks=%0d cycles=%0d",IP_TYPE,checks,cycles);$finish;
     end
     initial begin #(64'd9000000000);$fatal(1,"generated acceptance deadline");end
