@@ -21,7 +21,10 @@ def main():
     parser.add_argument('--fit',action='store_true')
     args=parser.parse_args()
     root=Path(__file__).resolve().parents[3]
-    build=root/('build/rsa-enabled-'+args.family+('-fit' if args.fit else '-synthesis'))
+    # Quartus Standard rejects generated database paths above MAX_PATH even
+    # when source files open successfully. Keep all real outputs under the
+    # class AI/tmp root, using short, dedicated build directories.
+    build=root.parent/('rsaa1' if args.family=='agilex' else 'rsac1')
     build.mkdir(parents=True,exist_ok=True)
     board=root/'Project/DE1/de1_soc_top.qsf'
     sources=[(board.parent/p).resolve() for p in re.findall(r'-name VERILOG_FILE "([^"]+)"',board.read_text())]

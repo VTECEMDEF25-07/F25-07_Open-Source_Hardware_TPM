@@ -1,9 +1,15 @@
 # Protected internal RSA2048 consumer
 
-Work in progress, stacked on PR57 `2f4e29a1a058fd7c30f715701f82ac7cb75b8015`.
-AES owns the shared reservation implementation. This adapter uses that contract
-without changes to slot memory, the engine or the board tops at this stage.
-Adapter-only validation is not composed acceptance or review readiness.
+Stacked on AES PR58 `8dc74f9f9b673eee45e9f7d96aa37322490ce8ff`, following
+merged keygen PR57. The shared reservation implementation is reused unchanged.
+The execution engine arbitrates AES and RSA on that single lease, latching the
+consumer on acquisition acceptance, routing the held reply only to that owner,
+and retaining ownership until denied-reply acceptance or terminal relinquish.
+AES wins simultaneous acquisition requests; RSA's waiting deadline prevents
+unbounded starvation. Private read addresses/data are routed only to the owner.
+The existing internal unreserved inspection fixture is masked during either
+reservation. Normal board TPM_TOP explicitly ties RSA request/operands inactive
+and leaves its enable at zero. No board pins or host commands expose this route.
 
 ## Format and arithmetic
 
@@ -34,13 +40,13 @@ qualification. No padding scheme or TPM command implementation is implied.
 
 An enabled, idle adapter accepts one internal request ID, allow fixture and
 operation (0 public, 1 private). Other operation values and denied fixtures fail
-before acquisition or arithmetic. It requests type2/129 words through the
-AES-owned acquire/reply handshake and begins key reads only after code0.
+before acquisition or arithmetic. It requests type 2/129 words through the
+AES-owned acquire/reply handshake and begins key reads only after code 0.
 The containing engine must arbitrate the single consumer and its private read
 port. Shared reset is mandatory. No private buses may reach host scratch.
 
-The 64-word representative stream requires last exactly on word63. The modulus
-must be full width and odd, e must be65537, and representative must be below n.
+The 64-word representative stream requires last exactly on word 63. The modulus
+must be full width and odd, e must be 65537, and representative must be below n.
 The captured request cannot be overwritten while active. The adapter observes
 the core's done/error pulses explicitly, never busy deassertion. It captures a
 successful result privately, clears operand/key registers, asserts a registered
@@ -52,7 +58,7 @@ the last result word; error completions have no result stream.
 The reservation extends through computation, cleanup, result transfer and held
 terminal ownership. Completion acknowledgment relinquishes it one cycle later;
 this never destroys the key slot. Destroy while reserved is rejected by the
-shared slot, not queued. Explicit destruction after relinquish sweeps all129
+shared slot, not queued. Explicit destruction after relinquish sweeps all 129
 words before reuse. Reset masks every transfer immediately and starts full
 child/slot erasure, with no stale completion or recovery.
 
@@ -62,7 +68,7 @@ reply is mandatory. On timeout the adapter resets/scrubs its children before
 an error completion. `TERMINAL_LIMIT` bounds unacknowledged terminal ownership:
 expiry withdraws the completion and relinquishes the lease, with no second
 completion. The internal owner must treat this as abandonment, not success.
-Defaults are100,000,000 work cycles and1,000,000 terminal cycles. Successful
+Defaults are 100,000,000 work cycles and 1,000,000 terminal cycles. Successful
 result data must not be committed by an internal caller without its matching
 successful terminal acceptance. These are internal fixtures, not production
 authorization or host-visible result/key endpoints.

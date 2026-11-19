@@ -31,11 +31,15 @@ entropy.
 
 ## Connect key generation to standard TPM object commands
 
-The planned AES-256 and RSA-2048 integrations exercise the internal keygen
-lifecycle with one protected volatile slot. They prove that the execution
-engine can request generation, commit a complete result, and release and
-clear the slot. They add no host-facing TPM command codes. A testbench can
-supply an allow or deny decision to exercise the integration.
+The internal AES-128/AES-256 and RSA-2048 integrations use one protected volatile
+slot. Simulation covers generation, complete-result commit, protected consumers,
+terminal ownership, release and clearing. The RSA consumer derives checked d
+inside a reserved lease while preserving the published n/e/p/q slot format.
+These interfaces add no host-facing TPM command codes. Testbench allow/deny
+decisions are fixtures, not production authorization. See the
+[protected RSA boundary and limits](Source%20Code/Execution%20Engine/RSA_PROTECTED_CONSUMER.md)
+and [validation](Testing/Simulation/Asymmetric%20Module/RSA_VALIDATION.md);
+simulation does not establish enabled-image fit, timing or physical acceptance.
 
 ### Command prerequisites
 
