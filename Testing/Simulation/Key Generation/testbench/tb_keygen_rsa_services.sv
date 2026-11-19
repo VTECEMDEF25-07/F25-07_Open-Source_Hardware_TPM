@@ -102,6 +102,11 @@ initial begin
  // Exact separation is rejected; two greater is legal for odd candidates.
  put(160,P_MANY_TWOS-(1024'd1<<924));command(8'h31,0,32,64,1);response(8'h11);
  put(160,P_MANY_TWOS-(1024'd1<<924)-2);command(8'h31,0,32,64,1);response(0);
+ // Exercise both subtraction signs and equality across limb 28.
+ put(160,P_MANY_TWOS-(1024'd1<<924)+1);command(8'h31,0,32,64,1);response(8'h11);
+ put(160,P_MANY_TWOS+(1024'd1<<924));command(8'h31,0,32,64,1);response(8'h11);
+ put(160,P_MANY_TWOS+(1024'd1<<924)-1);command(8'h31,0,32,64,1);response(8'h11);
+ put(160,P_MANY_TWOS+(1024'd1<<924)+1);command(8'h31,0,32,64,1);response(0);
  // Failure coincident with the last word must suppress that memory write.
  memory[0]=32'hfacecafe;command(8'h30,0,32,0,0);
  for(j=0;j<31;j++)begin
@@ -113,7 +118,7 @@ initial begin
  if(memory[0]!==32'hfacecafe)$fatal(1,"failed last word written");
  // Reset wipes cached candidate, witness, factor and predicate state.
  @(negedge clock_i);reset_n_i=0;#1;
- if(dut.candidate_reg!==0||dut.minus_one_reg!==0||dut.odd_part_reg!==0||dut.value_reg!==0||dut.peer_reg!==0)$fatal(1,"secret reset");
+ if(dut.minus_one_reg!==0||dut.value_reg!==0||dut.peer_reg!==0||dut.distance_borrow!==0||dut.distance_le_positive!==1||dut.distance_ge_negative!==1||dut.too_close!==0)$fatal(1,"secret reset");
  $display("PASS RSA_SERVICES checks=%0d draw/filter/factor/witness/predicate/separation/reset",tests);$finish;
 end
 initial begin #10000000;$fatal(1,"services timeout");end
