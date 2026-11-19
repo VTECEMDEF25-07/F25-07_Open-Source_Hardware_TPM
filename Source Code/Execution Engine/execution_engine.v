@@ -1,6 +1,8 @@
 module execution_engine #(parameter ENABLE_HASH_COMMAND = 0, parameter ENABLE_PCR_COMMANDS = 0, parameter ENABLE_GETRANDOM = 0,
     parameter integer GETRANDOM_WAIT_LIMIT = 1000000,
     parameter ENABLE_INTERNAL_KEYGEN=0, ENABLE_AES_SLOT_CONSUMER=0, AES_SLOT_KEY_BITS=256,
+    parameter ENABLE_RSA_SLOT_CONSUMER=0,
+    parameter [63:0] RSA_WAIT_LIMIT=64'd100000000, RSA_TERMINAL_LIMIT=64'd1000000,
     parameter IP_TYPE=0, parameter DEVICE_FAMILY="Agilex 5",
     parameter [63:0] KEYGEN_WAIT_LIMIT=64'd9000000000,
     parameter ENABLE_PCR_EXTEND = 0,
@@ -105,7 +107,11 @@ module execution_engine #(parameter ENABLE_HASH_COMMAND = 0, parameter ENABLE_PC
         keygen_result_enable_i, keygen_ownership_enable_i, keygen_terminal_enable_i,
         aes_slot_request_i, aes_slot_request_ready_o, aes_slot_handle_i, aes_slot_allow_i,
         aes_slot_reply_o, aes_slot_reply_ready_i, aes_slot_key_o, aes_slot_code_o,
-        aes_slot_release_i, aes_slot_reserved_o
+        aes_slot_release_i, aes_slot_reserved_o,
+        rsa_request_valid_i, rsa_request_ready_o, rsa_request_id_i, rsa_allow_i, rsa_operation_i,
+        rsa_operand_valid_i, rsa_operand_ready_o, rsa_operand_data_i, rsa_operand_last_i,
+        rsa_result_valid_o, rsa_result_ready_i, rsa_result_data_o, rsa_result_last_o,
+        rsa_completion_valid_o, rsa_completion_ready_i, rsa_completion_code_o, rsa_completion_id_o
 	);
 
     // Protected internal fixture/consumer boundary; never decoded from a host command.
@@ -131,6 +137,38 @@ module execution_engine #(parameter ENABLE_HASH_COMMAND = 0, parameter ENABLE_PC
     wire [3:0] slot_acquire_code;
     wire [7:0] slot_aes_address;
     wire [31:0] slot_private_data;
+    // Internal arithmetic fixtures only: never selected by command_code_i.
+    input wire rsa_request_valid_i, rsa_allow_i, rsa_operand_valid_i, rsa_operand_last_i;
+    input wire rsa_result_ready_i, rsa_completion_ready_i;
+    input wire [31:0] rsa_request_id_i, rsa_operand_data_i;
+    input wire [1:0] rsa_operation_i;
+    output wire rsa_request_ready_o, rsa_operand_ready_o, rsa_result_valid_o, rsa_result_last_o;
+    output wire [31:0] rsa_result_data_o, rsa_completion_id_o;
+    output wire rsa_completion_valid_o;
+    output wire [3:0] rsa_completion_code_o;
+    wire rsa_acquire, rsa_acquire_ready, rsa_acquire_reply, rsa_acquire_reply_ready;
+    wire rsa_acquire_allow, rsa_release, rsa_reserved;
+    wire [1:0] rsa_acquire_type;
+    wire [7:0] rsa_acquire_words, rsa_address;
+    wire kg_acquire, kg_acquire_ready, kg_acquire_reply, kg_reply_ready, kg_reserved;
+    wire [3:0] kg_acquire_code;
+    reg [1:0] consumer_owner_reg;
+    // Latch ownership at acquire acceptance, including a denied held reply.
+    // A successful lease lasts through the consumer's terminal relinquish.
+    wire select_aes_consumer = consumer_owner_reg==0 && slot_acquire;
+    wire select_rsa_consumer = consumer_owner_reg==0 && !slot_acquire && rsa_acquire;
+    wire kg_relinquish = (consumer_owner_reg==1 && slot_consumer_release) ||
+        (consumer_owner_reg==2 && rsa_release);
+    assign kg_acquire=select_aes_consumer || select_rsa_consumer;
+    assign slot_acquire_ready=select_aes_consumer && kg_acquire_ready;
+    assign rsa_acquire_ready=select_rsa_consumer && kg_acquire_ready;
+    assign slot_acquire_reply=consumer_owner_reg==1 && kg_acquire_reply;
+    assign rsa_acquire_reply=consumer_owner_reg==2 && kg_acquire_reply;
+    assign slot_acquire_code=slot_acquire_reply?kg_acquire_code:4'd0;
+    assign kg_reply_ready=(consumer_owner_reg==1 && slot_acquire_reply_ready) ||
+        (consumer_owner_reg==2 && rsa_acquire_reply_ready);
+    assign aes_slot_reserved_o=consumer_owner_reg==1 && kg_reserved;
+    assign rsa_reserved=consumer_owner_reg==2 && kg_reserved;
     wire host_random_request, host_wait, host_commit, host_timeout, host_valid, host_fault;
     wire [255:0] host_random;
     input wire [7:0] locality_i;
@@ -627,9 +665,16 @@ module execution_engine #(parameter ENABLE_HASH_COMMAND = 0, parameter ENABLE_PC
     // hash_active retains its compatibility name and now marks either parser.
     localparam STATE_HASH_DISPATCH = 4'd10, STATE_HASH_WAIT = 4'd11;
     localparam STATE_RANDOM_DISPATCH = 4'd12, STATE_RANDOM_WAIT = 4'd13;
+    always @(posedge clock_i or negedge reset_n_i)begin
+        if(!reset_n_i)consumer_owner_reg<=0;
+        else if(kg_acquire && kg_acquire_ready)
+            consumer_owner_reg<=select_aes_consumer?2'd1:2'd2;
+        else if(kg_relinquish || (kg_acquire_reply && kg_reply_ready && kg_acquire_code!=0))
+            consumer_owner_reg<=0;
+    end
     generate if(ENABLE_INTERNAL_KEYGEN) begin : keygen_enabled
     execution_engine_keygen #(.ENABLE(ENABLE_INTERNAL_KEYGEN),
-        .ENABLE_CONSUMER(ENABLE_AES_SLOT_CONSUMER), .IP_TYPE(IP_TYPE),
+        .ENABLE_CONSUMER(ENABLE_AES_SLOT_CONSUMER || ENABLE_RSA_SLOT_CONSUMER), .IP_TYPE(IP_TYPE),
         .DEVICE_FAMILY(DEVICE_FAMILY), .WAIT_LIMIT(KEYGEN_WAIT_LIMIT)) protected_keygen (
         .clock_i(clock_i), .reset_n_i(reset_n_i),
         .request_valid_i(ENABLE_INTERNAL_KEYGEN && keygen_request_i), .request_ready_o(keygen_ready_o),
@@ -638,14 +683,15 @@ module execution_engine #(parameter ENABLE_HASH_COMMAND = 0, parameter ENABLE_PC
         .completion_code_o(keygen_code_o), .completion_id_o(keygen_completion_id_o),
         .release_i(keygen_release_i), .slot_valid_o(keygen_slot_valid_o),
         .slot_type_o(keygen_slot_type_o), .slot_words_o(keygen_slot_words_o),
-        .private_address_i(aes_slot_reserved_o ? slot_aes_address : keygen_private_address_i),
+        .private_address_i(rsa_reserved ? rsa_address : aes_slot_reserved_o ? slot_aes_address : keygen_private_address_i),
         .private_data_o(slot_private_data),
-        .acquire_valid_i(slot_acquire), .acquire_ready_o(slot_acquire_ready),
-        .acquire_allow_i(slot_acquire_allow), .acquire_type_i(AES_SLOT_KEY_BITS==128 ? 2'd0 : 2'd1),
-        .acquire_words_i(AES_SLOT_KEY_BITS==128 ? 8'd4 : 8'd8),
-        .acquire_reply_valid_o(slot_acquire_reply), .acquire_reply_ready_i(slot_acquire_reply_ready),
-        .acquire_code_o(slot_acquire_code), .consumer_release_i(slot_consumer_release),
-        .reserved_o(aes_slot_reserved_o),
+        .acquire_valid_i(kg_acquire), .acquire_ready_o(kg_acquire_ready),
+        .acquire_allow_i(select_aes_consumer ? slot_acquire_allow : rsa_acquire_allow),
+        .acquire_type_i(select_aes_consumer ? (AES_SLOT_KEY_BITS==128 ? 2'd0 : 2'd1) : rsa_acquire_type),
+        .acquire_words_i(select_aes_consumer ? (AES_SLOT_KEY_BITS==128 ? 8'd4 : 8'd8) : rsa_acquire_words),
+        .acquire_reply_valid_o(kg_acquire_reply), .acquire_reply_ready_i(kg_reply_ready),
+        .acquire_code_o(kg_acquire_code), .consumer_release_i(kg_relinquish),
+        .reserved_o(kg_reserved),
         .result_enable_i(keygen_result_enable_i), .ownership_enable_i(keygen_ownership_enable_i),
         .terminal_enable_i(keygen_terminal_enable_i), .source_open_o(kg_open), .source_grant_i(kg_grant),
         .source_close_o(kg_close), .source_closed_i(kg_closed), .source_word_i(kg_word),
@@ -655,11 +701,11 @@ module execution_engine #(parameter ENABLE_HASH_COMMAND = 0, parameter ENABLE_PC
         assign keygen_completion_o=0; assign keygen_code_o=0; assign keygen_completion_id_o=0;
         assign keygen_slot_valid_o=0; assign keygen_slot_type_o=0; assign keygen_slot_words_o=0;
         assign slot_private_data=0;
-        assign slot_acquire_ready=0; assign slot_acquire_reply=0;
-        assign slot_acquire_code=0; assign aes_slot_reserved_o=0;
+        assign kg_acquire_ready=0; assign kg_acquire_reply=0;
+        assign kg_acquire_code=0; assign kg_reserved=0;
         assign kg_open=0; assign kg_close=0; assign kg_word_ready=0; assign kg_timeout=0;
     end endgenerate
-    assign keygen_private_data_o = aes_slot_reserved_o ? 32'd0 : slot_private_data;
+    assign keygen_private_data_o = kg_reserved ? 32'd0 : slot_private_data;
     generate if(ENABLE_INTERNAL_KEYGEN && ENABLE_AES_SLOT_CONSUMER) begin : aes_slot_enabled
         execution_engine_aes_slot #(.KEY_BITS(AES_SLOT_KEY_BITS)) consumer (
             .clock_i(clock_i), .reset_n_i(reset_n_i),
@@ -671,7 +717,7 @@ module execution_engine #(parameter ENABLE_HASH_COMMAND = 0, parameter ENABLE_PC
             .acquire_allow_o(slot_acquire_allow), .acquire_reply_i(slot_acquire_reply),
             .acquire_reply_ready_o(slot_acquire_reply_ready), .acquire_code_i(slot_acquire_code),
             .reserved_i(aes_slot_reserved_o), .release_o(slot_consumer_release),
-            .address_o(slot_aes_address), .data_i(slot_private_data));
+            .address_o(slot_aes_address), .data_i(aes_slot_reserved_o ? slot_private_data : 32'd0));
     end else begin : aes_slot_disabled
         assign aes_slot_request_ready_o=0; assign aes_slot_reply_o=0;
         assign aes_slot_key_o=0; assign aes_slot_code_o=0;
@@ -679,6 +725,25 @@ module execution_engine #(parameter ENABLE_HASH_COMMAND = 0, parameter ENABLE_PC
         assign slot_acquire_reply_ready=0; assign slot_consumer_release=0;
         assign slot_aes_address=0;
     end endgenerate
+    execution_engine_rsa #(.ENABLE(ENABLE_INTERNAL_KEYGEN && ENABLE_RSA_SLOT_CONSUMER),
+        .IP_TYPE(IP_TYPE),.DEVICE_FAMILY(DEVICE_FAMILY),.WAIT_LIMIT(RSA_WAIT_LIMIT),
+        .TERMINAL_LIMIT(RSA_TERMINAL_LIMIT)) protected_rsa (
+        .clock_i(clock_i),.reset_n_i(reset_n_i),
+        .request_valid_i(rsa_request_valid_i),.request_ready_o(rsa_request_ready_o),
+        .request_id_i(rsa_request_id_i),.request_allow_i(rsa_allow_i),.operation_i(rsa_operation_i),
+        .operand_valid_i(rsa_operand_valid_i),.operand_ready_o(rsa_operand_ready_o),
+        .operand_data_i(rsa_operand_data_i),.operand_last_i(rsa_operand_last_i),
+        .result_valid_o(rsa_result_valid_o),.result_ready_i(rsa_result_ready_i),
+        .result_data_o(rsa_result_data_o),.result_last_o(rsa_result_last_o),
+        .completion_valid_o(rsa_completion_valid_o),.completion_ready_i(rsa_completion_ready_i),
+        .completion_code_o(rsa_completion_code_o),.completion_id_o(rsa_completion_id_o),
+        .acquire_valid_o(rsa_acquire),.acquire_ready_i(rsa_acquire_ready),
+        .acquire_allow_o(rsa_acquire_allow),.acquire_type_o(rsa_acquire_type),.acquire_words_o(rsa_acquire_words),
+        .acquire_reply_valid_i(rsa_acquire_reply),.acquire_reply_ready_o(rsa_acquire_reply_ready),
+        .acquire_code_i(rsa_acquire_reply?kg_acquire_code:4'd0),
+        .consumer_release_o(rsa_release),.reserved_i(rsa_reserved),
+        .slot_valid_i(keygen_slot_valid_o),.slot_type_i(keygen_slot_type_o),.slot_words_i(keygen_slot_words_o),
+        .private_address_o(rsa_address),.private_data_i(rsa_reserved?slot_private_data:32'd0));
     generate if(ENABLE_GETRANDOM || ENABLE_INTERNAL_KEYGEN) begin : generation_enabled
     rng_word_service #(.WAIT_LIMIT(GETRANDOM_WAIT_LIMIT)) generation_service (
         .clock_i(clock_i), .reset_n_i(reset_n_i), .random_i(random_i), .random_valid_i(random_valid_i),

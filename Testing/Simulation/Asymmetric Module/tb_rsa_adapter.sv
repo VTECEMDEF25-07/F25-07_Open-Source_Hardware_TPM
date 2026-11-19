@@ -157,16 +157,42 @@ module tb_rsa_adapter #(parameter TEST_CASE=0, IP_TYPE=0);
                 fixture[56],fixture[57],fixture[58],fixture[59],fixture[60],fixture[61],fixture[62],fixture[63]});accept_terminal(12);
             reset_all();launch(0);send_operand(vectors[0],3);accept_terminal(12);
             reset_all();launch(0);wait(ir);accept_terminal(7);
-            if(launches!=0 || derivations!=0)$fatal(1,"rejection dispatched arithmetic");
+            reset_all();slot[0]=0;launch(1);send_operand(vectors[0]);accept_terminal(4);
+            reset_all();launch(0);send_operand({2048{1'b1}});accept_terminal(12);
+            reset_all();launch(1);send_operand(vectors[0]);accept_terminal(7);
+            reset_all();launch(0);send_operand(vectors[0]);accept_terminal(7);
+            if(launches!=1 || derivations!=1)$fatal(1,"unexpected rejection/timeout dispatch");
         end else if(TEST_CASE==2)begin
-            for(integer phase=0;phase<4;phase++)begin
-                reset_all();launch(1);
+            for(integer phase=0;phase<6;phase++)begin
+                reset_all();launch(phase>=4?0:1);
                 if(phase==0)wait(dut.enabled.state_reg==3);
-                else if(phase==1)begin wait(ir);send_operand(vectors[0],-1);wait(dut.enabled.state_reg==7);end
+                else if(phase==1)begin
+                    wait(ir);
+                    for(integer j=0;j<7;j++)begin @(negedge clk);iv=1;din=vectors[0][2047-j*32 -:32];tick();end
+                end
                 else if(phase==2)begin send_operand(vectors[0]);wait(dut.enabled.protected_derivation.state_reg==37);end
-                else begin send_operand(vectors[0]);wait(dut.enabled.state_reg==9);end
+                else if(phase==3)begin send_operand(vectors[0]);wait(dut.enabled.state_reg==9);end
+                else begin
+                    send_operand(vectors[0]);wait(rv);
+                    if(phase==5)begin
+                        @(negedge clk);rr=1;repeat(64)tick();@(negedge clk);rr=0;wait(cv);
+                    end
+                end
                 reset_all();checks=checks+1;
             end
+        end else if(TEST_CASE==3)begin
+            launch(0);send_operand(vectors[0]);wait(dut.enabled.state_reg==9);
+            force dut.enabled.core_error=1'b1;
+            accept_terminal(11);release dut.enabled.core_error;
+            reset_all();slot[1]=slot[1]^32'h100;launch(1);send_operand(vectors[0]);accept_terminal(11);
+            reset_all();slot[96]=slot[96]&32'hfffffffe;launch(1);send_operand(vectors[0]);accept_terminal(11);
+            // An unacknowledged terminal has a finite ownership lifetime and
+            // is withdrawn without a second completion; retry must be clean.
+            reset_all();allow=0;id=0;launch(1);wait(cv);#1;
+            if(code!==9 || cid!==0)$fatal(1,"zero request ID lost");
+            wait(rq);if(cv || reserved)$fatal(1,"terminal expiry did not abandon");
+            id=32'h12345678;launch(1);accept_terminal(9);
+            checks=checks+1;
         end
         $display("RSA_ADAPTER_PASS case=%0d backend=%0d checks=%0d cycles=%0d",TEST_CASE,IP_TYPE,checks,cycles);$finish;
     end
