@@ -42,7 +42,7 @@ def sha(path):
 
 def prepare(build):
     project = build / 'Project/DE25'
-    project.mkdir(parents=True, exist_ok=True)
+    project.mkdir(parents=True, exist_ok=False)
     ports = []
     for name, width in PORTS.items():
         direction = 'input' if name.endswith('_i') else 'output'
@@ -89,12 +89,31 @@ def prepare(build):
         if path not in sources:
             settings += f'\nset_global_assignment -name VERILOG_FILE "{path.as_posix()}"'
             sources.add(path)
+    # The virtual trusted issuer is modeled at an ideal core-clock register
+    # boundary. Assign zero off-chip delay only to these test ports. Keep all
+    # physical pin, SPI I/O, mailbox, PLL and cooling constraints as supplied.
+    qa_sdc = project/'virtual_issuer.sdc'
+    qa_ports = ['qa_aes_allow_i'] + ['qa_'+name for name in PORTS]
+    lines = ['# Ideal 50 MHz internal issuer boundary, no external pad budget.']
+    for direction, suffix in [('input', '_i'), ('output', '_o')]:
+        pins = ' '.join(name+'*' for name in qa_ports if name.endswith(suffix))
+        lines += [f'set qa_ports [get_ports {{{pins}}}]',
+                  'if {[get_collection_size $qa_ports] == 0} {error "Missing virtual issuer ports"}']
+        for bound in ['min', 'max']:
+            lines.append(f'set_{direction}_delay -clock pll_clock_50 -{bound} 0.0 $qa_ports')
+    qa_sdc.write_text('\n'.join(lines)+'\n')
     settings += '\nset_instance_assignment -name VIRTUAL_PIN ON -to qa_*\n'
+    settings += 'set_global_assignment -name SDC_FILE virtual_issuer.sdc\n'
     (project/qsf.name).write_text(settings)
     shutil.copyfile(BOARD/'de25_spi_pins.tcl',project/'de25_spi_pins.tcl')
     shutil.copyfile(BOARD/'de25_soc_top.qpf',project/'de25_soc_top.qpf')
+    # Run the repository's board-level four-corner, SPI CDC and I/O audit
+    # against this overlay by preserving its relative Project/DE25 location.
+    audit_script = ROOT/'Project/verify_spi_timing.tcl'
+    shutil.copyfile(audit_script, project.parent/audit_script.name)
+    sources.add(audit_script)
     sources.update((ROOT/'Source Code').rglob('*.vh'))
-    return project, sources, [*generated.values(),project/qsf.name]
+    return project, sources, [*generated.values(),project/qsf.name,qa_sdc]
 
 
 def main():
@@ -126,6 +145,16 @@ def main():
             print(stage,process.returncode,flush=True)
             if process.returncode:
                 raise SystemExit(process.returncode)
+        audit_log = project/'spi_timing_audit.log'
+        with audit_log.open('wb') as out:
+            result = subprocess.run([str(TOOLS/'quartus_sta.exe'), '-t',
+                str(project.parent/'verify_spi_timing.tcl'), 'DE25'], cwd=project,
+                stdout=out, stderr=subprocess.STDOUT, timeout=1800,
+                creationflags=subprocess.CREATE_NO_WINDOW)
+        record['spi_audit'] = {'returncode':result.returncode,'log_sha256':sha(audit_log)}
+        log_text = audit_log.read_text(errors='replace')
+        if result.returncode or 'PASS SPI TIMING AUDIT' not in log_text:
+            raise SystemExit('Board timing audit failed. See '+str(audit_log))
     finally:
         record['inputs_after'] = audit()
         (build/'evidence.json').write_text(json.dumps(record,indent=2)+'\n')
@@ -135,4 +164,3 @@ def main():
 
 if __name__=='__main__':
     main()
-

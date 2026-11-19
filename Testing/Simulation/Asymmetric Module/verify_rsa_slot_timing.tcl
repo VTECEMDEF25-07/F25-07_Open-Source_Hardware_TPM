@@ -47,4 +47,3 @@ report_ucp -file [file join $dir unconstrained.rpt]
 project_close
 if {$failures} {error "$failures failing corner checks, see $dir"}
 puts "RSA_SUBSYSTEM_TIMING_PASS corners=4 clock_mhz=50"
-
