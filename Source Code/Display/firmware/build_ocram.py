@@ -86,6 +86,14 @@ if options.cold:
     plain_exe=OUT/'test_plaintext'
     run(['gcc','-std=c11','-Wall','-Wextra','-Werror','-Wno-misleading-indentation','-fsanitize=undefined,bounds','-I'+linux(SRC),linux(SRC/'test_plaintext.c'),linux(SRC/'status.c'),'-o',linux(plain_exe)])
     plain_log=run([linux(plain_exe)]).decode();(OUT/'plaintext_tests.log').write_text(plain_log);cold_log+=plain_log
+mailbox_obj=OUT/'display_main.o'
+mailbox_exe=OUT/'test_display_mailbox'
+mailbox_flags=['gcc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=undefined,bounds','-DDE25_HOST_TEST','-I'+linux(SRC)]
+run([*mailbox_flags,'-Dmain=lcd_demo_main','-c',linux(SRC/'main.c'),'-o',linux(mailbox_obj)])
+run([*mailbox_flags,linux(SRC/'test_display_mailbox.c'),linux(mailbox_obj),'-o',linux(mailbox_exe)])
+mailbox_log=run([linux(mailbox_exe)]).decode()
+(OUT/'display_mailbox_tests.log').write_text(mailbox_log)
+cold_log+=mailbox_log
 for stale in [False,True]:
     raw=run([linux(exe),*(['stale'] if stale else [])],input=('\n'.join(validlines+badlines)+'\n').encode())
     offset=0

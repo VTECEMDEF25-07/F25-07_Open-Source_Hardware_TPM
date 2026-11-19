@@ -45,7 +45,32 @@ static void setup(void) {
     image[0x590/4+2]|=0x10000003;image[0x590/4+11]|=0x10000003;
 }
 static int wrote(uintptr_t a) {for(unsigned i=0;i<nw;i++)if(writes[i].a==a)return 1;return 0;}
-int main(void) {
+/* Validate a PFG-extracted big-endian HPS handoff using the exact firmware
+ * predicates. No target access and no writes to the input. */
+static int check_fitted_handoff(const char *path) {
+    FILE *input = fopen(path, "rb");
+    if (!input) { perror(path); return 1; }
+    unsigned char raw[4097];
+    size_t size = fread(raw, 1, sizeof(raw), input);
+    int read_failed = ferror(input);
+    fclose(input);
+    if (read_failed || size < sizeof(image) || size > 4096 || size % 4) {
+        fprintf(stderr, "Invalid fitted handoff size or read failure\n");
+        return 1;
+    }
+    for (unsigned i = 0; i < DE25_HANDOFF_WORDS; ++i) {
+        const unsigned char *p = raw + 4*i;
+        image[i] = (uint32_t)p[0]<<24 | (uint32_t)p[1]<<16 | (uint32_t)p[2]<<8 | p[3];
+    }
+    uint32_t code = de25_validate_handoff(image);
+    if (code) { fprintf(stderr, "Firmware rejected fitted handoff: %u\n", code); return 1; }
+    printf("PASS fitted handoff: %zu bytes, firmware pin/clock/power/DDR checks passed\n", size);
+    return 0;
+}
+
+int main(int argc, char **argv) {
+    if (argc == 2) return check_fitted_handoff(argv[1]);
+    if (argc != 1) { fprintf(stderr, "Usage: test_cold_init [fitted-handoff.bin]\n"); return 1; }
     unsigned checks=0;
     setup();assert(de25_validate_handoff(image)==0);checks++;
     /* Every handoff offset must be a unique allowed register, including holes. */

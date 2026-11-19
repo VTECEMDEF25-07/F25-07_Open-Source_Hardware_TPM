@@ -1,3 +1,26 @@
+# Combined Expo LCD firmware
+
+The HPS polls the read-only FPGA peripheral at physical address `0x20000000` over the 32-bit lightweight HPS-to-FPGA bridge. AES and RSA plaintext comes from the completed hardware result. The laptop can send the next TPM command through the SPI adapter with the display USB cable disconnected.
+
+| Word | Value |
+| --- | --- |
+| 0 | Signature `0x444c4344` |
+| 1 | Result revision |
+| 2 | Result operation ID |
+| 3 | Algorithm in bits 10 through 8 (2 for AES, 4 for RSA), byte length in bits 7 through 0 |
+| 4–6 | Status word, status operation ID, status sequence |
+| 8–39 | Up to 126 display bytes, least significant byte first |
+
+The firmware reads the revision and status sequence before and after copying the result, retrying if either changed. The LCD shows the completed message until the FPGA invalidates the result. With no active result, the HPS renders the current FPGA status.
+
+Build and test from the repository root with the archived Arm toolchain. Use a new output directory.
+
+```powershell
+py -3 'Source Code/Display/firmware/build_ocram.py' --strict-align --runtime-root '<class-root>/AI/tmp/overnight-lcd/baremetal' --output-dir '<class-root>/AI/tmp/my-display-build'
+```
+
+Package the resulting `lcd_ocram.hex` with the matching bridge-enabled SOF. The historical UART design and its archive validation follow below.
+
 # DE25 OCRAM LCD firmware
 
 The plaintext display extension accepts a bounded `plaintext_b64`, `algorithm`
