@@ -2,9 +2,12 @@
 
 Stacked dependency: PR57, `2f4e29a1a058fd7c30f715701f82ac7cb75b8015`.
 Implementation/campaign head: `848954c60ed106547ad12518854697cfb1eed853`.
-Target the dependency branch while PR57 is unmerged; eventual target is
-`develop`. After dependency merge/rebase, rerun the relevant regressions before
-final composed review readiness. No merge or hardware access is authorized here.
+PR57 is now merged in `develop` at `da6b924`. The AES branch rebased onto that
+commit at `ff8b0f31e8f78791c8c4acef1458460d7618a157`; its complete Git tree is
+identical to the original validated review head `a93c96d` (tree
+`079bc91171859f35e895c5b56b2b45fefc025f25`). PR58 targets `develop`.
+Post-rebase regressions are recorded separately below. No merge or hardware
+access was performed by this task.
 
 ## Reproduce
 
@@ -75,6 +78,31 @@ head, source/fixture/model/transcript SHA256, counts and deadlines. Manifest
 SHA256: `02002fa008c332cdd23caff54fe8c1120f4fa5af0832e0e7a7ff2ce25cd1b171`.
 Full transcripts remain in the indicated local build directories. No pass is
 inferred from simulator exit alone.
+
+## After dependency merge
+
+PR57 merged as `da6b924`; the branch rebased onto it without conflicts at
+`ff8b0f31e8f78791c8c4acef1458460d7618a157`. All15 fast campaign groups were
+rerun with label `aes-slot-postmerge` and PASS, including the17 command
+variants and240 legacy entries /zero errors. Both AES modes, both keygen
+backends, real source/health, engine/GetRandom, both-family resources and all
+six symmetric capacities were rerun. The final documentation/evidence commit
+changes no RTL or test input.
+
+[Post-merge evidence](evidence/aes_slot_postmerge_20261118.json) SHA256:
+`051ce5f7dea65fc4c65a83d77e3313d97223250392a3ee0352192e4260c8af32`.
+It includes before/after input audits and exact commands/deadlines/transcript
+hashes. All RTL/testbench bytes remain identical to the original full campaign.
+Checkout changed only three new Python helpers from LF to CRLF; normalized
+SHA256 values verify identical contents, and their post-checkout byte hashes
+are recorded separately.
+
+The full Generic numerical RSA test and enabled synthesis are retained from
+the original campaign: every compiled RSA RTL/testbench/model/fixture byte and
+every synthesized RTL byte is unchanged. They were not rerun solely for an
+ancestry change. The synthesis launcher's checkout line endings changed only.
+This provenance is explicit rather than claiming a second full RSA/synthesis
+run. PR58 targets `develop`; no automatic merge is performed.
 
 The known handle, allow bit and deterministic source are public test fixtures,
 not real TPM objects, production authorization or a physical entropy source.
