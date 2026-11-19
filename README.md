@@ -3,6 +3,12 @@
 
 Virginia Tech Lenovo-sponsored senior design project.
 
+## Phase 2 Expo demo scope
+
+This fully AI-developed demo is intended to show the individual functionality of the team's five cryptographic modules. Those modules are the team's work.
+
+**Treat the integration code that connects the modules as unverified.** A passing expo demonstration covers only the flows exercised on stage. This branch is a poor starting point for further TPM integration. Continue production integration from the team's reviewed development branch.
+
 ## Run the combined DE25 demo
 
 Power the DE25 from its board supply and load the combined FPGA image with its matching HPS display firmware. Connect the FT232H USB-to-SPI adapter and the Nucleo panel to the laptop. After programming, disconnect the DE25 programming/serial USB cable for the display test.
